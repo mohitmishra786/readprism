@@ -1,0 +1,23 @@
+version: "3.9"
+
+# Local development overrides
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_ENV: development
+
+  worker:
+    volumes:
+      - ./backend:/app
+
+  beat:
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    volumes:
+      - ./frontend/src:/app/src
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
