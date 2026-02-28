@@ -39,6 +39,7 @@ playwright==1.49.0
 beautifulsoup4==4.12.3
 lxml==5.3.0
 listparser==0.20
+trafilatura==1.12.2
 
 # Email
 jinja2==3.1.4

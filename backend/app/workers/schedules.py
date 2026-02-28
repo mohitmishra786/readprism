@@ -23,4 +23,9 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.update_interest_graph.apply_decay_all_users",
             "schedule": crontab(hour=2, minute=0),  # daily at 2:00 AM UTC
         },
+        "precompute-prs": {
+            "task": "app.workers.tasks.compute_prs.precompute_prs_for_active_users",
+            # Every 2 hours so PRS scores are ready when digests are built
+            "schedule": 2 * 60 * 60,
+        },
     }

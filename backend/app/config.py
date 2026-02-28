@@ -38,10 +38,12 @@ class Settings(BaseSettings):
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_device: str = "cpu"
 
-    # Email delivery
-    email_provider: str = "resend"
-    resend_api_key: str = ""
-    from_email: str = "digest@readprism.app"
+    # Email delivery — Zoho SMTP
+    zoho_smtp_host: str = "smtppro.zoho.in"
+    zoho_smtp_port: int = 587
+    zoho_email: str = "admin@mohitmishra7.com"
+    zoho_password: str = ""
+    from_email: str = "admin@mohitmishra7.com"
 
     # Newsletter ingestion
     newsletter_inbox_domain: str = "inbox.readprism.app"

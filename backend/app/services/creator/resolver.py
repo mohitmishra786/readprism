@@ -34,7 +34,7 @@ class CreatorResolutionResult:
     warning: Optional[str] = None
 
 
-def _detect_platform(url: str) -> Optional[str]:
+def _detect_platform(url: str) -> str:
     parsed = urlparse(url)
     host = parsed.netloc.lower().lstrip("www.")
     for domain, platform in PLATFORM_DOMAINS.items():
@@ -68,12 +68,14 @@ def _autodiscover_feed_url(platform: str, profile_url: str, html: str) -> Option
     if platform == "medium":
         return f"https://medium.com/feed/@{username}"
     if platform == "youtube":
-        channel_match = re.search(r"channel_id["'\s]*[:=]["'\s]*([UC][\w-]+)", html)
+        channel_match = re.search(r'channel_id["\'\s]*[:=]["\'\s]*([UC][\w-]+)', html)
         if channel_match:
             cid = channel_match.group(1)
             return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}"
-    if platform in ("twitter", "linkedin"):
-        return None  # No reliable public feed
+    if platform == "twitter":
+        return None  # Twitter/X has no public RSS feed
+    if platform == "linkedin":
+        return None  # LinkedIn has no public RSS feed
 
     # Generic blog: try autodiscovery
     feed_match = re.search(
@@ -100,6 +102,21 @@ async def resolve_creator(
 
     if is_url:
         primary_platform = _detect_platform(name_or_url)
+
+        # Early warning for platforms with no reliable public feed
+        if primary_platform == "twitter":
+            warning = (
+                "Twitter/X does not provide a public RSS feed. "
+                "ReadPrism cannot automatically track new posts from this profile. "
+                "Consider adding the creator's Substack, newsletter, or personal blog instead."
+            )
+        elif primary_platform == "linkedin":
+            warning = (
+                "LinkedIn does not provide a public RSS feed. "
+                "ReadPrism cannot automatically track new posts from this profile. "
+                "Consider adding the creator's newsletter or personal blog instead."
+            )
+
         html = await _fetch_page(name_or_url)
         if html:
             display_name = _extract_title(html)
@@ -115,9 +132,10 @@ async def resolve_creator(
             additional = _find_additional_platforms(html, name_or_url)
             platforms_data.extend(additional)
         else:
-            warning = f"Could not fetch profile page: {name_or_url}"
+            if not warning:
+                warning = f"Could not fetch profile page: {name_or_url}"
             platforms_data.append({
-                "platform": "blog",
+                "platform": primary_platform,
                 "url": name_or_url,
                 "feed_url": None,
                 "is_verified": False,

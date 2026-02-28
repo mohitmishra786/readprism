@@ -16,6 +16,10 @@ logger = get_logger(__name__)
 
 graph_manager = InterestGraphManager()
 
+# Scalability: limit edge reinforcement to top-N topics per content item.
+# With 20 topics, combinations(20,2) = 190 writes; capped at top-5 → max 10 writes.
+MAX_TOPICS_FOR_EDGE_UPDATE = 5
+
 # Trust weight learning constants
 TRUST_LEARN_RATE = 0.02
 TRUST_MIN = 0.1
@@ -75,8 +79,10 @@ async def update_from_interaction(
         await graph_manager.reinforce_node(node, signal_strength, session)
         nodes.append(node)
 
-    # Reinforce edges between all pairs of topics in this content
-    for node_a, node_b in itertools.combinations(nodes, 2):
+    # Reinforce edges — cap to top-N nodes by weight to bound DB write count.
+    # combinations(5, 2) = 10 writes max vs. potentially hundreds for long topic lists.
+    top_nodes = sorted(nodes, key=lambda n: n.weight, reverse=True)[:MAX_TOPICS_FOR_EDGE_UPDATE]
+    for node_a, node_b in itertools.combinations(top_nodes, 2):
         await graph_manager.reinforce_edge(
             user_id=interaction.user_id,
             node_a_id=node_a.id,
