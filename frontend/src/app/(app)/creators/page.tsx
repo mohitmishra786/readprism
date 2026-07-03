@@ -15,20 +15,35 @@ export default function CreatorsPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 24 }}>Creators</h1>
+      <header className="mb-6">
+        <div className="eyebrow text-prism-700">People</div>
+        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Creators</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Track individuals across Substack, YouTube, Medium, Reddit, and more.
+        </p>
+      </header>
       <AddCreatorForm onAdded={(c) => setCreators((prev) => [c, ...prev])} />
       {loading ? (
-        <p style={{ color: "#6b7280" }}>Loading creators...</p>
+        <div className="space-y-2.5">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card p-4">
+              <div className="skeleton mb-2 h-4 w-1/2 rounded" />
+              <div className="skeleton h-5 w-24 rounded-full" />
+            </div>
+          ))}
+        </div>
       ) : creators.length === 0 ? (
-        <p style={{ color: "#6b7280" }}>No creators added yet.</p>
+        <p className="text-sm text-stone-500">No creators added yet.</p>
       ) : (
-        creators.map((c) => (
-          <CreatorProfile
-            key={c.id}
-            creator={c}
-            onDeleted={(id) => setCreators((prev) => prev.filter((x) => x.id !== id))}
-          />
-        ))
+        <div className="space-y-2.5">
+          {creators.map((c) => (
+            <CreatorProfile
+              key={c.id}
+              creator={c}
+              onDeleted={(id) => setCreators((prev) => prev.filter((x) => x.id !== id))}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

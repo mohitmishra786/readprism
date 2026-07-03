@@ -9,7 +9,8 @@ async function getApiBase() {
 }
 
 async function getToken() {
-  const { token } = await chrome.storage.sync.get({ token: "" });
+  // Token is a secret — read from local storage only (not sync).
+  const { token } = await chrome.storage.local.get({ token: "" });
   return token;
 }
 

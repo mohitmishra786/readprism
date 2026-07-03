@@ -15,10 +15,23 @@ export default function SourcesPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 24 }}>Sources</h1>
+      <header className="mb-6">
+        <div className="eyebrow text-prism-700">Ingestion</div>
+        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Sources</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Websites, blogs, and feeds you follow. RSS is detected automatically.
+        </p>
+      </header>
       <AddSourceForm onAdded={(s) => setSources((prev) => [s, ...prev])} />
       {loading ? (
-        <p style={{ color: "#6b7280" }}>Loading sources...</p>
+        <div className="space-y-2.5">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="card p-4">
+              <div className="skeleton mb-2 h-4 w-2/3 rounded" />
+              <div className="skeleton h-3 w-1/3 rounded" />
+            </div>
+          ))}
+        </div>
       ) : (
         <SourceList
           sources={sources}

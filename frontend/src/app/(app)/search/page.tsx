@@ -27,83 +27,67 @@ export default function SearchPage() {
 
   return (
     <div>
-      <h1 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 20 }}>Search</h1>
+      <header className="mb-6">
+        <div className="eyebrow text-prism-700">Archive</div>
+        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Search</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          Full-text search across your reading archive.
+        </p>
+      </header>
 
-      <form onSubmit={search} style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+      <form onSubmit={search} className="mb-6 flex gap-2">
         <input
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your reading archive..."
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            border: "1px solid #d1d5db",
-            borderRadius: 6,
-            fontSize: "1rem",
-          }}
+          className="input flex-1"
         />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          style={{
-            padding: "10px 20px",
-            background: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Searching..." : "Search"}
+        <button type="submit" disabled={loading} className="btn-primary">
+          {loading ? "Searching…" : "Search"}
         </button>
       </form>
 
-      {searched && results.length === 0 && (
-        <p style={{ color: "#6b7280" }}>No results found for &ldquo;{query}&rdquo;.</p>
+      {searched && (
+        <div className="space-y-3">
+          {results.length === 0 ? (
+            <p className="py-8 text-center text-sm text-stone-500">
+              No results for “{query}”.
+            </p>
+          ) : (
+            results.map((item) => (
+              <div key={item.id} className="card card-hover p-4">
+                <h3 className="font-serif text-base font-semibold">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-stone-900 hover:text-prism-700"
+                    dangerouslySetInnerHTML={{
+                      __html:
+                        (item as unknown as { _formatted?: Record<string, string> })._formatted?.title ||
+                        item.title,
+                    }}
+                  />
+                </h3>
+                {item.author && (
+                  <p className="mt-1 text-xs text-stone-500">{item.author}</p>
+                )}
+                {item.summary_brief && (
+                  <p
+                    className="mt-2 text-sm leading-relaxed text-stone-600"
+                    dangerouslySetInnerHTML={{
+                      __html:
+                        (item as unknown as { _formatted?: Record<string, string> })._formatted
+                          ?.summary_brief || item.summary_brief,
+                    }}
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </div>
       )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {results.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              padding: 16,
-              border: "1px solid #e5e7eb",
-              borderRadius: 8,
-              background: "#fff",
-            }}
-          >
-            <h3 style={{ margin: "0 0 4px", fontSize: "1rem", fontWeight: 600 }}>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#1d4ed8", textDecoration: "none" }}
-                dangerouslySetInnerHTML={{
-                  __html:
-                    (item as unknown as { _formatted?: Record<string, string> })._formatted?.title ||
-                    item.title,
-                }}
-              />
-            </h3>
-            {item.author && (
-              <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b7280" }}>{item.author}</p>
-            )}
-            {item.summary_brief && (
-              <p
-                style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.5 }}
-                dangerouslySetInnerHTML={{
-                  __html:
-                    (item as unknown as { _formatted?: Record<string, string> })._formatted
-                      ?.summary_brief || item.summary_brief,
-                }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

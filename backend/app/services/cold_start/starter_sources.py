@@ -69,7 +69,7 @@ STARTER_SOURCES: dict[str, list[dict]] = {
 
 # Synonyms / aliases so topic text maps to clusters even when worded differently.
 CLUSTER_ALIASES: dict[str, list[str]] = {
-    "ai": ["artificial intelligence", "llm", "large language model", "generative ai", "deep learning"],
+    "ai": ["artificial intelligence", "llm", "llms", "large language model", "large language models", "generative ai", "deep learning"],
     "machine_learning": ["ml", "neural network", "data science"],
     "programming": ["software engineering", "coding", "developer", "software development"],
     "startups": ["entrepreneurship", "venture capital", "startup"],
@@ -86,13 +86,35 @@ CLUSTER_ALIASES: dict[str, list[str]] = {
 
 
 def match_clusters(topics: list[str]) -> set[str]:
-    """Return the set of cluster keys whose keywords/aliases appear in the topics."""
+    """Return the set of cluster keys whose keywords/aliases appear in the topics.
+
+    Matching is token-based (word-boundary) rather than raw substring, so short
+    aliases like "ml", "ui", "pm" don't false-match inside unrelated words.
+    Multi-word aliases (e.g. "machine learning") match if all their tokens
+    appear adjacently in the topic text.
+    """
+    import re
+
     matched: set[str] = set()
     haystack = " ".join(t.lower() for t in topics)
+    # Tokenize once: words and hyphenated terms.
+    tokens = set(re.findall(r"[a-z0-9]+(?:-[a-z0-9]+)?", haystack))
+
     for cluster, aliases in CLUSTER_ALIASES.items():
-        keywords = [cluster.replace("_", " ")] + aliases
-        if any(kw in haystack for kw in keywords):
-            matched.add(cluster)
+        cluster_label = cluster.replace("_", " ")
+        # The cluster's own label is multi-word — check substring (safe, it's long).
+        candidates = [(cluster_label, False)] + [(a, len(a.split()) == 1) for a in aliases]
+        for kw, is_single_token in candidates:
+            if is_single_token:
+                # Short single-word alias: match on token boundary only.
+                if kw in tokens:
+                    matched.add(cluster)
+                    break
+            else:
+                # Multi-word or the cluster label: substring match is safe.
+                if kw in haystack:
+                    matched.add(cluster)
+                    break
     return matched
 
 
@@ -100,9 +122,11 @@ def get_starter_sources(topics: list[str], max_sources: int = 8) -> list[dict]:
     """Return a deduplicated list of starter sources for the matched clusters.
 
     Capped at max_sources so a new user isn't flooded; ingestion picks up new
-    posts on the next scheduled fetch.
+    posts on the next scheduled fetch. Clusters are sorted before iteration so
+    the cap is deterministic across process restarts (Python set ordering is
+    randomized per process via hash seed).
     """
-    clusters = match_clusters(topics)
+    clusters = sorted(match_clusters(topics))
     seen_urls: set[str] = set()
     out: list[dict] = []
     for cluster in clusters:

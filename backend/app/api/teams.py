@@ -112,6 +112,12 @@ async def add_member(
     if owner_check.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can add members.")
 
+    # Validate the target user exists — otherwise the FK insert below would
+    # raise an IntegrityError and surface as a 500 instead of a clean 404.
+    user_exists = await session.execute(select(User.id).where(User.id == body.user_id))
+    if user_exists.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+
     exists = await session.execute(
         select(TeamMember).where(
             TeamMember.team_id == team_id, TeamMember.user_id == body.user_id
@@ -143,6 +149,22 @@ async def remove_member(
     )
     if owner_check.scalar_one_or_none() is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can remove members.")
+
+    # Prevent removing the last owner — otherwise the team becomes permanently
+    # ownerless (no owner check can ever pass again) and membership is locked.
+    if user_id == current_user.id:
+        remaining_owners = await session.execute(
+            select(TeamMember).where(
+                TeamMember.team_id == team_id,
+                TeamMember.role == "owner",
+                TeamMember.user_id != user_id,
+            )
+        )
+        if remaining_owners.scalar_one_or_none() is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot remove the last owner; transfer ownership first.",
+            )
 
     result = await session.execute(
         select(TeamMember).where(

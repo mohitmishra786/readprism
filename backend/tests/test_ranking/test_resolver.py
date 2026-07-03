@@ -92,6 +92,15 @@ def test_medium_feed_url():
     assert warning is None
 
 
+def test_medium_subdomain_publication_feed_url():
+    """A subdomain-hosted Medium blog (author.medium.com) resolves a feed too."""
+    feed, warning = _autodiscover_feed_url(
+        "medium", "https://johndoe.medium.com/", ""
+    )
+    assert feed == "https://johndoe.medium.com/feed"
+    assert warning is None
+
+
 def test_youtube_feed_url_from_channel_id_in_html():
     html = '<meta content="UC_x5XG1OV2P6uZZ5FSM9Ttw" itemprop="channelId">'
     feed, warning = _autodiscover_feed_url(

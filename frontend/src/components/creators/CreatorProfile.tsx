@@ -29,50 +29,29 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
   };
 
   return (
-    <div
-      style={{
-        padding: 16,
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        marginBottom: 12,
-        background: "#fff",
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div style={{ fontWeight: 600, fontSize: "1rem" }}>{creator.display_name}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+    <div className="card card-hover p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="font-serif text-base font-semibold text-stone-900">
+            {creator.display_name}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {creator.platforms.map((p) => (
               <PlatformBadge key={p.id} platform={p} />
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex shrink-0 gap-1.5">
           <button
             onClick={loadSummary}
             disabled={loadingSummary}
-            style={{
-              padding: "4px 12px",
-              fontSize: 12,
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              cursor: "pointer",
-              background: "#fff",
-            }}
+            className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs"
           >
-            {loadingSummary ? "Loading..." : "This week"}
+            {loadingSummary ? "Loading…" : "This week"}
           </button>
           <button
             onClick={del}
-            style={{
-              padding: "4px 10px",
-              fontSize: 12,
-              border: "1px solid #fca5a5",
-              color: "#dc2626",
-              background: "#fff",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
+            className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50"
           >
             Remove
           </button>
@@ -80,18 +59,9 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
       </div>
 
       {summary && (
-        <div
-          style={{
-            marginTop: 12,
-            padding: "10px 14px",
-            background: "#f0f9ff",
-            borderRadius: 6,
-            fontSize: "0.875rem",
-            color: "#1e40af",
-            lineHeight: 1.6,
-          }}
-        >
-          <strong>This week: </strong>{summary}
+        <div className="mt-3 rounded-lg bg-prism-50 px-4 py-3 text-sm leading-relaxed text-prism-900">
+          <strong className="font-semibold">This week: </strong>
+          {summary}
         </div>
       )}
     </div>

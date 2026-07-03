@@ -68,8 +68,10 @@ async def build_team_digest(
     if merged_vec is None:
         return {"team_id": str(team_id), "items": [], "reason": "no_interest_data"}
 
-    # Candidate pool: items any member has interacted with or that came from
-    # any member's sources in the last 7 days. Use distinct content items.
+    # Candidate pool: items that at least one member positively engaged with
+    # (opened, saved, or rated) in the last 7 days. We scope to members'
+    # interactions rather than all recent content, so the candidate set is
+    # genuinely team-relevant and the join doesn't pull in unrelated items.
     from datetime import datetime, timezone, timedelta
 
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
@@ -77,12 +79,19 @@ async def build_team_digest(
         select(ContentItem)
         .join(
             UserContentInteraction,
-            (UserContentInteraction.content_item_id == ContentItem.id)
-            & (UserContentInteraction.user_id.in_(member_ids)),
-            isouter=True,
+            UserContentInteraction.content_item_id == ContentItem.id,
         )
-        .where(ContentItem.fetched_at >= cutoff)
-        .where(ContentItem.embedding.is_not(None))
+        .where(
+            UserContentInteraction.user_id.in_(member_ids),
+            UserContentInteraction.created_at >= cutoff,
+            # Positive engagement: opened, saved, or explicitly rated.
+            (
+                UserContentInteraction.opened_at.is_not(None)
+                | UserContentInteraction.saved.is_(True)
+                | UserContentInteraction.explicit_rating.is_not(None)
+            ),
+            ContentItem.embedding.is_not(None),
+        )
         .distinct()
         .limit(CANDIDATE_POOL)
     )

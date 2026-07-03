@@ -1,16 +1,4 @@
 "use client";
-/**
- * PlatformBadge — renders a platform chip with an honest tracking-tier marker.
- *
- * The tier comes from PLATFORM_CAPABILITIES on the backend:
- *   - fully_tracked: ✓ green    (reliable RSS; we ingest new posts)
- *   - best_effort:   ⚠ amber    (feed may exist but isn't guaranteed)
- *   - unsupported:   ✗ red      (closed platform; cannot auto-track)
- *
- * Surfacing this in the UI is part of the honesty layer — we set an explicit
- * expectation rather than silently failing to surface content for closed
- * platforms like Twitter/LinkedIn.
- */
 import type { CreatorPlatform } from "../../lib/types";
 
 const PLATFORM_ICONS: Record<string, string> = {
@@ -24,22 +12,22 @@ const PLATFORM_ICONS: Record<string, string> = {
   blog: "✍",
 };
 
-const TIER_STYLES: Record<string, { bg: string; color: string; marker: string; title: string }> = {
+const TIER_STYLES: Record<
+  string,
+  { className: string; marker: string; title: string }
+> = {
   fully_tracked: {
-    bg: "#dcfce7",
-    color: "#166534",
+    className: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     marker: "✓",
     title: "Reliably tracked — new posts ingested",
   },
   best_effort: {
-    bg: "#fef3c7",
-    color: "#92400e",
+    className: "bg-amber-50 text-amber-700 ring-amber-200",
     marker: "⚠",
     title: "Best effort — a feed may exist but isn't guaranteed",
   },
   unsupported: {
-    bg: "#fee2e2",
-    color: "#991b1b",
+    className: "bg-rose-50 text-rose-700 ring-rose-200",
     marker: "✗",
     title: "Not supported — this platform has no public feed",
   },
@@ -57,18 +45,7 @@ export function PlatformBadge({ platform }: { platform: CreatorPlatform }) {
       target="_blank"
       rel="noopener noreferrer"
       title={`${label} — ${tierStyle.title}`}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-        fontSize: 11,
-        background: tierStyle.bg,
-        color: tierStyle.color,
-        padding: "2px 8px",
-        borderRadius: 10,
-        textDecoration: "none",
-        fontWeight: 500,
-      }}
+      className={`chip ring-1 ${tierStyle.className} hover:opacity-80`}
     >
       <span aria-hidden>{icon}</span>
       <span>{label}</span>

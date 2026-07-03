@@ -28,31 +28,21 @@ export function AddSourceForm({ onAdded }: AddSourceFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-      <input
-        type="url"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        placeholder="https://example.com/blog"
-        required
-        style={{ flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          padding: "8px 20px",
-          background: "#2563eb",
-          color: "#fff",
-          border: "none",
-          borderRadius: 6,
-          cursor: loading ? "not-allowed" : "pointer",
-          opacity: loading ? 0.7 : 1,
-        }}
-      >
-        {loading ? "Adding..." : "Add Source"}
-      </button>
-      {error && <span style={{ color: "#ef4444", fontSize: 14 }}>{error}</span>}
+    <form onSubmit={handleSubmit} className="mb-6">
+      <div className="flex gap-2">
+        <input
+          type="url"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="https://example.com/blog"
+          required
+          className="input flex-1"
+        />
+        <button type="submit" disabled={loading} className="btn-primary whitespace-nowrap">
+          {loading ? "Adding…" : "Add Source"}
+        </button>
+      </div>
+      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
     </form>
   );
 }

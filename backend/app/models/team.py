@@ -24,7 +24,9 @@ class Team(Base):
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
     created_by: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        # RESTRICT, not CASCADE: deleting a user shouldn't silently wipe a team
+        # that other members still use. The owner must transfer ownership first.
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

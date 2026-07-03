@@ -4,6 +4,16 @@ const statusEl = document.getElementById("status");
 const sourceBtn = document.getElementById("add-source");
 const creatorBtn = document.getElementById("add-creator");
 
+// On open, surface the result of a context-menu-triggered add (if any), so the
+// user sees feedback even if they opened the popup after the badge appeared.
+chrome.storage.session.get(["lastResult", "lastUrl"], ({ lastResult, lastUrl }) => {
+  if (lastResult) {
+    showResult(lastResult);
+    // Clear so it doesn't persist across unrelated popup opens.
+    chrome.storage.session.remove(["lastResult", "lastUrl"]);
+  }
+});
+
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab;

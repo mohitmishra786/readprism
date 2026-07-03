@@ -137,8 +137,14 @@ def _autodiscover_feed_url(
         host = parsed.netloc
         return f"https://{host}/feed", None
     if platform == "medium":
-        # Medium usernames are @-prefixed and precede the post slug, e.g.
-        # /@author/some-post-123abc. Take the first @-prefixed segment.
+        # Two valid Medium URL forms:
+        #   1. https://medium.com/@author/post  → feed: medium.com/feed/@author
+        #   2. https://author.medium.com        → feed: author.medium.com/feed (subdomain)
+        host = parsed.netloc
+        if host.endswith(".medium.com") and host != "www.medium.com":
+            # Subdomain publication — derive the feed directly (mirrors substack).
+            return f"https://{host}/feed", None
+        # Otherwise look for the @-prefixed username in the path.
         username = next((s.lstrip("@") for s in path_segments if s.startswith("@")), "")
         if not username:
             return None, "Could not extract a Medium username; feed not discovered."
@@ -208,24 +214,33 @@ async def resolve_creator(
         primary_platform = _detect_platform(name_or_url)
 
         html = await _fetch_page(name_or_url)
+        fetch_failed = False
         if html:
             display_name = _extract_title(html)
         else:
-            warning = f"Could not fetch profile page: {name_or_url}"
+            fetch_failed = True
 
         feed_url, feed_warning = _autodiscover_feed_url(primary_platform, name_or_url, html or "")
 
         # Best-effort podcast lookup via iTunes Search API.
         if primary_platform == "podcast" and not feed_url:
             feed_url = await _lookup_podcast_feed(display_name)
-            if not feed_url and not warning:
-                warning = (
+            if not feed_url:
+                feed_warning = (
                     "Could not resolve a podcast RSS feed for this show. "
                     "You can still add the podcast's direct RSS URL if you have it."
                 )
 
-        if feed_warning and not warning:
-            warning = feed_warning
+        # Only warn about a failed profile fetch if we ALSO failed to resolve a
+        # feed — for platforms whose feed construction doesn't need the HTML
+        # (substack, reddit, medium subdomain), a transient fetch failure still
+        # yields a working feed and shouldn't show a scary warning.
+        if feed_url:
+            warning = None
+        elif fetch_failed and not feed_warning:
+            warning = f"Could not fetch profile page: {name_or_url}"
+        else:
+            warning = feed_warning or warning
 
         platforms_data.append({
             "platform": primary_platform,

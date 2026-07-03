@@ -21,81 +21,52 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
   };
 
   if (sources.length === 0) {
-    return <p style={{ color: "#6b7280" }}>No sources added yet.</p>;
+    return <p className="text-sm text-stone-500">No sources added yet.</p>;
   }
 
   return (
-    <div>
+    <div className="space-y-2.5">
       {sources.map((s) => (
         <div
           key={s.id}
-          style={{
-            padding: 16,
-            border: "1px solid #e5e7eb",
-            borderRadius: 8,
-            marginBottom: 10,
-            background: s.is_active ? "#fff" : "#f9fafb",
-            opacity: s.is_active ? 1 : 0.7,
-          }}
+          className={`card p-4 ${s.is_active ? "" : "opacity-60"}`}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <div style={{ fontWeight: 500 }}>{s.name || s.url}</div>
-              <div style={{ fontSize: 12, color: "#6b7280" }}>
-                {s.source_type.toUpperCase()} ·{" "}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="truncate font-medium text-stone-900">
+                {s.name || s.url}
+              </div>
+              <div className="mt-0.5 text-xs text-stone-500">
+                <span className="font-mono uppercase tracking-wide">{s.source_type}</span>
+                {" · "}
                 {s.last_fetched_at
-                  ? `Last fetched ${new Date(s.last_fetched_at).toLocaleDateString()}`
-                  : "Not yet fetched"}{" "}
-                · Relevance: {Math.round(s.trust_weight * 100)}%
+                  ? `Fetched ${new Date(s.last_fetched_at).toLocaleDateString()}`
+                  : "Not yet fetched"}
+                {" · "}
+                Relevance {Math.round(s.trust_weight * 100)}%
+              </div>
+              {/* Trust-weight bar */}
+              <div className="mt-2.5 h-1 w-24 overflow-hidden rounded-full bg-stone-200">
+                <div
+                  className="reading-progress h-full rounded-full"
+                  style={{ width: `${s.trust_weight * 100}%` }}
+                />
               </div>
             </div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="flex shrink-0 gap-1.5">
               <button
                 onClick={() => toggle(s)}
-                style={{
-                  padding: "4px 10px",
-                  fontSize: 12,
-                  border: "1px solid #d1d5db",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  background: s.is_active ? "#fff" : "#f3f4f6",
-                }}
+                className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs"
               >
                 {s.is_active ? "Pause" : "Resume"}
               </button>
               <button
                 onClick={() => del(s.id)}
-                style={{
-                  padding: "4px 10px",
-                  fontSize: 12,
-                  border: "1px solid #fca5a5",
-                  color: "#dc2626",
-                  background: "#fff",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                }}
+                className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50"
               >
                 Remove
               </button>
             </div>
-          </div>
-          <div
-            style={{
-              height: 4,
-              background: "#e5e7eb",
-              borderRadius: 2,
-              marginTop: 10,
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${s.trust_weight * 100}%`,
-                background: "#2563eb",
-                borderRadius: 2,
-              }}
-            />
           </div>
         </div>
       ))}

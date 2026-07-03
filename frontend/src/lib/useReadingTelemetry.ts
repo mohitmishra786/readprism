@@ -109,13 +109,20 @@ export function useReadingTelemetry({
 
   const readingTimeMs = readingTimeMinutes ? readingTimeMinutes * 60_000 : null;
 
+  // Keep the latest readingTimeMs in a ref so the setup effect (which runs once)
+  // and the memoized buildSnapshot/flush always see the current value, instead
+  // of closing over the initial null (before content fetch resolves). Without
+  // this, the active-time half of the composite score is permanently zeroed.
+  const readingTimeMsRef = useRef(readingTimeMs);
+  readingTimeMsRef.current = readingTimeMs;
+
   const buildSnapshot = useCallback((): ReadingSnapshot => {
     const s = stateRef.current;
     const progress = computeComposite(
       s.scrollDepthPct,
       s.activeTimeMs,
       s.reachedEnd,
-      readingTimeMs,
+      readingTimeMsRef.current,
     );
     return {
       scrollDepthPct: s.scrollDepthPct,

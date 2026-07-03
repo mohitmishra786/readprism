@@ -63,14 +63,31 @@ def _slugify(title: str, max_len: int = 80) -> str:
     return (slug or "untitled")[:max_len]
 
 
+def _yaml_escape(value: str) -> str:
+    """Quote a value for safe YAML frontmatter embedding.
+
+    YAML interprets unquoted colons, leading special chars, etc. as structure.
+    Always double-quote with escaped inner quotes — simplest safe approach.
+    """
+    if value is None:
+        return '""'
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def _to_markdown(content: ContentItem, interaction: UserContentInteraction) -> tuple[str, str]:
     """Render one saved item as Obsidian-flavored Markdown. Returns (filename, body)."""
+    saved_at = (
+        interaction.saved_read_at.isoformat()
+        if interaction.saved_read_at
+        else datetime.now(timezone.utc).isoformat()
+    )
+    reading_time = content.reading_time_minutes if content.reading_time_minutes is not None else "unknown"
     frontmatter = [
         "---",
-        f"source: {content.url}",
-        f"author: {content.author or 'unknown'}",
-        f"saved: {interaction.saved_read_at.isoformat() if interaction.saved_read_at else datetime.now(timezone.utc).isoformat()}",
-        f"reading_time: {content.reading_time_minutes or 'unknown'}",
+        f"source: {_yaml_escape(content.url)}",
+        f"author: {_yaml_escape(content.author or 'unknown')}",
+        f"saved: {_yaml_escape(saved_at)}",
+        f"reading_time: {_yaml_escape(str(reading_time))}",
         "---",
         "",
     ]
@@ -80,12 +97,12 @@ def _to_markdown(content: ContentItem, interaction: UserContentInteraction) -> t
     elif content.summary_brief:
         lines += [f"> {content.summary_brief}", ""]
     if content.full_text:
-        # Split into paragraphs for readability; cap to avoid gigantic notes.
+        # Cap to avoid gigantic notes.
         body = content.full_text[:20000]
         lines.append(body)
     else:
         lines.append(f"[Read original]({content.url})")
-    lines += ["", f"---", f"Original: [{content.url}]({content.url})", ""]
+    lines += ["", "---", f"Original: [{content.url}]({content.url})", ""]
     return f"{_slugify(content.title)}.md", "\n".join(frontmatter + lines)
 
 
@@ -168,32 +185,37 @@ READWISE_API = "https://readwise.io/api/v2"
 async def export_to_readwise(
     user_id: uuid.UUID, readwise_token: str, session: AsyncSession
 ) -> int:
-    """Push saved items to Readwise as books/articles. Returns count pushed."""
+    """Push saved items to Readwise as highlights. Returns count pushed.
+
+    Uses the /highlights/ endpoint (the documented v2 API), where each saved
+    item becomes a highlight whose required `text` field carries the summary or
+    a link. The optional title/author/source_url give it Reader context.
+    """
     if not readwise_token:
         raise ValueError("Readwise access token is required")
 
     items = await _get_saved_items(user_id, session)
     headers = {"Authorization": f"Token {readwise_token}", "Content-Type": "application/json"}
-    # Readwise's /books endpoint accepts a list; each saved item becomes a "book"
-    # of category "article" so it lands in the Reader library.
-    books = [
+    highlights = [
         {
+            # `text` is the only strictly-required field on the highlights endpoint.
+            "text": (content.summary_brief or content.title)[:8000],
             "title": content.title,
             "author": content.author or "Unknown",
             "source_url": content.url,
             "category": "articles",
-            "summary": content.summary_brief or "",
+            "note": content.summary_detailed or "",
         }
         for content, _ in items
     ]
     pushed = 0
     async with httpx.AsyncClient(timeout=30) as client:
-        # Push in batches of 50 (Readwise's recommended chunk size).
-        for i in range(0, len(books), 50):
-            batch = books[i : i + 50]
+        # Push in batches of 50.
+        for i in range(0, len(highlights), 50):
+            batch = highlights[i : i + 50]
             try:
                 resp = await client.post(
-                    f"{READWISE_API}/books/", headers=headers, json={"books": batch}
+                    f"{READWISE_API}/highlights/", headers=headers, json={"highlights": batch}
                 )
                 if resp.status_code in (200, 201):
                     pushed += len(batch)

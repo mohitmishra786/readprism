@@ -6,11 +6,15 @@
  * temporal_context, suggestion, novelty) depends on *real* reading telemetry.
  * Foreign tabs give us no scroll/visibility signal — so when the full text is
  * available we render it in-app where we can capture genuine scroll depth and
- * active time. The original-source link is still offered for users who want
- * the publisher's layout, images, or context.
+ * active time.
+ *
+ * Content rendering: full_text from trafilatura may be plain text OR contain
+ * inline HTML (links, emphasis, figures). We render it safely inside a
+ * .prose-reader container styled by globals.css. The container is scoped so
+ * only article HTML is affected, never the app chrome.
  */
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useReadingTelemetry } from "../../../../lib/useReadingTelemetry";
 import { api } from "../../../../lib/api";
@@ -23,7 +27,6 @@ export default function ReaderPage() {
   const id = params.id;
   const [item, setItem] = useState<ContentItemFull | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showOriginal, setShowOriginal] = useState(false);
 
   const { snapshot, sentinelRef } = useReadingTelemetry({
     contentItemId: id,
@@ -38,11 +41,32 @@ export default function ReaderPage() {
       .catch((e) => setError(e.message || "Failed to load article"));
   }, [id]);
 
+  const progressPct = Math.round(snapshot.readingProgressPct * 100);
+
+  // Prepare the article body. full_text may be HTML or plain text; wrap plain
+  // text in <p> tags so the prose-reader styles apply consistently.
+  const articleHtml = useMemo(() => {
+    if (!item?.full_text) return "";
+    const text = item.full_text.trim();
+    // If it already contains HTML block tags, render as-is.
+    if (/<(?:p|div|h[1-6]|ul|ol|blockquote|figure|pre|table)\b/i.test(text)) {
+      return text;
+    }
+    // Otherwise treat as plain text: split on blank lines into paragraphs.
+    return text
+      .split(/\n{2,}/)
+      .map((p) => `<p>${p.trim().replace(/\n/g, "<br/>")}</p>`)
+      .join("");
+  }, [item?.full_text]);
+
   if (error) {
     return (
-      <div style={{ padding: 24 }}>
-        <p style={{ color: "#dc2626" }}>{error}</p>
-        <button onClick={() => router.back()} style={{ marginTop: 12 }}>
+      <div className="py-16 text-center">
+        <p className="text-red-600">{error}</p>
+        <button
+          onClick={() => router.back()}
+          className="btn-secondary mt-4"
+        >
           ← Back
         </button>
       </div>
@@ -50,152 +74,116 @@ export default function ReaderPage() {
   }
 
   if (!item) {
-    return <div style={{ padding: 24, color: "#6b7280" }}>Loading…</div>;
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="skeleton h-6 w-32 rounded" />
+      </div>
+    );
   }
 
-  // If we have no extracted body, fall back to opening the original in a new
-  // tab (foreign-tab heuristic still applies there).
-  if (!item.full_text && !showOriginal) {
+  // If we have no extracted body, offer the original.
+  if (!item.full_text) {
     return (
-      <div style={{ padding: 24 }}>
-        <h1 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 12 }}>
-          {item.title}
-        </h1>
-        <p style={{ color: "#6b7280", marginBottom: 16 }}>
+      <div className="mx-auto max-w-prose py-12">
+        <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
+        <p className="mt-4 text-stone-500">
           The full article text isn’t available for in-app reading.
         </p>
         <a
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#1d4ed8", textDecoration: "none" }}
+          className="btn-primary mt-6"
         >
-          Open original at {new URL(item.url).hostname} →
+          Open original at {safeHostname(item.url)} →
         </a>
-        <div style={{ marginTop: 24 }}>
+        <div className="mt-8">
           <FeedbackBar contentItemId={item.id} />
         </div>
       </div>
     );
   }
 
-  const paragraphs = (item.full_text || "")
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  const progressPct = Math.round(snapshot.readingProgressPct * 100);
-
   return (
-    <article style={{ maxWidth: 720, margin: "0 auto", padding: "24px 16px 120px" }}>
-      {/* Sticky progress bar reflects genuine reading progress (scroll + active time). */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: "#e5e7eb",
-          zIndex: 50,
-        }}
-      >
+    <article className="mx-auto max-w-reading pb-32 pt-8">
+      {/* Sticky reading-progress bar — prism gradient reflects genuine progress */}
+      <div className="fixed left-0 right-0 top-0 z-50 h-1 bg-transparent">
         <div
-          style={{
-            height: "100%",
-            width: `${progressPct}%`,
-            background: "#2563eb",
-            transition: "width 0.3s ease",
-          }}
+          className="reading-progress h-full transition-all duration-300"
+          style={{ width: `${progressPct}%` }}
         />
       </div>
 
       <button
         onClick={() => router.back()}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "#6b7280",
-          padding: 0,
-          marginBottom: 16,
-          fontSize: 13,
-        }}
+        className="mb-6 text-sm text-stone-500 transition-colors hover:text-stone-900"
       >
         ← Back
       </button>
 
-      <h1 style={{ fontSize: "1.8rem", fontWeight: 700, lineHeight: 1.25, marginBottom: 12 }}>
-        {item.title}
-      </h1>
+      {/* Article header */}
+      <header className="mb-8 border-b border-stone-200 pb-6">
+        <h1 className="font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl">
+          {item.title}
+        </h1>
 
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          fontSize: 13,
-          color: "#6b7280",
-          marginBottom: 8,
-          flexWrap: "wrap",
-        }}
-      >
-        {item.author && <span>{item.author}</span>}
-        {item.reading_time_minutes && <span>{item.reading_time_minutes} min read</span>}
-        {item.published_at && (
-          <span>{new Date(item.published_at).toLocaleDateString()}</span>
-        )}
-      </div>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-stone-500">
+          {item.author && (
+            <span className="font-medium text-stone-700">{item.author}</span>
+          )}
+          {item.reading_time_minutes && (
+            <>
+              {item.author && <span className="text-stone-300">·</span>}
+              <span>{item.reading_time_minutes} min read</span>
+            </>
+          )}
+          {item.published_at && (
+            <>
+              <span className="text-stone-300">·</span>
+              <span>{new Date(item.published_at).toLocaleDateString()}</span>
+            </>
+          )}
+        </div>
 
-      {item.summary_detailed && (
-        <p
-          style={{
-            fontSize: "1.05rem",
-            lineHeight: 1.6,
-            color: "#374151",
-            background: "#f9fafb",
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 24,
-            borderLeft: "3px solid #2563eb",
-          }}
-        >
-          {item.summary_detailed}
-        </p>
-      )}
-
-      <div style={{ fontSize: "1.05rem", lineHeight: 1.75, color: "#1f2937" }}>
-        {paragraphs.map((p, i) => (
-          <p key={i} style={{ marginBottom: 16 }}>
-            {p}
+        {/* AI summary deck — the editorial "standfirst" */}
+        {item.summary_detailed && (
+          <p className="deck mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg italic leading-relaxed text-stone-600">
+            {item.summary_detailed}
           </p>
-        ))}
-        {/* Reached-end sentinel. Intersecting this flips reachedEnd=true,
-            which floors completion at 0.95. */}
-        <div ref={sentinelRef} style={{ height: 1 }} aria-hidden />
-      </div>
+        )}
+      </header>
 
+      {/* Article body — rendered HTML in a scoped, typographically-styled container */}
       <div
-        style={{
-          marginTop: 32,
-          paddingTop: 16,
-          borderTop: "1px solid #e5e7eb",
-          fontSize: 12,
-          color: "#6b7280",
-        }}
-      >
+        className="prose-reader"
+        dangerouslySetInnerHTML={{ __html: articleHtml }}
+      />
+
+      {/* Reached-end sentinel — intersecting floors completion at 0.95 */}
+      <div ref={sentinelRef} aria-hidden style={{ height: 1 }} />
+
+      {/* Footer */}
+      <footer className="mt-12 border-t border-stone-200 pt-6">
         <a
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: "#1d4ed8", textDecoration: "none" }}
+          className="text-sm font-medium text-prism-600 hover:text-prism-700"
         >
-          View original at {new URL(item.url).hostname} →
+          View original at {safeHostname(item.url)} →
         </a>
-      </div>
-
-      <div style={{ marginTop: 24 }}>
-        <FeedbackBar contentItemId={item.id} />
-      </div>
+        <div className="mt-6">
+          <FeedbackBar contentItemId={item.id} />
+        </div>
+      </footer>
     </article>
   );
+}
+
+function safeHostname(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "source";
+  }
 }

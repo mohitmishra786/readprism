@@ -19,16 +19,16 @@ export function FeedbackBar({ contentItemId, onFeedback }: FeedbackBarProps) {
   const [showReasons, setShowReasons] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Load current interaction state from server on mount
   useEffect(() => {
-    api.feedback.getInteraction(contentItemId).then((interaction) => {
-      if (interaction) {
-        setSaved(interaction.saved);
-        if (interaction.explicit_rating !== null) {
-          setRated(interaction.explicit_rating);
+    api.feedback
+      .getInteraction(contentItemId)
+      .then((interaction) => {
+        if (interaction) {
+          setSaved(interaction.saved);
+          if (interaction.explicit_rating !== null) setRated(interaction.explicit_rating);
         }
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {});
   }, [contentItemId]);
 
   const rate = async (rating: number) => {
@@ -53,65 +53,49 @@ export function FeedbackBar({ contentItemId, onFeedback }: FeedbackBarProps) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+    <div className="flex items-center gap-1.5">
       <button
         onClick={() => rate(1)}
         title="Helpful"
-        style={{
-          background: rated === 1 ? "#d1fae5" : "none",
-          border: "1px solid #d1d5db",
-          borderRadius: 4,
-          padding: "4px 8px",
-          cursor: "pointer",
-          fontSize: 16,
-        }}
+        className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
+          rated === 1
+            ? "border-emerald-200 bg-emerald-50"
+            : "border-stone-200 hover:bg-stone-50"
+        }`}
       >
         👍
       </button>
       <button
         onClick={() => rate(-1)}
         title="Not helpful"
-        style={{
-          background: rated === -1 ? "#fee2e2" : "none",
-          border: "1px solid #d1d5db",
-          borderRadius: 4,
-          padding: "4px 8px",
-          cursor: "pointer",
-          fontSize: 16,
-        }}
+        className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
+          rated === -1
+            ? "border-rose-200 bg-rose-50"
+            : "border-stone-200 hover:bg-stone-50"
+        }`}
       >
         👎
       </button>
       <button
         onClick={save}
         title="Save for later"
-        style={{
-          background: saved ? "#dbeafe" : "none",
-          border: "1px solid #d1d5db",
-          borderRadius: 4,
-          padding: "4px 8px",
-          cursor: "pointer",
-          fontSize: 16,
-        }}
+        className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
+          saved
+            ? "border-prism-200 bg-prism-50 text-prism-700"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50"
+        }`}
       >
         {saved ? "✓ Saved" : "Save"}
       </button>
 
       {showReasons && (
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, color: "#6b7280" }}>Why?</span>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-stone-500">Why?</span>
           {REASONS.map((r) => (
             <button
               key={r.value}
               onClick={() => rateWithReason(r.value)}
-              style={{
-                fontSize: 11,
-                padding: "2px 8px",
-                border: "1px solid #e5e7eb",
-                borderRadius: 12,
-                cursor: "pointer",
-                background: "#f9fafb",
-              }}
+              className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs transition-colors hover:border-stone-300"
             >
               {r.label}
             </button>

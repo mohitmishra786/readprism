@@ -45,8 +45,9 @@ def test_to_markdown_includes_frontmatter_and_link():
     filename, body = _to_markdown(_make_content(), _make_interaction())
     assert filename.endswith(".md")
     assert body.startswith("---")
-    assert "source: https://example.com/post" in body
-    assert "author: Jane Doe" in body
+    # Values are now YAML-quoted (safe escaping).
+    assert 'source: "https://example.com/post"' in body
+    assert 'author: "Jane Doe"' in body
     assert "# How Distributed Consensus Actually Works" in body
 
 
