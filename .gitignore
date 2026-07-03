@@ -41,3 +41,7 @@ backend/migrations/versions/*.pyc
 # Local working scratch (never committed)
 todo.md
 TODO.md
+
+# Celery beat runtime schedule (generated)
+backend/celerybeat-schedule
+backend/celerybeat-schedule.*

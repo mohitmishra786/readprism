@@ -38,6 +38,10 @@ async def add_creator(
         result.creator.priority = body.priority
         await session.flush()
 
+    # Eager-load the platforms relationship before serialization, otherwise
+    # Pydantic's lazy attribute access triggers IO outside an awaited context
+    # (MissingGreenlet error). The other endpoints do the same via refresh().
+    await session.refresh(result.creator, ["platforms"])
     creator_read = CreatorRead.model_validate(result.creator)
     return CreatorResolutionResult(
         creator=creator_read,

@@ -92,9 +92,38 @@ async def process_onboarding(
 
 
 def _fallback_topic_extract(text: str) -> list[str]:
+    """Extract topic phrases from interest text without an LLM.
+
+    Captures both capitalized phrases (proper nouns) and significant lowercase
+    words/n-grams. The old version only matched capitalized words, which missed
+    lowercase interest descriptions like 'machine learning, distributed systems'.
+    """
     import re
-    words = re.findall(r"\b[A-Za-z][a-z]+(\s[A-Z][a-z]+)*\b", text)
-    return list(set(w.strip() for w in words if len(w) > 4))[:8]
+
+    topics: list[str] = []
+    # Multi-word phrases (e.g. "machine learning", "distributed systems").
+    for m in re.findall(r"\b[a-zA-Z]{3,}(?:\s+[a-zA-Z]{3,}){0,2}\b", text):
+        topics.append(m.strip().lower())
+
+    # Single significant words (capitalized = proper noun).
+    for m in re.findall(r"\b[A-Z][a-zA-Z]{2,}\b", text):
+        topics.append(m.strip().lower())
+
+    # Dedupe, drop common stop words, and cap.
+    stop = {
+        "the", "and", "for", "with", "that", "this", "from", "have", "your",
+        "about", "into", "they", "will", "their", "what", "when", "are",
+    }
+    seen: set[str] = set()
+    out: list[str] = []
+    for t in topics:
+        if t in stop or t in seen:
+            continue
+        seen.add(t)
+        out.append(t)
+        if len(out) >= 10:
+            break
+    return out
 
 
 async def _seed_starter_sources(

@@ -74,6 +74,9 @@ services:
       start_period: 30s
 
   worker:
+    # Reuse the backend image (same code, same deps) instead of rebuilding —
+    # the build context is identical and a separate cache just wastes minutes.
+    image: readprism-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -88,7 +91,12 @@ services:
       BROWSERLESS_URL: http://browserless:3000
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    # Use --pool=solo (single process) because the async SQLAlchemy engine +
+    # asyncpg connections are bound to one event loop and break under Celery's
+    # default prefork model (cross-loop "Future attached to a different loop").
+    # For higher throughput, switch to a dedicated worker per process or use
+    # `gevent` with care; solo is correct and safe for dev/single-host.
+    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo
     depends_on:
       db:
         condition: service_healthy
@@ -103,9 +111,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      # sentence-transformers model load can take ~60s on first boot; give it room.
+      start_period: 90s
 
   beat:
+    image: readprism-backend
     build:
       context: ./backend
       dockerfile: Dockerfile
