@@ -49,6 +49,12 @@ async def record_interaction(
             interaction.read_completion_pct = body.read_completion_pct
         if body.time_on_page_seconds is not None:
             interaction.time_on_page_seconds = body.time_on_page_seconds
+        if body.scroll_depth_pct is not None:
+            interaction.scroll_depth_pct = body.scroll_depth_pct
+        if body.active_time_seconds is not None:
+            interaction.active_time_seconds = body.active_time_seconds
+        if body.reached_end:
+            interaction.reached_end = True
         if body.explicit_rating is not None:
             interaction.explicit_rating = body.explicit_rating
         if body.explicit_rating_reason is not None:
@@ -57,7 +63,11 @@ async def record_interaction(
             interaction.saved = True
         if body.skipped:
             interaction.skipped = True
-        if body.read_completion_pct and not interaction.opened_at:
+        # An open is an open — record opened_at on first non-skipped interaction,
+        # regardless of completion. (Previously opened_at was only set when
+        # read_completion_pct was truthy, skewing the /content/history and
+        # time-of-day-learning queries.)
+        if not interaction.opened_at and not body.skipped:
             interaction.opened_at = datetime.now(timezone.utc)
         # Set saved_read_at when a previously saved article is fully read
         if (
@@ -67,12 +77,22 @@ async def record_interaction(
             and interaction.saved_read_at is None
         ):
             interaction.saved_read_at = datetime.now(timezone.utc)
-        # Update re_read_count when already fully read and being read again
+        # A genuine re-read: this write indicates completion, but the article was
+        # already completed in a prior session. Counting every high-completion
+        # write (old behavior) inflated re_read_count when the reader merely
+        # flushed telemetry twice.
         if (
             body.read_completion_pct is not None
             and body.read_completion_pct >= 0.85
             and interaction.read_completion_pct is not None
             and interaction.read_completion_pct >= 0.85
+            and (interaction.reached_end or body.reached_end)
+            # Only count if the prior completion happened in a different session
+            # than this one — i.e. there is a meaningful gap since opened_at.
+            and (
+                interaction.opened_at is None
+                or (datetime.now(timezone.utc) - interaction.opened_at).total_seconds() > 300
+            )
         ):
             interaction.re_read_count = (interaction.re_read_count or 0) + 1
     else:
@@ -81,11 +101,14 @@ async def record_interaction(
             content_item_id=body.content_item_id,
             read_completion_pct=body.read_completion_pct,
             time_on_page_seconds=body.time_on_page_seconds,
+            scroll_depth_pct=body.scroll_depth_pct,
+            active_time_seconds=body.active_time_seconds,
+            reached_end=body.reached_end,
             explicit_rating=body.explicit_rating,
             explicit_rating_reason=body.explicit_rating_reason,
             saved=body.saved,
             skipped=body.skipped,
-            opened_at=datetime.now(timezone.utc) if body.read_completion_pct else None,
+            opened_at=datetime.now(timezone.utc) if not body.skipped else None,
         )
         session.add(interaction)
 

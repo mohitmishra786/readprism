@@ -1,10 +1,12 @@
 import { getToken, removeToken } from './auth';
 import type {
   ContentItem,
+  ContentItemFull,
   Creator,
   Digest,
   FeedItem,
   InterestGraph,
+  PlatformCapabilities,
   Source,
   Token,
   User,
@@ -100,6 +102,7 @@ export const api = {
         { method: 'POST', body: JSON.stringify({ name_or_url, priority }) },
       ),
     get: (id: string) => request<Creator>(`/creators/${id}`),
+    capabilities: () => request<PlatformCapabilities>('/creators/platform-capabilities'),
     summary: (id: string) =>
       request<{ summary: string; item_count?: number }>(`/creators/${id}/summary`),
     update: (id: string, data: Partial<Creator>) =>
@@ -131,7 +134,9 @@ export const api = {
   content: {
     feed: (page?: number, limit?: number) =>
       request<FeedItem[]>(`/content/feed?page=${page || 1}&limit=${limit || 20}`),
-    get: (id: string) => request<ContentItem>(`/content/${id}`),
+    history: (page?: number, limit?: number) =>
+      request<FeedItem[]>(`/content/history?page=${page || 1}&limit=${limit || 20}`),
+    get: (id: string) => request<ContentItemFull>(`/content/${id}`),
   },
 
   feedback: {
@@ -143,6 +148,9 @@ export const api = {
       content_item_id: string;
       read_completion_pct?: number;
       time_on_page_seconds?: number;
+      scroll_depth_pct?: number;
+      active_time_seconds?: number;
+      reached_end?: boolean;
       explicit_rating?: number;
       explicit_rating_reason?: string;
       saved?: boolean;

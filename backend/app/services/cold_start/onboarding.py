@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import UserContentInteraction
@@ -11,6 +12,7 @@ from app.models.interest_graph import InterestNode
 from app.models.source import Source
 from app.models.user import User
 from app.services.interest_graph.graph import InterestGraphManager
+from app.services.cold_start.starter_sources import get_starter_sources
 from app.services.summarization.groq_client import GroqSummarizer
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
@@ -73,17 +75,68 @@ async def process_onboarding(
     if source_opml:
         await _import_opml(user.id, source_opml, session)
 
-    # 5. Mark onboarding complete
+    # 5. Seed starter sources matched to the user's interests so the first
+    # digest isn't empty. This is the primary cold-start mitigation: until the
+    # product has a collaborative-warmup network effect, a curated pack is what
+    # makes day-1 feel smart.
+    seeded = await _seed_starter_sources(user.id, topics, session)
+
+    # 6. Mark onboarding complete
     user.onboarding_complete = True
     user.interest_text = interest_text
     await session.flush()
-    logger.info(f"Onboarding complete for user {user.id}: {len(topics)} topics extracted")
+    logger.info(
+        f"Onboarding complete for user {user.id}: {len(topics)} topics, "
+        f"{seeded} starter sources seeded"
+    )
 
 
 def _fallback_topic_extract(text: str) -> list[str]:
     import re
     words = re.findall(r"\b[A-Za-z][a-z]+(\s[A-Z][a-z]+)*\b", text)
     return list(set(w.strip() for w in words if len(w) > 4))[:8]
+
+
+async def _seed_starter_sources(
+    user_id: uuid.UUID, topics: list[str], session: AsyncSession
+) -> int:
+    """Seed curated RSS sources matched to the user's interest topics.
+
+    Avoids duplicating any URL the user already added via OPML. Returns the
+    number of new sources created.
+    """
+    seeds = get_starter_sources(topics)
+    if not seeds:
+        return 0
+
+    # Don't double-add sources the user imported via OPML.
+    existing_result = await session.execute(
+        select(Source.url).where(Source.user_id == user_id)
+    )
+    existing_urls = {row[0] for row in existing_result.fetchall()}
+
+    created = 0
+    for src in seeds:
+        if src["url"] in existing_urls:
+            continue
+        source = Source(
+            user_id=user_id,
+            url=src["url"],
+            name=src["name"],
+            feed_url=src["feed_url"],
+            source_type="rss",
+            # Seeded sources start slightly below the default trust so the
+            # ranking engine earns its keep — the user's explicit signal is
+            # what should raise a source's weight over time.
+            trust_weight=0.45,
+        )
+        source._is_starter = True  # tagged for analytics/UI (not persisted)
+        session.add(source)
+        created += 1
+    if created:
+        await session.flush()
+        logger.info(f"Seeded {created} starter sources for user {user_id}")
+    return created
 
 
 async def _import_opml(user_id: uuid.UUID, opml_content: str, session: AsyncSession) -> None:

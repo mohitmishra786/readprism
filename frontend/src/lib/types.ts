@@ -36,7 +36,15 @@ export interface CreatorPlatform {
   feed_url: string | null;
   is_verified: boolean;
   last_fetched_at: string | null;
+  tracking_tier: string | null;
+  display_label: string | null;
 }
+
+/** Platform → { tracking_tier, display_label } from the backend capabilities map. */
+export type PlatformCapabilities = Record<
+  string,
+  { tracking_tier: string; display_label: string }
+>;
 
 export interface Creator {
   id: string;
@@ -69,6 +77,11 @@ export interface ContentItem {
   topic_clusters: string[];
   summarization_cached: boolean;
   created_at: string;
+}
+
+/** Full content item including the extracted body — only from the single-item endpoint. */
+export interface ContentItemFull extends ContentItem {
+  full_text: string | null;
 }
 
 export interface DigestItem {

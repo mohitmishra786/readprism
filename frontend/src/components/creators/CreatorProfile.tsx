@@ -2,16 +2,7 @@
 import { useState } from "react";
 import type { Creator } from "../../lib/types";
 import { api } from "../../lib/api";
-
-const PLATFORM_ICONS: Record<string, string> = {
-  substack: "📧",
-  youtube: "▶",
-  twitter: "🐦",
-  medium: "M",
-  linkedin: "in",
-  podcast: "🎙",
-  blog: "✍",
-};
+import { PlatformBadge } from "./PlatformBadge";
 
 interface CreatorProfileProps {
   creator: Creator;
@@ -50,28 +41,9 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontWeight: 600, fontSize: "1rem" }}>{creator.display_name}</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+          <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
             {creator.platforms.map((p) => (
-              <a
-                key={p.id}
-                href={p.platform_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={p.platform}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  fontSize: 11,
-                  background: "#f3f4f6",
-                  padding: "2px 8px",
-                  borderRadius: 10,
-                  textDecoration: "none",
-                  color: "#374151",
-                }}
-              >
-                {PLATFORM_ICONS[p.platform] || "🔗"} {p.platform}
-              </a>
+              <PlatformBadge key={p.id} platform={p} />
             ))}
           </div>
         </div>

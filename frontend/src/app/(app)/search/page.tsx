@@ -82,7 +82,9 @@ export default function SearchPage() {
                 rel="noopener noreferrer"
                 style={{ color: "#1d4ed8", textDecoration: "none" }}
                 dangerouslySetInnerHTML={{
-                  __html: (item as unknown as Record<string, string>)["_formatted"]?.title || item.title,
+                  __html:
+                    (item as unknown as { _formatted?: Record<string, string> })._formatted?.title ||
+                    item.title,
                 }}
               />
             </h3>
@@ -94,8 +96,8 @@ export default function SearchPage() {
                 style={{ margin: 0, fontSize: "0.875rem", color: "#374151", lineHeight: 1.5 }}
                 dangerouslySetInnerHTML={{
                   __html:
-                    (item as unknown as Record<string, string>)["_formatted"]?.summary_brief ||
-                    item.summary_brief,
+                    (item as unknown as { _formatted?: Record<string, string> })._formatted
+                      ?.summary_brief || item.summary_brief,
                 }}
               />
             )}

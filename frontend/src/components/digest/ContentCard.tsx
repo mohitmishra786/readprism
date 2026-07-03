@@ -1,7 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ContentItem } from "../../lib/types";
-import { api } from "../../lib/api";
 import { FeedbackBar } from "./FeedbackBar";
 
 const SIGNAL_LABELS: Record<string, string> = {
@@ -29,50 +29,52 @@ export function ContentCard({
   prsScore,
   signalBreakdown,
   isDiscovery,
-  section,
-  position,
 }: ContentCardProps) {
-  const openedAt = useRef<number | null>(null);
+  const router = useRouter();
   const [showWhyTooltip, setShowWhyTooltip] = useState(false);
   const [summaryLevel, setSummaryLevel] = useState<"brief" | "detailed">("brief");
 
-  const topSignals = signalBreakdown
+  // Explainability: rank the signals by their relative contribution. Each
+  // signal contributes score * (1/total) of the unweighted signal strength — we
+  // show its share as a percentage. This is honest about *which* signals drove
+  // the ranking without leaking the per-user learned weights themselves.
+  const signalEntries = signalBreakdown
     ? Object.entries(signalBreakdown)
-        .filter(([k]) => !k.startsWith("_"))
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 2)
-        .map(([k]) => SIGNAL_LABELS[k] || k)
+        .filter(([k, v]) => !k.startsWith("_") && typeof v === "number")
+        .sort(([, a], [, b]) => (b as number) - (a as number))
     : [];
 
-  const handleClick = () => {
-    openedAt.current = Date.now();
+  const totalSignalStrength = signalEntries.reduce(
+    (sum, [, v]) => sum + (v as number),
+    0,
+  );
 
-    // Use visibilitychange — fires when the user returns to this tab,
-    // which is the correct signal that they have come back from reading.
-    const handleVisibility = async () => {
-      if (document.visibilityState !== "visible") return;
-      document.removeEventListener("visibilitychange", handleVisibility);
-      if (!openedAt.current) return;
-      const elapsed = Math.floor((Date.now() - openedAt.current) / 1000);
-      // Anything under 5 seconds is a bounce — treat as a skip
-      if (elapsed < 5) {
-        openedAt.current = null;
-        return;
-      }
-      const readingTime = (content.reading_time_minutes || 5) * 60;
-      const pct = Math.min(1.0, elapsed / readingTime);
-      openedAt.current = null;
-      try {
-        await api.feedback.interaction({
-          content_item_id: content.id,
-          time_on_page_seconds: elapsed,
-          read_completion_pct: pct,
-          skipped: elapsed < 10,
-        });
-      } catch {}
-    };
+  const rankedSignals = signalEntries
+    .slice(0, 3)
+    .map(([k, v]) => ({
+      key: k,
+      label: SIGNAL_LABELS[k] || k,
+      contribution:
+        totalSignalStrength > 0
+          ? Math.round(((v as number) / totalSignalStrength) * 100)
+          : 0,
+    }));
 
-    document.addEventListener("visibilitychange", handleVisibility);
+  // Plain-English one-liner built from the dominant signal, so the value is
+  // legible even without opening the tooltip.
+  const whySummary =
+    rankedSignals.length > 0
+      ? `Ranked because it ${rankedSignals[0].label}${
+          rankedSignals[1] ? ` and ${rankedSignals[1].label}` : ""
+        }`
+      : null;
+
+  // Route to the in-app reader, which captures genuine scroll-depth and active
+  // time. The old wall-clock tab-switch heuristic is retired (see ReaderView).
+  const handleRead = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return; // honor explicit new-tab/window
+    e.preventDefault();
+    router.push(`/read/${content.id}`);
   };
 
   return (
@@ -103,10 +105,8 @@ export function ContentCard({
 
       <h3 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 600 }}>
         <a
-          href={content.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleClick}
+          href={`/read/${content.id}`}
+          onClick={handleRead}
           style={{ color: "#1d4ed8", textDecoration: "none" }}
         >
           {content.title}
@@ -156,10 +156,11 @@ export function ContentCard({
         </button>
       )}
 
-      {topSignals.length > 0 && (
+      {whySummary && (
         <div style={{ position: "relative", display: "inline-block" }}>
           <button
             onClick={() => setShowWhyTooltip(!showWhyTooltip)}
+            title={whySummary}
             style={{
               fontSize: 11,
               color: "#6b7280",
@@ -181,14 +182,52 @@ export function ContentCard({
                 background: "#1f2937",
                 color: "#fff",
                 borderRadius: 6,
-                padding: "8px 12px",
+                padding: "10px 12px",
                 fontSize: 12,
-                whiteSpace: "nowrap",
                 zIndex: 10,
                 marginBottom: 4,
+                minWidth: 220,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
               }}
             >
-              Ranked because: {topSignals.join(", ")}
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                Why this is ranked here
+              </div>
+              {rankedSignals.map((s) => (
+                <div
+                  key={s.key}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 4,
+                  }}
+                >
+                  <div
+                    style={{
+                      flex: 1,
+                      height: 6,
+                      background: "rgba(255,255,255,0.15)",
+                      borderRadius: 3,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${s.contribution}%`,
+                        height: "100%",
+                        background: "#60a5fa",
+                      }}
+                    />
+                  </div>
+                  <span style={{ width: 36, textAlign: "right", opacity: 0.8 }}>
+                    {s.contribution}%
+                  </span>
+                  <span style={{ flex: "0 0 auto", opacity: 0.95 }}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>

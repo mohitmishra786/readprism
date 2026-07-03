@@ -11,6 +11,7 @@ export default function DigestPage() {
   const [error, setError] = useState("");
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [userCreatedAt, setUserCreatedAt] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     loadDigest();
@@ -20,6 +21,7 @@ export default function DigestPage() {
     setLoading(true);
     try {
       const user = await api.auth.me();
+      setUserCreatedAt(user.created_at);
       if (!user.onboarding_complete) {
         setNeedsOnboarding(true);
         setLoading(false);
@@ -132,7 +134,7 @@ export default function DigestPage() {
           {generating ? "Generating..." : "Refresh digest"}
         </button>
       </div>
-      {digest && <DigestView digest={digest} />}
+      {digest && <DigestView digest={digest} userCreatedAt={userCreatedAt} />}
     </div>
   );
 }

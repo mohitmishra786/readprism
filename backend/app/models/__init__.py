@@ -3,6 +3,7 @@ from app.models.creator import Creator, CreatorPlatform
 from app.models.digest import Digest, DigestItem
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.source import Source
+from app.models.team import Team, TeamMember
 from app.models.user import User
 
 __all__ = [
@@ -16,4 +17,6 @@ __all__ = [
     "InterestEdge",
     "Digest",
     "DigestItem",
+    "Team",
+    "TeamMember",
 ]

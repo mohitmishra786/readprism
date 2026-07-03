@@ -84,13 +84,81 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
 
 interface DigestViewProps {
   digest: Digest;
+  /** Optional: account creation date, used to show a one-time "how ranking
+   * works" banner for new users. ISO string. */
+  userCreatedAt?: string;
 }
 
-export function DigestView({ digest }: DigestViewProps) {
+const SECTION_HEADERS: Record<string, string> = {
+  lead: "Lead — what matters most today",
+  creator: "From creators you follow",
+  deep_reads: "Deep reads",
+  discovery: "Discovery — outside your usual sources",
+};
+
+function FirstDigestBanner({ onDismiss }: { onDismiss: () => void }) {
+  // One-time explanation for new users: the digest is ranked, not chronological,
+  // and it learns from how you read. This makes the sophistication legible and
+  // sets the expectation that the digest improves over the first few weeks.
+  return (
+    <div
+      style={{
+        background: "linear-gradient(135deg, #eff6ff 0%, #f0f9ff 100%)",
+        border: "1px solid #bfdbfe",
+        borderRadius: 8,
+        padding: 16,
+        marginBottom: 24,
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <p
+          style={{
+            fontWeight: 600,
+            marginBottom: 8,
+            fontSize: "0.9rem",
+            color: "#1e40af",
+          }}
+        >
+          👋 Your first digest
+        </p>
+        <button
+          onClick={onDismiss}
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: "#6b7280",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: 0,
+          }}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+      <p style={{ fontSize: "0.875rem", lineHeight: 1.6, color: "#1e3a8a", margin: 0 }}>
+        Items below are <strong>ranked by personal relevance</strong>, not chronological.
+        The ranking learns from what you read fully, what you skip, and what you rate —
+        so it gets noticeably sharper over the next few weeks. Tap{" "}
+        <em>“Why this?”</em> on any item to see why it ranked where it did.
+      </p>
+    </div>
+  );
+}
+
+export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
+  const [showFirstDigest, setShowFirstDigest] = useState(true);
+
   const grouped = SECTION_ORDER.reduce<Record<string, DigestItem[]>>((acc, s) => {
     acc[s] = digest.items.filter((i) => i.section === s);
     return acc;
   }, {});
+
+  // Show the new-user banner only for accounts younger than 14 days.
+  const isNewUser =
+    userCreatedAt &&
+    Date.now() - new Date(userCreatedAt).getTime() < 14 * 24 * 60 * 60 * 1000;
 
   return (
     <div>
@@ -108,6 +176,10 @@ export function DigestView({ digest }: DigestViewProps) {
           · {digest.total_items} items
         </p>
       </div>
+
+      {isNewUser && showFirstDigest && (
+        <FirstDigestBanner onDismiss={() => setShowFirstDigest(false)} />
+      )}
 
       <FeedbackPrompts digestId={digest.id} />
 

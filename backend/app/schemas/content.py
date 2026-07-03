@@ -30,10 +30,22 @@ class ContentItemRead(BaseModel):
     created_at: datetime
 
 
+class ContentItemFullRead(ContentItemRead):
+    """Includes extracted full_text — only returned by the single-item endpoint,
+    not by feed/listing endpoints, to keep list responses light."""
+
+    full_text: str | None
+
+
 class UserContentInteractionCreate(BaseModel):
     content_item_id: uuid.UUID
     read_completion_pct: float | None = None
     time_on_page_seconds: int | None = None
+    # Real reading telemetry (P0). When present these take precedence over the
+    # legacy time-on-page heuristic in the reading_depth signal.
+    scroll_depth_pct: float | None = None
+    active_time_seconds: int | None = None
+    reached_end: bool = False
     explicit_rating: int | None = None
     explicit_rating_reason: str | None = None
     saved: bool = False

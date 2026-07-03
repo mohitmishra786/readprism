@@ -89,6 +89,11 @@ class UserContentInteraction(Base):
     opened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     read_completion_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     time_on_page_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Real reading telemetry (P0). When present, the reading_depth signal uses
+    # these instead of the legacy time-on-page heuristic.
+    scroll_depth_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    active_time_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reached_end: Mapped[bool] = mapped_column(Boolean, default=False)
     re_read_count: Mapped[int] = mapped_column(Integer, default=0)
     explicit_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     explicit_rating_reason: Mapped[str | None] = mapped_column(String, nullable=True)

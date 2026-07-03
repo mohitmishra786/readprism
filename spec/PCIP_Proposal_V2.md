@@ -116,7 +116,7 @@ Each of the eight signal dimensions produces a score between zero and one for a 
 
 _PRS = w1 x SemanticAlignment + w2 x ReadingDepth + w3 x SuggestionSignal + w4 x ExplicitFeedback + w5 x SourceTrust + w6 x ContentQuality + w7 x TemporalContext + w8 x NoveltyAdjustment where w1 through w8 sum to 1.0 and are individually learned per user._
 
-New users start with equal weights across all dimensions, with a slightly higher initial weight on semantic alignment and explicit feedback, since those signals are available from day one. As the user accumulates behavioral history, the meta-learning layer -- a gradient boosting model trained on whether the user's actual reading behavior matched the predicted PRS ranking -- adjusts the weights to maximize prediction accuracy for that specific user.
+New users start with equal weights across all dimensions, with a slightly higher initial weight on semantic alignment and explicit feedback, since those signals are available from day one. As the user accumulates behavioral history, the meta-learning layer -- a per-user gradient descent model trained on whether the user's actual reading behavior matched the predicted PRS ranking -- adjusts the weights to maximize prediction accuracy for that specific user. (Gradient descent is used rather than gradient boosting because each user's per-signal labeled data is sparse; a single-layer linear update converges usefully where a tree ensemble would overfit.)
 
 This means that for one user, source trust might be the dominant signal. For another, reading depth signals might matter most. For a third, the temporal context window might be the most predictive factor. The system discovers this for each user rather than imposing a universal weighting.
 
@@ -460,7 +460,7 @@ Item summaries, cross-source synthesis -- commercial API as fallback
 
 Meta-learning model
 
-XGBoost / LightGBM
+Per-user gradient descent
 
 Learns per-user signal weightings from historical prediction accuracy
 
@@ -612,7 +612,7 @@ $0.01 / mo
 
 $0.03 / mo
 
-Lightweight gradient boosting -- negligible compute
+Lightweight per-user gradient descent -- negligible compute
 
 Email delivery
 

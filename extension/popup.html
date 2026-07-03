@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Add to ReadPrism</title>
+  <style>
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 16px;
+    }
+    h1 { font-size: 14px; margin: 0 0 12px; color: #1d4ed8; }
+    button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #f9fafb; }
+    button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    button.primary:hover { background: #1d4ed8; }
+    #status { font-size: 12px; margin-top: 8px; min-height: 16px; }
+    #status.ok { color: #16a34a; }
+    #status.err { color: #dc2626; }
+    .muted { color: #6b7280; font-size: 11px; }
+    a { color: #1d4ed8; }
+  </style>
+</head>
+<body>
+  <h1>Add to ReadPrism</h1>
+  <button id="add-source" class="primary">Add page as source</button>
+  <button id="add-creator">Add page as creator</button>
+  <div id="status"></div>
+  <p class="muted">
+    <a id="options" href="#">Set API token / server</a>
+  </p>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@ from app.api.auth import get_current_user
 from app.database import get_db
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.schemas.content import ContentItemRead, FeedItem
+from app.schemas.content import ContentItemFullRead, ContentItemRead, FeedItem
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/content", tags=["content"])
@@ -89,14 +89,14 @@ async def get_reading_history(
     ]
 
 
-@router.get("/{content_id}", response_model=ContentItemRead)
+@router.get("/{content_id}", response_model=ContentItemFullRead)
 async def get_content(
     content_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> ContentItemRead:
+) -> ContentItemFullRead:
     result = await session.execute(select(ContentItem).where(ContentItem.id == content_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    return ContentItemRead.model_validate(item)
+    return ContentItemFullRead.model_validate(item)

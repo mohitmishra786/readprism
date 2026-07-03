@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -117,7 +117,7 @@ async def update_source(
     return SourceRead.model_validate(source)
 
 
-@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_source(
     source_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),

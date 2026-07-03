@@ -1,0 +1,37 @@
+{
+  "name": "ReadPrism",
+  "short_name": "ReadPrism",
+  "description": "Personalized content intelligence — your sources and creators, ranked by personal relevance.",
+  "start_url": "/digest",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1d4ed8",
+  "categories": ["news", "productivity", "books"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Today's digest",
+      "short_name": "Digest",
+      "url": "/digest"
+    },
+    {
+      "name": "Full feed",
+      "short_name": "Feed",
+      "url": "/feed"
+    },
+    {
+      "name": "Search archive",
+      "short_name": "Search",
+      "url": "/search"
+    }
+  ]
+}
