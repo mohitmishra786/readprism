@@ -1,0 +1,112 @@
+# Dependabot configuration for ReadPrism.
+#
+# Strategy:
+# - Security alerts are scanned DAILY so critical vulns surface fast.
+# - Version update PRs open on a WEEKLY cadence (Monday) to avoid noise.
+# - All ecosystem updates are grouped into ONE PR per ecosystem (not one per
+#   dependency) so reviews are batched and the PR queue stays manageable.
+# - Major-version updates are allowed for npm (frontend) but held for pip
+#   (backend) where runtime stability matters more; minors/patches auto-merge
+#   eligible.
+
+version: 2
+
+updates:
+  # ──────────────────────────────────────────────────────────────
+  # Backend: Python (pip) — weekly, grouped, production deps only
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    # Group ALL pip updates into a single PR.
+    groups:
+      python-dependencies:
+        patterns:
+          - "*"
+    # Backend stability is critical — only patch + minor, no majors.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps(backend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "backend"
+
+  # ──────────────────────────────────────────────────────────────
+  # Frontend: npm — weekly, grouped
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    # Group production + dev deps separately so Next/React majors are reviewable
+    # apart from tooling bumps. Both still batch many deps into few PRs.
+    groups:
+      npm-production:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "js-cookie"
+      npm-dev:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "js-cookie"
+    commit-message:
+      prefix: "deps(frontend)"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  # ──────────────────────────────────────────────────────────────
+  # Docker base images — monthly (rare churn)
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: "docker"
+    directory: "/backend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/frontend"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # ──────────────────────────────────────────────────────────────
+  # GitHub Actions — monthly
+  # ──────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
+      - "ci"

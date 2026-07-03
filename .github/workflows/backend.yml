@@ -1,0 +1,74 @@
+# Backend CI — lint (ruff) + unit/integration tests against a real Postgres+pgvector.
+# Tests run inside Docker Compose so the full stack (DB, Redis, embeddings) is
+# available, mirroring local development exactly.
+name: Backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff==0.6.9
+      - name: Run ruff check
+        working-directory: backend
+        run: ruff check .
+      - name: Run ruff format check
+        working-directory: backend
+        run: ruff format --check .
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        working-directory: .
+        run: docker compose build backend
+
+      - name: Start DB + Redis
+        run: docker compose up -d db redis
+
+      - name: Wait for DB health
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps db | grep -q "healthy"; then break; fi
+            sleep 2
+          done
+
+      - name: Create test database + pgvector
+        run: |
+          docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism_test;"
+          docker compose exec -T db psql -U readprism -d readprism_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism_test
+        run: docker compose run --rm -e DATABASE_URL backend alembic upgrade head
+
+      - name: Run pytest
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism_test
+          SECRET_KEY: ci-test-secret-key-for-jwt-signing-only
+          GROQ_API_KEY: ""
+        run: |
+          docker compose run --rm \
+            -e TEST_DATABASE_URL=postgresql+asyncpg://readprism:readprism@db:5432/readprism_test \
+            -e SECRET_KEY=ci-test-secret-key-for-jwt-signing-only \
+            -e GROQ_API_KEY= \
+            backend python -m pytest tests/ -v

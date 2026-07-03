@@ -1,7 +1,7 @@
 # Web framework
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
-python-multipart==0.0.12
+python-multipart==0.0.31
 
 # Database
 sqlalchemy[asyncio]==2.0.36
@@ -12,7 +12,7 @@ pgvector==0.3.6
 
 # Auth
 bcrypt==4.2.1
-pyjwt==2.10.1
+pyjwt==2.13.0
 
 # Settings
 pydantic==2.10.3
