@@ -1,53 +1,71 @@
 "use client";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { isAuthenticated, removeToken } from "../../lib/auth";
 
-const navStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 24,
-  padding: "12px 24px",
-  background: "#fff",
-  borderBottom: "1px solid #e5e7eb",
-  position: "sticky",
-  top: 0,
-  zIndex: 10,
-};
+const NAV = [
+  { href: "/digest", label: "Digest" },
+  { href: "/feed", label: "Feed" },
+  { href: "/sources", label: "Sources" },
+  { href: "/creators", label: "Creators" },
+  { href: "/search", label: "Search" },
+  { href: "/preferences", label: "Preferences" },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (!isAuthenticated()) {
-      router.replace("/login");
-    }
+    if (!isAuthenticated()) router.replace("/login");
   }, [router]);
 
   if (!mounted) return null;
 
   return (
-    <div>
-      <nav style={navStyle}>
-        <span style={{ fontWeight: 700, fontSize: "1.1rem", color: "#1d4ed8" }}>ReadPrism</span>
-        <a href="/digest" style={{ color: "#374151", textDecoration: "none" }}>Digest</a>
-        <a href="/feed" style={{ color: "#374151", textDecoration: "none" }}>Feed</a>
-        <a href="/sources" style={{ color: "#374151", textDecoration: "none" }}>Sources</a>
-        <a href="/creators" style={{ color: "#374151", textDecoration: "none" }}>Creators</a>
-        <a href="/search" style={{ color: "#374151", textDecoration: "none" }}>Search</a>
-        <a href="/preferences" style={{ color: "#374151", textDecoration: "none" }}>Preferences</a>
-        <button
-          onClick={() => { removeToken(); router.replace("/login"); }}
-          style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}
-        >
-          Sign out
-        </button>
-      </nav>
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "24px 16px" }}>
-        {children}
-      </main>
+    <div className="min-h-screen bg-stone-50">
+      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-lg">
+        <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 px-4">
+          <Link
+            href="/digest"
+            className="prism-mark mr-4 text-lg"
+            aria-label="ReadPrism home"
+          >
+            ◭ ReadPrism
+          </Link>
+          <nav className="flex items-center gap-0.5 overflow-x-auto">
+            {NAV.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? "bg-stone-900 text-white"
+                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <button
+            onClick={() => {
+              removeToken();
+              router.replace("/login");
+            }}
+            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
+      <main className="mx-auto max-w-3xl px-4 py-8">{children}</main>
     </div>
   );
 }

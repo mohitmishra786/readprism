@@ -1,45 +1,64 @@
 from __future__ import annotations
 
-import asyncio
+import os
 import uuid
 from typing import AsyncGenerator
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 from app.main import app
 
-TEST_DATABASE_URL = "postgresql+asyncpg://readprism:readprism@localhost:5432/readprism_test"
+# Read the test DB URL from the environment so the suite works both on the host
+# (localhost:5432) and inside the backend container (db:5432).
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://readprism:readprism@localhost:5432/readprism_test",
+)
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestSession = async_sessionmaker(engine, expire_on_commit=False)
+# Dedicated test engine. NullPool is the key to isolation: it opens a fresh
+# connection per session and never holds one across tests, so commits inside one
+# test can't leak a poisoned connection to the next.
+from sqlalchemy.pool import NullPool
 
-
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
+TestingSessionLocal = async_sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Create the schema, yield a session, then drop everything and dispose."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    async with TestSession() as session:
+
+    async with TestingSessionLocal() as session:
         yield session
-        await session.rollback()
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest_asyncio.fixture(scope="function")
 async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    app.dependency_overrides[get_db] = lambda: db_session
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    """Test client; each endpoint request gets its own session from the test engine."""
+
+    async def _override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        async with TestingSessionLocal() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db] = _override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.clear()
 

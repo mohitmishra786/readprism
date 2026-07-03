@@ -24,36 +24,41 @@ export default function FeedPage() {
     loadItems(1);
   }, [loadItems]);
 
-  const loadMore = () => {
-    const next = page + 1;
-    setPage(next);
-    loadItems(next);
-  };
-
   return (
     <div>
-      <h1 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: 24 }}>Full Feed</h1>
-      {items.map((item) => (
-        <ContentCard
-          key={item.content.id}
-          content={item.content}
-          prsScore={item.prs_score}
-          signalBreakdown={item.signal_breakdown}
-        />
-      ))}
-      {loading && <p style={{ color: "#6b7280", textAlign: "center" }}>Loading...</p>}
+      <header className="mb-6">
+        <div className="eyebrow text-prism-700">Everything</div>
+        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Full Feed</h1>
+        <p className="mt-1 text-sm text-stone-500">
+          All ingested items, ranked by personal relevance.
+        </p>
+      </header>
+
+      <div className="space-y-3">
+        {items.map((item) => (
+          <ContentCard
+            key={item.content.id}
+            content={item.content}
+            prsScore={item.prs_score}
+            signalBreakdown={item.signal_breakdown}
+          />
+        ))}
+      </div>
+
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="card p-5">
+              <div className="skeleton mb-3 h-5 w-3/4 rounded" />
+              <div className="skeleton h-3 w-full rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && hasMore && (
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <button
-            onClick={loadMore}
-            style={{
-              padding: "10px 24px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              cursor: "pointer",
-              background: "#fff",
-            }}
-          >
+        <div className="mt-6 text-center">
+          <button onClick={() => { const n = page + 1; setPage(n); loadItems(n); }} className="btn-secondary">
             Load more
           </button>
         </div>

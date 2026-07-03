@@ -81,9 +81,15 @@ def _parse_result(raw: str) -> Optional[SummarizationResult]:
 
 class GroqSummarizer:
     def __init__(self) -> None:
-        self._client = groq.AsyncGroq(api_key=settings.groq_api_key)
+        # Only build the client if a key is configured. When no key is present
+        # every call short-circuits to None instantly rather than retrying into
+        # connection errors for ~10s per item.
+        self._client = groq.AsyncGroq(api_key=settings.groq_api_key) if settings.groq_api_key else None
 
     async def summarize(self, title: str, full_text: str) -> Optional[SummarizationResult]:
+        if self._client is None:
+            # No key configured — skip summarization entirely.
+            return None
         content = _truncate_text(full_text)
         prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content)
 
@@ -110,6 +116,8 @@ class GroqSummarizer:
         return None
 
     async def synthesize_topic(self, items: list[SummarizationResult], topic: str) -> str:
+        if self._client is None:
+            return ""
         briefs = "\n\n".join([f"- {item.brief}" for item in items[:5]])
         prompt = (
             f"Given these summaries of articles about {topic}, write a single 3-4 sentence briefing "
@@ -129,6 +137,8 @@ class GroqSummarizer:
             return ""
 
     async def extract_topics(self, text: str) -> list[str]:
+        if self._client is None:
+            return []
         prompt = f"Extract 5-10 specific topic labels from this text. Return as JSON array of strings. Be specific, not generic.\n\n{text[:2000]}"
         try:
             response = await self._client.chat.completions.create(

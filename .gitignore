@@ -19,6 +19,8 @@ node_modules/
 out/
 .env.local
 .env.production
+next-env.d.ts
+*.tsbuildinfo
 
 # Docker
 *.log
@@ -35,3 +37,11 @@ Thumbs.db
 
 # Alembic
 backend/migrations/versions/*.pyc
+
+# Local working scratch (never committed)
+todo.md
+TODO.md
+
+# Celery beat runtime schedule (generated)
+backend/celerybeat-schedule
+backend/celerybeat-schedule.*

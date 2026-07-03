@@ -27,53 +27,63 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "80px auto", padding: "0 16px" }}>
-      <h1 style={{ fontSize: "1.75rem", fontWeight: 700, marginBottom: 8 }}>ReadPrism</h1>
-      <p style={{ color: "#666", marginBottom: 32 }}>Sign in to your account</p>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
-          />
+    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <div className="prism-mark text-3xl">◭ ReadPrism</div>
+          <p className="mt-2 text-sm text-stone-500">Sign in to your account</p>
         </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", marginBottom: 4, fontWeight: 500 }}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
-          />
-        </div>
-        {error && <p style={{ color: "#ef4444", marginBottom: 16 }}>{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "10px",
-            background: "#2563eb",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: "1rem",
-            cursor: loading ? "not-allowed" : "pointer",
-            opacity: loading ? 0.7 : 1,
-          }}
+
+        <form
+          onSubmit={handleSubmit}
+          className="card space-y-4 p-6"
         >
-          {loading ? "Signing in..." : "Sign in"}
-        </button>
-      </form>
-      <p style={{ marginTop: 16, textAlign: "center" }}>
-        No account?{" "}
-        <a href="/register" style={{ color: "#2563eb" }}>Register</a>
-      </p>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-stone-700">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input"
+              placeholder="you@example.com"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-stone-700">
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="input"
+            />
+          </div>
+          {error && (
+            <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary w-full py-2.5"
+          >
+            {loading ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-stone-500">
+          No account?{" "}
+          <a href="/register" className="font-medium text-prism-600 hover:text-prism-700">
+            Register
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

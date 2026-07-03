@@ -1,7 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ContentItem } from "../../lib/types";
-import { api } from "../../lib/api";
 import { FeedbackBar } from "./FeedbackBar";
 
 const SIGNAL_LABELS: Record<string, string> = {
@@ -13,6 +13,14 @@ const SIGNAL_LABELS: Record<string, string> = {
   content_quality: "high quality content",
   temporal_context: "matches your current focus",
   novelty: "expands your reading",
+};
+
+// Section accent colors — the prism splits content into ranked bands.
+const SECTION_ACCENTS: Record<string, string> = {
+  lead: "from-prism-600 to-prism-400",
+  creator: "from-spectrum-violet to-prism-500",
+  deep_reads: "from-spectrum-cyan to-prism-500",
+  discovery: "from-spectrum-amber to-spectrum-rose",
 };
 
 interface ContentCardProps {
@@ -30,171 +38,163 @@ export function ContentCard({
   signalBreakdown,
   isDiscovery,
   section,
-  position,
 }: ContentCardProps) {
-  const openedAt = useRef<number | null>(null);
+  const router = useRouter();
   const [showWhyTooltip, setShowWhyTooltip] = useState(false);
   const [summaryLevel, setSummaryLevel] = useState<"brief" | "detailed">("brief");
 
-  const topSignals = signalBreakdown
+  // Explainability: rank signals by relative contribution.
+  const signalEntries = signalBreakdown
     ? Object.entries(signalBreakdown)
-        .filter(([k]) => !k.startsWith("_"))
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 2)
-        .map(([k]) => SIGNAL_LABELS[k] || k)
+        .filter(([k, v]) => !k.startsWith("_") && typeof v === "number")
+        .sort(([, a], [, b]) => (b as number) - (a as number))
     : [];
 
-  const handleClick = () => {
-    openedAt.current = Date.now();
+  const totalSignalStrength = signalEntries.reduce(
+    (sum, [, v]) => sum + (v as number),
+    0,
+  );
 
-    // Use visibilitychange — fires when the user returns to this tab,
-    // which is the correct signal that they have come back from reading.
-    const handleVisibility = async () => {
-      if (document.visibilityState !== "visible") return;
-      document.removeEventListener("visibilitychange", handleVisibility);
-      if (!openedAt.current) return;
-      const elapsed = Math.floor((Date.now() - openedAt.current) / 1000);
-      // Anything under 5 seconds is a bounce — treat as a skip
-      if (elapsed < 5) {
-        openedAt.current = null;
-        return;
-      }
-      const readingTime = (content.reading_time_minutes || 5) * 60;
-      const pct = Math.min(1.0, elapsed / readingTime);
-      openedAt.current = null;
-      try {
-        await api.feedback.interaction({
-          content_item_id: content.id,
-          time_on_page_seconds: elapsed,
-          read_completion_pct: pct,
-          skipped: elapsed < 10,
-        });
-      } catch {}
-    };
+  const rankedSignals = signalEntries.slice(0, 3).map(([k, v]) => ({
+    key: k,
+    label: SIGNAL_LABELS[k] || k,
+    contribution:
+      totalSignalStrength > 0
+        ? Math.round(((v as number) / totalSignalStrength) * 100)
+        : 0,
+  }));
 
-    document.addEventListener("visibilitychange", handleVisibility);
+  const whySummary =
+    rankedSignals.length > 0
+      ? `Ranked because it ${rankedSignals[0].label}${
+          rankedSignals[1] ? ` and ${rankedSignals[1].label}` : ""
+        }`
+      : null;
+
+  const accent = section ? SECTION_ACCENTS[section] : "from-prism-600 to-prism-400";
+
+  const handleRead = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+    e.preventDefault();
+    router.push(`/read/${content.id}`);
   };
 
+  const hasSummary = !!(content.summary_brief || content.summary_detailed);
+
   return (
-    <div
-      style={{
-        padding: 16,
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        marginBottom: 12,
-        background: isDiscovery ? "#f0f9ff" : "#fff",
-      }}
-    >
+    <article className="card card-hover group relative overflow-hidden p-5">
+      {/* Left accent stripe — visual marker for the section/rank band */}
+      <div
+        className={`absolute left-0 top-0 h-full w-1 bg-gradient-to-b ${accent}`}
+        aria-hidden
+      />
+
       {isDiscovery && (
-        <span
-          style={{
-            display: "inline-block",
-            fontSize: 11,
-            background: "#bfdbfe",
-            color: "#1e40af",
-            padding: "2px 8px",
-            borderRadius: 12,
-            marginBottom: 8,
-          }}
-        >
+        <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           Outside your usual sources — based on your interests
         </span>
       )}
 
-      <h3 style={{ margin: "0 0 6px", fontSize: "1rem", fontWeight: 600 }}>
-        <a
-          href={content.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleClick}
-          style={{ color: "#1d4ed8", textDecoration: "none" }}
-        >
-          {content.title}
-        </a>
-      </h3>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="flex-1 font-serif text-lg font-semibold leading-snug">
+          <a
+            href={`/read/${content.id}`}
+            onClick={handleRead}
+            className="text-stone-900 transition-colors hover:text-prism-700"
+          >
+            {content.title}
+          </a>
+        </h3>
+        {prsScore != null && (
+          <span
+            className="shrink-0 font-mono text-xs font-medium text-stone-400"
+            title="Personalized Relevance Score"
+          >
+            {prsScore.toFixed(2)}
+          </span>
+        )}
+      </div>
 
-      <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#6b7280", marginBottom: 8 }}>
-        {content.author && <span>{content.author}</span>}
-        {content.reading_time_minutes && <span>{content.reading_time_minutes} min read</span>}
+      {/* Metadata row */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+        {content.author && (
+          <span className="font-medium text-stone-600">{content.author}</span>
+        )}
+        {content.reading_time_minutes && (
+          <span>{content.reading_time_minutes} min read</span>
+        )}
         {content.published_at && (
           <span>{new Date(content.published_at).toLocaleDateString()}</span>
         )}
       </div>
 
+      {/* Summary */}
       {content.summary_headline && (
-        <p style={{ margin: "0 0 4px", fontSize: "0.8rem", fontStyle: "italic", color: "#6b7280" }}>
+        <p className="mt-3 font-serif text-sm italic text-stone-500">
           {content.summary_headline}
         </p>
       )}
 
       {summaryLevel === "brief" && content.summary_brief && (
-        <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "#374151", lineHeight: 1.5 }}>
+        <p className="mt-2 text-sm leading-relaxed text-stone-700">
           {content.summary_brief}
         </p>
       )}
       {summaryLevel === "detailed" && (content.summary_detailed || content.summary_brief) && (
-        <p style={{ margin: "0 0 6px", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700">
           {content.summary_detailed || content.summary_brief}
         </p>
       )}
 
-      {(content.summary_brief || content.summary_detailed) && (
+      {hasSummary && (
         <button
-          onClick={() => setSummaryLevel(summaryLevel === "brief" ? "detailed" : "brief")}
-          style={{
-            fontSize: 11,
-            color: "#6b7280",
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            marginBottom: 6,
-            textDecoration: "underline",
-          }}
+          onClick={() =>
+            setSummaryLevel(summaryLevel === "brief" ? "detailed" : "brief")
+          }
+          className="mt-2 text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-prism-600 hover:underline"
         >
           {summaryLevel === "brief" ? "Show detailed takeaway" : "Show brief summary"}
         </button>
       )}
 
-      {topSignals.length > 0 && (
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <button
-            onClick={() => setShowWhyTooltip(!showWhyTooltip)}
-            style={{
-              fontSize: 11,
-              color: "#6b7280",
-              background: "none",
-              border: "1px solid #e5e7eb",
-              borderRadius: 4,
-              padding: "2px 6px",
-              cursor: "pointer",
-            }}
-          >
-            Why this?
-          </button>
-          {showWhyTooltip && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: "100%",
-                left: 0,
-                background: "#1f2937",
-                color: "#fff",
-                borderRadius: 6,
-                padding: "8px 12px",
-                fontSize: 12,
-                whiteSpace: "nowrap",
-                zIndex: 10,
-                marginBottom: 4,
-              }}
+      {/* Footer: why-this + feedback */}
+      <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3">
+        {whySummary ? (
+          <div className="relative">
+            <button
+              onClick={() => setShowWhyTooltip(!showWhyTooltip)}
+              title={whySummary}
+              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50"
             >
-              Ranked because: {topSignals.join(", ")}
-            </div>
-          )}
-        </div>
-      )}
-
-      <FeedbackBar contentItemId={content.id} />
-    </div>
+              <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-prism-500 to-spectrum-violet" />
+              Why this?
+            </button>
+            {showWhyTooltip && (
+              <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg bg-stone-900 p-3 text-xs text-white shadow-xl">
+                <div className="mb-2 font-semibold">Why this is ranked here</div>
+                {rankedSignals.map((s) => (
+                  <div key={s.key} className="mb-1.5 flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
+                      <div
+                        className="h-full rounded-full bg-prism-400"
+                        style={{ width: `${s.contribution}%` }}
+                      />
+                    </div>
+                    <span className="w-8 text-right opacity-70">
+                      {s.contribution}%
+                    </span>
+                    <span className="shrink-0 opacity-95">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <span />
+        )}
+        <FeedbackBar contentItemId={content.id} />
+      </div>
+    </article>
   );
 }

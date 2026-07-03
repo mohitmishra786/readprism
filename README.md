@@ -10,11 +10,13 @@ The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Prop
 
 ## What It Does
 
-- **Unified ingestion** — RSS/Atom feeds, web scraping via headless browser, newsletter forwarding, and creator tracking across Substack, YouTube, personal blogs, Medium, and more.
+- **Unified ingestion** — RSS/Atom feeds, robust web scraping (trafilatura + Playwright fallback), newsletter forwarding, and creator tracking across Substack, YouTube, Medium, Reddit, podcasts (via iTunes lookup), and any blog with RSS autodiscovery.
 - **Personalized Relevance Score (PRS)** — Eight signal dimensions combined with per-user learned weights rank every item before it reaches your digest.
+- **Real reading telemetry** — An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end — feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
 - **Daily digest** — Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
 - **Interest graph** — Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
 - **Cold start handling** — Onboarding extracts high-quality signal immediately; collaborative filtering warmup provides personalization before your own behavioral data accumulates.
+- **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (Twitter/X and LinkedIn have no public feed and are clearly marked).
 
 ---
 
@@ -119,7 +121,7 @@ Navigate to [http://localhost:3001](http://localhost:3001) and create an account
 
 ## Ranking Engine
 
-Every piece of content receives a **Personalized Relevance Score (PRS)** computed as a weighted sum of eight signal dimensions. The weights are learned per-user via gradient descent on prediction accuracy.
+Every piece of content receives a **Personalized Relevance Score (PRS)** computed as a weighted sum of eight signal dimensions. The weights are learned per-user via per-user gradient descent on prediction accuracy (the meta-learning layer in `services/ranking/meta_weights.py`).
 
 ```
 PRS = w1·SemanticAlignment + w2·ReadingDepth + w3·SuggestionSignal
@@ -134,7 +136,7 @@ where Σwᵢ = 1.0, all wᵢ learned per user
 | # | Signal | What it measures |
 |---|---|---|
 | 1 | **Semantic Alignment** | Cosine similarity between content embedding and user's interest vector |
-| 2 | **Reading Depth** | Scroll completion, time on page vs estimated reading time, re-reads |
+| 2 | **Reading Depth** | Scroll depth, active reading time vs estimated reading time, reached-end, re-reads — captured by the in-app reader (`useReadingTelemetry`) |
 | 3 | **Suggestion Signal** | Boosted weight when content is read from a source the user didn't follow |
 | 4 | **Explicit Feedback** | Thumbs up/down, tagged reasons (too basic, too tangential, etc.), saves |
 | 5 | **Source Trust** | Per-source (and per-creator-per-topic) trust weight learned from behavior |
@@ -248,8 +250,8 @@ readprism/
 │   ├── init.sql                       # pgvector extension initialization
 │   ├── templates/digest_email.html    # Jinja2 email template
 │   ├── migrations/
-│   │   └── versions/0001_initial_schema.py
-│   ├── tests/                         # pytest suite (9 test files)
+│   │   └── versions/                  # 0001 initial, 0002 suppressed_until + meta_weights, 0003 reading telemetry
+│   ├── tests/                         # pytest suite
 │   └── app/
 │       ├── main.py                    # FastAPI app factory + lifespan
 │       ├── config.py                  # pydantic-settings BaseSettings
@@ -276,9 +278,9 @@ readprism/
     ├── tsconfig.json
     ├── next.config.ts
     └── src/
-        ├── app/                       # Next.js App Router pages
-        ├── components/                # React components (digest, onboarding, sources, creators)
-        └── lib/                       # types.ts, api.ts, auth.ts
+        ├── app/                       # Next.js App Router pages (incl. /read/[id] in-app reader)
+        ├── components/                # digest, onboarding, sources, creators, PlatformBadge
+        └── lib/                       # types.ts, api.ts, auth.ts, useReadingTelemetry.ts
 ```
 
 ---

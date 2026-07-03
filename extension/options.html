@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ReadPrism extension options</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 480px;
+      margin: 32px auto;
+      padding: 0 16px;
+      color: #1f2937;
+    }
+    label { display: block; font-weight: 600; margin: 16px 0 4px; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 16px;
+      padding: 8px 20px;
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .muted { color: #6b7280; font-size: 12px; margin-top: 4px; }
+    #saved { color: #16a34a; font-size: 13px; margin-top: 8px; height: 16px; }
+  </style>
+</head>
+<body>
+  <h2>ReadPrism extension</h2>
+  <label for="apiBase">ReadPrism server URL</label>
+  <input id="apiBase" type="text" placeholder="http://localhost:8000" />
+  <p class="muted">Where your ReadPrism instance is running. Defaults to localhost for self-hosted.</p>
+
+  <label for="token">API token</label>
+  <input id="token" type="password" placeholder="Your ReadPrism access token" />
+  <p class="muted">
+    Found in your ReadPrism account settings. The extension stores it locally in your browser;
+    it is never sent anywhere except your configured ReadPrism server.
+  </p>
+
+  <button id="save">Save</button>
+  <div id="saved"></div>
+
+  <script src="options.js"></script>
+</body>
+</html>

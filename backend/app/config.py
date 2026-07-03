@@ -67,7 +67,30 @@ class Settings(BaseSettings):
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
 
+    @property
+    def llm_configured(self) -> bool:
+        """True if at least one LLM backend is configured.
+
+        When False, the summarizer short-circuits (no retries) and onboarding
+        falls back to keyword topic extraction, so the app still works — just
+        without AI summaries. The health endpoint reports this explicitly.
+        """
+        return bool(self.groq_api_key) or (
+            self.openai_fallback_enabled and bool(self.openai_api_key)
+        )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    s = Settings()
+    if not s.llm_configured:
+        # Loud, actionable warning so the operator knows summaries are disabled.
+        import warnings
+
+        warnings.warn(
+            "GROQ_API_KEY is not set. Summaries, topic extraction, and "
+            "cross-source synthesis will be skipped. Get a free key at "
+            "https://console.groq.com/ and set it in .env.",
+            stacklevel=2,
+        )
+    return s

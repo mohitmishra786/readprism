@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "ReadPrism",
+  "version": "0.1.0",
+  "description": "Add the current page to ReadPrism as a source or creator — one click.",
+  "permissions": ["activeTab", "storage", "contextMenus"],
+  "host_permissions": ["http://localhost:8000/*", "https://readprism.app/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Add to ReadPrism",
+    "default_icon": {
+      "16": "icon.svg",
+      "48": "icon.svg",
+      "128": "icon.svg"
+    }
+  },
+  "icons": {
+    "16": "icon.svg",
+    "48": "icon.svg",
+    "128": "icon.svg"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options.html"
+}

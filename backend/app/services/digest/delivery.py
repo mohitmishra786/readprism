@@ -46,12 +46,26 @@ SIGNAL_LABELS = {
 
 
 def _top_signals(breakdown: dict, n: int = 2) -> list[str]:
-    sorted_signals = sorted(
-        [(k, v) for k, v in breakdown.items() if not k.startswith("_")],
-        key=lambda x: x[1],
-        reverse=True,
-    )
-    return [SIGNAL_LABELS.get(k, k) for k, _ in sorted_signals[:n]]
+    """Return the top-n signal labels with their relative contribution share.
+
+    Contribution is each signal's share of the total unweighted signal strength
+    — honest about which signals drove the ranking without exposing the
+    per-user learned weights.
+    """
+    entries = [
+        (k, v) for k, v in breakdown.items() if not k.startswith("_") and isinstance(v, (int, float))
+    ]
+    total = sum(v for _, v in entries)
+    sorted_signals = sorted(entries, key=lambda x: x[1], reverse=True)
+    out: list[str] = []
+    for k, v in sorted_signals[:n]:
+        label = SIGNAL_LABELS.get(k, k)
+        if total > 0:
+            pct = round((v / total) * 100)
+            out.append(f"{label} ({pct}%)")
+        else:
+            out.append(label)
+    return out
 
 
 async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> bool:

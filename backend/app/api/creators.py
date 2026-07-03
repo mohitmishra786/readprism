@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,11 +11,20 @@ from app.database import get_db
 from app.models.creator import Creator
 from app.models.user import User
 from app.schemas.creator import CreatorCreate, CreatorRead, CreatorResolutionResult, CreatorUpdate
-from app.services.creator.resolver import resolve_creator
+from app.services.creator.resolver import PLATFORM_CAPABILITIES, resolve_creator
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/creators", tags=["creators"])
 logger = get_logger(__name__)
+
+
+@router.get("/platform-capabilities")
+async def get_platform_capabilities(
+    current_user: User = Depends(get_current_user),
+) -> dict[str, dict[str, str]]:
+    """Return the platform tracking-tier map so the frontend can render honest
+    badges (fully tracked / best-effort / unsupported) on creator forms."""
+    return PLATFORM_CAPABILITIES
 
 
 @router.post("", response_model=CreatorResolutionResult, status_code=status.HTTP_201_CREATED)
@@ -29,6 +38,10 @@ async def add_creator(
         result.creator.priority = body.priority
         await session.flush()
 
+    # Eager-load the platforms relationship before serialization, otherwise
+    # Pydantic's lazy attribute access triggers IO outside an awaited context
+    # (MissingGreenlet error). The other endpoints do the same via refresh().
+    await session.refresh(result.creator, ["platforms"])
     creator_read = CreatorRead.model_validate(result.creator)
     return CreatorResolutionResult(
         creator=creator_read,
@@ -150,7 +163,7 @@ async def update_creator(
     return CreatorRead.model_validate(creator)
 
 
-@router.delete("/{creator_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{creator_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
 async def delete_creator(
     creator_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),

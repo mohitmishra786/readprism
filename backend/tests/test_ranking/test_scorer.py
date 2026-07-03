@@ -29,10 +29,17 @@ async def test_scorer_returns_score_between_0_and_1():
     user.created_at = datetime(2024, 1, 1, tzinfo=timezone.utc)
 
     session = AsyncMock()
-    session.execute = AsyncMock()
-    mock_result = MagicMock()
-    mock_result.scalars.return_value.all.return_value = []
-    session.execute.return_value = mock_result
+    # Every query should return an empty/None-shaped result so each signal hits
+    # its neutral fallback path. scalars().all() → [], scalar_one_or_none() →
+    # None, fetchall() → []. This keeps PRS in range without real DB data.
+    def _make_result():
+        r = MagicMock()
+        r.scalars.return_value.all.return_value = []
+        r.fetchall.return_value = []
+        r.scalar_one_or_none.return_value = None
+        return r
+
+    session.execute = AsyncMock(side_effect=lambda *a, **k: _make_result())
 
     with patch("app.services.ranking.meta_weights.cache_get", return_value=None),          patch("app.services.ranking.meta_weights.cache_set", return_value=True),          patch("app.services.ranking.signals.semantic.cache_get", return_value=None),          patch("app.services.ranking.signals.semantic.cache_set", return_value=True),          patch("app.services.ranking.signals.content_quality.cache_get", return_value=None),          patch("app.services.ranking.signals.content_quality.cache_set", return_value=True):
         prs, breakdown = await compute_prs(content, user, session)

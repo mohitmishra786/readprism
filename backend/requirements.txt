@@ -17,6 +17,7 @@ pyjwt==2.10.1
 # Settings
 pydantic==2.10.3
 pydantic-settings==2.6.1
+email-validator==2.2.0
 
 # Cache / Queue
 redis==5.2.1
@@ -50,8 +51,8 @@ pytest-asyncio==0.24.0
 respx==0.21.1
 httpx==0.28.1
 
-# Search
-meilisearch-python-sdk==3.3.3
+# Search — Meilisearch is integrated via raw httpx in app/utils/search.py;
+# the official SDK pin (3.3.3) referenced a nonexistent release and was never imported.
 
 # Utilities
 python-dotenv==1.0.1

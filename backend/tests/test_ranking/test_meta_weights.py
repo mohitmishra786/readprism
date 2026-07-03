@@ -32,6 +32,12 @@ async def test_weight_update_moves_correct_direction():
     initial_weights = dict(DEFAULT_WEIGHTS)
 
     session = AsyncMock()
+    # Make every query return None/empty so get_meta_weights uses default weights
+    # and the upsert path is a no-op against the (mocked) DB.
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_result.scalars.return_value.all.return_value = []
+    session.execute = AsyncMock(return_value=mock_result)
 
     # Create mock digest items where semantic signal was high but actual engagement was low
     digest_item = MagicMock()

@@ -28,7 +28,7 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
     try {
       await api.digest.answerPrompt(digestId, promptId, answer);
       setPrompts((prev) =>
-        prev.map((p) => (p.id === promptId ? { ...p, answered: true, answer } : p))
+        prev.map((p) => (p.id === promptId ? { ...p, answered: true, answer } : p)),
       );
     } catch {}
   };
@@ -37,42 +37,23 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
   if (unanswered.length === 0) return null;
 
   return (
-    <div
-      style={{
-        background: "#eff6ff",
-        border: "1px solid #bfdbfe",
-        borderRadius: 8,
-        padding: 16,
-        marginBottom: 24,
-      }}
-    >
-      <p style={{ fontWeight: 600, marginBottom: 12, fontSize: "0.9rem", color: "#1e40af" }}>
+    <div className="mb-8 rounded-xl border border-prism-200 bg-prism-50 p-5">
+      <p className="mb-3 text-sm font-semibold text-prism-800">
         Help us calibrate your feed
       </p>
       {unanswered.map((p) => (
-        <div key={p.id} style={{ marginBottom: 12 }}>
-          <p style={{ fontSize: "0.9rem", marginBottom: 6, color: "#1f2937" }}>{p.prompt_text}</p>
-          <div style={{ display: "flex", gap: 8 }}>
+        <div key={p.id} className="mb-3 last:mb-0">
+          <p className="mb-2 text-sm text-stone-700">{p.prompt_text}</p>
+          <div className="flex gap-2">
             <input
               type="text"
               value={answers[p.id] || ""}
               onChange={(e) => setAnswers((prev) => ({ ...prev, [p.id]: e.target.value }))}
               onKeyDown={(e) => e.key === "Enter" && submit(p.id)}
               placeholder="Your answer..."
-              style={{ flex: 1, padding: "6px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}
+              className="input flex-1"
             />
-            <button
-              onClick={() => submit(p.id)}
-              style={{
-                padding: "6px 14px",
-                background: "#2563eb",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-                fontSize: 13,
-              }}
-            >
+            <button onClick={() => submit(p.id)} className="btn-primary">
               Send
             </button>
           </div>
@@ -84,21 +65,54 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
 
 interface DigestViewProps {
   digest: Digest;
+  userCreatedAt?: string;
 }
 
-export function DigestView({ digest }: DigestViewProps) {
+function FirstDigestBanner({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <div className="mb-8 overflow-hidden rounded-xl border border-prism-200 bg-gradient-to-br from-prism-50 to-cyan-50 p-5">
+      <div className="flex items-start justify-between">
+        <p className="mb-2 text-sm font-semibold text-prism-800">
+          👋 Your first digest
+        </p>
+        <button
+          onClick={onDismiss}
+          className="text-stone-400 transition-colors hover:text-stone-700"
+          aria-label="Dismiss"
+        >
+          ✕
+        </button>
+      </div>
+      <p className="text-sm leading-relaxed text-prism-900/80">
+        Items below are <strong>ranked by personal relevance</strong>, not chronological.
+        The ranking learns from what you read fully, what you skip, and what you rate —
+        so it gets noticeably sharper over the next few weeks. Tap{" "}
+        <em>“Why this?”</em> on any item to see why it ranked where it did.
+      </p>
+    </div>
+  );
+}
+
+export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
+  const [showFirstDigest, setShowFirstDigest] = useState(true);
+
   const grouped = SECTION_ORDER.reduce<Record<string, DigestItem[]>>((acc, s) => {
     acc[s] = digest.items.filter((i) => i.section === s);
     return acc;
   }, {});
 
+  const isNewUser =
+    userCreatedAt &&
+    Date.now() - new Date(userCreatedAt).getTime() < 14 * 24 * 60 * 60 * 1000;
+
   return (
-    <div>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 4 }}>
+    <div className="animate-fade-in">
+      <header className="mb-8 border-b border-stone-200 pb-6">
+        <div className="eyebrow text-prism-700">Your Daily Edition</div>
+        <h1 className="mt-1 font-serif text-4xl font-bold tracking-tight text-stone-900">
           Your Digest
         </h1>
-        <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>
+        <p className="mt-2 text-sm text-stone-500">
           {new Date(digest.generated_at).toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
@@ -107,16 +121,16 @@ export function DigestView({ digest }: DigestViewProps) {
           })}{" "}
           · {digest.total_items} items
         </p>
-      </div>
+      </header>
+
+      {isNewUser && showFirstDigest && (
+        <FirstDigestBanner onDismiss={() => setShowFirstDigest(false)} />
+      )}
 
       <FeedbackPrompts digestId={digest.id} />
 
       {SECTION_ORDER.map((section) => (
-        <DigestSection
-          key={section}
-          name={section}
-          items={grouped[section] || []}
-        />
+        <DigestSection key={section} name={section} items={grouped[section] || []} />
       ))}
     </div>
   );

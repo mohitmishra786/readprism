@@ -4,7 +4,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,9 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
+# ---------------------------------------------------------------------------
+# Platform domain → canonical platform name.
+# ---------------------------------------------------------------------------
 PLATFORM_DOMAINS = {
     "substack.com": "substack",
     "youtube.com": "youtube",
@@ -24,7 +27,40 @@ PLATFORM_DOMAINS = {
     "linkedin.com": "linkedin",
     "spotify.com": "podcast",
     "open.spotify.com": "podcast",
+    "podcasts.apple.com": "podcast",
+    "feeds.simplecast.com": "podcast",
+    "rss.com": "podcast",
+    "reddit.com": "reddit",
+    "old.reddit.com": "reddit",
+    "new.reddit.com": "reddit",
 }
+
+# ---------------------------------------------------------------------------
+# Single source of truth for what each platform can do.
+#
+# `tracking_tier`:
+#   - "fully_tracked": reliable public RSS / feed exists; we ingest new posts.
+#   - "best_effort":   a feed may exist (e.g. podcast via iTunes lookup) but is
+#                      not guaranteed; surfacing content depends on resolution.
+#   - "unsupported":   no reliable public feed (closed platform API). We store
+#                      the profile but warn the user it won't auto-track.
+# `display_label`: short UI label for the platform chip.
+# ---------------------------------------------------------------------------
+PLATFORM_CAPABILITIES: dict[str, dict[str, str]] = {
+    "substack": {"tracking_tier": "fully_tracked", "display_label": "Substack"},
+    "medium": {"tracking_tier": "fully_tracked", "display_label": "Medium"},
+    "youtube": {"tracking_tier": "fully_tracked", "display_label": "YouTube"},
+    "reddit": {"tracking_tier": "fully_tracked", "display_label": "Reddit"},
+    "blog": {"tracking_tier": "best_effort", "display_label": "Blog / Site"},
+    "podcast": {"tracking_tier": "best_effort", "display_label": "Podcast"},
+    "twitter": {"tracking_tier": "unsupported", "display_label": "Twitter / X"},
+    "linkedin": {"tracking_tier": "unsupported", "display_label": "LinkedIn"},
+}
+
+
+def get_platform_tier(platform: str) -> str:
+    """Return the tracking tier for a platform; defaults to best_effort."""
+    return PLATFORM_CAPABILITIES.get(platform, {}).get("tracking_tier", "best_effort")
 
 
 @dataclass
@@ -58,26 +94,101 @@ def _extract_title(html: str) -> str:
     return match.group(1).strip() if match else "Unknown Creator"
 
 
-def _autodiscover_feed_url(platform: str, profile_url: str, html: str) -> Optional[str]:
+async def _lookup_podcast_feed(show_name: str) -> Optional[str]:
+    """Use the free, no-auth iTunes Search API to resolve a podcast RSS feed.
+
+    Returns the first podcast result's feedUrl, if any. This is the standard
+    mechanism for discovering podcast RSS from a show name (Spotify shows have
+    no public RSS of their own, but the same show almost always exists in
+    Apple's directory with a real feedUrl).
+    """
+    if not show_name:
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                "https://itunes.apple.com/search",
+                params={"term": show_name, "entity": "podcast", "limit": 1},
+                headers={"User-Agent": "ReadPrism/1.0"},
+            )
+            data = resp.json()
+            results = data.get("results") or []
+            if results:
+                feed = results[0].get("feedUrl")
+                if feed:
+                    return feed
+    except Exception as e:
+        logger.warning(f"iTunes podcast lookup failed for '{show_name}': {e}")
+    return None
+
+
+def _autodiscover_feed_url(
+    platform: str, profile_url: str, html: str
+) -> tuple[Optional[str], Optional[str]]:
+    """Resolve the feed URL for a platform.
+
+    Returns (feed_url, warning). For best-effort platforms that fail to resolve,
+    a warning explains the limitation so the UI can surface it honestly.
+    """
     parsed = urlparse(profile_url)
-    username = parsed.path.strip("/").split("/")[-1].lstrip("@")
+    path_segments = [s for s in parsed.path.split("/") if s]
 
     if platform == "substack":
         host = parsed.netloc
-        return f"https://{host}/feed"
+        return f"https://{host}/feed", None
     if platform == "medium":
-        return f"https://medium.com/feed/@{username}"
+        # Two valid Medium URL forms:
+        #   1. https://medium.com/@author/post  → feed: medium.com/feed/@author
+        #   2. https://author.medium.com        → feed: author.medium.com/feed (subdomain)
+        host = parsed.netloc
+        if host.endswith(".medium.com") and host != "www.medium.com":
+            # Subdomain publication — derive the feed directly (mirrors substack).
+            return f"https://{host}/feed", None
+        # Otherwise look for the @-prefixed username in the path.
+        username = next((s.lstrip("@") for s in path_segments if s.startswith("@")), "")
+        if not username:
+            return None, "Could not extract a Medium username; feed not discovered."
+        return f"https://medium.com/feed/@{username}", None
     if platform == "youtube":
-        channel_match = re.search(r'channel_id["\'\s]*[:=]["\'\s]*([UC][\w-]+)', html)
+        # YouTube embeds the channel id in several places. Match the canonical
+        # channelId attribute forms, including <meta content="UC..." itemprop="channelId">.
+        channel_match = re.search(
+            r'(?:channel_id|channelId)["\'\s]*[:=]["\'\s]*([UC][\w-]+)', html
+        )
+        if not channel_match:
+            # <meta itemprop="channelId" content="UC...">
+            meta_match = re.search(
+                r'itemprop=["\']channelId["\'][^>]*content=["\']([UC][\w-]+)["\']',
+                html,
+                re.IGNORECASE,
+            )
+            channel_match = meta_match or re.search(
+                r'content=["\']([UC][\w-]+)["\'][^>]*itemprop=["\']channelId["\']',
+                html,
+                re.IGNORECASE,
+            )
         if channel_match:
             cid = channel_match.group(1)
-            return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}"
-    if platform == "twitter":
-        return None  # Twitter/X has no public RSS feed
-    if platform == "linkedin":
-        return None  # LinkedIn has no public RSS feed
+            return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", None
+        return None, "Could not extract the YouTube channel id; feed not discovered."
+    if platform == "reddit":
+        # Append .rss to the profile/subreddit URL. Works for both
+        # /r/{subreddit} and /user/{name}. Strip query/fragment first, then the
+        # trailing slash, to avoid producing a double slash.
+        base = profile_url.split("?")[0].split("#")[0].rstrip("/")
+        return f"{base}/.rss", None
+    if platform == "podcast":
+        # Podcast feed discovery is deferred to the async caller (it needs an
+        # HTTP lookup); here we only signal that none was found synchronously.
+        return None, None
+    if platform in ("twitter", "linkedin"):
+        return None, (
+            f"{PLATFORM_CAPABILITIES[platform]['display_label']} provides no public RSS feed. "
+            "ReadPrism cannot automatically track new posts from this profile. "
+            "Consider adding the creator's Substack, newsletter, blog, or Reddit instead."
+        )
 
-    # Generic blog: try autodiscovery
+    # Generic blog: try RSS autodiscovery from the page's <link> tags.
     feed_match = re.search(
         r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*href=["\']([^"\']+)["\']',
         html,
@@ -86,10 +197,9 @@ def _autodiscover_feed_url(platform: str, profile_url: str, html: str) -> Option
     if feed_match:
         href = feed_match.group(1)
         if href.startswith("http"):
-            return href
-        from urllib.parse import urljoin
-        return urljoin(profile_url, href)
-    return None
+            return href, None
+        return urljoin(profile_url, href), None
+    return None, "No RSS feed autodiscovered; content tracking may be limited."
 
 
 async def resolve_creator(
@@ -103,43 +213,46 @@ async def resolve_creator(
     if is_url:
         primary_platform = _detect_platform(name_or_url)
 
-        # Early warning for platforms with no reliable public feed
-        if primary_platform == "twitter":
-            warning = (
-                "Twitter/X does not provide a public RSS feed. "
-                "ReadPrism cannot automatically track new posts from this profile. "
-                "Consider adding the creator's Substack, newsletter, or personal blog instead."
-            )
-        elif primary_platform == "linkedin":
-            warning = (
-                "LinkedIn does not provide a public RSS feed. "
-                "ReadPrism cannot automatically track new posts from this profile. "
-                "Consider adding the creator's newsletter or personal blog instead."
-            )
-
         html = await _fetch_page(name_or_url)
+        fetch_failed = False
         if html:
             display_name = _extract_title(html)
-            feed_url = _autodiscover_feed_url(primary_platform, name_or_url, html)
-            platforms_data.append({
-                "platform": primary_platform,
-                "url": name_or_url,
-                "feed_url": feed_url,
-                "is_verified": True,
-            })
+        else:
+            fetch_failed = True
 
-            # Discover other platform links from bio
+        feed_url, feed_warning = _autodiscover_feed_url(primary_platform, name_or_url, html or "")
+
+        # Best-effort podcast lookup via iTunes Search API.
+        if primary_platform == "podcast" and not feed_url:
+            feed_url = await _lookup_podcast_feed(display_name)
+            if not feed_url:
+                feed_warning = (
+                    "Could not resolve a podcast RSS feed for this show. "
+                    "You can still add the podcast's direct RSS URL if you have it."
+                )
+
+        # Only warn about a failed profile fetch if we ALSO failed to resolve a
+        # feed — for platforms whose feed construction doesn't need the HTML
+        # (substack, reddit, medium subdomain), a transient fetch failure still
+        # yields a working feed and shouldn't show a scary warning.
+        if feed_url:
+            warning = None
+        elif fetch_failed and not feed_warning:
+            warning = f"Could not fetch profile page: {name_or_url}"
+        else:
+            warning = feed_warning or warning
+
+        platforms_data.append({
+            "platform": primary_platform,
+            "url": name_or_url,
+            "feed_url": feed_url,
+            "is_verified": feed_url is not None,
+        })
+
+        # Discover other platform links from bio.
+        if html:
             additional = _find_additional_platforms(html, name_or_url)
             platforms_data.extend(additional)
-        else:
-            if not warning:
-                warning = f"Could not fetch profile page: {name_or_url}"
-            platforms_data.append({
-                "platform": primary_platform,
-                "url": name_or_url,
-                "feed_url": None,
-                "is_verified": False,
-            })
     else:
         display_name = name_or_url
         warning = "Name-only creator added without URL. No feed discovered."
@@ -194,12 +307,12 @@ def _find_additional_platforms(html: str, source_url: str) -> list[dict]:
                 platform = pname
                 break
         if platform and not any(p["url"] == url for p in additional):
-            feed_url = _autodiscover_feed_url(platform, url, "")
+            feed_url, _ = _autodiscover_feed_url(platform, url, "")
             additional.append({
                 "platform": platform,
                 "url": url,
                 "feed_url": feed_url,
-                "is_verified": False,
+                "is_verified": feed_url is not None,
             })
         if len(additional) >= 4:
             break
