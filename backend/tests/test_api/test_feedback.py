@@ -15,14 +15,15 @@ async def test_record_interaction_enqueues_graph_update(client: AsyncClient, tes
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Create a content item in DB
+    # Create a content item in DB and commit it so the endpoint's own session
+    # (separate from db_session) can see it.
     content = ContentItem(
         url="https://test.com/article",
         title="Test Article",
         fetched_at=datetime.now(timezone.utc),
     )
     db_session.add(content)
-    await db_session.flush()
+    await db_session.commit()
 
     with patch(
         "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"

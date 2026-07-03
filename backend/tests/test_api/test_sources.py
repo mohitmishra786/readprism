@@ -11,7 +11,9 @@ async def test_add_source(client: AsyncClient, test_user_data: dict):
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.services.ingestion.rss_parser._autodiscover_feed", return_value="https://example.com/feed"),          patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"):
+    # sources.py imports _autodiscover_feed into its own namespace, so the patch
+    # must target app.api.sources._autodiscover_feed (not the rss_parser module).
+    with patch("app.api.sources._autodiscover_feed", new=AsyncMock(return_value="https://example.com/feed")),          patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"):
         resp = await client.post(
             "/api/v1/sources",
             json={"url": "https://example.com"},
@@ -41,7 +43,7 @@ async def test_delete_source(client: AsyncClient, test_user_data: dict):
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    with patch("app.services.ingestion.rss_parser._autodiscover_feed", return_value=None),          patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"):
+    with patch("app.api.sources._autodiscover_feed", new=AsyncMock(return_value=None)),          patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"):
         add_resp = await client.post(
             "/api/v1/sources",
             json={"url": "https://delete-me.com"},
