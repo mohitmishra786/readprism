@@ -13,9 +13,7 @@ from app.database import Base
 class Creator(Base):
     __tablename__ = "creators"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -33,7 +31,7 @@ class Creator(Base):
         nullable=False,
     )
 
-    platforms: Mapped[list["CreatorPlatform"]] = relationship(
+    platforms: Mapped[list[CreatorPlatform]] = relationship(
         "CreatorPlatform", back_populates="creator", cascade="all, delete-orphan"
     )
 
@@ -41,11 +39,12 @@ class Creator(Base):
 class CreatorPlatform(Base):
     __tablename__ = "creator_platforms"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     creator_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("creators.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("creators.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     platform: Mapped[str] = mapped_column(String, nullable=False)
     platform_url: Mapped[str] = mapped_column(String, nullable=False)
@@ -62,4 +61,4 @@ class CreatorPlatform(Base):
         nullable=False,
     )
 
-    creator: Mapped["Creator"] = relationship("Creator", back_populates="platforms")
+    creator: Mapped[Creator] = relationship("Creator", back_populates="platforms")

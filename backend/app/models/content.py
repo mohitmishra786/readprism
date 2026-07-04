@@ -21,6 +21,7 @@ from app.database import Base
 
 try:
     from pgvector.sqlalchemy import Vector
+
     VECTOR_AVAILABLE = True
 except ImportError:
     VECTOR_AVAILABLE = False
@@ -29,20 +30,23 @@ except ImportError:
 class ContentItem(Base):
     __tablename__ = "content_items"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
     creator_platform_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("creator_platforms.id", ondelete="SET NULL"), nullable=True, index=True
+        UUID(as_uuid=True),
+        ForeignKey("creator_platforms.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     url: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     author: Mapped[str | None] = mapped_column(String, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    fetched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     full_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_headline: Mapped[str | None] = mapped_column(String, nullable=True)
     summary_brief: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -70,18 +74,17 @@ class ContentItem(Base):
 
 class UserContentInteraction(Base):
     __tablename__ = "user_content_interactions"
-    __table_args__ = (
-        UniqueConstraint("user_id", "content_item_id", name="uq_user_content"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "content_item_id", name="uq_user_content"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     content_item_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("content_items.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("content_items.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     prs_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     was_suggested: Mapped[bool] = mapped_column(Boolean, default=False)

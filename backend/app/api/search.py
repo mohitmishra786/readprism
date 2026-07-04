@@ -8,8 +8,8 @@ from app.api.auth import get_current_user
 from app.database import get_db
 from app.models.source import Source
 from app.models.user import User
-from app.utils.search import search_content
 from app.utils.logging import get_logger
+from app.utils.search import search_content
 
 router = APIRouter(prefix="/search", tags=["search"])
 logger = get_logger(__name__)

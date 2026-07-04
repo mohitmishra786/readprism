@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -55,9 +56,7 @@ async def list_creators(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[CreatorRead]:
-    result = await session.execute(
-        select(Creator).where(Creator.user_id == current_user.id)
-    )
+    result = await session.execute(select(Creator).where(Creator.user_id == current_user.id))
     creators = list(result.scalars().all())
     out = []
     for c in creators:
@@ -95,12 +94,13 @@ async def get_creator_summary(
     if not creator:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Creator not found")
 
-    from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
+    from datetime import datetime, timedelta
+
     from app.models.content import ContentItem
     from app.models.creator import CreatorPlatform
-    from datetime import datetime, timezone, timedelta
+    from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    cutoff = datetime.now(UTC) - timedelta(days=7)
     platforms_result = await session.execute(
         select(CreatorPlatform.id).where(CreatorPlatform.creator_id == creator_id)
     )
@@ -163,7 +163,12 @@ async def update_creator(
     return CreatorRead.model_validate(creator)
 
 
-@router.delete("/{creator_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
+@router.delete(
+    "/{creator_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def delete_creator(
     creator_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),

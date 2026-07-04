@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,18 +14,16 @@ INACTIVE_WEIGHT_THRESHOLD = 0.05
 
 
 async def apply_decay(user_id: uuid.UUID, session: AsyncSession) -> None:
-    result = await session.execute(
-        select(InterestNode).where(InterestNode.user_id == user_id)
-    )
+    result = await session.execute(select(InterestNode).where(InterestNode.user_id == user_id))
     nodes = list(result.scalars().all())
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for node in nodes:
         # Handle time-bounded suppression: gently resurface when period expires
         if node.suppressed_until is not None:
             sup = node.suppressed_until
             if sup.tzinfo is None:
-                sup = sup.replace(tzinfo=timezone.utc)
+                sup = sup.replace(tzinfo=UTC)
             if now >= sup:
                 # Suppression period over — clear flag and nudge weight up slightly
                 node.suppressed_until = None
@@ -39,7 +37,7 @@ async def apply_decay(user_id: uuid.UUID, session: AsyncSession) -> None:
 
         last = node.last_reinforced_at
         if last.tzinfo is None:
-            last = last.replace(tzinfo=timezone.utc)
+            last = last.replace(tzinfo=UTC)
 
         days_elapsed = (now - last).total_seconds() / 86400.0
         half_life = float(node.half_life_days)

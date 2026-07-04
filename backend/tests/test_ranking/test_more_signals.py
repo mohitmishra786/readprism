@@ -7,7 +7,7 @@ and assert the score lands where the math should put it.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -75,7 +75,9 @@ async def test_content_quality_caches_and_returns_cached():
     graph = UserInterestGraph(nodes=[], edges=[])
     session = AsyncMock()
 
-    with patch("app.services.ranking.signals.content_quality.cache_get", side_effect=fake_get),         patch("app.services.ranking.signals.content_quality.cache_set", side_effect=fake_set):
+    with patch(
+        "app.services.ranking.signals.content_quality.cache_get", side_effect=fake_get
+    ), patch("app.services.ranking.signals.content_quality.cache_set", side_effect=fake_set):
         first = await cq.compute(content, user, [], graph, session)
         second = await cq.compute(content, user, [], graph, session)
 
@@ -195,7 +197,7 @@ async def test_suggestion_signal_new_user_returns_neutral():
     content.embedding = [0.1] * 384
 
     user = MagicMock()
-    user.created_at = datetime.now(timezone.utc) - timedelta(days=2)
+    user.created_at = datetime.now(UTC) - timedelta(days=2)
 
     graph = UserInterestGraph(nodes=[], edges=[])
     session = AsyncMock()
@@ -213,7 +215,7 @@ async def test_suggestion_signal_no_embedding_returns_neutral():
     content.embedding = None
 
     user = MagicMock()
-    user.created_at = datetime.now(timezone.utc) - timedelta(days=30)
+    user.created_at = datetime.now(UTC) - timedelta(days=30)
 
     graph = UserInterestGraph(nodes=[], edges=[])
     session = AsyncMock()

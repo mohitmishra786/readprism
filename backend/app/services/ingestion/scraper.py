@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import Optional
 from urllib.parse import urlparse
 from urllib.robotparser import RobotFileParser
 
@@ -17,8 +16,8 @@ settings = get_settings()
 
 # Exponential-backoff retry config
 _RETRY_MAX_ATTEMPTS = 3
-_RETRY_BASE_DELAY = 1.0   # seconds
-_RETRY_MAX_DELAY = 30.0   # seconds
+_RETRY_BASE_DELAY = 1.0  # seconds
+_RETRY_MAX_DELAY = 30.0  # seconds
 
 _USER_AGENTS = [
     "Mozilla/5.0 (compatible; ReadPrism/1.0; +https://readprism.app/bot)",
@@ -49,6 +48,7 @@ def _extract_with_trafilatura(html_content: str, url: str) -> str:
     """
     try:
         import trafilatura
+
         text = trafilatura.extract(
             html_content,
             url=url,
@@ -65,6 +65,7 @@ def _extract_with_trafilatura(html_content: str, url: str) -> str:
     # Fallback: BeautifulSoup paragraph extraction (better than raw tag-stripping)
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(html_content, "lxml")
         for tag in soup(["script", "style", "nav", "footer", "header", "aside", "noscript"]):
             tag.decompose()
@@ -76,7 +77,7 @@ def _extract_with_trafilatura(html_content: str, url: str) -> str:
         return ""
 
 
-async def _fetch_with_retry(url: str) -> Optional[str]:
+async def _fetch_with_retry(url: str) -> str | None:
     """
     Attempt a lightweight httpx GET with exponential-backoff retry before
     falling back to the Playwright/Browserless path.
@@ -113,11 +114,12 @@ async def _fetch_with_retry(url: str) -> Optional[str]:
     return None
 
 
-async def _fetch_with_playwright(url: str) -> tuple[Optional[str], Optional[str]]:
+async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
     """Use the headless Chrome instance (Browserless) for JS-rendered pages.
     Returns (html_content, page_title)."""
     try:
         from playwright.async_api import async_playwright
+
         async with async_playwright() as pw:
             browser = await pw.chromium.connect_over_cdp(settings.browserless_url)
             page = await browser.new_page()
@@ -142,14 +144,14 @@ async def _fetch_with_playwright(url: str) -> tuple[Optional[str], Optional[str]
         return None, None
 
 
-async def scrape_page(url: str) -> Optional[RawContentItem]:
+async def scrape_page(url: str) -> RawContentItem | None:
     allowed = await _check_robots(url)
     if not allowed:
         logger.warning(f"Robots.txt disallows scraping: {url}")
         return None
 
-    title: Optional[str] = None
-    html_content: Optional[str] = None
+    title: str | None = None
+    html_content: str | None = None
 
     # 1. Fast path: plain httpx GET with retry
     html_content = await _fetch_with_retry(url)
@@ -157,6 +159,7 @@ async def scrape_page(url: str) -> Optional[RawContentItem]:
     if html_content:
         # Extract title from <title> tag
         import re
+
         title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_content, re.IGNORECASE)
         title = title_match.group(1).strip() if title_match else None
 
@@ -175,7 +178,7 @@ async def scrape_page(url: str) -> Optional[RawContentItem]:
     title = title or "Untitled"
     full_text = _extract_with_trafilatura(html_content, url)
     word_count = len(full_text.split()) if full_text else 0
-    reading_time = max(1, round(word_count / 238))
+    max(1, round(word_count / 238))
 
     return RawContentItem(
         url=url,

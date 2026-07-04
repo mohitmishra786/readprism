@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from sqlalchemy import text
@@ -26,10 +26,11 @@ async def compute(
     if content.embedding is None:
         return 0.5
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    cutoff = datetime.now(UTC) - timedelta(days=30)
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.embedding
                 FROM content_items ci
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
@@ -38,7 +39,8 @@ async def compute(
                   AND ci.id != :content_id
                   AND ci.embedding IS NOT NULL
                 LIMIT 100
-            """),
+            """
+            ),
             {"user_id": str(user.id), "cutoff": cutoff, "content_id": str(content.id)},
         )
         rows = result.fetchall()
@@ -49,7 +51,10 @@ async def compute(
         max_sim = 0.0
         for row in rows:
             emb = np.array(row[0], dtype=np.float32)
-            sim = float(np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8))
+            sim = float(
+                np.dot(content_vec, emb)
+                / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
+            )
             sim = (sim + 1.0) / 2.0
             if sim > max_sim:
                 max_sim = sim

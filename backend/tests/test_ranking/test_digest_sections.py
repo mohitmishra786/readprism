@@ -52,9 +52,7 @@ def test_topic_saturation_caps_one_topic():
     sections = builder.build(same_topic)
 
     lead_topic_count = sum(
-        1
-        for it, _, _ in sections["lead"].items
-        if "ai" in (it.topic_clusters or [])
+        1 for it, _, _ in sections["lead"].items if "ai" in (it.topic_clusters or [])
     )
     # Lead section should not exceed the saturation cap for the "ai" topic.
     assert lead_topic_count <= 3

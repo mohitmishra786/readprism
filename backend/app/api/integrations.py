@@ -18,8 +18,8 @@ from app.api.auth import get_current_user
 from app.database import get_db
 from app.models.user import User
 from app.services.integrations.export import (
-    export_to_obsidian,
     export_to_notion,
+    export_to_obsidian,
     export_to_readwise,
 )
 from app.utils.logging import get_logger

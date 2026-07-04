@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
+from unittest.mock import MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch, MagicMock
 
 
 @pytest.mark.asyncio
-async def test_record_interaction_enqueues_graph_update(client: AsyncClient, test_user_data: dict, db_session):
-    from app.models.content import ContentItem
+async def test_record_interaction_enqueues_graph_update(
+    client: AsyncClient, test_user_data: dict, db_session
+):
     from datetime import datetime, timezone
+
+    from app.models.content import ContentItem
 
     reg = await client.post("/api/v1/auth/register", json=test_user_data)
     token = reg.json()["access_token"]
@@ -20,7 +25,7 @@ async def test_record_interaction_enqueues_graph_update(client: AsyncClient, tes
     content = ContentItem(
         url="https://test.com/article",
         title="Test Article",
-        fetched_at=datetime.now(timezone.utc),
+        fetched_at=datetime.now(UTC),
     )
     db_session.add(content)
     await db_session.commit()

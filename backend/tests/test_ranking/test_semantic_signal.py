@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import numpy as np
 import pytest
 
-from app.services.ranking.signals.semantic import compute
 from app.services.ranking.signals import UserInterestGraph
+from app.services.ranking.signals.semantic import compute
 
 
 @pytest.mark.asyncio
@@ -27,7 +27,9 @@ async def test_high_similarity_scores_above_threshold():
     graph = UserInterestGraph(nodes=[node], edges=[])
     session = AsyncMock()
 
-    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None),          patch("app.services.ranking.signals.semantic.cache_set", return_value=True):
+    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None), patch(
+        "app.services.ranking.signals.semantic.cache_set", return_value=True
+    ):
         score = await compute(content, user, [], graph, session)
 
     assert score > 0.7, f"Expected > 0.7 but got {score}"
@@ -51,7 +53,9 @@ async def test_low_similarity_scores_below_threshold():
     graph = UserInterestGraph(nodes=[node], edges=[])
     session = AsyncMock()
 
-    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None),          patch("app.services.ranking.signals.semantic.cache_set", return_value=True):
+    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None), patch(
+        "app.services.ranking.signals.semantic.cache_set", return_value=True
+    ):
         score = await compute(content, user, [], graph, session)
 
     assert score < 0.6, f"Expected < 0.6 but got {score}"

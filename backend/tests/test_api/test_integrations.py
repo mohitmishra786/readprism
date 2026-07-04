@@ -5,7 +5,7 @@ Notion/Readwise are HTTP-bound and covered by their error-path validation only.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from unittest.mock import MagicMock
 
 from app.services.integrations.export import _slugify, _to_markdown
@@ -31,7 +31,7 @@ def _make_content(
 
 def _make_interaction():
     i = MagicMock()
-    i.saved_read_at = datetime(2026, 7, 3, tzinfo=timezone.utc)
+    i.saved_read_at = datetime(2026, 7, 3, tzinfo=UTC)
     return i
 
 

@@ -77,35 +77,27 @@ def test_all_known_platforms_have_capabilities():
 # Feed URL autodiscovery — the fully_tracked platforms.
 # ---------------------------------------------------------------------------
 def test_substack_feed_url():
-    feed, warning = _autodiscover_feed_url(
-        "substack", "https://foo.substack.com/p/post", ""
-    )
+    feed, warning = _autodiscover_feed_url("substack", "https://foo.substack.com/p/post", "")
     assert feed == "https://foo.substack.com/feed"
     assert warning is None
 
 
 def test_medium_feed_url():
-    feed, warning = _autodiscover_feed_url(
-        "medium", "https://medium.com/@author/post", ""
-    )
+    feed, warning = _autodiscover_feed_url("medium", "https://medium.com/@author/post", "")
     assert feed == "https://medium.com/feed/@author"
     assert warning is None
 
 
 def test_medium_subdomain_publication_feed_url():
     """A subdomain-hosted Medium blog (author.medium.com) resolves a feed too."""
-    feed, warning = _autodiscover_feed_url(
-        "medium", "https://johndoe.medium.com/", ""
-    )
+    feed, warning = _autodiscover_feed_url("medium", "https://johndoe.medium.com/", "")
     assert feed == "https://johndoe.medium.com/feed"
     assert warning is None
 
 
 def test_youtube_feed_url_from_channel_id_in_html():
     html = '<meta content="UC_x5XG1OV2P6uZZ5FSM9Ttw" itemprop="channelId">'
-    feed, warning = _autodiscover_feed_url(
-        "youtube", "https://www.youtube.com/@Google", html
-    )
+    feed, warning = _autodiscover_feed_url("youtube", "https://www.youtube.com/@Google", html)
     assert feed == "https://www.youtube.com/feeds/videos.xml?channel_id=UC_x5XG1OV2P6uZZ5FSM9Ttw"
     assert warning is None
 
@@ -118,17 +110,13 @@ def test_youtube_no_channel_id_returns_warning():
 
 def test_reddit_subreddit_feed_url():
     """Appending .rss to a subreddit URL yields a valid feed."""
-    feed, warning = _autodiscover_feed_url(
-        "reddit", "https://www.reddit.com/r/MachineLearning", ""
-    )
+    feed, warning = _autodiscover_feed_url("reddit", "https://www.reddit.com/r/MachineLearning", "")
     assert feed == "https://www.reddit.com/r/MachineLearning/.rss"
     assert warning is None
 
 
 def test_reddit_user_feed_url():
-    feed, warning = _autodiscover_feed_url(
-        "reddit", "https://www.reddit.com/user/spez", ""
-    )
+    feed, warning = _autodiscover_feed_url("reddit", "https://www.reddit.com/user/spez", "")
     assert feed == "https://www.reddit.com/user/spez/.rss"
     assert warning is None
 
@@ -170,9 +158,7 @@ def test_blog_autodiscovery_absolute_href():
 
 
 def test_blog_autodiscovery_relative_href_resolved():
-    html = (
-        '<head><link rel="alternate" type="application/rss+xml" href="/rss" /></head>'
-    )
+    html = '<head><link rel="alternate" type="application/rss+xml" href="/rss" /></head>'
     feed, _ = _autodiscover_feed_url("blog", "https://blog.example.com/post", html)
     assert feed == "https://blog.example.com/rss"
 

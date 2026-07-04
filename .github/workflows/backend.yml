@@ -33,42 +33,47 @@ jobs:
   test:
     name: Tests (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
       - name: Build backend image
-        working-directory: .
         run: docker compose build backend
 
       - name: Start DB + Redis
         run: docker compose up -d db redis
 
-      - name: Wait for DB health
+      - name: Wait for DB to be healthy (hard fail if not ready)
         run: |
-          for i in $(seq 1 30); do
-            if docker compose ps db | grep -q "healthy"; then break; fi
-            sleep 2
+          echo "Waiting for Postgres to accept connections..."
+          for i in $(seq 1 60); do
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' readprism-db-1 2>/dev/null || echo "starting")
+            echo "  attempt $i: db health = $HEALTH"
+            if [ "$HEALTH" = "healthy" ]; then echo "DB is healthy"; exit 0; fi
+            sleep 3
           done
+          echo "DB did not become healthy in time"; docker compose logs db; exit 1
 
-      - name: Create test database + pgvector
+      - name: Create test database + pgvector extension
         run: |
-          docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism_test;"
-          docker compose exec -T db psql -U readprism -d readprism_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          # Idempotent: ignore "already exists" errors so re-runs are safe.
+          docker compose exec -T db psql -U readprism -tc \
+            "SELECT 1 FROM pg_database WHERE datname = 'readprism_test'" | grep -q 1 || \
+            docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism_test;"
+          docker compose exec -T db psql -U readprism -d readprism_test -c \
+            "CREATE EXTENSION IF NOT EXISTS vector;"
 
-      - name: Run migrations
-        env:
-          DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism_test
-        run: docker compose run --rm -e DATABASE_URL backend alembic upgrade head
+      - name: Run migrations on test DB
+        # Use `exec` on the already-running backend (which has the volume mount
+        # and the compose DATABASE_URL pointing at db:5432), overriding only the
+        # target DB name. This avoids spinning up a conflicting container.
+        run: docker compose exec -T -e DATABASE_SYNC_URL="postgresql://readprism:readprism@db:5432/readprism_test" backend alembic upgrade head
 
       - name: Run pytest
-        env:
-          TEST_DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism_test
-          SECRET_KEY: ci-test-secret-key-for-jwt-signing-only
-          GROQ_API_KEY: ""
         run: |
-          docker compose run --rm \
-            -e TEST_DATABASE_URL=postgresql+asyncpg://readprism:readprism@db:5432/readprism_test \
-            -e SECRET_KEY=ci-test-secret-key-for-jwt-signing-only \
-            -e GROQ_API_KEY= \
+          docker compose exec -T \
+            -e TEST_DATABASE_URL="postgresql+asyncpg://readprism:readprism@db:5432/readprism_test" \
+            -e SECRET_KEY="ci-test-secret-key-for-jwt-signing-only" \
+            -e GROQ_API_KEY="" \
+            -e OPENAI_FALLBACK_ENABLED="false" \
             backend python -m pytest tests/ -v

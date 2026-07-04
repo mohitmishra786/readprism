@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from app.workers.celery_app import celery_app
 from app.utils.logging import get_logger
+from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
 MIN_INTERACTIONS_FOR_META_UPDATE = 20
@@ -12,17 +12,19 @@ MIN_INTERACTIONS_FOR_META_UPDATE = 20
 
 @celery_app.task(
     name="app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction",
-    bind=True, max_retries=3
+    bind=True,
+    max_retries=3,
 )
 def update_interest_graph_for_interaction(self, interaction_id: str) -> dict:
     return asyncio.run(_update_graph_async(uuid.UUID(interaction_id)))
 
 
 async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
+    from sqlalchemy import func, select
+
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem, UserContentInteraction
     from app.services.interest_graph.updater import update_from_interaction
-    from sqlalchemy import select, func
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -57,19 +59,18 @@ async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
         return {"status": "ok", "interaction_id": str(interaction_id)}
 
 
-@celery_app.task(
-    name="app.workers.tasks.update_interest_graph.update_meta_weights_task"
-)
+@celery_app.task(name="app.workers.tasks.update_interest_graph.update_meta_weights_task")
 def update_meta_weights_task(user_id: str) -> dict:
     return asyncio.run(_update_meta_weights_async(uuid.UUID(user_id)))
 
 
 async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.content import UserContentInteraction
     from app.models.digest import DigestItem
     from app.services.ranking.meta_weights import update_meta_weights
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -87,18 +88,17 @@ async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
         return {"status": "ok", "user_id": str(user_id)}
 
 
-@celery_app.task(
-    name="app.workers.tasks.update_interest_graph.apply_decay_all_users"
-)
+@celery_app.task(name="app.workers.tasks.update_interest_graph.apply_decay_all_users")
 def apply_decay_all_users() -> dict:
     return asyncio.run(_apply_decay_async())
 
 
 async def _apply_decay_async() -> dict:
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.user import User
     from app.services.interest_graph.decay import apply_decay
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User.id))

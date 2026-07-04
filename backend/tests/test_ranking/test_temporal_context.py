@@ -5,12 +5,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+from app.services.ranking.signals import UserInterestGraph
 from app.services.ranking.signals.temporal_context import (
-    SATURATION_PENALTY_PER_ITEM,
     MAX_SATURATION_PENALTY,
+    SATURATION_PENALTY_PER_ITEM,
     _short_term_adjustment,
 )
-from app.services.ranking.signals import UserInterestGraph
 
 
 @pytest.mark.asyncio
@@ -37,7 +37,9 @@ async def test_saturation_penalty_with_5_similar_items():
 
     expected_penalty = min(MAX_SATURATION_PENALTY, 5 * SATURATION_PENALTY_PER_ITEM)
     expected_adjustment = 1.0 - expected_penalty
-    assert abs(adjustment - expected_adjustment) < 0.01,         f"Expected {expected_adjustment:.2f} but got {adjustment:.2f}"
+    assert (
+        abs(adjustment - expected_adjustment) < 0.01
+    ), f"Expected {expected_adjustment:.2f} but got {adjustment:.2f}"
 
 
 @pytest.mark.asyncio

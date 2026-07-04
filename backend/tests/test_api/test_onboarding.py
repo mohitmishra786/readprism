@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.asyncio
@@ -36,7 +37,9 @@ async def test_onboarding_complete_sets_flag(client: AsyncClient, test_user_data
 
 
 @pytest.mark.asyncio
-async def test_onboarding_idempotent_returns_409(client: AsyncClient, test_user_data: dict, db_session):
+async def test_onboarding_idempotent_returns_409(
+    client: AsyncClient, test_user_data: dict, db_session
+):
     """Calling /onboarding twice should return 409 on the second call."""
     reg = await client.post("/api/v1/auth/register", json=test_user_data)
     token = reg.json()["access_token"]

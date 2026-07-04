@@ -15,9 +15,7 @@ class DigestFeedbackPrompt(Base):
 
     __tablename__ = "digest_feedback_prompts"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     digest_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("digests.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -25,7 +23,9 @@ class DigestFeedbackPrompt(Base):
         UUID(as_uuid=True), ForeignKey("content_items.id", ondelete="CASCADE"), nullable=True
     )
     prompt_text: Mapped[str] = mapped_column(String, nullable=False)
-    prompt_type: Mapped[str] = mapped_column(String, nullable=False)  # depth_level, source_quality, topic_accuracy
+    prompt_type: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # depth_level, source_quality, topic_accuracy
     answered: Mapped[bool] = mapped_column(Boolean, default=False)
     answer: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -36,13 +36,13 @@ class DigestFeedbackPrompt(Base):
 class Digest(Base):
     __tablename__ = "digests"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_method: Mapped[str] = mapped_column(String, default="in_app")
     section_counts: Mapped[dict] = mapped_column(JSONB, default=dict)
@@ -62,9 +62,7 @@ class Digest(Base):
 class DigestItem(Base):
     __tablename__ = "digest_items"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     digest_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("digests.id", ondelete="CASCADE"), nullable=False, index=True
     )

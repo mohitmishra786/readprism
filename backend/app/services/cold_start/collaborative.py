@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import uuid
-from typing import Optional
+from datetime import UTC
 
 import numpy as np
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.content import ContentItem, UserContentInteraction
+from app.models.content import ContentItem
 from app.models.user import User
 from app.services.interest_graph.graph import InterestGraphManager
 from app.utils.cache import cache_get
@@ -33,12 +32,14 @@ async def get_collaborative_warmup_items(
     # Find 10 similar users via pgvector similarity
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT DISTINCT uci.user_id
                 FROM user_content_interactions uci
                 WHERE uci.user_id != :user_id
                 LIMIT 200
-            """),
+            """
+            ),
             {"user_id": str(user.id)},
         )
         candidate_user_ids = [row[0] for row in result.fetchall()]
@@ -56,7 +57,9 @@ async def get_collaborative_warmup_items(
         if other_vec is None:
             continue
         other = np.array(other_vec, dtype=np.float32)
-        sim = float(np.dot(user_vec, other) / (np.linalg.norm(user_vec) * np.linalg.norm(other) + 1e-8))
+        sim = float(
+            np.dot(user_vec, other) / (np.linalg.norm(user_vec) * np.linalg.norm(other) + 1e-8)
+        )
         user_sims.append((cuid, sim))
 
     user_sims.sort(key=lambda x: x[1], reverse=True)
@@ -66,11 +69,13 @@ async def get_collaborative_warmup_items(
         return []
 
     # Collect positively interacted items from similar users
-    from datetime import datetime, timezone, timedelta
-    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(days=14)
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.*, COUNT(*) as engagement_count
                 FROM content_items ci
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
@@ -80,7 +85,8 @@ async def get_collaborative_warmup_items(
                 GROUP BY ci.id
                 ORDER BY engagement_count DESC
                 LIMIT :limit
-            """),
+            """
+            ),
             {
                 "user_ids": top_users,
                 "cutoff": cutoff,
@@ -98,7 +104,5 @@ async def get_collaborative_warmup_items(
         return []
 
     item_ids = [row[0] for row in rows][:limit]
-    items_result = await session.execute(
-        select(ContentItem).where(ContentItem.id.in_(item_ids))
-    )
+    items_result = await session.execute(select(ContentItem).where(ContentItem.id.in_(item_ids)))
     return list(items_result.scalars().all())

@@ -13,11 +13,17 @@ from app.config import get_settings
 from app.database import Base
 
 # Import all models so Alembic can detect them
-from app.models import (  # noqa: F401
-    User, Source, Creator, CreatorPlatform,
-    ContentItem, UserContentInteraction,
-    InterestNode, InterestEdge,
-    Digest, DigestItem,
+from app.models import (
+    User,
+    Source,
+    Creator,
+    CreatorPlatform,
+    ContentItem,
+    UserContentInteraction,
+    InterestNode,
+    InterestEdge,
+    Digest,
+    DigestItem,
 )
 
 settings = get_settings()

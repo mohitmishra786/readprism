@@ -2,17 +2,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.content import UserContentInteraction
-from app.models.interest_graph import InterestNode
 from app.models.source import Source
 from app.models.user import User
-from app.services.interest_graph.graph import InterestGraphManager
 from app.services.cold_start.starter_sources import get_starter_sources
+from app.services.interest_graph.graph import InterestGraphManager
 from app.services.summarization.groq_client import GroqSummarizer
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
@@ -32,7 +29,7 @@ async def process_onboarding(
     user: User,
     interest_text: str,
     sample_ratings: list[SampleRating],
-    source_opml: Optional[str],
+    source_opml: str | None,
     session: AsyncSession,
 ) -> None:
     embedding_service = get_embedding_service()
@@ -45,7 +42,7 @@ async def process_onboarding(
 
     # 2. Embed topics and create initial nodes
     topic_embeddings = await embedding_service.encode_batch_cached(topics)
-    for label, emb in zip(topics, topic_embeddings):
+    for label, emb in zip(topics, topic_embeddings, strict=False):
         node = await graph_manager.get_or_create_node(
             user_id=user.id,
             topic_label=label,
@@ -111,8 +108,23 @@ def _fallback_topic_extract(text: str) -> list[str]:
 
     # Dedupe, drop common stop words, and cap.
     stop = {
-        "the", "and", "for", "with", "that", "this", "from", "have", "your",
-        "about", "into", "they", "will", "their", "what", "when", "are",
+        "the",
+        "and",
+        "for",
+        "with",
+        "that",
+        "this",
+        "from",
+        "have",
+        "your",
+        "about",
+        "into",
+        "they",
+        "will",
+        "their",
+        "what",
+        "when",
+        "are",
     }
     seen: set[str] = set()
     out: list[str] = []
@@ -139,9 +151,7 @@ async def _seed_starter_sources(
         return 0
 
     # Don't double-add sources the user imported via OPML.
-    existing_result = await session.execute(
-        select(Source.url).where(Source.user_id == user_id)
-    )
+    existing_result = await session.execute(select(Source.url).where(Source.user_id == user_id))
     existing_urls = {row[0] for row in existing_result.fetchall()}
 
     created = 0
@@ -171,6 +181,7 @@ async def _seed_starter_sources(
 async def _import_opml(user_id: uuid.UUID, opml_content: str, session: AsyncSession) -> None:
     try:
         import listparser
+
         result = listparser.parse(opml_content)
         for feed in result.feeds:
             url = feed.url or feed.feed or ""

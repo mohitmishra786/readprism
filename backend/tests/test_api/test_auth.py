@@ -16,10 +16,13 @@ async def test_register_creates_user(client: AsyncClient, test_user_data: dict):
 @pytest.mark.asyncio
 async def test_login_returns_token(client: AsyncClient, test_user_data: dict):
     await client.post("/api/v1/auth/register", json=test_user_data)
-    resp = await client.post("/api/v1/auth/login", json={
-        "email": test_user_data["email"],
-        "password": test_user_data["password"],
-    })
+    resp = await client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": test_user_data["email"],
+            "password": test_user_data["password"],
+        },
+    )
     assert resp.status_code == 200
     assert "access_token" in resp.json()
 

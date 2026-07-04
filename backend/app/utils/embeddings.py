@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
-from typing import Optional
 
 import numpy as np
 
@@ -13,12 +11,13 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 settings = get_settings()
 
-_embedding_service: Optional["EmbeddingService"] = None
+_embedding_service: EmbeddingService | None = None
 
 
 class EmbeddingService:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         from sentence_transformers import SentenceTransformer
+
         logger.info(f"Loading embedding model: {model_name} on {device}")
         self.model = SentenceTransformer(model_name, device=device)
         self.model_name = model_name
@@ -51,9 +50,9 @@ class EmbeddingService:
                 to_encode.append((i, text))
 
         if to_encode:
-            indices, raw_texts = zip(*to_encode)
+            indices, raw_texts = zip(*to_encode, strict=False)
             vectors = self.encode(list(raw_texts))
-            for idx, vec in zip(indices, vectors):
+            for idx, vec in zip(indices, vectors, strict=False):
                 vec_list = vec.tolist()
                 results.append((idx, vec_list))
                 cache_key = f"emb:{hashlib.sha256(raw_texts[list(indices).index(idx)].encode()).hexdigest()[:16]}"

@@ -3,13 +3,12 @@ from __future__ import annotations
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
 from app.services.ranking.signals import UserInterestGraph
 from app.utils.cache import cache_get, cache_set
-from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
-from app.config import get_settings
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -32,11 +31,15 @@ async def compute(
     if content_vec is None:
         # Enqueue embedding computation and return neutral
         from app.workers.tasks.compute_embeddings import compute_embedding_for_item
+
         compute_embedding_for_item.delay(str(content.id))
         return 0.5
 
     # Cosine similarity mapped to [0, 1]
-    sim = float(np.dot(user_vec, content_vec) / (np.linalg.norm(user_vec) * np.linalg.norm(content_vec) + 1e-8))
+    sim = float(
+        np.dot(user_vec, content_vec)
+        / (np.linalg.norm(user_vec) * np.linalg.norm(content_vec) + 1e-8)
+    )
     return (sim + 1.0) / 2.0
 
 

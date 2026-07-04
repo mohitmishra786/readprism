@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from sqlalchemy import text
@@ -44,20 +44,22 @@ async def _long_term_score(content: ContentItem, graph: UserInterestGraph) -> fl
     sims = []
     for node in core_nodes:
         node_vec = np.array(node.topic_embedding, dtype=np.float32)
-        sim = float(np.dot(content_vec, node_vec) / (np.linalg.norm(content_vec) * np.linalg.norm(node_vec) + 1e-8))
+        sim = float(
+            np.dot(content_vec, node_vec)
+            / (np.linalg.norm(content_vec) * np.linalg.norm(node_vec) + 1e-8)
+        )
         sims.append((sim + 1.0) / 2.0)
     return float(np.mean(sims)) if sims else 0.5
 
 
-async def _medium_term_score(
-    content: ContentItem, user: User, session: AsyncSession
-) -> float:
+async def _medium_term_score(content: ContentItem, user: User, session: AsyncSession) -> float:
     if content.embedding is None:
         return 0.5
-    cutoff = datetime.now(timezone.utc) - timedelta(days=28)
+    cutoff = datetime.now(UTC) - timedelta(days=28)
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.embedding
                 FROM content_items ci
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
@@ -65,7 +67,8 @@ async def _medium_term_score(
                   AND uci.created_at >= :cutoff
                   AND ci.embedding IS NOT NULL
                 LIMIT 50
-            """),
+            """
+            ),
             {"user_id": str(user.id), "cutoff": cutoff},
         )
         rows = result.fetchall()
@@ -84,15 +87,14 @@ async def _medium_term_score(
         return 0.5
 
 
-async def _short_term_adjustment(
-    content: ContentItem, user: User, session: AsyncSession
-) -> float:
+async def _short_term_adjustment(content: ContentItem, user: User, session: AsyncSession) -> float:
     if content.embedding is None:
         return 1.0
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+    cutoff = datetime.now(UTC) - timedelta(hours=72)
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.embedding
                 FROM content_items ci
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
@@ -100,7 +102,8 @@ async def _short_term_adjustment(
                   AND uci.created_at >= :cutoff
                   AND ci.id != :content_id
                   AND ci.embedding IS NOT NULL
-            """),
+            """
+            ),
             {"user_id": str(user.id), "cutoff": cutoff, "content_id": str(content.id)},
         )
         rows = result.fetchall()
@@ -108,7 +111,10 @@ async def _short_term_adjustment(
         seen_count = 0
         for row in rows:
             emb = np.array(row[0], dtype=np.float32)
-            sim = float(np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8))
+            sim = float(
+                np.dot(content_vec, emb)
+                / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
+            )
             if (sim + 1.0) / 2.0 > SIMILARITY_SATURATION_THRESHOLD:
                 seen_count += 1
         penalty = min(MAX_SATURATION_PENALTY, seen_count * SATURATION_PENALTY_PER_ITEM)
@@ -127,7 +133,7 @@ def _time_of_day_adjustment(
     window; if the candidate's length is within 50% of that median, award +0.05.
     Falls back to a static heuristic when fewer than 5 data points exist.
     """
-    now_hour = datetime.now(timezone.utc).hour
+    now_hour = datetime.now(UTC).hour
     window_start = (now_hour // 3) * 3  # 0, 3, 6, 9, 12, 15, 18, 21
 
     # Gather reading times from history items opened in the same 3-hour window
@@ -135,7 +141,7 @@ def _time_of_day_adjustment(
     for ix in interaction_history:
         if ix.opened_at is None:
             continue
-        opened_hour = ix.opened_at.astimezone(timezone.utc).hour
+        opened_hour = ix.opened_at.astimezone(UTC).hour
         if (opened_hour // 3) * 3 == window_start:
             lengths.append(ix.time_on_page_seconds or 0)
 
@@ -152,6 +158,10 @@ def _time_of_day_adjustment(
     is_morning = now_hour < 12
     if is_morning and content.reading_time_minutes is not None and content.reading_time_minutes < 8:
         return 0.05
-    if not is_morning and content.reading_time_minutes is not None and content.reading_time_minutes > 10:
+    if (
+        not is_morning
+        and content.reading_time_minutes is not None
+        and content.reading_time_minutes > 10
+    ):
         return 0.05
     return 0.0

@@ -72,6 +72,5 @@ async def send_email(
     loop is never blocked.
     """
     import asyncio
-    return await asyncio.to_thread(
-        send_email_sync, to, subject, html_body, text_body, reply_to
-    )
+
+    return await asyncio.to_thread(send_email_sync, to, subject, html_body, text_body, reply_to)

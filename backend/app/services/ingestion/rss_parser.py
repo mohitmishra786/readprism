@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Optional
+from dataclasses import dataclass
+from datetime import UTC, datetime
 
 import feedparser
 import httpx
@@ -17,12 +16,12 @@ logger = get_logger(__name__)
 class RawContentItem:
     url: str
     title: str
-    author: Optional[str] = None
-    published_at: Optional[datetime] = None
-    full_text: Optional[str] = None
-    word_count: Optional[int] = None
-    source_feed_url: Optional[str] = None
-    creator_platform_id: Optional[str] = None
+    author: str | None = None
+    published_at: datetime | None = None
+    full_text: str | None = None
+    word_count: int | None = None
+    source_feed_url: str | None = None
+    creator_platform_id: str | None = None
 
 
 def _count_words(text: str) -> int:
@@ -37,21 +36,22 @@ def _extract_text(entry: feedparser.FeedParserDict) -> str:
     return ""
 
 
-def _parse_date(entry: feedparser.FeedParserDict) -> Optional[datetime]:
+def _parse_date(entry: feedparser.FeedParserDict) -> datetime | None:
     for attr in ("published_parsed", "updated_parsed", "created_parsed"):
         value = getattr(entry, attr, None)
         if value:
             try:
                 import calendar
+
                 # struct_time from feedparser is in UTC; convert to aware datetime
                 ts = calendar.timegm(value)
-                return datetime.fromtimestamp(ts, tz=timezone.utc)
+                return datetime.fromtimestamp(ts, tz=UTC)
             except Exception:
                 pass
     return None
 
 
-async def _autodiscover_feed(page_url: str) -> Optional[str]:
+async def _autodiscover_feed(page_url: str) -> str | None:
     common_paths = ["/feed", "/rss", "/atom.xml", "/feed.xml", "/rss.xml", "/feed/rss"]
     try:
         async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
@@ -65,11 +65,13 @@ async def _autodiscover_feed(page_url: str) -> Optional[str]:
                 if href.startswith("http"):
                     return href
                 from urllib.parse import urljoin
+
                 return urljoin(page_url, href)
     except Exception as e:
         logger.debug(f"Autodiscover HTML parse failed for {page_url}: {e}")
 
-    from urllib.parse import urlparse, urljoin
+    from urllib.parse import urljoin, urlparse
+
     parsed = urlparse(page_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
     async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
@@ -77,7 +79,11 @@ async def _autodiscover_feed(page_url: str) -> Optional[str]:
             try:
                 url = urljoin(base, path)
                 resp = await client.get(url)
-                if resp.status_code == 200 and ("rss" in resp.text[:500].lower() or "atom" in resp.text[:500].lower() or "<feed" in resp.text[:500].lower()):
+                if resp.status_code == 200 and (
+                    "rss" in resp.text[:500].lower()
+                    or "atom" in resp.text[:500].lower()
+                    or "<feed" in resp.text[:500].lower()
+                ):
                     return url
             except Exception:
                 pass
@@ -100,15 +106,17 @@ async def parse_feed(url: str) -> list[RawContentItem]:
                 continue
             text = _extract_text(entry)
             word_count = _count_words(text) if text else None
-            items.append(RawContentItem(
-                url=link,
-                title=title,
-                author=getattr(entry, "author", None),
-                published_at=_parse_date(entry),
-                full_text=text or None,
-                word_count=word_count,
-                source_feed_url=url,
-            ))
+            items.append(
+                RawContentItem(
+                    url=link,
+                    title=title,
+                    author=getattr(entry, "author", None),
+                    published_at=_parse_date(entry),
+                    full_text=text or None,
+                    word_count=word_count,
+                    source_feed_url=url,
+                )
+            )
         return items
     except Exception as e:
         logger.error(f"Failed to parse feed {url}: {e}")

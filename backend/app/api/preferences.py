@@ -60,8 +60,7 @@ async def get_interest_graph(
 
     node_ids = {n.id for n in nodes}
     edges_result = await session.execute(
-        select(InterestEdge)
-        .where(
+        select(InterestEdge).where(
             InterestEdge.user_id == current_user.id,
             InterestEdge.from_node_id.in_(node_ids),
             InterestEdge.to_node_id.in_(node_ids),

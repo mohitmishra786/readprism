@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-import json
 import uuid
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,7 +34,7 @@ class UserMetaWeights:
     ) -> None:
         self.user_id = user_id
         self.weights = weights or dict(DEFAULT_WEIGHTS)
-        self.last_updated = last_updated or datetime.now(timezone.utc)
+        self.last_updated = last_updated or datetime.now(UTC)
         self.update_count = update_count
         self._normalize()
 
@@ -54,7 +52,7 @@ class UserMetaWeights:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "UserMetaWeights":
+    def from_dict(cls, data: dict) -> UserMetaWeights:
         return cls(
             user_id=uuid.UUID(data["user_id"]),
             weights=data["weights"],
@@ -71,7 +69,9 @@ async def get_meta_weights(user_id: uuid.UUID, session: AsyncSession) -> UserMet
 
     # Fall back to DB
     from sqlalchemy import select
+
     from app.models.meta_weights import UserMetaWeights as UserMetaWeightsModel
+
     result = await session.execute(
         select(UserMetaWeightsModel).where(UserMetaWeightsModel.user_id == user_id)
     )
@@ -142,15 +142,16 @@ async def update_meta_weights(
     weights_obj.weights = weights
     weights_obj._normalize()
     weights_obj.update_count += 1
-    weights_obj.last_updated = datetime.now(timezone.utc)
+    weights_obj.last_updated = datetime.now(UTC)
 
     cache_key = f"meta_weights:{user_id}"
     await cache_set(cache_key, weights_obj.to_dict(), ttl_seconds=CACHE_TTL)
 
     # Persist to DB (upsert)
     from sqlalchemy import select
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
     from app.models.meta_weights import UserMetaWeights as UserMetaWeightsModel
+
     result = await session.execute(
         select(UserMetaWeightsModel).where(UserMetaWeightsModel.user_id == user_id)
     )

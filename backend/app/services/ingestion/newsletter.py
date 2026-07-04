@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import email as email_lib
 import uuid
-from typing import Optional
 
 from app.services.ingestion.rss_parser import RawContentItem
 from app.utils.cache import cache_set
@@ -45,8 +44,8 @@ async def process_inbound_email(
     subject: str,
     body: str,
     message_id: str,
-    user_id: Optional[str] = None,
-) -> Optional[RawContentItem]:
+    user_id: str | None = None,
+) -> RawContentItem | None:
     """
     Process a pre-parsed inbound email (from webhook) and store it in Redis
     for the dispatcher to pick up on the next ingestion cycle.
@@ -55,12 +54,16 @@ async def process_inbound_email(
         uid = user_id or "unknown"
         msg_key = message_id.strip("<>") if message_id else str(uuid.uuid4())
         cache_key = f"newsletter:{uid}:{msg_key}"
-        await cache_set(cache_key, {
-            "subject": subject,
-            "sender": sender,
-            "body": body,
-            "message_id": msg_key,
-        }, ttl_seconds=48 * 3600)
+        await cache_set(
+            cache_key,
+            {
+                "subject": subject,
+                "sender": sender,
+                "body": body,
+                "message_id": msg_key,
+            },
+            ttl_seconds=48 * 3600,
+        )
 
         return RawContentItem(
             url=f"newsletter://{uid}/{msg_key}",
@@ -74,7 +77,7 @@ async def process_inbound_email(
         return None
 
 
-async def process_raw_email(raw_email: str, user_id: uuid.UUID) -> Optional[RawContentItem]:
+async def process_raw_email(raw_email: str, user_id: uuid.UUID) -> RawContentItem | None:
     """Parse a raw RFC 2822 email string and store it. Legacy path."""
     try:
         msg = email_lib.message_from_string(raw_email)

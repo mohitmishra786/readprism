@@ -1,0 +1,57 @@
+# Ruff configuration for ReadPrism backend.
+# Docs: https://docs.astral.sh/ruff/configuration/
+
+target-version = "py311"
+line-length = 100
+extend-exclude = ["migrations/versions"]
+
+[lint]
+# Default selection: a pragmatic subset of pycodestyle, pyflakes, and bugbear.
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF"]
+ignore = [
+  # E712: "Avoid equality comparisons to True". Ruff cannot tell that these are
+  # SQLAlchemy filter expressions (`.where(Model.field == True)`) where `== True`
+  # is the correct, idiomatic form — `.is_(True)` works but `== True` is standard
+  # in SQLAlchemy queries. Flagging them produces false positives throughout the
+  # ranking/ingestion code.
+  "E712",
+
+  # E402: "Module level import not at top of file". Celery app config and a few
+  # lazy imports legitimately place imports after runtime setup.
+  "E402",
+
+  # E501: line too long. Enforcing a hard 100-char limit forces awkward wraps in
+  # SQL queries, test assertions, and log strings. We rely on review for length.
+  "E501",
+
+  # B008: "Do not perform function call in argument defaults". This is the
+  # standard FastAPI dependency-injection pattern (`Depends(get_db)`); it is
+  # intentional and safe.
+  "B008",
+
+  # B904: "raise from" in except — noisy for this codebase; revisit later.
+  "B904",
+
+  # RUF001/002/003: ambiguous unicode characters in docstrings/strings. The
+  # en-dashes and × multiplication signs in docstrings are intentional.
+  "RUF001",
+  "RUF002",
+  "RUF003",
+
+  # SIM102: nested if — often clearer than collapsing in this codebase.
+  "SIM102",
+  # SIM108: ternary instead of if/else — readability preference.
+  "SIM108",
+  # SIM117: nested with — fine for clarity.
+  "SIM117",
+]
+
+[lint.per-file-ignores]
+# Test files commonly use fixtures, unused-looking imports, and long assertion
+# lines that shouldn't be reformatted.
+"tests/**/*.py" = ["F401", "F811", "F841", "E501"]
+# Migrations are generated; don't lint them strictly.
+"migrations/**/*.py" = ["E", "F", "W", "I", "B"]
+
+[lint.isort]
+known-first-party = ["app"]

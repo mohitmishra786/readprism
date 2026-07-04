@@ -11,13 +11,14 @@ members. Strategy:
 from __future__ import annotations
 
 import uuid
+from datetime import UTC
 
 import numpy as np
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.team import Team, TeamMember
+from app.models.team import TeamMember
 from app.services.interest_graph.graph import InterestGraphManager
 from app.utils.logging import get_logger
 
@@ -47,9 +48,7 @@ async def _merged_interest_vector(
     return merged / norm if norm > 0 else merged
 
 
-async def build_team_digest(
-    team_id: uuid.UUID, session: AsyncSession
-) -> dict:
+async def build_team_digest(team_id: uuid.UUID, session: AsyncSession) -> dict:
     """Build a ranked team digest.
 
     Returns a dict with the team id, the merged-interest summary, and a list of
@@ -72,9 +71,9 @@ async def build_team_digest(
     # (opened, saved, or rated) in the last 7 days. We scope to members'
     # interactions rather than all recent content, so the candidate set is
     # genuinely team-relevant and the join doesn't pull in unrelated items.
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
 
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    cutoff = datetime.now(UTC) - timedelta(days=7)
     candidate_result = await session.execute(
         select(ContentItem)
         .join(

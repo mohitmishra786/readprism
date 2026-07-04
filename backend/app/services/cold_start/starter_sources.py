@@ -16,60 +16,160 @@ from __future__ import annotations
 # Keep feeds to reputable, RSS-friendly publications to minimize scraping burden.
 STARTER_SOURCES: dict[str, list[dict]] = {
     "technology": [
-        {"name": "Hacker News (front page)", "url": "https://news.ycombinator.com/", "feed_url": "https://news.ycombinator.com/rss"},
-        {"name": "Ars Technica", "url": "https://arstechnica.com/", "feed_url": "https://feeds.arstechnica.com/arstechnica/index"},
-        {"name": "The Verge", "url": "https://www.theverge.com/", "feed_url": "https://www.theverge.com/rss/index.xml"},
+        {
+            "name": "Hacker News (front page)",
+            "url": "https://news.ycombinator.com/",
+            "feed_url": "https://news.ycombinator.com/rss",
+        },
+        {
+            "name": "Ars Technica",
+            "url": "https://arstechnica.com/",
+            "feed_url": "https://feeds.arstechnica.com/arstechnica/index",
+        },
+        {
+            "name": "The Verge",
+            "url": "https://www.theverge.com/",
+            "feed_url": "https://www.theverge.com/rss/index.xml",
+        },
     ],
     "ai": [
-        {"name": "Simon Willison", "url": "https://simonwillison.net/", "feed_url": "https://simonwillison.net/atom/everything/"},
-        {"name": "Import AI", "url": "https://importai.substack.com/", "feed_url": "https://importai.substack.com/feed"},
-        {"name": "Hugging Face Blog", "url": "https://huggingface.co/blog", "feed_url": "https://huggingface.co/blog/feed.xml"},
+        {
+            "name": "Simon Willison",
+            "url": "https://simonwillison.net/",
+            "feed_url": "https://simonwillison.net/atom/everything/",
+        },
+        {
+            "name": "Import AI",
+            "url": "https://importai.substack.com/",
+            "feed_url": "https://importai.substack.com/feed",
+        },
+        {
+            "name": "Hugging Face Blog",
+            "url": "https://huggingface.co/blog",
+            "feed_url": "https://huggingface.co/blog/feed.xml",
+        },
     ],
     "machine_learning": [
-        {"name": "Google Research Blog", "url": "https://research.google/blog/", "feed_url": "https://research.google/blog/rss/"},
-        {"name": "Machine Learning Mastery", "url": "https://machinelearningmastery.com/", "feed_url": "https://machinelearningmastery.com/feed/"},
+        {
+            "name": "Google Research Blog",
+            "url": "https://research.google/blog/",
+            "feed_url": "https://research.google/blog/rss/",
+        },
+        {
+            "name": "Machine Learning Mastery",
+            "url": "https://machinelearningmastery.com/",
+            "feed_url": "https://machinelearningmastery.com/feed/",
+        },
     ],
     "programming": [
-        {"name": "Hacker News (front page)", "url": "https://news.ycombinator.com/", "feed_url": "https://news.ycombinator.com/rss"},
+        {
+            "name": "Hacker News (front page)",
+            "url": "https://news.ycombinator.com/",
+            "feed_url": "https://news.ycombinator.com/rss",
+        },
     ],
     "startups": [
-        {"name": "Paul Graham essays", "url": "http://www.paulgraham.com/", "feed_url": "https://www.aaronstacy.com/rss/paulgraham.xml"},
-        {"name": "Stratechery", "url": "https://stratechery.com/", "feed_url": "https://stratechery.com/feed/"},
+        {
+            "name": "Paul Graham essays",
+            "url": "http://www.paulgraham.com/",
+            "feed_url": "https://www.aaronstacy.com/rss/paulgraham.xml",
+        },
+        {
+            "name": "Stratechery",
+            "url": "https://stratechery.com/",
+            "feed_url": "https://stratechery.com/feed/",
+        },
     ],
     "business": [
-        {"name": "Harvard Business Review", "url": "https://hbr.org/", "feed_url": "https://hbr.org/the-latest/rss"},
-        {"name": "Stratechery", "url": "https://stratechery.com/", "feed_url": "https://stratechery.com/feed/"},
+        {
+            "name": "Harvard Business Review",
+            "url": "https://hbr.org/",
+            "feed_url": "https://hbr.org/the-latest/rss",
+        },
+        {
+            "name": "Stratechery",
+            "url": "https://stratechery.com/",
+            "feed_url": "https://stratechery.com/feed/",
+        },
     ],
     "finance": [
-        {"name": "Bloomberg Markets", "url": "https://www.bloomberg.com/markets", "feed_url": "https://feeds.bloomberg.com/markets/news.rss"},
+        {
+            "name": "Bloomberg Markets",
+            "url": "https://www.bloomberg.com/markets",
+            "feed_url": "https://feeds.bloomberg.com/markets/news.rss",
+        },
     ],
     "science": [
-        {"name": "Nature", "url": "https://www.nature.com/", "feed_url": "https://www.nature.com/nature.rss"},
-        {"name": "Quanta Magazine", "url": "https://www.quantamagazine.org/", "feed_url": "https://www.quantamagazine.org/feed/"},
+        {
+            "name": "Nature",
+            "url": "https://www.nature.com/",
+            "feed_url": "https://www.nature.com/nature.rss",
+        },
+        {
+            "name": "Quanta Magazine",
+            "url": "https://www.quantamagazine.org/",
+            "feed_url": "https://www.quantamagazine.org/feed/",
+        },
     ],
     "design": [
-        {"name": "Smashing Magazine", "url": "https://www.smashingmagazine.com/", "feed_url": "https://www.smashingmagazine.com/feed/"},
-        {"name": "A List Apart", "url": "https://alistapart.com/", "feed_url": "https://alistapart.com/main/feed/"},
+        {
+            "name": "Smashing Magazine",
+            "url": "https://www.smashingmagazine.com/",
+            "feed_url": "https://www.smashingmagazine.com/feed/",
+        },
+        {
+            "name": "A List Apart",
+            "url": "https://alistapart.com/",
+            "feed_url": "https://alistapart.com/main/feed/",
+        },
     ],
     "product": [
-        {"name": "Lenny's Newsletter", "url": "https://www.lennysnewsletter.com/", "feed_url": "https://www.lennysnewsletter.com/feed"},
-        {"name": "Mind the Product", "url": "https://www.mindtheproduct.com/", "feed_url": "https://www.mindtheproduct.com/feed/"},
+        {
+            "name": "Lenny's Newsletter",
+            "url": "https://www.lennysnewsletter.com/",
+            "feed_url": "https://www.lennysnewsletter.com/feed",
+        },
+        {
+            "name": "Mind the Product",
+            "url": "https://www.mindtheproduct.com/",
+            "feed_url": "https://www.mindtheproduct.com/feed/",
+        },
     ],
     "distributed_systems": [
-        {"name": "Martin Kleppmann", "url": "https://martin.kleppmann.com/", "feed_url": "https://martin.kleppmann.com/feed/"},
+        {
+            "name": "Martin Kleppmann",
+            "url": "https://martin.kleppmann.com/",
+            "feed_url": "https://martin.kleppmann.com/feed/",
+        },
     ],
     "data_engineering": [
         {"name": "Julia Evans", "url": "https://jvns.ca/", "feed_url": "https://jvns.ca/atom.xml"},
     ],
     "security": [
-        {"name": "Krebs on Security", "url": "https://krebsonsecurity.com/", "feed_url": "https://krebsonsecurity.com/feed/"},
-        {"name": "Schneier on Security", "url": "https://www.schneier.com/", "feed_url": "https://www.schneier.com/feed/atom/"},
+        {
+            "name": "Krebs on Security",
+            "url": "https://krebsonsecurity.com/",
+            "feed_url": "https://krebsonsecurity.com/feed/",
+        },
+        {
+            "name": "Schneier on Security",
+            "url": "https://www.schneier.com/",
+            "feed_url": "https://www.schneier.com/feed/atom/",
+        },
     ],
 }
 
 # Synonyms / aliases so topic text maps to clusters even when worded differently.
 CLUSTER_ALIASES: dict[str, list[str]] = {
-    "ai": ["artificial intelligence", "llm", "llms", "large language model", "large language models", "generative ai", "deep learning"],
+    "ai": [
+        "artificial intelligence",
+        "llm",
+        "llms",
+        "large language model",
+        "large language models",
+        "generative ai",
+        "deep learning",
+    ],
     "machine_learning": ["ml", "neural network", "data science"],
     "programming": ["software engineering", "coding", "developer", "software development"],
     "startups": ["entrepreneurship", "venture capital", "startup"],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -68,7 +68,7 @@ async def record_interaction(
         # read_completion_pct was truthy, skewing the /content/history and
         # time-of-day-learning queries.)
         if not interaction.opened_at and not body.skipped:
-            interaction.opened_at = datetime.now(timezone.utc)
+            interaction.opened_at = datetime.now(UTC)
         # Set saved_read_at when a previously saved article is fully read
         if (
             interaction.saved
@@ -76,7 +76,7 @@ async def record_interaction(
             and body.read_completion_pct >= 0.9
             and interaction.saved_read_at is None
         ):
-            interaction.saved_read_at = datetime.now(timezone.utc)
+            interaction.saved_read_at = datetime.now(UTC)
         # A genuine re-read: this write indicates completion, but the article was
         # already completed in a prior session. Counting every high-completion
         # write (old behavior) inflated re_read_count when the reader merely
@@ -91,7 +91,7 @@ async def record_interaction(
             # than this one — i.e. there is a meaningful gap since opened_at.
             and (
                 interaction.opened_at is None
-                or (datetime.now(timezone.utc) - interaction.opened_at).total_seconds() > 300
+                or (datetime.now(UTC) - interaction.opened_at).total_seconds() > 300
             )
         ):
             interaction.re_read_count = (interaction.re_read_count or 0) + 1
@@ -108,7 +108,7 @@ async def record_interaction(
             explicit_rating_reason=body.explicit_rating_reason,
             saved=body.saved,
             skipped=body.skipped,
-            opened_at=datetime.now(timezone.utc) if not body.skipped else None,
+            opened_at=datetime.now(UTC) if not body.skipped else None,
         )
         session.add(interaction)
 
@@ -116,6 +116,7 @@ async def record_interaction(
 
     # Enqueue interest graph update
     from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
+
     update_interest_graph_for_interaction.delay(str(interaction.id))
 
     return UserContentInteractionRead.model_validate(interaction)
@@ -161,6 +162,7 @@ async def adjust_interests(
             node.weight = min(1.0, node.weight + 0.3)
         else:
             from app.utils.embeddings import get_embedding_service
+
             emb = await get_embedding_service().encode_single(body.topic)
             node = InterestNode(
                 user_id=current_user.id,
@@ -172,13 +174,14 @@ async def adjust_interests(
     elif body.action == "suppress" and node:
         node.weight = max(0.0, node.weight - 0.3)
         if body.duration_days is not None and body.duration_days > 0:
-            node.suppressed_until = datetime.now(timezone.utc) + timedelta(days=body.duration_days)
+            node.suppressed_until = datetime.now(UTC) + timedelta(days=body.duration_days)
     elif body.action == "remove" and node:
         node.weight = 0.01
 
     await session.flush()
 
     from app.utils.cache import cache_delete
+
     await cache_delete(f"interest_vec:{current_user.id}")
 
     return {"status": "ok", "topic": body.topic, "action": body.action}

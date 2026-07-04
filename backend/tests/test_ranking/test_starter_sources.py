@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from app.services.cold_start.starter_sources import (
+    STARTER_SOURCES,
     get_starter_sources,
     match_clusters,
-    STARTER_SOURCES,
 )
 
 
@@ -51,7 +51,16 @@ def test_get_starter_sources_dedupes_across_clusters():
 def test_get_starter_sources_respects_max():
     """The max_sources cap is honored."""
     sources = get_starter_sources(
-        ["technology", "ai", "programming", "startups", "business", "science", "design", "security"],
+        [
+            "technology",
+            "ai",
+            "programming",
+            "startups",
+            "business",
+            "science",
+            "design",
+            "security",
+        ],
         max_sources=3,
     )
     assert len(sources) <= 3

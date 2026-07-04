@@ -8,17 +8,18 @@ import pytest
 
 from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
 
-
-MOCK_GROQ_RESPONSE = json.dumps({
-    "headline": "Test article headline",
-    "brief": "This is a two sentence brief. It covers the main point.",
-    "detailed": "This is a detailed paragraph covering the key takeaways for a sophisticated reader.",
-    "depth_score": 0.75,
-    "is_original_reporting": True,
-    "has_citations": True,
-    "topic_clusters": ["machine learning", "neural networks"],
-    "reading_time_minutes": 7,
-})
+MOCK_GROQ_RESPONSE = json.dumps(
+    {
+        "headline": "Test article headline",
+        "brief": "This is a two sentence brief. It covers the main point.",
+        "detailed": "This is a detailed paragraph covering the key takeaways for a sophisticated reader.",
+        "depth_score": 0.75,
+        "is_original_reporting": True,
+        "has_citations": True,
+        "topic_clusters": ["machine learning", "neural networks"],
+        "reading_time_minutes": 7,
+    }
+)
 
 
 @pytest.mark.asyncio
@@ -43,6 +44,7 @@ async def test_groq_summarizer_calls_correct_model():
 
     call_kwargs = mock_client.chat.completions.create.call_args[1]
     from app.config import get_settings
+
     settings = get_settings()
     assert call_kwargs["model"] == settings.groq_summarization_model
 

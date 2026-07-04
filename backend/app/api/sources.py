@@ -41,6 +41,7 @@ async def add_source(
 
     # Enqueue initial ingestion
     from app.workers.tasks.ingest_feeds import ingest_all_feeds
+
     ingest_all_feeds.delay()
 
     return SourceRead.model_validate(source)
@@ -67,6 +68,7 @@ async def import_opml(
 
     try:
         import listparser
+
         result = listparser.parse(opml_text)
         created = 0
         for feed in result.feeds:
@@ -117,7 +119,12 @@ async def update_source(
     return SourceRead.model_validate(source)
 
 
-@router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
+@router.delete(
+    "/{source_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def delete_source(
     source_id: uuid.UUID,
     session: AsyncSession = Depends(get_db),

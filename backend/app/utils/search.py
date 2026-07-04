@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -81,9 +81,7 @@ async def search_content(
                 "highlightPostTag": "</mark>",
             }
             if user_source_ids:
-                payload["filter"] = " OR ".join(
-                    [f'source_id = "{sid}"' for sid in user_source_ids]
-                )
+                payload["filter"] = " OR ".join([f'source_id = "{sid}"' for sid in user_source_ids])
             resp = await client.post(
                 f"{settings.meilisearch_url}/indexes/{INDEX_NAME}/search",
                 headers=_headers(),

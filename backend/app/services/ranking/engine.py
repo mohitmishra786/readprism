@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import math
-from typing import Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +19,7 @@ async def rank_content_for_user(
     content_items: list[ContentItem],
     session: AsyncSession,
     limit: int = 100,
-) -> list[Tuple[ContentItem, float, dict]]:
+) -> list[tuple[ContentItem, float, dict]]:
     if not content_items:
         return []
 
@@ -33,15 +32,14 @@ async def rank_content_for_user(
             UserContentInteraction.prs_score.isnot(None),
         )
     )
-    cached_map: dict = {
-        ix.content_item_id: ix.prs_score
-        for ix in cached_result.scalars().all()
-    }
+    cached_map: dict = {ix.content_item_id: ix.prs_score for ix in cached_result.scalars().all()}
 
     items_needing_live_prs = [item for item in content_items if item.id not in cached_map]
     cache_hits = len(content_items) - len(items_needing_live_prs)
     if cache_hits:
-        logger.debug(f"PRS cache: {cache_hits} hits, {len(items_needing_live_prs)} misses for user {user.id}")
+        logger.debug(
+            f"PRS cache: {cache_hits} hits, {len(items_needing_live_prs)} misses for user {user.id}"
+        )
 
     # For items without a cached score, compute live (batched)
     live_scores: dict = {}
@@ -52,7 +50,7 @@ async def rank_content_for_user(
         tasks = [compute_prs(item, user, session) for item in batch]
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for item, result in zip(batch, batch_results):
+        for item, result in zip(batch, batch_results, strict=False):
             if isinstance(result, Exception):
                 logger.warning(f"PRS live computation failed for {item.id}: {result}")
                 live_scores[item.id] = 0.0
@@ -63,12 +61,14 @@ async def rank_content_for_user(
                 live_breakdowns[item.id] = breakdown
 
     # Assemble final list
-    all_results: list[Tuple[ContentItem, float, dict]] = []
+    all_results: list[tuple[ContentItem, float, dict]] = []
     for item in content_items:
         if item.id in cached_map:
             all_results.append((item, cached_map[item.id], {"_cached": True}))
         else:
-            all_results.append((item, live_scores.get(item.id, 0.0), live_breakdowns.get(item.id, {})))
+            all_results.append(
+                (item, live_scores.get(item.id, 0.0), live_breakdowns.get(item.id, {}))
+            )
 
     # Sort by PRS descending
     all_results.sort(key=lambda x: x[1], reverse=True)
@@ -76,7 +76,7 @@ async def rank_content_for_user(
     # Mark bottom 15% as serendipity candidates
     if all_results:
         threshold_idx = math.ceil(len(all_results) * 0.85)
-        for idx, (item, prs, breakdown) in enumerate(all_results):
+        for idx, (_item, _prs, breakdown) in enumerate(all_results):
             if idx >= threshold_idx:
                 breakdown["_serendipity_candidate"] = True
 

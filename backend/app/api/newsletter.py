@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import APIRouter, HTTPException, Request, status
 
 from app.services.ingestion.newsletter import process_inbound_email
-from app.utils.cache import get_redis
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/newsletter", tags=["newsletter"])
