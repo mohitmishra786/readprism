@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -42,12 +42,13 @@ async def test_scorer_returns_score_between_0_and_1():
 
     session.execute = AsyncMock(side_effect=lambda *a, **k: _make_result())
 
-    with patch("app.services.ranking.meta_weights.cache_get", return_value=None), patch(
-        "app.services.ranking.meta_weights.cache_set", return_value=True
-    ), patch("app.services.ranking.signals.semantic.cache_get", return_value=None), patch(
-        "app.services.ranking.signals.semantic.cache_set", return_value=True
-    ), patch("app.services.ranking.signals.content_quality.cache_get", return_value=None), patch(
-        "app.services.ranking.signals.content_quality.cache_set", return_value=True
+    with (
+        patch("app.services.ranking.meta_weights.cache_get", return_value=None),
+        patch("app.services.ranking.meta_weights.cache_set", return_value=True),
+        patch("app.services.ranking.signals.semantic.cache_get", return_value=None),
+        patch("app.services.ranking.signals.semantic.cache_set", return_value=True),
+        patch("app.services.ranking.signals.content_quality.cache_get", return_value=None),
+        patch("app.services.ranking.signals.content_quality.cache_set", return_value=True),
     ):
         prs, breakdown = await compute_prs(content, user, session)
 

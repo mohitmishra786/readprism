@@ -1,4 +1,5 @@
 """Tests for the starter-source cold-start pack."""
+
 from __future__ import annotations
 
 from app.services.cold_start.starter_sources import (

@@ -5,6 +5,7 @@ that matter for correctness of the *batch* logic: the short-circuit when
 there are no users or items, and that tasks are enqueued only for missing
 PRS scores. DB access is mocked.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -85,8 +86,11 @@ async def test_precompute_enqueues_missing_prs_only():
 
     enqueued: list[tuple[str, str]] = []
 
-    with patch("app.database.AsyncSessionLocal") as session_ctx, patch.object(
-        prs_task.compute_prs_for_user_item, "delay", lambda u, c: enqueued.append((u, c))
+    with (
+        patch("app.database.AsyncSessionLocal") as session_ctx,
+        patch.object(
+            prs_task.compute_prs_for_user_item, "delay", lambda u, c: enqueued.append((u, c))
+        ),
     ):
         session_ctx.return_value.__aenter__ = AsyncMock(return_value=fake_session)
         session_ctx.return_value.__aexit__ = AsyncMock(return_value=None)

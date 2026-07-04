@@ -47,11 +47,12 @@ async def test_onboarding_idempotent_returns_409(
 
     # Patch the expensive internals (Groq + embeddings) so the real onboarding
     # flow runs and sets onboarding_complete=True, making the second call 409.
-    with patch(
-        "app.services.cold_start.onboarding.GroqSummarizer",
-    ) as mock_groq_cls, patch(
-        "app.services.cold_start.onboarding.get_embedding_service"
-    ) as mock_emb_svc:
+    with (
+        patch(
+            "app.services.cold_start.onboarding.GroqSummarizer",
+        ) as mock_groq_cls,
+        patch("app.services.cold_start.onboarding.get_embedding_service") as mock_emb_svc,
+    ):
         mock_groq = AsyncMock()
         mock_groq.extract_topics = AsyncMock(return_value=["technology"])
         mock_groq_cls.return_value = mock_groq

@@ -37,6 +37,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create .env from example (CI has no .env)
+        # docker-compose.yml references env_file: .env, which is gitignored and
+        # therefore absent in CI. Copy the committed example so compose can load.
+        run: cp .env.example .env
+
       - name: Build backend image
         run: docker compose build backend
 

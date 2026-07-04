@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.ingestion.rss_parser import RawContentItem, parse_feed
+from app.services.ingestion.rss_parser import parse_feed
 
 SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">

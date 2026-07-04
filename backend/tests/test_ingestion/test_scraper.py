@@ -6,6 +6,7 @@ made. Covers:
 - robots.txt enforcement (disallowed → None)
 - graceful None when all fetch strategies fail
 """
+
 from __future__ import annotations
 
 import pytest

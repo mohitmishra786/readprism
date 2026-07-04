@@ -8,6 +8,7 @@ members. Strategy:
    small slice from each member's personal niche, so individuals still see
    their own specialty content reflected.
 """
+
 from __future__ import annotations
 
 import uuid

@@ -10,6 +10,7 @@ Three targets, each serving a different PKM workflow:
 All three read from the same source: items the user has saved
 (`UserContentInteraction.saved == True`) and optionally fully read.
 """
+
 from __future__ import annotations
 
 import uuid

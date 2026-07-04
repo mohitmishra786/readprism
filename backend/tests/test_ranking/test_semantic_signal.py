@@ -27,8 +27,9 @@ async def test_high_similarity_scores_above_threshold():
     graph = UserInterestGraph(nodes=[node], edges=[])
     session = AsyncMock()
 
-    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None), patch(
-        "app.services.ranking.signals.semantic.cache_set", return_value=True
+    with (
+        patch("app.services.ranking.signals.semantic.cache_get", return_value=None),
+        patch("app.services.ranking.signals.semantic.cache_set", return_value=True),
     ):
         score = await compute(content, user, [], graph, session)
 
@@ -53,8 +54,9 @@ async def test_low_similarity_scores_below_threshold():
     graph = UserInterestGraph(nodes=[node], edges=[])
     session = AsyncMock()
 
-    with patch("app.services.ranking.signals.semantic.cache_get", return_value=None), patch(
-        "app.services.ranking.signals.semantic.cache_set", return_value=True
+    with (
+        patch("app.services.ranking.signals.semantic.cache_get", return_value=None),
+        patch("app.services.ranking.signals.semantic.cache_set", return_value=True),
     ):
         score = await compute(content, user, [], graph, session)
 

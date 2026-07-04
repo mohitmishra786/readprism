@@ -10,6 +10,7 @@ well-maintained, full-text-friendly, and broad enough to seed a real feed.
 Topics are matched case-insensitively as substrings against the user's
 extracted interest topics.
 """
+
 from __future__ import annotations
 
 # Each entry: cluster keyword(s) → list of seed sources.

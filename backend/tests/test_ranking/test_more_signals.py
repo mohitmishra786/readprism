@@ -4,10 +4,11 @@ These mirror the convention in test_semantic_signal.py: construct MagicMock
 content/user objects with controlled attributes, patch cache/network surfaces,
 and assert the score lands where the math should put it.
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -75,9 +76,10 @@ async def test_content_quality_caches_and_returns_cached():
     graph = UserInterestGraph(nodes=[], edges=[])
     session = AsyncMock()
 
-    with patch(
-        "app.services.ranking.signals.content_quality.cache_get", side_effect=fake_get
-    ), patch("app.services.ranking.signals.content_quality.cache_set", side_effect=fake_set):
+    with (
+        patch("app.services.ranking.signals.content_quality.cache_get", side_effect=fake_get),
+        patch("app.services.ranking.signals.content_quality.cache_set", side_effect=fake_set),
+    ):
         first = await cq.compute(content, user, [], graph, session)
         second = await cq.compute(content, user, [], graph, session)
 

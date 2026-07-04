@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time
 from unittest.mock import MagicMock, patch
 
 import pytest

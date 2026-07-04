@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.ranking.signals import UserInterestGraph
 from app.services.ranking.signals.temporal_context import (
     MAX_SATURATION_PENALTY,
     SATURATION_PENALTY_PER_ITEM,

@@ -3,9 +3,10 @@
 The Obsidian path is pure (file generation), so it's directly unit-testable.
 Notion/Readwise are HTTP-bound and covered by their error-path validation only.
 """
+
 from __future__ import annotations
 
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 from app.services.integrations.export import _slugify, _to_markdown

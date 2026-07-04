@@ -7,6 +7,7 @@ ContentItem-like objects. This exercises the rules the spec promises:
 - deep-reads eligibility by reading time
 - creator-section dedup (max 2 per creator)
 """
+
 from __future__ import annotations
 
 import uuid

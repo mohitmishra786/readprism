@@ -8,6 +8,7 @@ Obsidian requires no credentials (file-based export). Notion and Readwise take
 per-user tokens supplied in the request body, never stored server-side by
 default.
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status

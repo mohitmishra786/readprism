@@ -4,6 +4,7 @@ Covers the platform feed URL builders (Substack/Medium/YouTube/Reddit/podcast)
 and the honest-warning paths for closed platforms (Twitter/LinkedIn). HTTP
 fetches are mocked so no network is required.
 """
+
 from __future__ import annotations
 
 import uuid

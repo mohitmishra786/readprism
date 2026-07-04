@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient

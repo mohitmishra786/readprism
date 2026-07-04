@@ -4,6 +4,7 @@ A Team groups multiple Users; a TeamDigest is built by merging members' shared
 interest profiles — promoting content that's broadly relevant across the team
 while surfacing niche items from any single member's interests.
 """
+
 from __future__ import annotations
 
 import uuid

@@ -3,6 +3,7 @@
 Team capability is gated to the `team` tier. Only team owners can add/remove
 members; any member can trigger a digest build.
 """
+
 from __future__ import annotations
 
 import uuid

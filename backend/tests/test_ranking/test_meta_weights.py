@@ -59,10 +59,13 @@ async def test_weight_update_moves_correct_direction():
 
     pairs = [(digest_item, interaction)] * 25  # enough for update
 
-    with __import__("unittest.mock").mock.patch(
-        "app.services.ranking.meta_weights.cache_set", return_value=True
-    ), __import__("unittest.mock").mock.patch(
-        "app.services.ranking.meta_weights.cache_get", return_value=None
+    with (
+        __import__("unittest.mock").mock.patch(
+            "app.services.ranking.meta_weights.cache_set", return_value=True
+        ),
+        __import__("unittest.mock").mock.patch(
+            "app.services.ranking.meta_weights.cache_get", return_value=None
+        ),
     ):
         result = await update_meta_weights(user_id, pairs, session)
 
