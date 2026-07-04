@@ -45,8 +45,10 @@ jobs:
       - name: Build backend image
         run: docker compose build backend
 
-      - name: Start DB + Redis
-        run: docker compose up -d db redis
+      - name: Start DB + Redis + Backend
+        # Backend is needed for `docker compose exec backend ...` (migrations,
+        # pytest). It depends on db+redis being healthy, which compose enforces.
+        run: docker compose up -d db redis backend
 
       - name: Wait for DB to be healthy (hard fail if not ready)
         run: |
@@ -58,6 +60,17 @@ jobs:
             sleep 3
           done
           echo "DB did not become healthy in time"; docker compose logs db; exit 1
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps backend | grep -q "healthy"; then echo "Backend healthy"; exit 0; fi
+            sleep 3
+          done
+          # Backend may not have a healthcheck that passes quickly in CI (model
+          # load). If it's running, proceed even if not yet "healthy".
+          if docker compose ps backend | grep -q "Up"; then echo "Backend running (proceeding)"; exit 0; fi
+          echo "Backend not running"; docker compose logs backend; exit 1
 
       - name: Create test database + pgvector extension
         run: |
