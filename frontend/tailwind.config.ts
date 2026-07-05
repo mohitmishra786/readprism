@@ -53,6 +53,8 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
+        // Display accent for the landing hero wordmark + italic headline.
+        playfair: ['"Playfair Display"', "serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
       fontSize: {
