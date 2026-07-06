@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from sqlalchemy import select, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
@@ -35,7 +35,8 @@ async def compute(
     # pgvector similarity query for top-20 most similar interacted items
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.embedding, uci.read_completion_pct
                 FROM content_items ci
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
@@ -44,7 +45,8 @@ async def compute(
                   AND ci.embedding IS NOT NULL
                 ORDER BY ci.embedding <=> CAST(:embedding AS vector)
                 LIMIT 20
-            """),
+            """
+            ),
             {"user_id": str(user.id), "embedding": str(content.embedding)},
         )
         rows = result.fetchall()
@@ -62,7 +64,9 @@ async def compute(
         if emb_raw is None:
             continue
         emb = np.array(emb_raw, dtype=np.float32)
-        sim = float(np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8))
+        sim = float(
+            np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
+        )
         sim = (sim + 1.0) / 2.0
         similarities.append(sim)
         completions.append(float(completion))

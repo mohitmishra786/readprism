@@ -3,6 +3,7 @@
 Focuses on the URL-dedup logic (the unit-testable surface). The RSS parsing
 and scraping entry points are mocked so no network or DB is required.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -79,13 +80,16 @@ async def test_dispatch_scraped_source_uses_scraper():
     existing_result.fetchall.return_value = []
     session.execute = AsyncMock(return_value=existing_result)
 
-    with patch(
-        "app.services.ingestion.dispatcher.scrape_page",
-        AsyncMock(return_value=scraped),
-    ) as mock_scrape, patch(
-        "app.services.ingestion.dispatcher.parse_feed",
-        AsyncMock(),
-    ) as mock_parse:
+    with (
+        patch(
+            "app.services.ingestion.dispatcher.scrape_page",
+            AsyncMock(return_value=scraped),
+        ) as mock_scrape,
+        patch(
+            "app.services.ingestion.dispatcher.parse_feed",
+            AsyncMock(),
+        ) as mock_parse,
+    ):
         new_items = await dispatch_source(source, session)
 
     mock_scrape.assert_awaited_once()

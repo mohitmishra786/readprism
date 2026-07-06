@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import uuid
-from typing import Optional
+from datetime import UTC
 
-import numpy as np
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +29,7 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
         if not raw_items and source.feed_url is None:
             # Try autodiscovery
             from app.services.ingestion.rss_parser import _autodiscover_feed
+
             discovered = await _autodiscover_feed(source.url)
             if discovered:
                 raw_items = await parse_feed(discovered)
@@ -46,14 +46,14 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
         return []
 
     existing_urls_result = await session.execute(
-        select(ContentItem.url).where(
-            ContentItem.url.in_([item.url for item in raw_items])
-        )
+        select(ContentItem.url).where(ContentItem.url.in_([item.url for item in raw_items]))
     )
-    existing_urls = set(row[0] for row in existing_urls_result.fetchall())
+    existing_urls = {row[0] for row in existing_urls_result.fetchall()}
     new_items = [item for item in raw_items if item.url not in existing_urls]
 
-    logger.info(f"Source {source.id}: {len(raw_items)} fetched, {len(new_items)} new after URL dedup")
+    logger.info(
+        f"Source {source.id}: {len(raw_items)} fetched, {len(new_items)} new after URL dedup"
+    )
     return new_items
 
 
@@ -64,11 +64,13 @@ async def semantic_dedup(
     window_hours: int = 72,
 ) -> bool:
     """Return True if a semantically similar item already exists in the recent queue."""
-    from datetime import datetime, timezone, timedelta
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+    from datetime import datetime, timedelta
+
+    cutoff = datetime.now(UTC) - timedelta(hours=window_hours)
     try:
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT id, embedding <=> CAST(:emb AS vector) AS dist
                 FROM content_items
                 WHERE fetched_at >= :cutoff
@@ -76,7 +78,8 @@ async def semantic_dedup(
                   AND embedding IS NOT NULL
                 ORDER BY dist ASC
                 LIMIT 1
-            """),
+            """
+            ),
             {
                 "emb": str(embedding),
                 "cutoff": cutoff,
@@ -99,18 +102,21 @@ async def _fetch_newsletter_items(source: Source, session: AsyncSession) -> list
     items: list[RawContentItem] = []
     try:
         import json
+
         async for key in redis.scan_iter(pattern):
             data_str = await redis.get(key)
             if data_str:
                 data = json.loads(data_str)
                 msg_id = data.get("message_id", str(key))
-                items.append(RawContentItem(
-                    url=f"newsletter://{source.user_id}/{msg_id}",
-                    title=data.get("subject", "Newsletter"),
-                    author=data.get("sender"),
-                    full_text=data.get("body"),
-                    word_count=len(data.get("body", "").split()) if data.get("body") else None,
-                ))
+                items.append(
+                    RawContentItem(
+                        url=f"newsletter://{source.user_id}/{msg_id}",
+                        title=data.get("subject", "Newsletter"),
+                        author=data.get("sender"),
+                        full_text=data.get("body"),
+                        word_count=len(data.get("body", "").split()) if data.get("body") else None,
+                    )
+                )
     except Exception as e:
         logger.error(f"Failed to fetch newsletter items: {e}")
     return items

@@ -3,6 +3,7 @@
 Team capability is gated to the `team` tier. Only team owners can add/remove
 members; any member can trigger a digest build.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -79,9 +80,7 @@ async def list_my_teams(
     teams = list(result.scalars().all())
     out = []
     for t in teams:
-        count_result = await session.execute(
-            select(TeamMember).where(TeamMember.team_id == t.id)
-        )
+        count_result = await session.execute(select(TeamMember).where(TeamMember.team_id == t.id))
         out.append(
             TeamRead(
                 id=t.id,
@@ -110,7 +109,9 @@ async def add_member(
         )
     )
     if owner_check.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can add members.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can add members."
+        )
 
     # Validate the target user exists — otherwise the FK insert below would
     # raise an IntegrityError and surface as a 500 instead of a clean 404.
@@ -119,9 +120,7 @@ async def add_member(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
 
     exists = await session.execute(
-        select(TeamMember).where(
-            TeamMember.team_id == team_id, TeamMember.user_id == body.user_id
-        )
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == body.user_id)
     )
     if exists.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Already a member.")
@@ -132,7 +131,12 @@ async def add_member(
     return {"status": "ok", "user_id": str(body.user_id)}
 
 
-@router.delete("/{team_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response, response_model=None)
+@router.delete(
+    "/{team_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+)
 async def remove_member(
     team_id: uuid.UUID,
     user_id: uuid.UUID,
@@ -148,7 +152,9 @@ async def remove_member(
         )
     )
     if owner_check.scalar_one_or_none() is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can remove members.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only owners can remove members."
+        )
 
     # Prevent removing the last owner — otherwise the team becomes permanently
     # ownerless (no owner check can ever pass again) and membership is locked.
@@ -167,9 +173,7 @@ async def remove_member(
             )
 
     result = await session.execute(
-        select(TeamMember).where(
-            TeamMember.team_id == team_id, TeamMember.user_id == user_id
-        )
+        select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
     )
     member = result.scalar_one_or_none()
     if member is None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,9 +13,7 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def fetch_creator_content(
-    creator: Creator, session: AsyncSession
-) -> list[RawContentItem]:
+async def fetch_creator_content(creator: Creator, session: AsyncSession) -> list[RawContentItem]:
     # Load platforms
     result = await session.execute(
         select(CreatorPlatform).where(CreatorPlatform.creator_id == creator.id)
@@ -43,8 +43,9 @@ async def fetch_creator_content(
                 all_items.append(item)
 
         # Update last_fetched_at
-        from datetime import datetime, timezone
-        platform.last_fetched_at = datetime.now(timezone.utc)
+        from datetime import datetime
+
+        platform.last_fetched_at = datetime.now(UTC)
 
     await session.flush()
     logger.info(f"Fetched {len(all_items)} items for creator {creator.id}")

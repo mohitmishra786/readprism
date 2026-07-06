@@ -10,11 +10,11 @@ Three targets, each serving a different PKM workflow:
 All three read from the same source: items the user has saved
 (`UserContentInteraction.saved == True`) and optionally fully read.
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -26,7 +26,9 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def _get_saved_items(user_id: uuid.UUID, session: AsyncSession) -> list[tuple[ContentItem, UserContentInteraction]]:
+async def _get_saved_items(
+    user_id: uuid.UUID, session: AsyncSession
+) -> list[tuple[ContentItem, UserContentInteraction]]:
     """Return (content, interaction) pairs for items the user has saved."""
     result = await session.execute(
         select(ContentItem, UserContentInteraction)
@@ -44,6 +46,7 @@ async def _get_saved_items(user_id: uuid.UUID, session: AsyncSession) -> list[tu
 # ---------------------------------------------------------------------------
 # Obsidian — Markdown export.
 # ---------------------------------------------------------------------------
+
 
 def _slugify(title: str, max_len: int = 80) -> str:
     """Make a filename-safe slug from a title."""
@@ -79,9 +82,11 @@ def _to_markdown(content: ContentItem, interaction: UserContentInteraction) -> t
     saved_at = (
         interaction.saved_read_at.isoformat()
         if interaction.saved_read_at
-        else datetime.now(timezone.utc).isoformat()
+        else datetime.now(UTC).isoformat()
     )
-    reading_time = content.reading_time_minutes if content.reading_time_minutes is not None else "unknown"
+    reading_time = (
+        content.reading_time_minutes if content.reading_time_minutes is not None else "unknown"
+    )
     frontmatter = [
         "---",
         f"source: {_yaml_escape(content.url)}",
@@ -106,9 +111,7 @@ def _to_markdown(content: ContentItem, interaction: UserContentInteraction) -> t
     return f"{_slugify(content.title)}.md", "\n".join(frontmatter + lines)
 
 
-async def export_to_obsidian(
-    user_id: uuid.UUID, session: AsyncSession
-) -> list[dict]:
+async def export_to_obsidian(user_id: uuid.UUID, session: AsyncSession) -> list[dict]:
     """Return a list of {filename, content} dicts for Obsidian import.
 
     The frontend offers these as a zip download; the user drops them into a
@@ -162,9 +165,7 @@ async def export_to_notion(
                 }
             payload = {"parent": {"database_id": database_id}, "properties": properties}
             try:
-                resp = await client.post(
-                    f"{NOTION_API}/pages", headers=headers, json=payload
-                )
+                resp = await client.post(f"{NOTION_API}/pages", headers=headers, json=payload)
                 if resp.status_code in (200, 201):
                     pushed += 1
                 else:
@@ -182,9 +183,7 @@ async def export_to_notion(
 READWISE_API = "https://readwise.io/api/v2"
 
 
-async def export_to_readwise(
-    user_id: uuid.UUID, readwise_token: str, session: AsyncSession
-) -> int:
+async def export_to_readwise(user_id: uuid.UUID, readwise_token: str, session: AsyncSession) -> int:
     """Push saved items to Readwise as highlights. Returns count pushed.
 
     Uses the /highlights/ endpoint (the documented v2 API), where each saved

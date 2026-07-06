@@ -9,7 +9,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No token provided" }, { status: 400 });
   }
 
-  const cookieStore = cookies();
+  // Next.js 15: cookies() returns a Promise — must be awaited.
+  const cookieStore = await cookies();
   cookieStore.set("readprism_token", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -22,7 +23,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE() {
-  const cookieStore = cookies();
+  // Next.js 15: cookies() returns a Promise — must be awaited.
+  const cookieStore = await cookies();
   cookieStore.delete("readprism_token");
   return NextResponse.json({ ok: true });
 }

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 @pytest.mark.asyncio
@@ -36,7 +37,9 @@ async def test_onboarding_complete_sets_flag(client: AsyncClient, test_user_data
 
 
 @pytest.mark.asyncio
-async def test_onboarding_idempotent_returns_409(client: AsyncClient, test_user_data: dict, db_session):
+async def test_onboarding_idempotent_returns_409(
+    client: AsyncClient, test_user_data: dict, db_session
+):
     """Calling /onboarding twice should return 409 on the second call."""
     reg = await client.post("/api/v1/auth/register", json=test_user_data)
     token = reg.json()["access_token"]
@@ -44,11 +47,12 @@ async def test_onboarding_idempotent_returns_409(client: AsyncClient, test_user_
 
     # Patch the expensive internals (Groq + embeddings) so the real onboarding
     # flow runs and sets onboarding_complete=True, making the second call 409.
-    with patch(
-        "app.services.cold_start.onboarding.GroqSummarizer",
-    ) as mock_groq_cls, patch(
-        "app.services.cold_start.onboarding.get_embedding_service"
-    ) as mock_emb_svc:
+    with (
+        patch(
+            "app.services.cold_start.onboarding.GroqSummarizer",
+        ) as mock_groq_cls,
+        patch("app.services.cold_start.onboarding.get_embedding_service") as mock_emb_svc,
+    ):
         mock_groq = AsyncMock()
         mock_groq.extract_topics = AsyncMock(return_value=["technology"])
         mock_groq_cls.return_value = mock_groq

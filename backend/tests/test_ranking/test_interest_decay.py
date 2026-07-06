@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -22,7 +22,7 @@ def _make_node(
     node.half_life_days = half_life_days
     node.suppressed_until = suppressed_until
     if days_since_reinforced is not None:
-        node.last_reinforced_at = datetime.now(timezone.utc) - timedelta(days=days_since_reinforced)
+        node.last_reinforced_at = datetime.now(UTC) - timedelta(days=days_since_reinforced)
     else:
         node.last_reinforced_at = None
     return node
@@ -80,7 +80,7 @@ async def test_weight_floor_prevents_zero():
 @pytest.mark.asyncio
 async def test_suppression_expiry_resurfaces_node():
     """When suppression period is over, weight is nudged up and suppressed_until is cleared."""
-    past = datetime.now(timezone.utc) - timedelta(hours=1)
+    past = datetime.now(UTC) - timedelta(hours=1)
     node = _make_node(weight=0.1, suppressed_until=past)
     session = AsyncMock()
     mock_result = MagicMock()
@@ -96,7 +96,7 @@ async def test_suppression_expiry_resurfaces_node():
 @pytest.mark.asyncio
 async def test_active_suppression_skips_decay():
     """Nodes still within their suppression window should not be further decayed."""
-    future = datetime.now(timezone.utc) + timedelta(days=5)
+    future = datetime.now(UTC) + timedelta(days=5)
     node = _make_node(weight=0.2, suppressed_until=future, days_since_reinforced=30.0)
     original_weight = node.weight
 

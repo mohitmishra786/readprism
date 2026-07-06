@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -67,10 +67,10 @@ async def generate_digest(
     # Rate limit: free tier max once per hour
     if current_user.tier == "free":
         recent = await session.execute(
-            select(Digest)
-            .where(
+            select(Digest).where(
                 Digest.user_id == current_user.id,
-                Digest.generated_at >= datetime.now(timezone.utc) - timedelta(minutes=RATE_LIMIT_FREE_MINUTES),
+                Digest.generated_at
+                >= datetime.now(UTC) - timedelta(minutes=RATE_LIMIT_FREE_MINUTES),
             )
         )
         if recent.scalar_one_or_none():
@@ -80,6 +80,7 @@ async def generate_digest(
             )
 
     from app.workers.tasks.build_digest import build_digest_for_user
+
     build_digest_for_user.delay(str(current_user.id))
     return {"status": "queued", "message": "Digest generation started"}
 
@@ -158,7 +159,9 @@ async def answer_digest_prompt(
 
     answer = str(body.get("answer", "")).strip()
     if not answer:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="answer is required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="answer is required"
+        )
 
     prompt.answer = answer
     prompt.answered = True
@@ -168,9 +171,7 @@ async def answer_digest_prompt(
 
 async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRead:
     items_result = await session.execute(
-        select(DigestItem)
-        .where(DigestItem.digest_id == digest.id)
-        .order_by(DigestItem.position)
+        select(DigestItem).where(DigestItem.digest_id == digest.id).order_by(DigestItem.position)
     )
     digest_items = list(items_result.scalars().all())
 
@@ -185,16 +186,18 @@ async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRea
     item_reads = []
     for di in digest_items:
         content = content_map.get(di.content_item_id)
-        item_reads.append(DigestItemRead(
-            id=di.id,
-            digest_id=di.digest_id,
-            content_item_id=di.content_item_id,
-            position=di.position,
-            section=di.section,
-            prs_score=di.prs_score,
-            signal_breakdown=di.signal_breakdown or {},
-            content=ContentItemRead.model_validate(content) if content else None,
-        ))
+        item_reads.append(
+            DigestItemRead(
+                id=di.id,
+                digest_id=di.digest_id,
+                content_item_id=di.content_item_id,
+                position=di.position,
+                section=di.section,
+                prs_score=di.prs_score,
+                signal_breakdown=di.signal_breakdown or {},
+                content=ContentItemRead.model_validate(content) if content else None,
+            )
+        )
 
     return DigestRead(
         id=digest.id,

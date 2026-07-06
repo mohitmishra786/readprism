@@ -33,4 +33,5 @@ celery_app.conf.update(
 
 # Import schedules (beat config is set in schedules.py)
 from app.workers.schedules import setup_beat_schedule
+
 setup_beat_schedule(celery_app)

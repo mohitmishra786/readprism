@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize embedding model
     from app.utils.embeddings import get_embedding_service
+
     try:
         emb = get_embedding_service()
         app.state.embeddings = emb
@@ -33,8 +34,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Verify DB connection
     db_ok = False
     try:
-        from app.database import engine
         from sqlalchemy import text
+
+        from app.database import engine
+
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
         db_ok = True
@@ -46,6 +49,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     redis_ok = False
     try:
         from app.utils.cache import ping_redis
+
         redis_ok = await ping_redis()
         logger.info(f"Redis connection: {'OK' if redis_ok else 'FAILED'}")
     except Exception as e:
@@ -58,6 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     logger.info("ReadPrism API shutting down...")
     from app.database import engine
+
     await engine.dispose()
 
 

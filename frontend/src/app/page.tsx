@@ -1,194 +1,294 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { isAuthenticated } from "../lib/auth";
 
-const SIGNALS = [
-  ["Semantic alignment", "Matches the meaning of what you read, not just keywords."],
-  ["Reading depth", "Learns from how far you actually read — scroll depth and active time."],
-  ["Source trust", "Trust weights learned per source and per creator-topic intersection."],
-  ["Temporal context", "Long-term interests, medium-term focus, and session saturation."],
-  ["Suggestion signal", "The purest signal: what you read from sources you didn't follow."],
-  ["Serendipity layer", "A configurable slice reserved for genuine discovery."],
-] as const;
+// Asset URLs — kept exactly per the design spec (atmospheric dark imagery that
+// the spotlight reveals). Swap here to retheme without touching the mechanic.
+const BG_IMAGE_1 =
+  "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85";
+const BG_IMAGE_2 =
+  "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85";
 
-const PRICING = [
-  {
-    name: "Free",
-    price: "$0",
-    cadence: "forever",
-    features: ["30 sources, 5 creators", "Full ranking engine", "Once-daily digest", "Self-hostable"],
-    cta: "Get started",
-    href: "/register",
-    highlight: false,
-  },
-  {
-    name: "Pro",
-    price: "$4.99",
-    cadence: "/month",
-    features: ["Unlimited sources, 50 creators", "Cross-source synthesis", "Serendipity controls", "Up to 4× daily digests"],
-    cta: "Start Pro",
-    href: "/register",
-    highlight: true,
-  },
-  {
-    name: "Self-hosted",
-    price: "Free",
-    cadence: "open source",
-    features: ["Unlimited everything", "Bring your own LLM key", "Full ranking engine", "Docker Compose one-command"],
-    cta: "Self-host",
-    href: "https://github.com/readprism/readprism",
-    highlight: false,
-  },
+// Radius of the soft circular mask that reveals the second image.
+const SPOTLIGHT_R = 260;
+
+// Center-nav links point at the real existing app routes.
+const NAV_LINKS = [
+  { label: "Digest", href: "/digest", active: true },
+  { label: "Sources", href: "/sources", active: false },
+  { label: "Creators", href: "/creators", active: false },
+  { label: "Search", href: "/search", active: false },
+  { label: "Feed", href: "/feed", active: false },
 ];
+
+/**
+ * RevealLayer — draws a soft radial-gradient mask onto a hidden canvas each
+ * frame, then applies it (as a data URL) to the reveal <div>. The second image
+ * (BG_IMAGE_2) is only visible inside the glowing circle that trails the cursor.
+ */
+function RevealLayer({
+  image,
+  cursorX,
+  cursorY,
+}: {
+  image: string;
+  cursorX: number;
+  cursorY: number;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const revealRef = useRef<HTMLDivElement | null>(null);
+
+  // Size the hidden canvas to the viewport on mount + resize.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const size = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    size();
+    window.addEventListener("resize", size);
+    return () => window.removeEventListener("resize", size);
+  }, []);
+
+  // Rebuild the radial-gradient mask every render (cursor moved).
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const reveal = revealRef.current;
+    if (!canvas || !reveal) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const grad = ctx.createRadialGradient(
+      cursorX,
+      cursorY,
+      0,
+      cursorX,
+      cursorY,
+      SPOTLIGHT_R,
+    );
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.4, "rgba(255,255,255,1)");
+    grad.addColorStop(0.6, "rgba(255,255,255,0.75)");
+    grad.addColorStop(0.75, "rgba(255,255,255,0.4)");
+    grad.addColorStop(0.88, "rgba(255,255,255,0.12)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cursorX, cursorY, SPOTLIGHT_R, 0, Math.PI * 2);
+    ctx.fill();
+
+    const url = canvas.toDataURL();
+    reveal.style.maskImage = `url(${url})`;
+    reveal.style.webkitMaskImage = `url(${url})`;
+    reveal.style.maskSize = "100% 100%";
+    reveal.style.webkitMaskSize = "100% 100%";
+  }, [cursorX, cursorY]);
+
+  return (
+    <>
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 pointer-events-none"
+        style={{ display: "none" }}
+      />
+      <div
+        ref={revealRef}
+        className="absolute inset-0 bg-center bg-cover bg-no-repeat z-30 pointer-events-none"
+        style={{ backgroundImage: `url(${image})` }}
+      />
+    </>
+  );
+}
 
 export default function RootPage() {
   const router = useRouter();
+
+  // Spotlight tracking: raw mouse ref + eased (lerped) ref, RAF-driven.
+  const mouse = useRef({ x: -999, y: -999 });
+  const smooth = useRef({ x: -999, y: -999 });
+  const rafRef = useRef<number | null>(null);
+  const [cursorPos, setCursorPos] = useState({ x: -999, y: -999 });
+
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/digest");
   }, [router]);
 
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      mouse.current.x = e.clientX;
+      mouse.current.y = e.clientY;
+    };
+    window.addEventListener("mousemove", onMove);
+
+    const tick = () => {
+      smooth.current.x += (mouse.current.x - smooth.current.x) * 0.1;
+      smooth.current.y += (mouse.current.y - smooth.current.y) * 0.1;
+      setCursorPos({ x: smooth.current.x, y: smooth.current.y });
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-lg">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-          <span className="prism-mark text-lg">◭ ReadPrism</span>
-          <div className="flex items-center gap-4">
-            <a href="#pricing" className="text-sm text-stone-600 hover:text-stone-900">
-              Pricing
-            </a>
-            <a href="/login" className="text-sm text-stone-600 hover:text-stone-900">
-              Sign in
-            </a>
-            <a href="/register" className="btn-primary text-sm">
-              Get started
-            </a>
-          </div>
-        </div>
-      </nav>
+    <div
+      className="min-h-screen bg-white tracking-[-0.02em]"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
+      {/* ===== Navigation (fixed, over hero) ===== */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between p-4 sm:p-5">
+        {/* Left: prism logo + wordmark */}
+        <a href="/" className="flex items-center gap-2">
+          <svg
+            width="26"
+            height="26"
+            viewBox="0 0 256 256"
+            fill="#ffffff"
+            aria-hidden="true"
+          >
+            <path d="M 128 0 L 256 128 L 128 256 L 0 128 Z M 128 64 L 64 128 L 128 192 L 192 128 Z" />
+          </svg>
+          <span className="text-white text-2xl font-playfair italic">ReadPrism</span>
+        </a>
 
-      {/* Hero */}
-      <header className="mx-auto max-w-3xl px-4 py-20 text-center md:py-28">
-        <div className="eyebrow mb-4 text-prism-700">Personalized Content Intelligence</div>
-        <h1 className="font-serif text-5xl font-bold leading-[1.05] tracking-tight text-stone-900 md:text-6xl">
-          Your sources, your creators —{" "}
-          <span className="prism-mark">ranked for you.</span>
-        </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-stone-600">
-          ReadPrism aggregates everything you follow and ranks it by personal
-          relevance — not chronology, not popularity. A learning engine that gets
-          sharper the more you read.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <a href="/register" className="btn-primary px-7 py-3 text-base">
-            Start reading smarter
-          </a>
-          <a href="#how" className="btn-secondary px-7 py-3 text-base">
-            How it works
-          </a>
-        </div>
-        <p className="mt-4 text-xs text-stone-400">
-          Free tier · Self-hostable · Open source
-        </p>
-      </header>
-
-      {/* The problem */}
-      <section className="border-y border-stone-200 bg-white py-20">
-        <div className="mx-auto max-w-2xl px-4 text-center">
-          <h2 className="font-serif text-3xl font-bold text-stone-900">
-            Following 80 sources means triaging 200 items a day.
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-stone-600">
-            A chronological feed of 200 items isn&apos;t a solution — it&apos;s a
-            different kind of noise. What you actually need is a{" "}
-            <strong className="text-stone-900">ranked</strong> list: ordered by the
-            probability that <em>this</em> item is worth <em>your</em> attention,
-            right now.
-          </p>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="how" className="mx-auto max-w-5xl px-4 py-20">
-        <div className="text-center">
-          <h2 className="font-serif text-3xl font-bold text-stone-900">
-            Eight signals. One score. Yours.
-          </h2>
-          <p className="mt-3 text-stone-500">
-            The Personalized Relevance Score is a weighted composite — and the
-            weights are learned per user.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {SIGNALS.map(([title, desc]) => (
-            <div key={title} className="card card-hover p-5">
-              <h3 className="text-sm font-semibold text-prism-700">{title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{desc}</p>
-            </div>
+        {/* Center pill (desktop) */}
+        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full px-2 py-2 items-center gap-1">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                link.active
+                  ? "text-white"
+                  : "text-white/80 hover:bg-white/20 hover:text-white"
+              }`}
+            >
+              {link.label}
+            </a>
           ))}
         </div>
-        <p className="mt-10 text-center text-sm text-stone-500">
-          Tap <em>“Why this?”</em> on any item to see exactly which signals drove its
-          ranking — and how strongly.
-        </p>
-      </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="border-t border-stone-200 bg-white py-20">
-        <div className="mx-auto max-w-5xl px-4">
-          <div className="text-center">
-            <h2 className="font-serif text-3xl font-bold text-stone-900">Pricing</h2>
-            <p className="mt-3 text-stone-500">
-              The full ranking engine is free. Paid tiers add scale and convenience.
-            </p>
-          </div>
-          <div className="mt-12 grid items-stretch gap-5 md:grid-cols-3">
-            {PRICING.map((tier) => (
-              <div
-                key={tier.name}
-                className={`card flex flex-col p-7 ${
-                  tier.highlight
-                    ? "border-transparent bg-stone-900 text-white shadow-xl"
-                    : ""
-                }`}
-              >
-                <h3 className={`text-lg font-bold ${tier.highlight ? "text-white" : "text-stone-900"}`}>
-                  {tier.name}
-                </h3>
-                <div className="mt-3 mb-6">
-                  <span className="font-serif text-4xl font-bold">{tier.price}</span>
-                  <span className={`text-sm ${tier.highlight ? "text-stone-400" : "text-stone-500"}`}>
-                    {" "}
-                    {tier.cadence}
-                  </span>
-                </div>
-                <ul className={`mb-8 flex-1 space-y-2 text-sm ${tier.highlight ? "text-stone-300" : "text-stone-600"}`}>
-                  {tier.features.map((f) => (
-                    <li key={f}>✓ {f}</li>
-                  ))}
-                </ul>
-                <a
-                  href={tier.href}
-                  className={`btn w-full py-2.5 text-sm font-semibold ${
-                    tier.highlight ? "bg-white text-stone-900 hover:bg-stone-100" : "btn-primary"
-                  }`}
-                >
-                  {tier.cta}
-                </a>
-              </div>
-            ))}
-          </div>
-          <p className="mt-8 text-center text-xs text-stone-400">
-            Pro at $4.99/mo undercuts Feedly Pro+ ($12.99) and Readwise Reader ($9.99).
+        {/* Right (desktop) */}
+        <a
+          href="/register"
+          className="hidden md:block bg-white text-gray-900 text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-gray-100"
+        >
+          Get started
+        </a>
+
+        {/* Right (mobile) — hamburger */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="md:hidden text-white p-2"
+          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </nav>
+
+      {/* Mobile dropdown */}
+      {menuOpen && (
+        <div className="fixed top-16 left-4 right-4 z-[100] md:hidden bg-black/80 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex flex-col gap-1">
+          {NAV_LINKS.map((link) => (
+            <a
+              key={link.label}
+              href={link.href}
+              onClick={() => setMenuOpen(false)}
+              className={`px-4 py-2.5 rounded-full text-sm font-medium ${
+                link.active ? "text-white" : "text-white/80 hover:text-white"
+              }`}
+            >
+              {link.label}
+            </a>
+          ))}
+          <div className="my-1 h-px bg-white/15" />
+          <a
+            href="/login"
+            onClick={() => setMenuOpen(false)}
+            className="px-4 py-2.5 rounded-full text-sm font-medium text-white/80 hover:text-white"
+          >
+            Sign in
+          </a>
+          <a
+            href="/register"
+            onClick={() => setMenuOpen(false)}
+            className="px-4 py-2.5 rounded-full text-sm font-semibold text-center bg-white text-gray-900"
+          >
+            Get started
+          </a>
+        </div>
+      )}
+
+      {/* ===== Hero section ===== */}
+      <section
+        className="relative w-full overflow-hidden bg-black"
+        style={{ height: "100dvh" }}
+      >
+        {/* 1. Base image */}
+        <div
+          className="absolute inset-0 bg-center bg-cover bg-no-repeat hero-zoom z-10"
+          style={{ backgroundImage: `url(${BG_IMAGE_1})` }}
+        />
+
+        {/* 2. Reveal layer (cursor spotlight) */}
+        <RevealLayer image={BG_IMAGE_2} cursorX={cursorPos.x} cursorY={cursorPos.y} />
+
+        {/* 3. Heading */}
+        <div className="absolute top-[14%] left-0 right-0 flex flex-col items-center text-center px-5 pointer-events-none z-50">
+          <h1 className="text-white leading-[0.95]">
+            <span
+              className="block font-playfair italic font-normal text-5xl sm:text-7xl md:text-8xl hero-anim hero-reveal"
+              style={{ letterSpacing: "-0.05em", animationDelay: "0.25s" }}
+            >
+              Everything you follow,
+            </span>
+            <span
+              className="block font-normal text-5xl sm:text-7xl md:text-8xl -mt-1 hero-anim hero-reveal"
+              style={{ letterSpacing: "-0.08em", animationDelay: "0.42s" }}
+            >
+              ranked for you.
+            </span>
+          </h1>
+        </div>
+
+        {/* 4. Bottom-left paragraph */}
+        <div className="hidden sm:block absolute bottom-14 left-10 md:left-14 max-w-[260px] z-50 hero-anim hero-fade" style={{ animationDelay: "0.7s" }}>
+          <p className="text-sm text-white/80 leading-relaxed">
+            Every signal — scroll depth, source trust, the topics you return to —
+            feeds a model that learns what&apos;s worth your attention. Not
+            chronology. Not popularity. Relevance.
           </p>
         </div>
-      </section>
 
-      <footer className="py-12 text-center text-sm text-stone-400">
-        ReadPrism — relevance is a relationship, not a property of content.
-      </footer>
+        {/* 5. Bottom-right block */}
+        <div
+          className="absolute bottom-10 sm:bottom-24 left-5 right-5 sm:left-auto sm:right-10 md:right-14 max-w-full sm:max-w-[260px] flex flex-col items-start gap-4 sm:gap-5 z-50 hero-anim hero-fade"
+          style={{ animationDelay: "0.85s" }}
+        >
+          <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+            Tap “Why this?” on any item to see exactly which of the eight signals
+            drove its ranking — and how strongly. One score, and it&apos;s yours.
+          </p>
+          <a
+            href="/register"
+            className="bg-[#e8702a] hover:bg-[#d2611f] text-white text-sm font-medium px-7 py-3 rounded-full transition-all hover:scale-[1.03] active:scale-95 hover:shadow-lg hover:shadow-[#e8702a]/30"
+          >
+            Start reading
+          </a>
+        </div>
+      </section>
     </div>
   );
 }

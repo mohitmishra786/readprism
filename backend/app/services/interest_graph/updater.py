@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -69,7 +68,7 @@ async def update_from_interaction(
 
     # Get or create nodes
     nodes = []
-    for label, emb in zip(topic_clusters, topic_embeddings):
+    for label, emb in zip(topic_clusters, topic_embeddings, strict=False):
         node = await graph_manager.get_or_create_node(
             user_id=interaction.user_id,
             topic_label=label,

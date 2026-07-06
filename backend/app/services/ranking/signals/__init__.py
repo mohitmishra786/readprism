@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from app.models.interest_graph import InterestNode, InterestEdge
+
+from app.models.interest_graph import InterestEdge, InterestNode
 
 
 @dataclass

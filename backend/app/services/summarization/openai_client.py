@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import json
-from typing import Optional
-
 from app.config import get_settings
 from app.services.summarization.groq_client import (
-    SummarizationResult,
-    _USER_PROMPT_TEMPLATE,
     _SYSTEM_PROMPT,
+    _USER_PROMPT_TEMPLATE,
+    SummarizationResult,
     _parse_result,
     _truncate_text,
 )
@@ -23,9 +20,10 @@ class OpenAISummarizer:
 
     def __init__(self) -> None:
         import openai
+
         self._client = openai.AsyncOpenAI(api_key=settings.openai_api_key)
 
-    async def summarize(self, title: str, full_text: str) -> Optional[SummarizationResult]:
+    async def summarize(self, title: str, full_text: str) -> SummarizationResult | None:
         content = _truncate_text(full_text)
         prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content)
 

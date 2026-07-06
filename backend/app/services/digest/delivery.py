@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import base64
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
-import httpx
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +17,7 @@ logger = get_logger(__name__)
 
 TEMPLATES_DIR = Path(__file__).parent.parent.parent.parent / "templates"
 
-_jinja_env: Optional[Environment] = None
+_jinja_env: Environment | None = None
 
 
 def _get_jinja_env() -> Environment:
@@ -53,7 +50,7 @@ def _top_signals(breakdown: dict, n: int = 2) -> list[str]:
     per-user learned weights.
     """
     entries = [
-        (k, v) for k, v in breakdown.items() if not k.startswith("_") and isinstance(v, (int, float))
+        (k, v) for k, v in breakdown.items() if not k.startswith("_") and isinstance(v, int | float)
     ]
     total = sum(v for _, v in entries)
     sorted_signals = sorted(entries, key=lambda x: x[1], reverse=True)
@@ -71,9 +68,7 @@ def _top_signals(breakdown: dict, n: int = 2) -> list[str]:
 async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> bool:
     # Load digest items with content
     items_result = await session.execute(
-        select(DigestItem)
-        .where(DigestItem.digest_id == digest.id)
-        .order_by(DigestItem.position)
+        select(DigestItem).where(DigestItem.digest_id == digest.id).order_by(DigestItem.position)
     )
     digest_items = list(items_result.scalars().all())
 
@@ -92,14 +87,16 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
         section = di.section
         if section not in sections:
             sections[section] = []
-        sections[section].append({
-            "content": content,
-            "prs_score": di.prs_score,
-            "signal_breakdown": di.signal_breakdown,
-            "why_ranked": _top_signals(di.signal_breakdown or {}),
-            "is_discovery": section == "discovery",
-            "position": di.position,
-        })
+        sections[section].append(
+            {
+                "content": content,
+                "prs_score": di.prs_score,
+                "signal_breakdown": di.signal_breakdown,
+                "why_ranked": _top_signals(di.signal_breakdown or {}),
+                "is_discovery": section == "discovery",
+                "position": di.position,
+            }
+        )
 
     # Build email HTML
     env = _get_jinja_env()
@@ -127,14 +124,14 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
     )
 
     if success:
-        digest.delivered_at = datetime.now(timezone.utc)
+        digest.delivered_at = datetime.now(UTC)
         await session.flush()
 
     return success
 
 
 def _fallback_html(user: User, sections: dict) -> str:
-    parts = [f"<h1>Your ReadPrism Digest</h1>"]
+    parts = ["<h1>Your ReadPrism Digest</h1>"]
     for section_name, items in sections.items():
         parts.append(f"<h2>{section_name.replace('_', ' ').title()}</h2>")
         for item_data in items:
@@ -147,7 +144,7 @@ def _fallback_html(user: User, sections: dict) -> str:
 
 
 def _build_text_body(user: User, sections: dict) -> str:
-    lines = [f"Your ReadPrism Digest\n", "=" * 40]
+    lines = ["Your ReadPrism Digest\n", "=" * 40]
     for section_name, items in sections.items():
         lines.append(f"\n{section_name.upper().replace('_', ' ')}\n" + "-" * 30)
         for item_data in items:

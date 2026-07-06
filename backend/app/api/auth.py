@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
 import uuid
-from datetime import datetime, timezone, timedelta
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
@@ -36,7 +33,7 @@ def _verify_password(plain: str, hashed: str) -> bool:
 
 
 def _create_token(user_id: uuid.UUID, expires_in: int = ACCESS_TOKEN_EXPIRE_SECONDS) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
         "iat": now,
@@ -61,7 +58,9 @@ async def get_current_user(
     payload = _decode_token(token)
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+        )
 
     result = await session.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
@@ -101,7 +100,9 @@ async def refresh(body: TokenRefresh) -> Token:
     payload = _decode_token(body.refresh_token)
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+        )
     return Token(access_token=_create_token(uuid.UUID(user_id)))
 
 

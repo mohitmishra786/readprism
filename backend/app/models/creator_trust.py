@@ -18,14 +18,15 @@ class CreatorTopicTrust(Base):
         UniqueConstraint("user_id", "creator_id", "topic_label", name="uq_creator_topic_trust"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     creator_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("creators.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("creators.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     topic_label: Mapped[str] = mapped_column(String, nullable=False)
     trust_weight: Mapped[float] = mapped_column(Float, default=0.5, nullable=False)

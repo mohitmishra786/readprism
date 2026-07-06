@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 import uuid
 from dataclasses import dataclass
-from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -67,19 +66,30 @@ def get_platform_tier(platform: str) -> str:
 class CreatorResolutionResult:
     creator: Creator
     platforms_discovered: int
-    warning: Optional[str] = None
+    warning: str | None = None
+
+
+def _strip_www(host: str) -> str:
+    """Remove a leading 'www.' prefix correctly.
+
+    str.lstrip('www.') is a common bug — it strips any *combination* of the
+    characters w, . so 'wwww.x' over-strips. We want to remove the exact prefix.
+    """
+    if host.startswith("www."):
+        return host[4:]
+    return host
 
 
 def _detect_platform(url: str) -> str:
     parsed = urlparse(url)
-    host = parsed.netloc.lower().lstrip("www.")
+    host = _strip_www(parsed.netloc.lower())
     for domain, platform in PLATFORM_DOMAINS.items():
         if host == domain or host.endswith("." + domain):
             return platform
     return "blog"
 
 
-async def _fetch_page(url: str) -> Optional[str]:
+async def _fetch_page(url: str) -> str | None:
     try:
         async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
             resp = await client.get(url, headers={"User-Agent": "ReadPrism/1.0"})
@@ -94,7 +104,7 @@ def _extract_title(html: str) -> str:
     return match.group(1).strip() if match else "Unknown Creator"
 
 
-async def _lookup_podcast_feed(show_name: str) -> Optional[str]:
+async def _lookup_podcast_feed(show_name: str) -> str | None:
     """Use the free, no-auth iTunes Search API to resolve a podcast RSS feed.
 
     Returns the first podcast result's feedUrl, if any. This is the standard
@@ -124,7 +134,7 @@ async def _lookup_podcast_feed(show_name: str) -> Optional[str]:
 
 def _autodiscover_feed_url(
     platform: str, profile_url: str, html: str
-) -> tuple[Optional[str], Optional[str]]:
+) -> tuple[str | None, str | None]:
     """Resolve the feed URL for a platform.
 
     Returns (feed_url, warning). For best-effort platforms that fail to resolve,
@@ -152,9 +162,7 @@ def _autodiscover_feed_url(
     if platform == "youtube":
         # YouTube embeds the channel id in several places. Match the canonical
         # channelId attribute forms, including <meta content="UC..." itemprop="channelId">.
-        channel_match = re.search(
-            r'(?:channel_id|channelId)["\'\s]*[:=]["\'\s]*([UC][\w-]+)', html
-        )
+        channel_match = re.search(r'(?:channel_id|channelId)["\'\s]*[:=]["\'\s]*([UC][\w-]+)', html)
         if not channel_match:
             # <meta itemprop="channelId" content="UC...">
             meta_match = re.search(
@@ -208,7 +216,7 @@ async def resolve_creator(
     is_url = name_or_url.startswith("http")
     platforms_data: list[dict] = []
     display_name = name_or_url
-    warning: Optional[str] = None
+    warning: str | None = None
 
     if is_url:
         primary_platform = _detect_platform(name_or_url)
@@ -242,12 +250,14 @@ async def resolve_creator(
         else:
             warning = feed_warning or warning
 
-        platforms_data.append({
-            "platform": primary_platform,
-            "url": name_or_url,
-            "feed_url": feed_url,
-            "is_verified": feed_url is not None,
-        })
+        platforms_data.append(
+            {
+                "platform": primary_platform,
+                "url": name_or_url,
+                "feed_url": feed_url,
+                "is_verified": feed_url is not None,
+            }
+        )
 
         # Discover other platform links from bio.
         if html:
@@ -298,8 +308,8 @@ def _find_additional_platforms(html: str, source_url: str) -> list[dict]:
     for match in link_pattern.finditer(html):
         url = match.group(1)
         parsed = urlparse(url)
-        host = parsed.netloc.lower().lstrip("www.")
-        if host == source_host.lstrip("www."):
+        host = _strip_www(parsed.netloc.lower())
+        if host == _strip_www(source_host.lower()):
             continue
         platform = None
         for domain, pname in PLATFORM_DOMAINS.items():
@@ -308,12 +318,14 @@ def _find_additional_platforms(html: str, source_url: str) -> list[dict]:
                 break
         if platform and not any(p["url"] == url for p in additional):
             feed_url, _ = _autodiscover_feed_url(platform, url, "")
-            additional.append({
-                "platform": platform,
-                "url": url,
-                "feed_url": feed_url,
-                "is_verified": feed_url is not None,
-            })
+            additional.append(
+                {
+                    "platform": platform,
+                    "url": url,
+                    "feed_url": feed_url,
+                    "is_verified": feed_url is not None,
+                }
+            )
         if len(additional) >= 4:
             break
     return additional

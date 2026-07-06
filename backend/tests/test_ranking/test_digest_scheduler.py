@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import time, datetime, timezone, timedelta
+from datetime import datetime, time
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,8 +15,9 @@ def _make_user(tz: str = "UTC", preferred_hour: int = 7, preferred_minute: int =
 
 def test_is_digest_time_matches_when_in_window():
     """Should return True when current local time is within 15 minutes of preferred time."""
-    from app.workers.tasks.build_digest import _is_digest_time_for_user
     import zoneinfo
+
+    from app.workers.tasks.build_digest import _is_digest_time_for_user
 
     user = _make_user(tz="America/New_York", preferred_hour=8, preferred_minute=0)
 
@@ -33,8 +34,9 @@ def test_is_digest_time_matches_when_in_window():
 
 def test_is_digest_time_misses_when_outside_window():
     """Should return False when current local time is more than 15 minutes from preferred time."""
-    from app.workers.tasks.build_digest import _is_digest_time_for_user
     import zoneinfo
+
+    from app.workers.tasks.build_digest import _is_digest_time_for_user
 
     user = _make_user(tz="America/New_York", preferred_hour=8, preferred_minute=0)
 

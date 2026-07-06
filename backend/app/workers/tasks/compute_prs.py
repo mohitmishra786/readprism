@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC
 
-from app.workers.celery_app import celery_app
 from app.utils.logging import get_logger
+from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
 
@@ -12,7 +13,9 @@ logger = get_logger(__name__)
 PRS_PRECOMPUTE_WINDOW_HOURS = 26  # slightly more than one daily cycle
 
 
-@celery_app.task(name="app.workers.tasks.compute_prs.compute_prs_for_user_item", bind=True, max_retries=3)
+@celery_app.task(
+    name="app.workers.tasks.compute_prs.compute_prs_for_user_item", bind=True, max_retries=3
+)
 def compute_prs_for_user_item(self, user_id: str, content_item_id: str) -> dict:
     return asyncio.run(_compute_prs_async(uuid.UUID(user_id), uuid.UUID(content_item_id)))
 
@@ -31,18 +34,19 @@ def precompute_prs_for_active_users() -> dict:
 
 
 async def _precompute_batch_async() -> dict:
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta
+
+    from sqlalchemy import select
 
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem, UserContentInteraction
     from app.models.user import User
-    from sqlalchemy import select, exists
 
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=PRS_PRECOMPUTE_WINDOW_HOURS)
+    cutoff = datetime.now(UTC) - timedelta(hours=PRS_PRECOMPUTE_WINDOW_HOURS)
 
     async with AsyncSessionLocal() as session:
         # Active users = onboarding complete + active in last 7 days
-        activity_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        activity_cutoff = datetime.now(UTC) - timedelta(days=7)
         users_result = await session.execute(
             select(User.id).where(
                 User.onboarding_complete == True,
@@ -53,9 +57,11 @@ async def _precompute_batch_async() -> dict:
 
         # Recent content items (with embeddings = ready for ranking)
         content_result = await session.execute(
-            select(ContentItem.id).where(
+            select(ContentItem.id)
+            .where(
                 ContentItem.fetched_at >= cutoff,
-            ).limit(500)
+            )
+            .limit(500)
         )
         content_ids = [row[0] for row in content_result.all()]
 
@@ -68,11 +74,13 @@ async def _precompute_batch_async() -> dict:
             for content_id in content_ids:
                 # Check if interaction with PRS score already exists
                 check = await session.execute(
-                    select(UserContentInteraction.id).where(
+                    select(UserContentInteraction.id)
+                    .where(
                         UserContentInteraction.user_id == user_id,
                         UserContentInteraction.content_item_id == content_id,
                         UserContentInteraction.prs_score.isnot(None),
-                    ).limit(1)
+                    )
+                    .limit(1)
                 )
                 if check.scalar_one_or_none() is None:
                     compute_prs_for_user_item.delay(str(user_id), str(content_id))
@@ -86,11 +94,12 @@ async def _precompute_batch_async() -> dict:
 
 
 async def _compute_prs_async(user_id: uuid.UUID, content_item_id: uuid.UUID) -> dict:
+    from sqlalchemy import select
+
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem, UserContentInteraction
     from app.models.user import User
     from app.services.ranking.scorer import compute_prs
-    from sqlalchemy import select
 
     async with AsyncSessionLocal() as session:
         user_result = await session.execute(select(User).where(User.id == user_id))

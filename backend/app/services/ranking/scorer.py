@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import uuid
-from typing import Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +9,8 @@ from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.user import User
 from app.services.ranking.meta_weights import get_meta_weights
-from app.services.ranking.signals import UserInterestGraph
 from app.services.ranking.signals import (
+    UserInterestGraph,
     content_quality,
     explicit_feedback,
     novelty,
@@ -42,7 +40,7 @@ async def compute_prs(
     content: ContentItem,
     user: User,
     session: AsyncSession,
-) -> Tuple[float, dict[str, float]]:
+) -> tuple[float, dict[str, float]]:
     # Load meta weights
     meta = await get_meta_weights(user.id, session)
 
@@ -76,7 +74,7 @@ async def compute_prs(
     results = await asyncio.gather(*tasks.values(), return_exceptions=True)
     signal_scores: dict[str, float] = {}
 
-    for name, result in zip(tasks.keys(), results):
+    for name, result in zip(tasks.keys(), results, strict=False):
         if isinstance(result, Exception):
             logger.warning(f"Signal {name} failed: {result}")
             signal_scores[name] = 0.5  # neutral fallback
@@ -84,10 +82,7 @@ async def compute_prs(
             signal_scores[name] = float(result)
 
     # Compute weighted PRS
-    prs = sum(
-        meta.weights.get(name, 0.0) * score
-        for name, score in signal_scores.items()
-    )
+    prs = sum(meta.weights.get(name, 0.0) * score for name, score in signal_scores.items())
     prs = max(0.0, min(1.0, prs))
 
     return prs, signal_scores

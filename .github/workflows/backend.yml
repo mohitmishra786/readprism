@@ -1,0 +1,97 @@
+# Backend CI — lint (ruff) + unit/integration tests against a real Postgres+pgvector.
+# Tests run inside Docker Compose so the full stack (DB, Redis, embeddings) is
+# available, mirroring local development exactly.
+name: Backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff==0.6.9
+      - name: Run ruff check
+        working-directory: backend
+        run: ruff check .
+      - name: Run ruff format check
+        working-directory: backend
+        run: ruff format --check .
+
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env from example (CI has no .env)
+        # docker-compose.yml references env_file: .env, which is gitignored and
+        # therefore absent in CI. Copy the committed example so compose can load.
+        run: cp .env.example .env
+
+      - name: Build backend image
+        run: docker compose build backend
+
+      - name: Start DB + Redis + Backend
+        # Backend is needed for `docker compose exec backend ...` (migrations,
+        # pytest). It depends on db+redis being healthy, which compose enforces.
+        run: docker compose up -d db redis backend
+
+      - name: Wait for DB to be healthy (hard fail if not ready)
+        run: |
+          echo "Waiting for Postgres to accept connections..."
+          for i in $(seq 1 60); do
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' readprism-db-1 2>/dev/null || echo "starting")
+            echo "  attempt $i: db health = $HEALTH"
+            if [ "$HEALTH" = "healthy" ]; then echo "DB is healthy"; exit 0; fi
+            sleep 3
+          done
+          echo "DB did not become healthy in time"; docker compose logs db; exit 1
+
+      - name: Wait for backend to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps backend | grep -q "healthy"; then echo "Backend healthy"; exit 0; fi
+            sleep 3
+          done
+          # Backend may not have a healthcheck that passes quickly in CI (model
+          # load). If it's running, proceed even if not yet "healthy".
+          if docker compose ps backend | grep -q "Up"; then echo "Backend running (proceeding)"; exit 0; fi
+          echo "Backend not running"; docker compose logs backend; exit 1
+
+      - name: Create test database + pgvector extension
+        run: |
+          # Idempotent: ignore "already exists" errors so re-runs are safe.
+          docker compose exec -T db psql -U readprism -tc \
+            "SELECT 1 FROM pg_database WHERE datname = 'readprism_test'" | grep -q 1 || \
+            docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism_test;"
+          docker compose exec -T db psql -U readprism -d readprism_test -c \
+            "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Run migrations on test DB
+        # Use `exec` on the already-running backend (which has the volume mount
+        # and the compose DATABASE_URL pointing at db:5432), overriding only the
+        # target DB name. This avoids spinning up a conflicting container.
+        run: docker compose exec -T -e DATABASE_SYNC_URL="postgresql://readprism:readprism@db:5432/readprism_test" backend alembic upgrade head
+
+      - name: Run pytest
+        run: |
+          docker compose exec -T \
+            -e TEST_DATABASE_URL="postgresql+asyncpg://readprism:readprism@db:5432/readprism_test" \
+            -e SECRET_KEY="ci-test-secret-key-for-jwt-signing-only" \
+            -e GROQ_API_KEY="" \
+            -e OPENAI_FALLBACK_ENABLED="false" \
+            backend python -m pytest tests/ -v

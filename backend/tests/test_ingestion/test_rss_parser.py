@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from app.services.ingestion.rss_parser import parse_feed, RawContentItem
+import pytest
+
+from app.services.ingestion.rss_parser import parse_feed
 
 SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -30,6 +31,7 @@ SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 async def test_parse_feed_extracts_items():
     """parse_feed should return correct number of items from RSS fixture."""
     import feedparser
+
     with patch.object(feedparser, "parse") as mock_parse:
         mock_result = MagicMock()
         mock_result.bozo = False
@@ -62,6 +64,7 @@ async def test_parse_feed_extracts_items():
 async def test_parse_feed_returns_empty_on_error():
     """parse_feed should return empty list on failure without raising."""
     import feedparser
+
     with patch.object(feedparser, "parse", side_effect=Exception("Connection refused")):
         items = await parse_feed("https://bad-url.invalid/feed")
     assert items == []

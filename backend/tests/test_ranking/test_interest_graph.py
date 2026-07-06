@@ -12,7 +12,9 @@ from app.services.interest_graph.graph import (
 )
 
 
-def _make_node(weight: float = 0.5, reinforcement_count: int = 0, is_core: bool = False) -> MagicMock:
+def _make_node(
+    weight: float = 0.5, reinforcement_count: int = 0, is_core: bool = False
+) -> MagicMock:
     node = MagicMock()
     node.weight = weight
     node.reinforcement_count = reinforcement_count
@@ -92,14 +94,17 @@ async def test_edge_weight_normalized():
     # Patch flush so the new edge object is available
     async def fake_flush():
         pass
+
     session.flush = fake_flush
 
     # We need to capture what gets added
     added_edge = None
+
     def capture_add(obj):
         nonlocal added_edge
         if hasattr(obj, "co_occurrence_count"):
             added_edge = obj
+
     session.add.side_effect = capture_add
 
     # Since the edge is created inside the function and we mock session.add,

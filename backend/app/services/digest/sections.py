@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Callable, Optional, Tuple
 
 from app.models.content import ContentItem
 
@@ -10,7 +9,7 @@ from app.models.content import ContentItem
 @dataclass
 class DigestSection:
     name: str
-    items: list[Tuple[ContentItem, float, dict]] = field(default_factory=list)
+    items: list[tuple[ContentItem, float, dict]] = field(default_factory=list)
     max_items: int = 5
 
     def add(self, item: ContentItem, prs: float, breakdown: dict) -> bool:
@@ -47,7 +46,7 @@ class SectionBuilder:
 
     def build(
         self,
-        ranked_items: list[Tuple[ContentItem, float, dict]],
+        ranked_items: list[tuple[ContentItem, float, dict]],
     ) -> dict[str, DigestSection]:
         sections: dict[str, DigestSection] = {
             "lead": DigestSection("lead", max_items=self.lead_count),
@@ -61,13 +60,13 @@ class SectionBuilder:
         max_per_topic = max(1, math.floor(self.total_items * self.max_topic_pct))
 
         def _check_saturation(content: ContentItem) -> bool:
-            for topic in (content.topic_clusters or []):
+            for topic in content.topic_clusters or []:
                 if topic_counts.get(topic, 0) >= max_per_topic:
                     return False
             return True
 
         def _update_topics(content: ContentItem) -> None:
-            for topic in (content.topic_clusters or []):
+            for topic in content.topic_clusters or []:
                 topic_counts[topic] = topic_counts.get(topic, 0) + 1
 
         # Discovery section first (serendipity candidates)

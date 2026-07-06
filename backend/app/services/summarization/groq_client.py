@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Optional
 
 import groq
 
@@ -34,7 +33,9 @@ class SummarizationResult:
         self.reading_time_minutes = reading_time_minutes
 
 
-_SYSTEM_PROMPT = "You are a precise content analyst. Return only valid JSON. No markdown, no explanation."
+_SYSTEM_PROMPT = (
+    "You are a precise content analyst. Return only valid JSON. No markdown, no explanation."
+)
 
 _USER_PROMPT_TEMPLATE = """Analyze this article and return a JSON object with exactly these keys:
 - "headline": one sentence, max 15 words, captures the core claim
@@ -55,7 +56,7 @@ def _truncate_text(text: str, max_chars: int = 16000) -> str:
     return text[:max_chars]
 
 
-def _parse_result(raw: str) -> Optional[SummarizationResult]:
+def _parse_result(raw: str) -> SummarizationResult | None:
     try:
         # Strip any markdown fences if present
         clean = raw.strip()
@@ -84,9 +85,11 @@ class GroqSummarizer:
         # Only build the client if a key is configured. When no key is present
         # every call short-circuits to None instantly rather than retrying into
         # connection errors for ~10s per item.
-        self._client = groq.AsyncGroq(api_key=settings.groq_api_key) if settings.groq_api_key else None
+        self._client = (
+            groq.AsyncGroq(api_key=settings.groq_api_key) if settings.groq_api_key else None
+        )
 
-    async def summarize(self, title: str, full_text: str) -> Optional[SummarizationResult]:
+    async def summarize(self, title: str, full_text: str) -> SummarizationResult | None:
         if self._client is None:
             # No key configured — skip summarization entirely.
             return None

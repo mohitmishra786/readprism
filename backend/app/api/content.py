@@ -46,11 +46,13 @@ async def get_feed(
 
     feed_items = []
     for content_item, interaction in rows:
-        feed_items.append(FeedItem(
-            content=ContentItemRead.model_validate(content_item),
-            prs_score=interaction.prs_score if interaction else None,
-            signal_breakdown={},
-        ))
+        feed_items.append(
+            FeedItem(
+                content=ContentItemRead.model_validate(content_item),
+                prs_score=interaction.prs_score if interaction else None,
+                signal_breakdown={},
+            )
+        )
 
     return feed_items
 

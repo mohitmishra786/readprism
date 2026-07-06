@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import numpy as np
 from sqlalchemy import func, select
@@ -57,7 +56,7 @@ class InterestGraphManager:
         else:
             node.weight = max(0.0, node.weight + signal_strength * 0.1)
 
-        node.last_reinforced_at = datetime.now(timezone.utc)
+        node.last_reinforced_at = datetime.now(UTC)
         node.reinforcement_count = (node.reinforcement_count or 0) + 1
 
         if (
@@ -113,7 +112,7 @@ class InterestGraphManager:
 
     async def build_user_interest_vector(
         self, user_id: uuid.UUID, session: AsyncSession
-    ) -> Optional[np.ndarray]:
+    ) -> np.ndarray | None:
         cache_key = f"interest_vec:{user_id}"
         cached = await cache_get(cache_key)
         if cached is not None:

@@ -6,12 +6,12 @@ made. Covers:
 - robots.txt enforcement (disallowed → None)
 - graceful None when all fetch strategies fail
 """
+
 from __future__ import annotations
 
 import pytest
 
 from app.services.ingestion.scraper import _extract_with_trafilatura, scrape_page
-
 
 # A small but realistic article body. trafilatura should extract the prose
 # paragraphs and ignore the nav/footer noise.
@@ -57,13 +57,12 @@ def test_trafilatura_returns_empty_on_non_content():
 @pytest.mark.asyncio
 async def test_scrape_page_returns_none_when_disallowed_by_robots(monkeypatch):
     """If robots.txt disallows the path, scrape_page returns None without fetching."""
+
     # Force the robots check to forbid the URL.
     async def _deny(_url):
         return False
 
-    monkeypatch.setattr(
-        "app.services.ingestion.scraper._check_robots", _deny
-    )
+    monkeypatch.setattr("app.services.ingestion.scraper._check_robots", _deny)
     result = await scrape_page("https://example.com/secret")
     assert result is None
 
@@ -76,6 +75,7 @@ async def test_scrape_page_extracts_article_on_success(monkeypatch):
     raw httpx, so the test exercises the extraction + RawContentItem assembly
     (the parts that matter) without coupling to the retry/Playwright plumbing.
     """
+
     async def _allow(_url):
         return True
 
@@ -96,6 +96,7 @@ async def test_scrape_page_extracts_article_on_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_scrape_page_returns_none_when_all_fetches_fail(monkeypatch):
     """When both httpx and Playwright fetches fail, scrape_page returns None."""
+
     async def _allow(_url):
         return True
 
@@ -107,9 +108,7 @@ async def test_scrape_page_returns_none_when_all_fetches_fail(monkeypatch):
 
     monkeypatch.setattr("app.services.ingestion.scraper._check_robots", _allow)
     monkeypatch.setattr("app.services.ingestion.scraper._fetch_with_retry", _fetch_none)
-    monkeypatch.setattr(
-        "app.services.ingestion.scraper._fetch_with_playwright", _playwright_none
-    )
+    monkeypatch.setattr("app.services.ingestion.scraper._fetch_with_playwright", _playwright_none)
 
     result = await scrape_page("https://example.com/nothing")
     assert result is None

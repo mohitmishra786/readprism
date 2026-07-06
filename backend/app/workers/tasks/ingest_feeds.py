@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
-from app.workers.celery_app import celery_app
 from app.utils.logging import get_logger
+from app.workers.celery_app import celery_app
 
 logger = get_logger(__name__)
 
@@ -16,13 +16,14 @@ def ingest_all_feeds(self) -> dict:
 
 
 async def _ingest_all_feeds_async() -> dict:
+    from sqlalchemy import or_, select
+
     from app.database import AsyncSessionLocal
+    from app.models.content import ContentItem
     from app.models.source import Source
     from app.services.ingestion.dispatcher import dispatch_source
-    from app.models.content import ContentItem
-    from sqlalchemy import select, or_
 
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+    cutoff = datetime.now(UTC) - timedelta(minutes=30)
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
@@ -51,7 +52,7 @@ async def _ingest_all_feeds_async() -> dict:
                     session.add(item)
                     total_new += 1
 
-                source.last_fetched_at = datetime.now(timezone.utc)
+                source.last_fetched_at = datetime.now(UTC)
                 source.fetch_error_count = 0
                 await session.flush()
 
@@ -64,6 +65,7 @@ async def _ingest_all_feeds_async() -> dict:
                     item_id = saved_result.scalar_one_or_none()
                     if item_id:
                         from app.workers.tasks.compute_embeddings import compute_embedding_for_item
+
                         compute_embedding_for_item.delay(str(item_id))
 
             except Exception as e:
@@ -82,11 +84,12 @@ def ingest_creator_feeds(self) -> dict:
 
 
 async def _ingest_creator_feeds_async() -> dict:
-    from app.database import AsyncSessionLocal
-    from app.models.creator import Creator, CreatorPlatform
-    from app.models.content import ContentItem
-    from app.services.creator.tracker import fetch_creator_content
     from sqlalchemy import select
+
+    from app.database import AsyncSessionLocal
+    from app.models.content import ContentItem
+    from app.models.creator import Creator
+    from app.services.creator.tracker import fetch_creator_content
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(Creator))
@@ -97,7 +100,9 @@ async def _ingest_creator_feeds_async() -> dict:
             try:
                 raw_items = await fetch_creator_content(creator, session)
                 for raw in raw_items:
-                    platform_id = uuid.UUID(raw.creator_platform_id) if raw.creator_platform_id else None
+                    platform_id = (
+                        uuid.UUID(raw.creator_platform_id) if raw.creator_platform_id else None
+                    )
                     item = ContentItem(
                         creator_platform_id=platform_id,
                         url=raw.url,
@@ -118,6 +123,7 @@ async def _ingest_creator_feeds_async() -> dict:
                     item_id = saved_result.scalar_one_or_none()
                     if item_id:
                         from app.workers.tasks.compute_embeddings import compute_embedding_for_item
+
                         compute_embedding_for_item.delay(str(item_id))
             except Exception as e:
                 logger.error(f"Failed to ingest creator {creator.id}: {e}")

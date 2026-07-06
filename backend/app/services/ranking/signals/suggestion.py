@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime
 
 import numpy as np
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,7 @@ async def compute(
     session: AsyncSession,
 ) -> float:
     # Only meaningful after 2+ weeks of usage
-    user_age_days = (datetime.now(timezone.utc) - user.created_at.replace(tzinfo=timezone.utc)).days
+    user_age_days = (datetime.now(UTC) - user.created_at.replace(tzinfo=UTC)).days
     if user_age_days < MIN_USER_DAYS:
         return 0.5
 
@@ -35,7 +35,8 @@ async def compute(
 
     # Find interactions where item was suggested and fully read
     high_value = [
-        i for i in interaction_history
+        i
+        for i in interaction_history
         if i.was_suggested and i.read_completion_pct is not None and i.read_completion_pct >= 0.85
     ]
 
@@ -45,21 +46,27 @@ async def compute(
     max_similarity = 0.0
 
     # Query embeddings for suggestion-read items
-    from sqlalchemy import select, text
+    from sqlalchemy import text
+
     try:
         ids = [str(i.content_item_id) for i in high_value]
         result = await session.execute(
-            text("""
+            text(
+                """
                 SELECT ci.embedding
                 FROM content_items ci
                 WHERE ci.id = ANY(:ids) AND ci.embedding IS NOT NULL
-            """),
+            """
+            ),
             {"ids": ids},
         )
         rows = result.fetchall()
         for row in rows:
             emb = np.array(row[0], dtype=np.float32)
-            sim = float(np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8))
+            sim = float(
+                np.dot(content_vec, emb)
+                / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
+            )
             sim = (sim + 1.0) / 2.0
             if sim > max_similarity:
                 max_similarity = sim

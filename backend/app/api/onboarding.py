@@ -6,8 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.schemas.ranking import OnboardingRequest, SampleRating as SchemaSampleRating
-from app.services.cold_start.onboarding import SampleRating as ServiceSampleRating, process_onboarding
+from app.schemas.ranking import OnboardingRequest
+from app.services.cold_start.onboarding import SampleRating as ServiceSampleRating
+from app.services.cold_start.onboarding import process_onboarding
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])

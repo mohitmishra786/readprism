@@ -44,10 +44,6 @@ def _compute_quality(content: ContentItem) -> float:
     s_depth = float(depth) if depth is not None else 0.5
 
     score = (
-        s_reading * 0.25
-        + s_words * 0.10
-        + s_citations * 0.20
-        + s_original * 0.25
-        + s_depth * 0.20
+        s_reading * 0.25 + s_words * 0.10 + s_citations * 0.20 + s_original * 0.25 + s_depth * 0.20
     )
     return float(max(0.0, min(1.0, score)))

@@ -22,7 +22,7 @@ class CreatorPlatformRead(BaseModel):
     display_label: str | None = None
 
     @model_validator(mode="after")
-    def _populate_platform_capabilities(self) -> "CreatorPlatformRead":
+    def _populate_platform_capabilities(self) -> CreatorPlatformRead:
         # Late import avoids a circular dependency at module load time.
         from app.services.creator.resolver import PLATFORM_CAPABILITIES
 

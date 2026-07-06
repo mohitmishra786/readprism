@@ -40,7 +40,11 @@ async def compute(
         i for i in rated if i.explicit_rating_reason == "too_tangential" and i.explicit_rating == -1
     ]
 
-    if too_basic_reasons and content.content_depth_score is not None and content.content_depth_score < 0.4:
+    if (
+        too_basic_reasons
+        and content.content_depth_score is not None
+        and content.content_depth_score < 0.4
+    ):
         score -= 0.1
 
     if too_tangential_reasons:
@@ -59,7 +63,9 @@ async def _mean_similarity(
         return 0.0
     try:
         result = await session.execute(
-            text("SELECT embedding FROM content_items WHERE id = ANY(:ids) AND embedding IS NOT NULL"),
+            text(
+                "SELECT embedding FROM content_items WHERE id = ANY(:ids) AND embedding IS NOT NULL"
+            ),
             {"ids": item_ids},
         )
         rows = result.fetchall()
@@ -68,7 +74,10 @@ async def _mean_similarity(
         sims = []
         for row in rows:
             emb = np.array(row[0], dtype=np.float32)
-            sim = float(np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8))
+            sim = float(
+                np.dot(content_vec, emb)
+                / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
+            )
             sims.append((sim + 1.0) / 2.0)
         return float(np.mean(sims))
     except Exception as e:

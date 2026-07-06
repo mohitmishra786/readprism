@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import math
 import uuid
-from collections import defaultdict
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
@@ -25,9 +24,9 @@ NEW_USER_THRESHOLD_DAYS = 14  # Use collaborative warmup for users younger than 
 async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Determine time window
     if user.digest_frequency == "weekly":
-        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        cutoff = datetime.now(UTC) - timedelta(days=7)
     else:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        cutoff = datetime.now(UTC) - timedelta(hours=24)
 
     # Get user's active sources
     sources_result = await session.execute(
@@ -39,10 +38,12 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Fetch content items from user's sources
     if source_ids:
         content_result = await session.execute(
-            select(ContentItem).where(
+            select(ContentItem)
+            .where(
                 ContentItem.source_id.in_(source_ids),
                 ContentItem.fetched_at >= cutoff,
-            ).limit(200)
+            )
+            .limit(200)
         )
         content_items = list(content_result.scalars().all())
     else:
@@ -50,7 +51,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 
     # Serendipity candidates: fetch extra from all recent content not in user sources
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
-    seen_source_ids_strs = {str(sid) for sid in source_ids}
+    {str(sid) for sid in source_ids}
 
     serendipity_result = await session.execute(
         select(ContentItem)
@@ -64,17 +65,20 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     serendipity_items = list(serendipity_result.scalars().all())
 
     # Collaborative warmup for new users
-    user_age_days = (datetime.now(timezone.utc) - user.created_at.replace(tzinfo=timezone.utc)).days
+    user_age_days = (datetime.now(UTC) - user.created_at.replace(tzinfo=UTC)).days
     if user_age_days < NEW_USER_THRESHOLD_DAYS and len(content_items) < 10:
         try:
             from app.services.cold_start.collaborative import get_collaborative_warmup_items
+
             warmup_items = await get_collaborative_warmup_items(user, limit=10, session=session)
             existing_ids = {item.id for item in content_items}
             for w in warmup_items:
                 if w.id not in existing_ids:
                     content_items.append(w)
                     existing_ids.add(w.id)
-            logger.info(f"Added {len(warmup_items)} collaborative warmup items for new user {user.id}")
+            logger.info(
+                f"Added {len(warmup_items)} collaborative warmup items for new user {user.id}"
+            )
         except Exception as e:
             logger.warning(f"Collaborative warmup failed (non-fatal): {e}")
 
@@ -109,7 +113,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 
     digest = Digest(
         user_id=user.id,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
         delivery_method="in_app",
         section_counts=section_counts,
         total_items=total,
@@ -191,7 +195,8 @@ async def _synthesize_topic_clusters(
     # For clusters with multiple items, synthesize
     kept_indices: set[int] = set()
     try:
-        from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
+        from app.services.summarization.groq_client import GroqSummarizer
+
         groq = GroqSummarizer()
     except Exception:
         groq = None
@@ -209,19 +214,22 @@ async def _synthesize_topic_clusters(
         if groq is not None:
             try:
                 from app.services.summarization.groq_client import SummarizationResult as SR
+
                 pseudo_results = []
                 for idx in cluster:
                     item = embeddable[idx]
-                    pseudo_results.append(SR(
-                        headline=item.summary_headline or item.title,
-                        brief=item.summary_brief or "",
-                        detailed=item.summary_detailed or "",
-                        depth_score=item.content_depth_score or 0.5,
-                        is_original_reporting=item.is_original_reporting or False,
-                        has_citations=item.has_citations,
-                        topic_clusters=item.topic_clusters or [],
-                        reading_time_minutes=item.reading_time_minutes or 5,
-                    ))
+                    pseudo_results.append(
+                        SR(
+                            headline=item.summary_headline or item.title,
+                            brief=item.summary_brief or "",
+                            detailed=item.summary_detailed or "",
+                            depth_score=item.content_depth_score or 0.5,
+                            is_original_reporting=item.is_original_reporting or False,
+                            has_citations=item.has_citations,
+                            topic_clusters=item.topic_clusters or [],
+                            reading_time_minutes=item.reading_time_minutes or 5,
+                        )
+                    )
                 topic_label = (primary.topic_clusters or [primary.title])[0]
                 synthesized = await groq.synthesize_topic(pseudo_results, topic_label)
                 if synthesized:
@@ -289,12 +297,24 @@ async def _mark_surfaced_in_digest(
 
 
 _EARLY_PROMPTS: list[dict] = [
-    {"type": "depth_level", "text": "Was today's content the right depth — or would you prefer more in-depth analysis?"},
-    {"type": "topic_accuracy", "text": "Did today's digest match your interests, or did anything feel off-topic?"},
-    {"type": "source_quality", "text": "Were the sources today high quality and trustworthy for you?"},
+    {
+        "type": "depth_level",
+        "text": "Was today's content the right depth — or would you prefer more in-depth analysis?",
+    },
+    {
+        "type": "topic_accuracy",
+        "text": "Did today's digest match your interests, or did anything feel off-topic?",
+    },
+    {
+        "type": "source_quality",
+        "text": "Were the sources today high quality and trustworthy for you?",
+    },
     {"type": "depth_level", "text": "Were the articles too long, too short, or just right?"},
     {"type": "topic_accuracy", "text": "Was there a topic today you'd like to see more of?"},
-    {"type": "source_quality", "text": "Did you discover any new sources today that you'd like to follow?"},
+    {
+        "type": "source_quality",
+        "text": "Did you discover any new sources today that you'd like to follow?",
+    },
 ]
 
 
@@ -310,6 +330,7 @@ async def _generate_feedback_prompts(
     """
     # Count existing prompts for this user's digests to pick the next in rotation
     from sqlalchemy import func as sa_func
+
     prompt_count_result = await session.execute(
         select(sa_func.count(DigestFeedbackPrompt.id))
         .join(Digest, DigestFeedbackPrompt.digest_id == Digest.id)
@@ -342,7 +363,7 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
     from topical diversity. Writes back to user row if adjustments are made.
     """
     # Measure typical items-opened-per-digest over last 30 days
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    cutoff = datetime.now(UTC) - timedelta(days=30)
     try:
         result = await session.execute(
             select(func.count(UserContentInteraction.id)).where(
@@ -376,10 +397,12 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
                 logger.info(f"Auto-adjusted digest length to {target_length} for user {user.id}")
 
         # Measure topical diversity over last 14 days for serendipity adjustment
-        diversity_cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+        diversity_cutoff = datetime.now(UTC) - timedelta(days=14)
         from sqlalchemy import text as sql_text
+
         div_result = await session.execute(
-            sql_text("""
+            sql_text(
+                """
                 SELECT COUNT(DISTINCT topic) as topic_count, COUNT(*) as total
                 FROM (
                     SELECT jsonb_array_elements_text(ci.topic_clusters) as topic
@@ -389,7 +412,8 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
                       AND uci.created_at >= :cutoff
                       AND uci.read_completion_pct >= 0.5
                 ) t
-            """),
+            """
+            ),
             {"uid": str(user.id), "cutoff": diversity_cutoff},
         )
         div_row = div_result.fetchone()
@@ -398,7 +422,9 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
             # Narrow focus (low diversity) → boost serendipity; broad → reduce slightly
             if diversity_ratio < 0.3 and user.serendipity_percentage < 25:
                 user.serendipity_percentage = min(25, user.serendipity_percentage + 3)
-                logger.info(f"Increased serendipity to {user.serendipity_percentage}% for user {user.id}")
+                logger.info(
+                    f"Increased serendipity to {user.serendipity_percentage}% for user {user.id}"
+                )
             elif diversity_ratio > 0.6 and user.serendipity_percentage > 10:
                 user.serendipity_percentage = max(10, user.serendipity_percentage - 2)
 
