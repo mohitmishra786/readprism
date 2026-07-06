@@ -9,6 +9,9 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app import (
+    models,  # register all models on Base.metadata so create_all/drop_all see the full schema
+)
 from app.database import Base, get_db
 from app.main import app
 
