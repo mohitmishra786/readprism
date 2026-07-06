@@ -55,4 +55,4 @@ httpx==0.28.1
 # the official SDK pin (3.3.3) referenced a nonexistent release and was never imported.
 
 # Utilities
-python-dotenv==1.0.1
+python-dotenv==1.2.2
