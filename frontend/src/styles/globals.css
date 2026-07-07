@@ -1,19 +1,116 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ==========================================================================
    ReadPrism Design System
    Editorial magazine meets refined minimalism.
    Signature motif: the prism/spectrum — light split into ranked order.
+
+   Tailwind v4 note: theme tokens live in the `@theme` block below so that
+   utilities like `bg-ink-500`, `text-prism-700`, `font-playfair`, `font-serif`,
+   `max-w-reading`, and `animate-shimmer` resolve. This replaces the old
+   tailwind.config.ts `theme.extend` (content detection is automatic in v4).
    ========================================================================== */
+@theme {
+  /* Custom color scales */
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+  --color-ink-950: #020617;
+
+  --color-prism-50: #eff6ff;
+  --color-prism-100: #dbeafe;
+  --color-prism-200: #bfdbfe;
+  --color-prism-300: #93c5fd;
+  --color-prism-400: #60a5fa;
+  --color-prism-500: #3b82f6;
+  --color-prism-600: #2563eb;
+  --color-prism-700: #1d4ed8;
+  --color-prism-800: #1e40af;
+  --color-prism-900: #1e3a8a;
+
+  --color-spectrum-violet: #7c3aed;
+  --color-spectrum-cyan: #06b6d4;
+  --color-spectrum-amber: #f59e0b;
+  --color-spectrum-rose: #f43f5e;
+  --color-spectrum-emerald: #10b981;
+
+  /* Font families (font-serif, font-sans, font-playfair, font-mono) */
+  --font-serif: "Source Serif Pro", Georgia, Cambria, serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-playfair: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Editorial font sizes (text-article, text-deck) */
+  --text-article: 1.125rem;
+  --text-article--line-height: 1.8;
+  --text-deck: 1.25rem;
+  --text-deck--line-height: 1.6;
+
+  /* Max widths (max-w-prose, max-w-reading) */
+  --max-width-prose: 68ch;
+  --max-width-reading: 42rem;
+
+  /* Custom animations (animate-fade-in, animate-slide-up, animate-shimmer) */
+  --animate-fade-in: fadeIn 0.3s ease-out;
+  --animate-slide-up: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-shimmer: shimmer 2s linear infinite;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Base button utility — registered via @utility so it can be @apply'd by the
+   .btn-* component variants in @layer components (v4 only allows @apply of
+   registered utilities, not arbitrary component classes). */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s;
+}
 
 @layer base {
   :root {
-    /* Typography */
-    --font-serif: "Source Serif Pro", Georgia, Cambria, "Times New Roman", serif;
-    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-      sans-serif;
+    /* NOTE: --font-serif / --font-sans / --font-mono / --font-playfair are
+       defined in the @theme block above (single source of truth for both
+       Tailwind utilities and CSS var consumers). The vars below are the
+       internal design-system tokens only. */
 
     /* Editorial spacing scale */
     --space-xs: 0.25rem;
@@ -102,10 +199,10 @@
     letter-spacing: -0.03em;
   }
 
-  /* ---- Buttons ---- */
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-150;
-  }
+  /* ---- Buttons ----
+     In Tailwind v4, `@apply` only accepts utilities, so `.btn` is registered
+     as a custom utility via `@utility` below — making `@apply btn` valid for
+     the variants. */
   .btn-primary {
     @apply btn;
     background: var(--accent);

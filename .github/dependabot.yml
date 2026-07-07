@@ -73,6 +73,14 @@ updates:
     labels:
       - "dependencies"
       - "frontend"
+    # tailwindcss v3→v4 and typescript v5→v6 are breaking majors that require
+    # manual migration work (config/engine changes). They are taken up
+    # deliberately, not auto-filed. Suppress their major-update PRs.
+    ignore:
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   # ──────────────────────────────────────────────────────────────
   # Docker base images — monthly (rare churn)
