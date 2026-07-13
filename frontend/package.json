@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "js-cookie": "3.0.8",
-    "lucide-react": "^1.23.0",
+    "lucide-react": "^1.24.0",
     "next": "16.2.10",
     "react": "19.2.7",
     "react-dom": "19.2.7"
@@ -18,10 +18,10 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.2",
     "@types/js-cookie": "3.0.6",
-    "@types/node": "26.1.0",
+    "@types/node": "26.1.1",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "postcss": "8.5.16",
+    "postcss": "8.5.18",
     "tailwindcss": "4.3.2",
     "typescript": "6.0.3"
   }
