@@ -1,10 +1,25 @@
 # ReadPrism
 
-**Personalized Content Intelligence Platform**
+**The reading app that ranks by how you actually read.**
 
-ReadPrism is a self-hostable reading tool that aggregates content from every source and creator you follow, ranks it by personal relevance using a continuously learning model, and delivers a daily digest containing exactly what you need to read — in the right order, for you specifically.
+ReadPrism is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read.
+
+What makes it different:
+
+- **Behavioral, not keyword** — learns from real scroll depth and active reading time, not rules you maintain by hand (vs Feedly Leo).
+- **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
+- **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
 The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md).
+
+---
+
+## Screenshots
+
+> Visuals are captured into `docs/media/` — see [`docs/MEDIA.md`](docs/MEDIA.md)
+> for the shot list and the `scripts/seed_demo.py` demo-data script. The hero
+> shots are the ranked daily digest, the "why ranked" explanation, and the
+> interest graph.
 
 ---
 

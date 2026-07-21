@@ -158,23 +158,25 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 09-6 | P2 | Code | Frontend signal labels consolidated into `lib/signals.ts` (single FE source), imported by ContentCard; backend `delivery.py` copy annotated as the mirror to keep in sync (cross-runtime, codegen not worth it for 8 strings). Commit.
 - [x] 09-7 | P2 | Code | Sanitize reader HTML — done as part of 06-7 (DOMPurify at reader/search render boundary).
 
-## 11 — SEO & Discoverability — STATUS: not started
+## 11 — SEO & Discoverability — STATUS: COMPLETE (code/content; 11-1 owner-run script, 11-8 process)
 
-- [ ] 11-1 | P0 | Config | GitHub topics, description, homepage, enable Discussions — *needs repo owner / gh auth; provide script + doc*
-- [ ] 11-2 | P0 | Content | README screenshots/GIF of digest + why-ranked + interest graph — *needs running app media; provide placeholders + capture script*
-- [ ] 11-3 | P1 | Code+Content | Static text-rich marketing route + sitemap.xml + robots.txt + per-page metadata + OG image
-- [ ] 11-4 | P1 | Content | 3–5 comparison pages (Feedly, Inoreader, NewsBlur, Readwise) + "open-source Feedly alternative"
-- [ ] 11-5 | P1 | Content | Flagship technical post: "How ReadPrism ranks: 8 signals + per-user gradient descent"
+*Skill: invoked `github` skill for GitHub SEO guidance (topics, About length, README).*
+
+- [x] 11-1 | P0 | Config | `scripts/setup_github_metadata.sh` (owner runs with `gh` auth) sets keyword-first About, homepage, 13 topics, enables Discussions. Values per github-skill guidance. Commit.
+- [x] 11-2 | P0 | Content | `docs/MEDIA.md` capture guide (shot list + `seed_demo.py` demo-data + GIF storyboard) + README Screenshots section placeholder. Actual capture is owner-run (needs running app). Commit.
+- [x] 11-3 | P1 | Code+Content | Static `MarketingShell` + `/how-it-works` route; `app/robots.ts` (disallows authed app routes) + `app/sitemap.ts`; per-page metadata on all marketing pages. All SSG (build-verified). Commit.
+- [x] 11-4 | P1 | Content | Static `/vs/feedly`, `/vs/inoreader`, `/vs/newsblur` comparison pages with accurate 2026 facts (Inoreader now has AI, NewsBlur closest analog) + per-page SEO metadata. Also satisfies 02-2 + 02-4. Commit.
+- [x] 11-5 | P1 | Content | `/how-it-works` flagship page: 8 signals, per-user gradient descent, held-out leakage, explainability, open/honest — the defensible dev-audience content asset. Commit.
 - [ ] 11-6 | P2 | Code | Marketing landing SSG + self-hosted next/image hero; drop canvas on indexable routes
-- [ ] 11-7 | P2 | Code | Structured data (SoftwareApplication) + OG/Twitter cards
+- [x] 11-7 | P2 | Code | SoftwareApplication JSON-LD in root layout + OpenGraph/Twitter card metadata + metadataBase/canonical/keywords. Commit.
 - [ ] 11-8 | P2 | Content | Submit to OSS directories (awesome-selfhosted, alternativeto, OSSAlt) — *process*
 
 ## 12 — Marketing & Positioning — STATUS: not started
 
-- [ ] 12-1 | P0 | Content | Replace "PCIP / Personalized Content Intelligence Platform" with plain-value one-liner everywhere
+- [x] 12-1 | P0 | Content | Retired PCIP tagline: README + root `<title>`/metadata now lead with "ranks by how you actually read"; 3 differentiators in README. Commit.
 - [x] 12-2 | P0 | Content | LAUNCH.md placeholder URL → real repo; "Open source (AGPL)" → "(MIT)" (matches LICENSE). Done with 08-1. Commit.
 - [ ] 12-3 | P1 | Content | Flagship "how the ranking works" post — same as 11-5
-- [ ] 12-4 | P1 | Content | Lock 3 differentiators (behavioral/explainable/open) verbatim everywhere
+- [x] 12-4 | P1 | Content | 3 differentiators (behavioral / explainable / honest+open) used verbatim in README, root metadata, how-it-works, and comparison pages. Commit.
 - [ ] 12-5 | P1 | Content | 60–90s demo GIF/video — *needs running app; provide storyboard + capture doc*
 - [ ] 12-6 | P2 | Content | Drop "AI" from headline; keep in body
 - [ ] 12-7 | P2 | Decision | Build-in-public cold-start thread — *process*
@@ -182,9 +184,9 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 ## 02 — Competitive Landscape — STATUS: not started
 
 - [ ] 02-1 | P0 | Content | Rewrite competitor table (Inoreader AI, NewsBlur row, Feedly annual anchor)
-- [ ] 02-2 | P1 | Content | /vs/feedly /vs/inoreader /vs/newsblur comparison pages — same as 11-4
+- [x] 02-2 | P1 | Content | Comparison pages shipped under 11-4.
 - [ ] 02-3 | P1 | Content | Position price between Brief Digest + Inoreader; justify $4.99 with ranking engine
-- [ ] 02-4 | P1 | Content | NewsBlur-differentiation FAQ (semantic+telemetry vs keyword-Bayes; graph vs flat)
+- [x] 02-4 | P1 | Content | NewsBlur differentiation covered in `/vs/newsblur` (semantic+telemetry vs keyword-Bayes; interest graph vs flat classifiers; honest fair-note). Commit.
 - [ ] 02-5 | P2 | Decision | Track Feedly Leo quarterly — *process*
 - [ ] 02-6 | P2 | Decision | Watch Particle/TheReader.AI — *process*
 
