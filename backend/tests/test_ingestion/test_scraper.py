@@ -112,3 +112,44 @@ async def test_scrape_page_returns_none_when_all_fetches_fail(monkeypatch):
 
     result = await scrape_page("https://example.com/nothing")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_check_robots_allows_when_absent(monkeypatch):
+    """A clean 404 (no robots.txt) means scraping is allowed by convention."""
+    from app.services.ingestion import scraper
+
+    async def _absent(_url):
+        return "absent", ""
+
+    monkeypatch.setattr(scraper, "_fetch_robots_text", _absent)
+    assert await scraper._check_robots("https://example.com/post") is True
+
+
+@pytest.mark.asyncio
+async def test_check_robots_fails_closed_on_error(monkeypatch):
+    """When robots.txt is unreachable, deny by default (fail closed)."""
+    from app.services.ingestion import scraper
+
+    async def _error(_url):
+        return "error", ""
+
+    monkeypatch.setattr(scraper, "_fetch_robots_text", _error)
+    monkeypatch.setattr(scraper.settings, "robots_fail_open", False)
+    assert await scraper._check_robots("https://example.com/post") is False
+    # ...unless explicitly configured fail-open.
+    monkeypatch.setattr(scraper.settings, "robots_fail_open", True)
+    assert await scraper._check_robots("https://example.com/post") is True
+
+
+@pytest.mark.asyncio
+async def test_check_robots_honors_disallow(monkeypatch):
+    """A served robots.txt disallow rule is respected."""
+    from app.services.ingestion import scraper
+
+    async def _served(_url):
+        return "ok", "User-agent: *\nDisallow: /secret"
+
+    monkeypatch.setattr(scraper, "_fetch_robots_text", _served)
+    assert await scraper._check_robots("https://example.com/secret/page") is False
+    assert await scraper._check_robots("https://example.com/public") is True

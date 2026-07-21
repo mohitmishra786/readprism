@@ -27,8 +27,41 @@ _USER_AGENTS = [
 ]
 
 
+async def _fetch_robots_text(robots_url: str) -> tuple[str, str]:
+    """Fetch robots.txt (cached per host). Returns (status, text) where status is
+    'ok' (served), 'absent' (clean 404/410), or 'error' (unreachable/5xx)."""
+    from app.utils.cache import cache_get, cache_set
+
+    cache_key = f"robots:{robots_url}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached.get("status", "error"), cached.get("text", "")
+
+    status, text = "error", ""
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await safe_get(robots_url, client=client)
+            if resp.status_code == 200:
+                status, text = "ok", resp.text
+            elif resp.status_code in (404, 410):
+                status = "absent"  # no robots.txt served => allowed by convention
+    except Exception as e:
+        logger.debug(f"robots.txt fetch failed for {robots_url}: {e}")
+
+    # Cache errors too (short-circuits repeated failing fetches within the TTL).
+    await cache_set(
+        cache_key, {"status": status, "text": text}, ttl_seconds=settings.robots_cache_ttl_seconds
+    )
+    return status, text
+
+
 async def _check_robots(url: str) -> bool:
-    """Returns True if scraping is allowed per robots.txt."""
+    """Returns True if scraping is allowed per robots.txt.
+
+    A served robots.txt is honored; a clean 404/410 (none served) is allowed by
+    convention; a fetch error fails **closed** by default (audit 08-6), which
+    `robots_fail_open` can override.
+    """
     try:
         validate_public_url(url)
     except UnsafeURLError as e:
@@ -37,18 +70,16 @@ async def _check_robots(url: str) -> bool:
 
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await safe_get(robots_url, client=client)
-            rp = RobotFileParser()
-            rp.set_url(robots_url)
-            rp.parse(resp.text.splitlines())
-            return rp.can_fetch("*", url)
-    except UnsafeURLError as e:
-        logger.warning(f"Blocked robots fetch for unsafe URL {url}: {e}")
-        return False
-    except Exception:
-        return True  # if robots.txt unavailable, assume allowed
+    status, text = await _fetch_robots_text(robots_url)
+
+    if status == "absent":
+        return True
+    if status == "error":
+        return settings.robots_fail_open
+    rp = RobotFileParser()
+    rp.set_url(robots_url)
+    rp.parse(text.splitlines())
+    return rp.can_fetch("*", url)
 
 
 def _extract_with_trafilatura(html_content: str, url: str) -> str:

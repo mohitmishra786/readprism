@@ -66,7 +66,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 08-3 | P1 | Code | Retention pruning task (`prune_content.prune_old_full_text`, daily 3:30 UTC) truncates `full_text` to an excerpt once older than `content_full_text_retention_days` (default 90; 0=disabled), keeping summary+link. Idempotent SQL `func.left`. 2 integration tests. Commit.
 - [ ] 08-4 | P1 | Content | Privacy Policy + ToS (telemetry, retention, shared content, scraping disclaimer)
 - [x] 08-5 | P1 | Code | Replaced hard-coded `localhost:3000` link with `frontend_url`-based preferences link; added signed one-click unsubscribe (`utils/unsubscribe.py` + `GET/POST /digest/unsubscribe` → in_app_only), `List-Unsubscribe`/`List-Unsubscribe-Post` headers, and a configurable physical-address footer. 3 tests. Also closes the 10-5 link portion. Commit.
-- [ ] 08-6 | P2 | Code | robots.txt handling fail-closed (or configurable) + cache robots results
+- [x] 08-6 | P2 | Code | `_check_robots` now caches robots.txt per host (24h) and fails **closed** on fetch error by default (`robots_fail_open` opt-out); a clean 404/410 still allows. 3 tests. Commit.
 - [ ] 08-7 | P2 | Code | "You confirm you may forward this" gate + abuse handling on newsletter intake
 - [ ] 08-8 | P2 | Content | Document third-party ToS compliance (Groq/Resend content + no-cold-email)
 

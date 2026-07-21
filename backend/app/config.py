@@ -79,6 +79,12 @@ class Settings(BaseSettings):
     # Scraping
     browserless_url: str = "http://browserless:3000"
     scraper_max_concurrency: int = 5
+    # When robots.txt can't be fetched (network error / 5xx), fail closed (deny)
+    # by default — an honest good-faith posture (audit 08-6). A clean 404/410
+    # (no robots.txt served) still means "allowed" per convention. Set True to
+    # restore the permissive legacy behaviour.
+    robots_fail_open: bool = False
+    robots_cache_ttl_seconds: int = 86400  # cache robots.txt per host for 24h
     # SSRF protection: resolve and block private/loopback/link-local/reserved IPs
     # before any server-side URL fetch (scraping, feed autodiscovery, robots.txt).
     # Keep True for any hosted/multi-tenant deployment. Self-hosters who need to
