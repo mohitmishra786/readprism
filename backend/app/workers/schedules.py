@@ -36,4 +36,8 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.heartbeat.beat_heartbeat",
             "schedule": 60,  # every minute — drives the beat liveness healthcheck
         },
+        "reengagement-emails": {
+            "task": "app.workers.tasks.reengagement.send_reengagement_emails",
+            "schedule": crontab(hour=16, minute=0),  # daily at 16:00 UTC
+        },
     }

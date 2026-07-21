@@ -138,10 +138,10 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 ## 10 — UX — STATUS: in progress
 
 - [x] 10-1 | P0 | Code | Digest page shows a "Gathering your first reads" honest state for new users (signed up <6h) with an empty digest, instead of an empty/near-random digest at the make-or-break moment. tsc clean. Commit.
-- [ ] 10-2 | P0 | Code | Sample articles: curated, pre-embedded, diverse set yielding real signal
+- [x] 10-2 | P0 | Code | Expanded onboarding sample set to 9 curated titles across distinct clusters (ML/systems/web/science/finance/health/design/climate/history); titles are embedded server-side, so ratings now yield well-separated interest nodes (pairs with 05-2). tsc clean. Commit.
 - [ ] 10-3 | P1 | Code | Trim onboarding to minimum-signal steps; sources/creators skippable with defaults
 - [ ] 10-4 | P1 | Code | Surface conversational feedback prompts + tagged-reason feedback + topic suppression in UI
-- [ ] 10-5 | P1 | Code | Fix preferences/unsubscribe link (same as 08-5) + lapsed-user re-engagement email
+- [x] 10-5 | P1 | Code | Unsubscribe link fixed in 08-5; added `reengagement.send_reengagement_emails` (daily 16:00 UTC) — emails users with no opened digest in `reengagement_inactivity_days`, Redis cooldown to avoid spam, respects in_app_only + List-Unsubscribe. 1 test. Commit.
 - [x] 10-6 | P1 | Code | Preferences frequency now includes "Weekly (we'll keep it short)" + "Email off — read in-app only" with a light-reader note. tsc clean. Commit.
 - [x] 10-7 | P2 | Code | Interest-graph visualization already renders on the Preferences page (SVG force-layout + tag cloud, core-vs-weight styling, co-read edges) with an explainer — the "watch it learn" surface. Also satisfies 03-5.
 - [ ] 10-8 | P2 | Code | OAuth/magic-link sign-in

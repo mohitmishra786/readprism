@@ -1,11 +1,20 @@
 "use client";
 
+// A curated, deliberately diverse set spanning distinct topic clusters. Titles
+// are embedded server-side, so spreading them across the embedding space (ML,
+// systems, web, science, finance, health, design, climate, humanities) makes
+// the ratings yield well-separated interest nodes rather than one blurry
+// centroid (audit 10-2; pairs with the per-cluster ranking in 05-2).
 const SAMPLES = [
-  { url: "https://example.com/1", title: "How Large Language Models Learn", domain: "AI/ML" },
-  { url: "https://example.com/2", title: "The Future of Remote Work in Tech", domain: "Work" },
-  { url: "https://example.com/3", title: "Urban Housing Policy in 2025", domain: "Policy" },
-  { url: "https://example.com/4", title: "Rust vs Go: Systems Programming in 2025", domain: "Programming" },
-  { url: "https://example.com/5", title: "How Interest Rates Affect Startup Funding", domain: "Finance" },
+  { url: "https://example.com/llm", title: "How large language models actually learn from text", domain: "AI / ML" },
+  { url: "https://example.com/rust", title: "Rust vs Go for systems programming in 2026", domain: "Systems programming" },
+  { url: "https://example.com/webperf", title: "Making the web fast: Core Web Vitals in practice", domain: "Web development" },
+  { url: "https://example.com/crispr", title: "CRISPR base editing reaches the clinic", domain: "Science / biology" },
+  { url: "https://example.com/rates", title: "How interest rates ripple through startup funding", domain: "Finance / economics" },
+  { url: "https://example.com/sleep", title: "What the latest sleep research says about focus", domain: "Health" },
+  { url: "https://example.com/typography", title: "The quiet craft of editorial typography", domain: "Design" },
+  { url: "https://example.com/grid", title: "Why the power grid is the hardest climate problem", domain: "Climate / energy" },
+  { url: "https://example.com/rome", title: "What the fall of Rome teaches about institutions", domain: "History" },
 ];
 
 export interface SampleRating {
