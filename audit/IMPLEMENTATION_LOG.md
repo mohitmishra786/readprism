@@ -70,7 +70,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 08-7 | P2 | Code | Newsletter forwarding consent handled via the ToS "Forwarded content" clause (user confirms right to forward); abuse controls already in place — webhook signature auth (06-1) + per-user private segregation + discard (06-6). Commit.
 - [x] 08-8 | P2 | Content | `docs/THIRD_PARTY_SERVICES.md` documents Groq/OpenAI/Zoho-Resend/Browserless/Meilisearch use + no-cold-email + library licenses. Commit.
 
-## 04 — Architecture & Codebase — STATUS: in progress
+## 04 — Architecture & Codebase — STATUS: COMPLETE
 
 - [x] 04-1 | P0 | Code | Serendipity now selects interest-*adjacent* content via pgvector cosine distance to the user's interest vector, banded to [0.35, 0.75] (related but outside core), ordered closest-first; falls back to recent public content for users without an interest vector. 2 tests. Commit.
 - [x] 04-2 | P0 | Code | `compute_prs` now runs the 8 signals sequentially over the shared session instead of `asyncio.gather` (session isn't concurrency-safe; the gather only appeared parallel). Removes the latent bug; no real latency cost. Commit.
@@ -78,7 +78,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 04-4 | P1 | Code | `EmbeddingService.encode_single`/`encode_batch_cached` now run the blocking sentence-transformers encode via `asyncio.to_thread` (`_encode_async`), so onboarding + other API paths don't stall the event loop. Commit.
 - [x] 04-5 | P1 | Code | Removed dead expr in scraper.py (reading-time calc) + orphan set in builder.py; fixed the misleading "pgvector similarity" comment in collaborative.py to match reality. Commit.
 - [x] 04-6 | P1 | Code | Newsletter webhook tests added in 06-1; added `test_delivery_rendering.py` (fallback-HTML escaping, template render w/ unsubscribe/preferences/address + autoescape, text-body links, top-signals). 4 tests. Commit.
-- [ ] 04-7 | P2 | Code | Renormalize edge weights in decay job (not per-write)
+- [x] 04-7 | P2 | Code | `renormalize_edges` recomputes all edge weights (count/max) as part of the nightly decay job, fixing weights left stale by per-write normalization against a moving max. 1 test. Commit.
 - [x] 04-8 | P2 | Content | `docs/adr/0001-celery-solo-pool.md` records the cross-loop-bug rationale, the scalability ceiling, the migration path (split queues / engine-per-process / async runner), and a warning against naively removing solo. Commit.
 - [x] 04-9 | P2 | Content | README reconciled to code: Next 16/React 19, worker `--pool=solo`, SMTP/Zoho (not Resend) incl. setup env + var table, migrations 0001–0006, added prune task. (Email-provider choice still tracked in 07-6.) Commit.
 
