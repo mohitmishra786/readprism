@@ -13,6 +13,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Observability — error tracking. Opt-in: no DSN => Sentry stays disabled.
+    sentry_dsn: str = ""
+    sentry_traces_sample_rate: float = 0.0
+
     # Application
     app_env: str = "development"
     secret_key: str = "change_me_to_a_long_random_string"

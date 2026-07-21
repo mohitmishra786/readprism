@@ -100,9 +100,9 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 05-8 | P2 | Code | Exposed `novelty_target` + `temporal_blend_long/medium/short` as config (were hard-coded 0.35 / 0.5/0.35/0.15), wired into the novelty + temporal signals. Suite green. Commit.
 - [x] 05-9 | P2 | Code | `backend/scripts/ranking_eval.py` — runnable offline report of read-prediction AUC + Spearman per signup-week cohort (reuses the 05-1 harness). Provided as a script rather than a .ipynb (notebooks aren't CI/container-runnable or testable). Verified runs. Commit.
 
-## 07 — Infra, Reliability & Scalability — STATUS: not started
+## 07 — Infra, Reliability & Scalability — STATUS: in progress
 
-- [ ] 07-1 | P0 | Code+Config | Error tracking (Sentry SDK, opt-in via DSN) on backend + worker + frontend
+- [x] 07-1 | P0 | Code+Config | Sentry error tracking, opt-in via DSN: backend `utils/observability.init_sentry` wired into API (`main.py`) + worker/beat (Celery `worker_process_init`/`beat_init` signals); frontend `@sentry/nextjs` instrumentation-client/server/register files. No-op without a DSN. sentry-sdk==2.66.0. Image rebuilt, suite green, frontend builds. Commit.
 - [ ] 07-2 | P0 | Config | Split Celery into scrape/embed/digest queues + worker per queue
 - [ ] 07-3 | P0 | Config+Content | Nightly pg_dump + documented restore
 - [ ] 07-4 | P1 | Config | Beat healthcheck / liveness

@@ -1,10 +1,23 @@
 from __future__ import annotations
 
-from celery import Celery
+from celery import Celery, signals
 
 from app.config import get_settings
+from app.utils.observability import init_sentry
 
 settings = get_settings()
+
+
+@signals.worker_process_init.connect
+def _init_worker_sentry(**_kwargs) -> None:
+    # Initialize per worker/beat process so uncaught task errors are reported.
+    init_sentry("worker")
+
+
+@signals.beat_init.connect
+def _init_beat_sentry(**_kwargs) -> None:
+    init_sentry("beat")
+
 
 celery_app = Celery(
     "readprism",
