@@ -7,6 +7,11 @@ services:
       - ./backend:/app
     environment:
       APP_ENV: development
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  meilisearch:
+    environment:
+      MEILI_ENV: development
 
   # The queue workers already mount ./backend via the x-worker-base anchor;
   # here we just flip them to development mode for local runs.

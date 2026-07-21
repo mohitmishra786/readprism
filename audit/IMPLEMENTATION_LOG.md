@@ -105,13 +105,13 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 07-1 | P0 | Code+Config | Sentry error tracking, opt-in via DSN: backend `utils/observability.init_sentry` wired into API (`main.py`) + worker/beat (Celery `worker_process_init`/`beat_init` signals); frontend `@sentry/nextjs` instrumentation-client/server/register files. No-op without a DSN. sentry-sdk==2.66.0. Image rebuilt, suite green, frontend builds. Commit.
 - [x] 07-2 | P0 | Config | Celery `task_routes` map ingest→scrape, embeddings→embed, prs/digest/deliver/graph/prune→digest queues; compose replaced the single worker with `worker-scrape`/`worker-embed`/`worker-digest` (one `--pool=solo` process per queue, shared `x-worker-base` anchor; digest also drains default). Compose validates, routes load, suite green. Commit.
 - [ ] 07-3 | P0 | Config+Content | Nightly pg_dump + documented restore
-- [ ] 07-4 | P1 | Config | Beat healthcheck / liveness
+- [x] 07-4 | P1 | Config | `beat_heartbeat` task (every 60s, writes short-TTL Redis key) + beat container healthcheck checking key freshness; a stalled beat turns unhealthy instead of silently stopping ingestion/digests. Verified heartbeat writes. Commit.
 - [ ] 07-5 | P1 | Content | Re-model unit economics (real Groq/Resend + cache-hit + step costs) — overlaps 13-2
 - [ ] 07-6 | P1 | Code+Content | Pick one email provider (Resend or Zoho), align README+code+costs
 - [ ] 07-7 | P1 | Code | Load-test ingestion + precompute at 100 sources / 50 users — *provide script; running is ops*
 - [ ] 07-8 | P2 | Config | Single shared embedding service (not loaded in 3 containers)
-- [ ] 07-9 | P2 | Config | Remove `--reload` from base compose; enforce Meilisearch master key outside dev
-- [ ] 07-10 | P2 | Content | Document minimum host sizing
+- [x] 07-9 | P2 | Config | Base compose is prod-shaped: backend `uvicorn` without `--reload`, Meilisearch `MEILI_ENV=production` (enforces master key); dev override re-adds `--reload` + `MEILI_ENV=development`. Commit.
+- [x] 07-10 | P2 | Content | `docs/DEPLOYMENT.md` documents min host sizing (4/8/16GB tiers), prod-shaped compose, monitoring, backup/restore. Commit.
 
 ## 17 — KPI & Metrics Framework — STATUS: not started
 

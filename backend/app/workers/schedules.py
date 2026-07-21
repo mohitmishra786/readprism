@@ -32,4 +32,8 @@ def setup_beat_schedule(app: Celery) -> None:
             # Every 2 hours so PRS scores are ready when digests are built
             "schedule": 2 * 60 * 60,
         },
+        "beat-heartbeat": {
+            "task": "app.workers.tasks.heartbeat.beat_heartbeat",
+            "schedule": 60,  # every minute — drives the beat liveness healthcheck
+        },
     }
