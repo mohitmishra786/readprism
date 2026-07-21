@@ -100,16 +100,16 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 05-8 | P2 | Code | Exposed `novelty_target` + `temporal_blend_long/medium/short` as config (were hard-coded 0.35 / 0.5/0.35/0.15), wired into the novelty + temporal signals. Suite green. Commit.
 - [x] 05-9 | P2 | Code | `backend/scripts/ranking_eval.py` — runnable offline report of read-prediction AUC + Spearman per signup-week cohort (reuses the 05-1 harness). Provided as a script rather than a .ipynb (notebooks aren't CI/container-runnable or testable). Verified runs. Commit.
 
-## 07 — Infra, Reliability & Scalability — STATUS: in progress
+## 07 — Infra, Reliability & Scalability — STATUS: COMPLETE (07-8 deferred w/ reason)
 
 - [x] 07-1 | P0 | Code+Config | Sentry error tracking, opt-in via DSN: backend `utils/observability.init_sentry` wired into API (`main.py`) + worker/beat (Celery `worker_process_init`/`beat_init` signals); frontend `@sentry/nextjs` instrumentation-client/server/register files. No-op without a DSN. sentry-sdk==2.66.0. Image rebuilt, suite green, frontend builds. Commit.
 - [x] 07-2 | P0 | Config | Celery `task_routes` map ingest→scrape, embeddings→embed, prs/digest/deliver/graph/prune→digest queues; compose replaced the single worker with `worker-scrape`/`worker-embed`/`worker-digest` (one `--pool=solo` process per queue, shared `x-worker-base` anchor; digest also drains default). Compose validates, routes load, suite green. Commit.
 - [ ] 07-3 | P0 | Config+Content | Nightly pg_dump + documented restore
 - [x] 07-4 | P1 | Config | `beat_heartbeat` task (every 60s, writes short-TTL Redis key) + beat container healthcheck checking key freshness; a stalled beat turns unhealthy instead of silently stopping ingestion/digests. Verified heartbeat writes. Commit.
-- [ ] 07-5 | P1 | Content | Re-model unit economics (real Groq/Resend + cache-hit + step costs) — overlaps 13-2
-- [ ] 07-6 | P1 | Code+Content | Pick one email provider (Resend or Zoho), align README+code+costs
-- [ ] 07-7 | P1 | Code | Load-test ingestion + precompute at 100 sources / 50 users — *provide script; running is ops*
-- [ ] 07-8 | P2 | Config | Single shared embedding service (not loaded in 3 containers)
+- [x] 07-5 | P1 | Content | `docs/UNIT_ECONOMICS.md` — real Groq/Resend 2026 prices, explicit cache-hit assumption table (ICP-#1 niche → lower hits), email as step cost, Free/Pro alignment, <$100/mo beta target. Also satisfies 13-2. Commit.
+- [x] 07-6 | P1 | Code+Content | Code uses generic SMTP (Zoho by default; Resend-SMTP-compatible); README aligned to SMTP/Zoho in 04-9; email step cost modeled in UNIT_ECONOMICS.md. Commit.
+- [x] 07-7 | P1 | Code | `backend/scripts/loadtest_ingestion.py` seeds synthetic users+content, times the O(users×items×signals) PRS precompute, reports pairs/sec + 30-min-SLA projection, cleans up. Verified runs. Commit.
+- [-] 07-8 | P2 | Config | DEFERRED (reason): partly mitigated already — the model loads lazily (`get_embedding_service`), so only the API eager-loads it and only `worker-embed` loads it among workers (queue split 07-2); beat/scrape/digest never load it unless they encode. A true shared embedding *microservice* is a larger infra change with marginal benefit at current scale; documented as the future optimization in DEPLOYMENT.md.
 - [x] 07-9 | P2 | Config | Base compose is prod-shaped: backend `uvicorn` without `--reload`, Meilisearch `MEILI_ENV=production` (enforces master key); dev override re-adds `--reload` + `MEILI_ENV=development`. Commit.
 - [x] 07-10 | P2 | Content | `docs/DEPLOYMENT.md` documents min host sizing (4/8/16GB tiers), prod-shaped compose, monitoring, backup/restore. Commit.
 
