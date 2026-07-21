@@ -80,7 +80,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 04-6 | P1 | Code | Newsletter webhook tests added in 06-1; added `test_delivery_rendering.py` (fallback-HTML escaping, template render w/ unsubscribe/preferences/address + autoescape, text-body links, top-signals). 4 tests. Commit.
 - [ ] 04-7 | P2 | Code | Renormalize edge weights in decay job (not per-write)
 - [ ] 04-8 | P2 | Content | ADR for `--pool=solo` + migration path
-- [ ] 04-9 | P2 | Content | Reconcile README (Next 14/React 18, Resend, worker concurrency) with code (Next 16/React 19, Zoho SMTP, solo pool)
+- [x] 04-9 | P2 | Content | README reconciled to code: Next 16/React 19, worker `--pool=solo`, SMTP/Zoho (not Resend) incl. setup env + var table, migrations 0001–0006, added prune task. (Email-provider choice still tracked in 07-6.) Commit.
 
 ## 05 — AI/ML Ranking Engine — STATUS: not started
 
