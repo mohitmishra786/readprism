@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import Token, TokenRefresh, UserCreate, UserLogin, UserRead
+from app.utils.ratelimit import RateLimiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -22,6 +23,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 ACCESS_TOKEN_EXPIRE_SECONDS = 86400  # 24h
 ALGORITHM = "HS256"
+
+login_rate_limit = RateLimiter(
+    max_requests=settings.rate_limit_login_per_minute, window_seconds=60, scope="login"
+)
+register_rate_limit = RateLimiter(
+    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="register"
+)
+
+# Precomputed bcrypt hash of a random string, used to spend the same time on a
+# password check whether or not the account exists — closing the login timing
+# oracle that would otherwise reveal which emails are registered (audit 06-4).
+_DUMMY_HASH = bcrypt.hashpw(b"timing-oracle-mitigation", bcrypt.gensalt()).decode()
 
 
 def _hash_password(password: str) -> str:
@@ -69,7 +82,12 @@ async def get_current_user(
     return user
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(register_rate_limit)],
+)
 async def register(body: UserCreate, session: AsyncSession = Depends(get_db)) -> Token:
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
@@ -86,11 +104,14 @@ async def register(body: UserCreate, session: AsyncSession = Depends(get_db)) ->
     return Token(access_token=token)
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, dependencies=[Depends(login_rate_limit)])
 async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Token:
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    if not user or not _verify_password(body.password, user.hashed_password):
+    # Always run a bcrypt verification (against a dummy hash when the user is
+    # absent) so response time doesn't reveal whether the email exists.
+    password_ok = _verify_password(body.password, user.hashed_password if user else _DUMMY_HASH)
+    if not user or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     return Token(access_token=_create_token(user.id))
 

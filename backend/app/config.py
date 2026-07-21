@@ -75,6 +75,12 @@ class Settings(BaseSettings):
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_master_key: str = "readprism_search_key"
 
+    # Rate limiting (Redis-backed, fixed window). Guards auth endpoints against
+    # credential stuffing and registration spam.
+    rate_limit_enabled: bool = True
+    rate_limit_login_per_minute: int = 10
+    rate_limit_register_per_minute: int = 5
+
     # Feature flags
     cold_start_collaborative_enabled: bool = True
     serendipity_default_percentage: int = 15
