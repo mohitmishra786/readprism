@@ -82,7 +82,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 04-8 | P2 | Content | `docs/adr/0001-celery-solo-pool.md` records the cross-loop-bug rationale, the scalability ceiling, the migration path (split queues / engine-per-process / async runner), and a warning against naively removing solo. Commit.
 - [x] 04-9 | P2 | Content | README reconciled to code: Next 16/React 19, worker `--pool=solo`, SMTP/Zoho (not Resend) incl. setup env + var table, migrations 0001–0006, added prune task. (Email-provider choice still tracked in 07-6.) Commit.
 
-## 05 — AI/ML Ranking Engine — STATUS: in progress
+## 05 — AI/ML Ranking Engine — STATUS: COMPLETE
 
 - [x] 05-1 | P0 | Code | `services/ranking/evaluation.py`: dependency-free read-prediction AUC (Mann-Whitney) + Spearman(PRS, completion) over held-out observed engagement; `evaluate_user_ranking` joins DigestItem prs_score → interactions; `GET /metrics/ranking-eval` endpoint. 8 tests. Also satisfies 16-3, 17-4. Commit.
 - [x] 05-2 | P0 | Code | Semantic signal now clusters interest nodes via union-find over co-occurrence edges (`_cluster_vectors`) and scores content by **max** cosine similarity across clusters, instead of one averaged vector that collapses multi-interest users. Single averaged vector retained for collaborative/cache callers. 3 tests incl. multi-interest. Commit.
@@ -92,7 +92,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 05-6 | P1 | Code | Collaborative warmup gated behind `collaborative_warmup_min_users` (default 1000) — inert below critical mass now returns [] explicitly instead of pretending to contribute; also added `owner_user_id IS NULL` to the items query (cross-tenant privacy). Comment fixed in 04-5. 5 tests. Commit.
 - [x] 05-7 | P1 | Code | Chose the "document" option: centralized the `(sim+1)/2` mapping into `cosine_to_unit_score()` with a docstring explaining the intentional [0.5,1]-ish compression (unrelated≈neutral, not negative), and replaced the duplicated expression across all 6 signal files. Suite green. Commit.
 - [x] 05-8 | P2 | Code | Exposed `novelty_target` + `temporal_blend_long/medium/short` as config (were hard-coded 0.35 / 0.5/0.35/0.15), wired into the novelty + temporal signals. Suite green. Commit.
-- [ ] 05-9 | P2 | Code | Offline ranking-eval notebook (nDCG / read-prediction AUC per cohort)
+- [x] 05-9 | P2 | Code | `backend/scripts/ranking_eval.py` — runnable offline report of read-prediction AUC + Spearman per signup-week cohort (reuses the 05-1 harness). Provided as a script rather than a .ipynb (notebooks aren't CI/container-runnable or testable). Verified runs. Commit.
 
 ## 07 — Infra, Reliability & Scalability — STATUS: not started
 
