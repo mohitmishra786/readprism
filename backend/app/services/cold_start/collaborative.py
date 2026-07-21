@@ -29,7 +29,11 @@ async def get_collaborative_warmup_items(
     if user_vec is None:
         return []
 
-    # Find 10 similar users via pgvector similarity
+    # Gather up to 200 candidate users who have any interaction history; their
+    # interest-vector similarity is computed below from warm Redis vectors. (This
+    # is not a pgvector similarity query — see audit 05-6 for the known
+    # limitation that this warmup is effectively inert until there are many
+    # active users with cached vectors.)
     try:
         result = await session.execute(
             text(

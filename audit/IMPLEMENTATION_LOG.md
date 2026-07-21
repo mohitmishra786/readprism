@@ -57,7 +57,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 06-9 | P2 | Config | Standardized on Python 3.12: Dockerfile `python:3.12-slim`, CI lint `3.12`, README tech stack `3.12`. Rebuilt image + full suite green (158). Commit.
 - [-] 06-10 | P2 | Content | Publish a privacy policy — folded into 08-4 (done there).
 
-## 08 — Legal & Compliance — STATUS: in progress
+## 08 — Legal & Compliance — STATUS: COMPLETE (code/content). Only the MIT-vs-AGPL business decision (08-1) remains human.
 
 *Skills: no `find-skills`/`skills.sh`; no legal-domain skill installed — proceeded without.*
 
@@ -70,13 +70,13 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 08-7 | P2 | Code | Newsletter forwarding consent handled via the ToS "Forwarded content" clause (user confirms right to forward); abuse controls already in place — webhook signature auth (06-1) + per-user private segregation + discard (06-6). Commit.
 - [x] 08-8 | P2 | Content | `docs/THIRD_PARTY_SERVICES.md` documents Groq/OpenAI/Zoho-Resend/Browserless/Meilisearch use + no-cold-email + library licenses. Commit.
 
-## 04 — Architecture & Codebase — STATUS: not started
+## 04 — Architecture & Codebase — STATUS: in progress
 
 - [ ] 04-1 | P0 | Code | Fix serendipity selection: interest-*adjacent* candidates (embedding near cluster edges), not "recent items from other users' sources"
 - [ ] 04-2 | P0 | Code | Stop sharing one AsyncSession across gathered signal coroutines (session factory or serialize)
 - [ ] 04-3 | P1 | Code | Surface source-failure state to users (`fetch_error_count` → API/UI)
 - [ ] 04-4 | P1 | Code | Move embedding encode calls off event loop in API paths (`asyncio.to_thread`)
-- [ ] 04-5 | P1 | Code | Delete dead expressions + fix comment/code mismatches (scraper reading-time, builder orphan set, collaborative comment)
+- [x] 04-5 | P1 | Code | Removed dead expr in scraper.py (reading-time calc) + orphan set in builder.py; fixed the misleading "pgvector similarity" comment in collaborative.py to match reality. Commit.
 - [ ] 04-6 | P1 | Code | Tests for digest delivery rendering + newsletter webhook
 - [ ] 04-7 | P2 | Code | Renormalize edge weights in decay job (not per-write)
 - [ ] 04-8 | P2 | Content | ADR for `--pool=solo` + migration path

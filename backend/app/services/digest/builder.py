@@ -51,7 +51,6 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 
     # Serendipity candidates: fetch extra from all recent content not in user sources
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
-    {str(sid) for sid in source_ids}
 
     serendipity_result = await session.execute(
         select(ContentItem)

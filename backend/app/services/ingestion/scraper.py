@@ -239,7 +239,6 @@ async def scrape_page(url: str) -> RawContentItem | None:
     title = title or "Untitled"
     full_text = _extract_with_trafilatura(html_content, url)
     word_count = len(full_text.split()) if full_text else 0
-    max(1, round(word_count / 238))
 
     return RawContentItem(
         url=url,
