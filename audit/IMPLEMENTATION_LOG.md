@@ -53,8 +53,8 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 06-5 | P1 | Code | Real refresh-token model: short-lived access (30m) + long-lived refresh (30d) with `type`/`jti` claims, optional separate secret, Redis jti-allowlist for rotation (single-use) + revocation; `/auth/logout` revokes; refresh tokens rejected as access. Frontend: store both, single-flight auto-refresh on 401, revoke on sign-out. 4 backend tests; tsc clean. Commit.
 - [ ] 06-6 | P1 | Code | Segregate newsletter-sourced content per user (don't dedupe personalized bodies into shared rows)
 - [ ] 06-7 | P1 | Code | Sanitize/escape scraped + newsletter HTML before reader/digest render
-- [ ] 06-8 | P2 | Code | Hard-fail startup on default `secret_key` outside development
-- [ ] 06-9 | P2 | Config | Reconcile Python 3.14 (Dockerfile) vs 3.11 (CI/README)
+- [x] 06-8 | P2 | Code | `get_settings()` raises at boot if `secret_key` is the placeholder default and `app_env != development`. 3 tests. Commit.
+- [x] 06-9 | P2 | Config | Standardized on Python 3.12: Dockerfile `python:3.12-slim`, CI lint `3.12`, README tech stack `3.12`. Rebuilt image + full suite green (158). Commit.
 - [ ] 06-10 | P2 | Content | Publish a privacy policy (telemetry, retention, shared-content model) — overlaps 08-4
 
 ## 08 — Legal & Compliance — STATUS: not started

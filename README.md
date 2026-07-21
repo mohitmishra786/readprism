@@ -289,7 +289,7 @@ readprism/
 
 | Component | Technology |
 |---|---|
-| Backend API | Python 3.11 / FastAPI |
+| Backend API | Python 3.12 / FastAPI |
 | Frontend | Next.js 14 (React 18, TypeScript) |
 | Database | PostgreSQL 16 + pgvector |
 | Cache & Queue | Redis 7 + Celery |
