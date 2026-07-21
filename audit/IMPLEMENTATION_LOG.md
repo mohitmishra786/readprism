@@ -52,7 +52,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 06-4 | P1 | Code | Redis fixed-window `RateLimiter` (`app/utils/ratelimit.py`) on `/auth/login` (10/min) + `/auth/register` (5/min); login now runs a constant-time bcrypt check against a dummy hash for absent users (closes timing oracle) + returns identical 401. Register 409 retained (full non-enum needs email verification — see 06-4 note). 3 tests. Commit.
 - [x] 06-5 | P1 | Code | Real refresh-token model: short-lived access (30m) + long-lived refresh (30d) with `type`/`jti` claims, optional separate secret, Redis jti-allowlist for rotation (single-use) + revocation; `/auth/logout` revokes; refresh tokens rejected as access. Frontend: store both, single-flight auto-refresh on 401, revoke on sign-out. 4 backend tests; tsc clean. Commit.
 - [ ] 06-6 | P1 | Code | Segregate newsletter-sourced content per user (don't dedupe personalized bodies into shared rows)
-- [ ] 06-7 | P1 | Code | Sanitize/escape scraped + newsletter HTML before reader/digest render
+- [x] 06-7 | P1 | Code | HTML sanitization at every render boundary: frontend DOMPurify (`lib/sanitize.ts`) in reader + search; digest email `_fallback_html` now `html.escape`s all interpolated values (Jinja template already autoescapes); backend `sanitize_stored_html` strips script/iframe/on*/javascript: on RSS ingestion (defense in depth). 6 backend tests. Also satisfies 09-7. Commit.
 - [x] 06-8 | P2 | Code | `get_settings()` raises at boot if `secret_key` is the placeholder default and `app_env != development`. 3 tests. Commit.
 - [x] 06-9 | P2 | Config | Standardized on Python 3.12: Dockerfile `python:3.12-slim`, CI lint `3.12`, README tech stack `3.12`. Rebuilt image + full suite green (158). Commit.
 - [ ] 06-10 | P2 | Content | Publish a privacy policy (telemetry, retention, shared-content model) — overlaps 08-4
@@ -146,7 +146,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [ ] 09-4 | P2 | Code | Unify styling: OnboardingWizard + inline-styled pages onto Tailwind system
 - [ ] 09-5 | P2 | Code | Landing hero degrades gracefully (touch fallback, reduced-motion, lazy/self-host images)
 - [ ] 09-6 | P2 | Code | De-duplicate signal-label map (share FE/BE source of truth)
-- [ ] 09-7 | P2 | Code | Sanitize reader HTML (same as 06-7)
+- [x] 09-7 | P2 | Code | Sanitize reader HTML — done as part of 06-7 (DOMPurify at reader/search render boundary).
 
 ## 11 — SEO & Discoverability — STATUS: not started
 

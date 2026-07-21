@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useReadingTelemetry } from "../../../../lib/useReadingTelemetry";
 import { api } from "../../../../lib/api";
+import { sanitizeHtml } from "../../../../lib/sanitize";
 import type { ContentItemFull } from "../../../../lib/types";
 import { FeedbackBar } from "../../../../components/digest/FeedbackBar";
 
@@ -48,15 +49,20 @@ export default function ReaderPage() {
   const articleHtml = useMemo(() => {
     if (!item?.full_text) return "";
     const text = item.full_text.trim();
+    let html: string;
     // If it already contains HTML block tags, render as-is.
     if (/<(?:p|div|h[1-6]|ul|ol|blockquote|figure|pre|table)\b/i.test(text)) {
-      return text;
+      html = text;
+    } else {
+      // Otherwise treat as plain text: split on blank lines into paragraphs.
+      html = text
+        .split(/\n{2,}/)
+        .map((p) => `<p>${p.trim().replace(/\n/g, "<br/>")}</p>`)
+        .join("");
     }
-    // Otherwise treat as plain text: split on blank lines into paragraphs.
-    return text
-      .split(/\n{2,}/)
-      .map((p) => `<p>${p.trim().replace(/\n/g, "<br/>")}</p>`)
-      .join("");
+    // Sanitize before it reaches dangerouslySetInnerHTML (audit 06-7): ingested
+    // article HTML can carry <script>/onerror/javascript: payloads.
+    return sanitizeHtml(html);
   }, [item?.full_text]);
 
   if (error) {

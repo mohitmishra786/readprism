@@ -8,6 +8,7 @@ import feedparser
 import httpx
 
 from app.utils.logging import get_logger
+from app.utils.sanitize import sanitize_stored_html
 from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
 logger = get_logger(__name__)
@@ -30,10 +31,12 @@ def _count_words(text: str) -> int:
 
 
 def _extract_text(entry: feedparser.FeedParserDict) -> str:
+    # Feed content/summary is raw third-party HTML; strip executable markup
+    # before it is stored (audit 06-7 defense in depth).
     if hasattr(entry, "content") and entry.content:
-        return entry.content[0].get("value", "")
+        return sanitize_stored_html(entry.content[0].get("value", ""))
     if hasattr(entry, "summary"):
-        return entry.summary or ""
+        return sanitize_stored_html(entry.summary or "")
     return ""
 
 

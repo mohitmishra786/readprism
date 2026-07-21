@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from html import escape
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -131,14 +132,21 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
 
 
 def _fallback_html(user: User, sections: dict) -> str:
+    # Escape every interpolated value: titles/summaries/URLs come from ingested
+    # third-party content and would otherwise inject HTML into the email (XSS,
+    # audit 06-7). The Jinja template autoescapes; this hand-built fallback must
+    # do so explicitly.
     parts = ["<h1>Your ReadPrism Digest</h1>"]
     for section_name, items in sections.items():
-        parts.append(f"<h2>{section_name.replace('_', ' ').title()}</h2>")
+        parts.append(f"<h2>{escape(section_name.replace('_', ' ').title())}</h2>")
         for item_data in items:
             content = item_data["content"]
-            parts.append(f'<div><h3><a href="{content.url}">{content.title}</a></h3>')
+            parts.append(
+                f'<div><h3><a href="{escape(content.url, quote=True)}">'
+                f"{escape(content.title)}</a></h3>"
+            )
             if content.summary_brief:
-                parts.append(f"<p>{content.summary_brief}</p>")
+                parts.append(f"<p>{escape(content.summary_brief)}</p>")
             parts.append("</div>")
     return "".join(parts)
 
