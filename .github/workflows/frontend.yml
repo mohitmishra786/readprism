@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Typecheck + Build + Lint
+    name: Typecheck + Build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -33,11 +33,9 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
-      - name: Lint
-        working-directory: frontend
-        run: npx next lint
-        # Lint is best-effort; don't fail the build on style nits yet.
-        continue-on-error: true
+      # NOTE: `next lint` was removed in Next.js 16 and no ESLint config is set up
+      # in this project, so typecheck + a strict production build are the gates.
+      # (Adding an ESLint flat config is tracked as a follow-up.)
 
       - name: Build
         working-directory: frontend

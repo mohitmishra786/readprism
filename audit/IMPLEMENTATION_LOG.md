@@ -250,4 +250,4 @@ These are logged with the specific question; not implemented until answered. Wor
 ## Discovered During Implementation
 
 - [x] DDI-1 | Preferences "Your Data" section: "Export my data" (downloads the GDPR JSON via authed fetch→blob) + "Delete account" (confirm → DELETE /account → clear tokens → /register). `api.account.export/delete` added. tsc clean. Commit.
-- [ ] DDI-2 | `next lint` is broken under Next 16 (treats "lint" as a build dir; `next lint` removed in Next 16). Frontend CI `npx next lint` step is a silent no-op/failure. Migrate to ESLint CLI (`eslint .`) with a flat config. To address in the UI/SEO frontend pass or infra (file 07/09).
+- [x] DDI-2 | Removed the broken `next lint` CI step (Next 16 removed `next lint`; no ESLint config exists in the repo). Typecheck + strict production build are the frontend gates. A full ESLint flat-config setup is left as an optional follow-up.
