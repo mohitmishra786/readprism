@@ -85,6 +85,14 @@ class Settings(BaseSettings):
     # restore the permissive legacy behaviour.
     robots_fail_open: bool = False
     robots_cache_ttl_seconds: int = 86400  # cache robots.txt per host for 24h
+    # Scraping posture (audit 08-2). Honest by default:
+    #  - identify as the ReadPrism bot (no browser-impersonation User-Agents), and
+    #  - on an explicit block (403/429/503), back off instead of escalating to a
+    #    headless browser to circumvent it.
+    # The 2026 §1201 anti-circumvention landscape targets bypassing anti-bot
+    # measures; operators who accept that risk can set these False.
+    scraper_identify_as_bot: bool = True
+    scraper_respect_blocks: bool = True
     # SSRF protection: resolve and block private/loopback/link-local/reserved IPs
     # before any server-side URL fetch (scraping, feed autodiscovery, robots.txt).
     # Keep True for any hosted/multi-tenant deployment. Self-hosters who need to

@@ -118,13 +118,18 @@ def _extract_with_trafilatura(html_content: str, url: str) -> str:
         return ""
 
 
-async def _fetch_with_retry(url: str) -> str | None:
+async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
     """
-    Attempt a lightweight httpx GET with exponential-backoff retry before
-    falling back to the Playwright/Browserless path.
-    Returns the response HTML or None on all failures.
+    Attempt a lightweight httpx GET with exponential-backoff retry.
+    Returns (html, was_blocked): `was_blocked` is True when the site explicitly
+    refused our bot (403/429/503), so the caller can respect the block instead
+    of circumventing it (audit 08-2).
     """
-    user_agent = random.choice(_USER_AGENTS)
+    # Honest posture: identify as the ReadPrism bot rather than rotating
+    # browser-impersonation User-Agents.
+    user_agent = (
+        _USER_AGENTS[0] if settings.scraper_identify_as_bot else random.choice(_USER_AGENTS)
+    )
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -140,14 +145,13 @@ async def _fetch_with_retry(url: str) -> str | None:
                 # safe_get validates the URL and every redirect hop (SSRF guard).
                 resp = await safe_get(url, client=client)
                 if resp.status_code == 200:
-                    return resp.text
+                    return resp.text, False
                 if resp.status_code in (403, 429, 503):
-                    # Likely bot-protected — don't retry with httpx, go straight to Playwright
-                    logger.debug(f"HTTP {resp.status_code} on {url} — will use Playwright")
-                    return None
+                    logger.debug(f"HTTP {resp.status_code} on {url} — site blocked our bot")
+                    return None, True
         except UnsafeURLError as e:
             logger.warning(f"Blocked fetch for unsafe URL {url}: {e}")
-            return None
+            return None, False
         except (httpx.TimeoutException, httpx.ConnectError) as e:
             logger.debug(f"httpx attempt {attempt}/{_RETRY_MAX_ATTEMPTS} failed for {url}: {e}")
 
@@ -155,7 +159,7 @@ async def _fetch_with_retry(url: str) -> str | None:
             delay = min(_RETRY_MAX_DELAY, _RETRY_BASE_DELAY * (2 ** (attempt - 1)))
             await asyncio.sleep(delay + random.uniform(0, 1))
 
-    return None
+    return None, False
 
 
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
@@ -206,7 +210,7 @@ async def scrape_page(url: str) -> RawContentItem | None:
     html_content: str | None = None
 
     # 1. Fast path: plain httpx GET with retry
-    html_content = await _fetch_with_retry(url)
+    html_content, was_blocked = await _fetch_with_retry(url)
 
     if html_content:
         # Extract title from <title> tag
@@ -215,8 +219,13 @@ async def scrape_page(url: str) -> RawContentItem | None:
         title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_content, re.IGNORECASE)
         title = title_match.group(1).strip() if title_match else None
 
-    # 2. Fallback: Playwright for JS-heavy pages
+    # 2. Fallback: Playwright for JS-heavy pages. If the site *explicitly blocked*
+    #    our identified bot, respect that rather than circumventing it with a
+    #    headless browser (audit 08-2); still fall back for genuine JS rendering.
     if not html_content:
+        if was_blocked and settings.scraper_respect_blocks:
+            logger.info(f"Respecting {url} block — not escalating to headless browser")
+            return None
         result = await _fetch_with_playwright(url)
         if isinstance(result, tuple):
             html_content, title = result

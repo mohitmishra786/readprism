@@ -80,7 +80,7 @@ async def test_scrape_page_extracts_article_on_success(monkeypatch):
         return True
 
     async def _fake_fetch(_url):
-        return ARTICLE_HTML
+        return ARTICLE_HTML, False
 
     monkeypatch.setattr("app.services.ingestion.scraper._check_robots", _allow)
     monkeypatch.setattr("app.services.ingestion.scraper._fetch_with_retry", _fake_fetch)
@@ -101,7 +101,7 @@ async def test_scrape_page_returns_none_when_all_fetches_fail(monkeypatch):
         return True
 
     async def _fetch_none(_url):
-        return None
+        return None, False
 
     async def _playwright_none(_url):
         return (None, None)
@@ -112,6 +112,35 @@ async def test_scrape_page_returns_none_when_all_fetches_fail(monkeypatch):
 
     result = await scrape_page("https://example.com/nothing")
     assert result is None
+
+
+@pytest.mark.asyncio
+async def test_scrape_page_respects_block_without_browser_fallback(monkeypatch):
+    """When the site blocks our bot (403/429), we back off instead of using the
+    headless browser to circumvent it (honest posture, audit 08-2)."""
+    from app.services.ingestion import scraper
+
+    async def _allow(_url):
+        return True
+
+    async def _blocked(_url):
+        return None, True
+
+    playwright_called = False
+
+    async def _playwright(_url):
+        nonlocal playwright_called
+        playwright_called = True
+        return ("<html></html>", "T")
+
+    monkeypatch.setattr(scraper, "_check_robots", _allow)
+    monkeypatch.setattr(scraper, "_fetch_with_retry", _blocked)
+    monkeypatch.setattr(scraper, "_fetch_with_playwright", _playwright)
+    monkeypatch.setattr(scraper.settings, "scraper_respect_blocks", True)
+
+    result = await scraper.scrape_page("https://example.com/blocked")
+    assert result is None
+    assert playwright_called is False  # did not circumvent the block
 
 
 @pytest.mark.asyncio
