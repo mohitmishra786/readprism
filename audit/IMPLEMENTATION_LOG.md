@@ -46,7 +46,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 *Skills: no `find-skills`/`skills.sh` in this environment; used installed `fastapi-python` guidance. Web-researched Mailgun webhook signing (HMAC-SHA256 over timestamp+token, body-embedded signature) 2026.*
 
-- [ ] 06-1 | P0 | Code | Mailgun/HMAC signature verification + shared secret on `/newsletter/inbound`; reject unsigned
+- [x] 06-1 | P0 | Code | Mailgun HMAC signature verification on `/newsletter/inbound`: `verify_mailgun_signature` (SHA256 timestamp+token, constant-time, stale-reject) + endpoint fail-closed outside dev + Redis token replay-dedupe (`cache_set_nx`). 7 tests. Commit.
 - [x] 06-2 | P0 | Code | SSRF protection on all server-side URL fetches — `app/utils/ssrf.py` (validate + redirect-safe `safe_get`), wired into scraper (`_check_robots`/`_fetch_with_retry`/`_fetch_with_playwright`) + rss autodiscovery; configurable via `ssrf_protection_enabled`; 18 unit tests. Commit.
 - [ ] 06-3 | P0 | Code | Account deletion + data export (GDPR erasure/portability) endpoints
 - [ ] 06-4 | P1 | Code | Rate-limit `/auth/login` `/auth/register`; make register/login non-enumerating

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import email as email_lib
+import hashlib
+import hmac
+import time
 import uuid
 
 from app.services.ingestion.rss_parser import RawContentItem
@@ -8,6 +11,41 @@ from app.utils.cache import cache_set
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def verify_mailgun_signature(
+    *,
+    token: str,
+    timestamp: str,
+    signature: str,
+    signing_key: str,
+    max_age_seconds: int | None = None,
+) -> bool:
+    """Verify a Mailgun webhook signature.
+
+    Mailgun signs each webhook as ``HMAC_SHA256(signing_key, timestamp + token)``
+    (the request *body* is not signed). We compare with a constant-time digest
+    and, when ``max_age_seconds`` is given, reject stale timestamps to blunt
+    replay attacks. Uses the dedicated Webhook Signing Key, not the API key.
+    """
+    if not (token and timestamp and signature and signing_key):
+        return False
+
+    if max_age_seconds is not None:
+        try:
+            age = time.time() - int(timestamp)
+        except (TypeError, ValueError):
+            return False
+        # Reject far-future timestamps too (clock-skew tolerance is one window).
+        if age > max_age_seconds or age < -max_age_seconds:
+            return False
+
+    expected = hmac.new(
+        key=signing_key.encode(),
+        msg=f"{timestamp}{token}".encode(),
+        digestmod=hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature)
 
 
 def _html_to_text(html: str) -> str:
