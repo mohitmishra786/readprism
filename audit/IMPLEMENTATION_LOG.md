@@ -86,7 +86,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 - [ ] 05-1 | P0 | Code | Held-out ranking-eval harness (predicted-PRS rank vs actual next-day reads)
 - [x] 05-2 | P0 | Code | Semantic signal now clusters interest nodes via union-find over co-occurrence edges (`_cluster_vectors`) and scores content by **max** cosine similarity across clusters, instead of one averaged vector that collapses multi-interest users. Single averaged vector retained for collaborative/cache callers. 3 tests incl. multi-interest. Commit.
-- [ ] 05-3 | P0 | Code | Remove input/target leakage from meta-learning (hold out completion/rating-derived signals) 
+- [x] 05-3 | P0 | Code | Meta-learning now holds out `reading_depth` + `explicit_feedback` (derived from the completion/rating target) from both the prediction and the gradient, so the model can't inflate weights by predicting its own inputs. 1 test. Commit.
 - [ ] 05-4 | P1 | Code | Implement transitive/graph relevance (2-hop edge traversal) OR drop the claim from copy
 - [ ] 05-5 | P1 | Code | Generate graph-based explanations ("connects X and Y")
 - [ ] 05-6 | P1 | Code | Reframe collaborative warmup as >1k-user feature; fix similarity-ranking bug or gate off
