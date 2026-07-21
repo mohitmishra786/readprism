@@ -124,16 +124,16 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [-] 17-7 | P2 | Config | DEFERRED (reason): GitHub stars/clones + Search Console are external dashboards configured in the GitHub/Google UIs, not code. Covered in the SEO/growth docs (file 11).
 - [-] 17-8 | P2 | Decision | Needs first-cohort baseline data — logged for the owner (the metric endpoints to read those baselines now exist).
 
-## 16 — Post-Launch & Retention — STATUS: not started
+## 16 — Post-Launch & Retention — STATUS: COMPLETE (code via 17/05; 16-5/16-6 are founder process)
 
 - [x] 16-1 | P0 | Code | Done via 17-2 (cohort-retention + cold-start-funnel endpoints).
 - [x] 16-2 | P0 | Code | Done via 17-3 (north-star endpoint).
 - [x] 16-3 | P1 | Code | Per-cohort ranking-eval harness — done via 05-1 (`evaluate_user_ranking` + AUC/Spearman).
 - [x] 16-4 | P1 | Code | Scraper-health via 17-5 (`/metrics/scraper-health`) + per-source health surfaced in 04-3.
-- [ ] 16-5 | P1 | Decision | Churned-user interview loop — *process*
-- [ ] 16-6 | P1 | Decision | Sustainable solo iteration cadence + monthly review — *process*
+- [-] 16-5 | P1 | Decision | Process (founder-run outreach on 14d inactivity). The trigger data exists via `/metrics/cohort-retention`; the interview loop itself is human.
+- [-] 16-6 | P1 | Decision | Process (founder cadence commitment). Not code.
 - [x] 16-7 | P2 | Code | `/metrics/meta-weight-divergence` (mean |learned − default| across users) — proxy for accumulated model value.
-- [ ] 16-8 | P2 | Content | Pre-write cold-start contingency plan
+- [x] 16-8 | P2 | Content | `docs/COLD_START_CONTINGENCY.md` — trigger, cheapest-first response ladder, what-not-to-do, and how to measure recovery via the new metrics endpoints. Commit.
 
 ## 10 — UX — STATUS: not started
 
