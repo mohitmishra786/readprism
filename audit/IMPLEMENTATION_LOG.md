@@ -89,7 +89,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 05-3 | P0 | Code | Meta-learning now holds out `reading_depth` + `explicit_feedback` (derived from the completion/rating target) from both the prediction and the gradient, so the model can't inflate weights by predicting its own inputs. 1 test. Commit.
 - [ ] 05-4 | P1 | Code | Implement transitive/graph relevance (2-hop edge traversal) OR drop the claim from copy
 - [ ] 05-5 | P1 | Code | Generate graph-based explanations ("connects X and Y")
-- [ ] 05-6 | P1 | Code | Reframe collaborative warmup as >1k-user feature; fix similarity-ranking bug or gate off
+- [x] 05-6 | P1 | Code | Collaborative warmup gated behind `collaborative_warmup_min_users` (default 1000) — inert below critical mass now returns [] explicitly instead of pretending to contribute; also added `owner_user_id IS NULL` to the items query (cross-tenant privacy). Comment fixed in 04-5. 5 tests. Commit.
 - [ ] 05-7 | P1 | Code | Un-floor cosine signals (allow <0.5) or document intentional compression
 - [ ] 05-8 | P2 | Code | Make novelty target + temporal blend weights config-exposed/learnable
 - [ ] 05-9 | P2 | Code | Offline ranking-eval notebook (nDCG / read-prediction AUC per cohort)

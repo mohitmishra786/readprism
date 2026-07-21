@@ -116,6 +116,10 @@ class Settings(BaseSettings):
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True
+    # Collaborative warmup is mathematically inert below a critical mass of active
+    # users with warm interest vectors; gate it off until then rather than
+    # pretending it contributes at launch (audit 05-6).
+    collaborative_warmup_min_users: int = 1000
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
 
