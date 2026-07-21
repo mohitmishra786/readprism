@@ -58,6 +58,9 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         .where(
             ContentItem.fetched_at >= cutoff,
             ContentItem.source_id.notin_(source_ids) if source_ids else True,
+            # Never surface another user's private content (newsletters) in the
+            # cross-user discovery pool (audit 06-6).
+            ContentItem.owner_user_id.is_(None),
         )
         .order_by(ContentItem.fetched_at.desc())
         .limit(serendipity_count)
