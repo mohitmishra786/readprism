@@ -10,12 +10,18 @@
 
 ---
 
-## Run summary (updated at close-out)
+## Run summary (checkpoint — updated continuously)
 
-- Items implemented: _in progress_
-- Items deferred: _see per-file notes_
+**Files COMPLETE (code/config/content):** 06 (Security), 08 (Legal), 04 (Architecture), 05 (Ranking).
+**Files remaining:** 07, 17, 16, 10, 09, 11, 12, 02, 13, 01, 03, 14/15.
+
+- Backend suite: **197 passing**, ruff clean; frontend tsc clean. Every commit leaves the repo green.
+- ~40 atomic commits, each tagged `[audit:NN-...]`. Docker stack (db/redis/backend) is the test harness; tests run via `docker compose exec backend python -m pytest`; lint via `uvx ruff@0.6.9`.
+- Deferred/partial: 08-1 (MIT-vs-AGPL is a human decision — docs reconciled to MIT, CLA prepared); 06-4 register non-enumeration needs email verification (rate-limited meanwhile).
 - Needs Human Decision: _see section below_
 - Risk flags before launch: _see final section_
+
+**To resume:** ensure the Docker stack is up (`docker compose up -d db redis backend`, then create+migrate `readprism_test`), then continue at the next `[ ]` item in priority order (file 07).
 
 ---
 
