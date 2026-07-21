@@ -117,6 +117,15 @@ export default function PreferencesPage() {
     setBusy(false);
   };
 
+  const suppressTopic = async (label: string) => {
+    if (!confirm(`Mute "${label}" for 30 days? It will gradually resurface after.`)) return;
+    try {
+      await api.feedback.adjustInterests(label, "suppress", 30);
+      const g = await api.preferences.interestGraph();
+      setGraph(g);
+    } catch {}
+  };
+
   const deleteAccount = async () => {
     if (
       !confirm(
@@ -241,11 +250,16 @@ export default function PreferencesPage() {
           {/* SVG graph visualization */}
           <InterestGraphSVG nodes={graph.nodes} edges={graph.edges} />
 
-          {/* Tag cloud fallback */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+          {/* Tag cloud — click a topic to suppress it for a while (audit 10-4). */}
+          <p style={{ color: "#6b7280", fontSize: 13, marginTop: 16 }}>
+            Seeing too much of a topic? Click it to mute it for 30 days.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {graph.nodes.slice(0, 30).map((node) => (
-              <span
+              <button
                 key={node.label}
+                onClick={() => suppressTopic(node.label)}
+                title={`Mute "${node.label}" for 30 days`}
                 style={{
                   padding: "4px 12px",
                   borderRadius: 20,
@@ -254,10 +268,11 @@ export default function PreferencesPage() {
                   fontSize: `${0.75 + node.weight * 0.5}rem`,
                   fontWeight: node.is_core ? 700 : 400,
                   border: node.is_core ? "2px solid #93c5fd" : "1px solid #dbeafe",
+                  cursor: "pointer",
                 }}
               >
                 {node.label}
-              </span>
+              </button>
             ))}
           </div>
         </section>

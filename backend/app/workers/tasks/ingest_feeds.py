@@ -39,13 +39,9 @@ async def _ingest_all_feeds_async() -> dict:
         for source in sources:
             try:
                 raw_items = await dispatch_source(source, session)
-                # Newsletter content is private to the forwarding user; tag it
-                # so it never enters another user's discovery pool (audit 06-6).
-                owner_user_id = source.user_id if source.source_type == "newsletter" else None
                 for raw in raw_items:
                     item = ContentItem(
                         source_id=source.id,
-                        owner_user_id=owner_user_id,
                         url=raw.url,
                         title=raw.title,
                         author=raw.author,

@@ -48,24 +48,6 @@ async def cache_set(key: str, value: Any, ttl_seconds: int = 3600) -> bool:
         return False
 
 
-async def cache_set_nx(key: str, value: Any, ttl_seconds: int) -> bool:
-    """Atomically set `key` only if absent (SET NX EX). Returns True if the key
-    was newly set, False if it already existed. Used for replay-attack dedupe.
-
-    On a Redis error we return True (fail-open on the dedupe layer) so that a
-    cache outage never silently drops legitimate, already-signature-verified
-    webhooks; the HMAC signature remains the authoritative gate.
-    """
-    client = get_redis()
-    try:
-        serialized = json.dumps(value, default=str)
-        result = await client.set(key, serialized, ex=ttl_seconds, nx=True)
-        return bool(result)
-    except Exception as e:
-        logger.warning(f"Redis SET NX failed for key {key}: {e}")
-        return True
-
-
 async def cache_delete(key: str) -> bool:
     client = get_redis()
     try:

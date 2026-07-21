@@ -62,14 +62,8 @@ async def semantic_dedup(
     embedding: list[float],
     session: AsyncSession,
     window_hours: int = 72,
-    owner_user_id: uuid.UUID | None = None,
 ) -> bool:
-    """Return True if a semantically similar item already exists in the recent queue.
-
-    Comparison is scoped so private content (a user's newsletters) is only
-    deduped against public content or that same user's content — never against
-    another tenant's private items (audit 06-6).
-    """
+    """Return True if a semantically similar item already exists in the recent queue."""
     from datetime import datetime, timedelta
 
     cutoff = datetime.now(UTC) - timedelta(hours=window_hours)
@@ -82,7 +76,6 @@ async def semantic_dedup(
                 WHERE fetched_at >= :cutoff
                   AND id != :item_id
                   AND embedding IS NOT NULL
-                  AND (owner_user_id IS NULL OR owner_user_id = :owner)
                 ORDER BY dist ASC
                 LIMIT 1
             """
@@ -91,7 +84,6 @@ async def semantic_dedup(
                 "emb": str(embedding),
                 "cutoff": cutoff,
                 "item_id": str(item_id),
-                "owner": str(owner_user_id) if owner_user_id else None,
             },
         )
         row = result.fetchone()

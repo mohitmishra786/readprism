@@ -4,7 +4,6 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,60 +16,11 @@ from app.models.user import User
 from app.schemas.content import ContentItemRead
 from app.schemas.digest import DigestItemRead, DigestRead
 from app.utils.logging import get_logger
-from app.utils.unsubscribe import verify_unsubscribe_token
 
 router = APIRouter(prefix="/digest", tags=["digest"])
 logger = get_logger(__name__)
 
 RATE_LIMIT_FREE_MINUTES = 60
-
-
-async def _apply_unsubscribe(uid: str, token: str, session: AsyncSession) -> bool:
-    """Verify the signed token and switch the user to in-app-only (no email).
-    Returns True if a user was updated."""
-    try:
-        user_uuid = uuid.UUID(uid)
-    except (ValueError, TypeError):
-        return False
-    if not verify_unsubscribe_token(uid, token):
-        return False
-    result = await session.execute(select(User).where(User.id == user_uuid))
-    user = result.scalar_one_or_none()
-    if user is None:
-        return False
-    user.digest_frequency = "in_app_only"
-    await session.flush()
-    logger.info(f"User {uid} unsubscribed from digest emails via email link")
-    return True
-
-
-@router.get("/unsubscribe", response_class=HTMLResponse)
-async def unsubscribe_get(
-    uid: str = Query(...),
-    token: str = Query(...),
-    session: AsyncSession = Depends(get_db),
-) -> HTMLResponse:
-    """One-click unsubscribe target for the digest email footer link."""
-    ok = await _apply_unsubscribe(uid, token, session)
-    if not ok:
-        return HTMLResponse("<p>This unsubscribe link is invalid or expired.</p>", status_code=400)
-    return HTMLResponse(
-        "<p>You've been unsubscribed from ReadPrism digest emails. "
-        "You can re-enable them anytime in your preferences.</p>"
-    )
-
-
-@router.post("/unsubscribe", status_code=status.HTTP_200_OK)
-async def unsubscribe_post(
-    uid: str = Query(...),
-    token: str = Query(...),
-    session: AsyncSession = Depends(get_db),
-) -> dict:
-    """RFC 8058 List-Unsubscribe-Post=One-Click endpoint (mail-client POST)."""
-    ok = await _apply_unsubscribe(uid, token, session)
-    if not ok:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
-    return {"status": "unsubscribed"}
 
 
 @router.get("/latest", response_model=DigestRead)

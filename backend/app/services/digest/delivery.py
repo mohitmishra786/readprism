@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from html import escape
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.models.content import ContentItem
 from app.models.digest import Digest, DigestItem
 from app.models.user import User
 from app.utils.email import send_email
 from app.utils.logging import get_logger
-from app.utils.unsubscribe import unsubscribe_url
 
 logger = get_logger(__name__)
 
@@ -101,12 +98,6 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             }
         )
 
-    # Working preferences + unsubscribe links (audit 08-5); the old template
-    # hard-coded http://localhost:3000, which is broken in production.
-    settings = get_settings()
-    preferences_url = f"{settings.frontend_url.rstrip('/')}/preferences"
-    unsub_url = unsubscribe_url(user.id)
-
     # Build email HTML
     env = _get_jinja_env()
     try:
@@ -116,22 +107,13 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             digest=digest,
             sections=sections,
             generated_at=digest.generated_at.strftime("%B %d, %Y"),
-            preferences_url=preferences_url,
-            unsubscribe_url=unsub_url,
-            physical_address=settings.email_physical_address,
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")
         html_body = _fallback_html(user, sections)
 
     # Plain text fallback
-    text_body = _build_text_body(user, sections, preferences_url, unsub_url)
-
-    # RFC 8058 one-click unsubscribe + mailto fallback.
-    extra_headers = {
-        "List-Unsubscribe": f"<{unsub_url}>, <mailto:{settings.from_email}?subject=unsubscribe>",
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-    }
+    text_body = _build_text_body(user, sections)
 
     subject = f"Your ReadPrism Digest — {digest.generated_at.strftime('%B %d, %Y')}"
     success = await send_email(
@@ -139,7 +121,6 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
         subject=subject,
         html_body=html_body,
         text_body=text_body,
-        extra_headers=extra_headers,
     )
 
     if success:
@@ -150,28 +131,19 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
 
 
 def _fallback_html(user: User, sections: dict) -> str:
-    # Escape every interpolated value: titles/summaries/URLs come from ingested
-    # third-party content and would otherwise inject HTML into the email (XSS,
-    # audit 06-7). The Jinja template autoescapes; this hand-built fallback must
-    # do so explicitly.
     parts = ["<h1>Your ReadPrism Digest</h1>"]
     for section_name, items in sections.items():
-        parts.append(f"<h2>{escape(section_name.replace('_', ' ').title())}</h2>")
+        parts.append(f"<h2>{section_name.replace('_', ' ').title()}</h2>")
         for item_data in items:
             content = item_data["content"]
-            parts.append(
-                f'<div><h3><a href="{escape(content.url, quote=True)}">'
-                f"{escape(content.title)}</a></h3>"
-            )
+            parts.append(f'<div><h3><a href="{content.url}">{content.title}</a></h3>')
             if content.summary_brief:
-                parts.append(f"<p>{escape(content.summary_brief)}</p>")
+                parts.append(f"<p>{content.summary_brief}</p>")
             parts.append("</div>")
     return "".join(parts)
 
 
-def _build_text_body(
-    user: User, sections: dict, preferences_url: str = "", unsubscribe: str = ""
-) -> str:
+def _build_text_body(user: User, sections: dict) -> str:
     lines = ["Your ReadPrism Digest\n", "=" * 40]
     for section_name, items in sections.items():
         lines.append(f"\n{section_name.upper().replace('_', ' ')}\n" + "-" * 30)
@@ -181,9 +153,4 @@ def _build_text_body(
             if content.summary_brief:
                 lines.append(content.summary_brief)
             lines.append(f"Read: {content.url}")
-    lines.append("\n" + "-" * 40)
-    if preferences_url:
-        lines.append(f"Manage preferences: {preferences_url}")
-    if unsubscribe:
-        lines.append(f"Unsubscribe: {unsubscribe}")
     return "\n".join(lines)

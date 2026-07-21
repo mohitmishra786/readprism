@@ -36,20 +36,3 @@ class Source(Base):
         onupdate=func.now(),
         nullable=False,
     )
-
-    # Failure thresholds for the user-facing health status (audit 04-3).
-    _HEALTH_DEGRADED_ERRORS = 1
-    _HEALTH_FAILING_ERRORS = 3
-
-    @property
-    def health(self) -> str:
-        """User-facing fetch health: 'ok', 'degraded', or 'failing'.
-
-        Surfaced so a silently-dead source (accumulating fetch errors) is visible
-        instead of just quietly degrading the digest.
-        """
-        if self.fetch_error_count >= self._HEALTH_FAILING_ERRORS:
-            return "failing"
-        if self.fetch_error_count >= self._HEALTH_DEGRADED_ERRORS:
-            return "degraded"
-        return "ok"

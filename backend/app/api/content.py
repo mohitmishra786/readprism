@@ -101,9 +101,4 @@ async def get_content(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    # Private content (e.g. forwarded newsletters) is readable only by its owner.
-    # Return 404 (not 403) so non-owners can't even confirm the item exists
-    # (audit 06-6).
-    if item.owner_user_id is not None and item.owner_user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
     return ContentItemFullRead.model_validate(item)

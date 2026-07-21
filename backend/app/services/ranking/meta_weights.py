@@ -23,16 +23,6 @@ DEFAULT_WEIGHTS = {
 MIN_INTERACTIONS_FOR_LEARNING = 20
 CACHE_TTL = 24 * 3600
 
-# Signals whose value is derived from the same quantities as the engagement
-# target (completion, rating). Including them in the regression would let the
-# model "predict its own inputs" and inflate their weights for reasons that
-# don't reflect genuine predictive value, invalidating the learning story. We
-# hold them out of the gradient so only genuinely-independent signals are
-# learned against the engagement target (audit 05-3).
-#   - reading_depth  <- derived from read_completion_pct
-#   - explicit_feedback <- derived from explicit_rating
-LEAKING_SIGNALS = {"reading_depth", "explicit_feedback"}
-
 
 class UserMetaWeights:
     def __init__(
@@ -132,19 +122,13 @@ async def update_meta_weights(
         )
         actual = max(0.0, min(1.0, actual))
 
-        # Predicted engagement from the *non-leaking* signals only, so the
-        # regression can't cheat by up-weighting signals that are themselves
-        # functions of the target (audit 05-3).
+        # Predicted PRS from signal breakdown
         breakdown = digest_item.signal_breakdown or {}
-        predicted = sum(
-            weights.get(k, 0.0) * v
-            for k, v in breakdown.items()
-            if k not in LEAKING_SIGNALS and isinstance(v, int | float)
-        )
+        predicted = sum(weights.get(k, 0.0) * v for k, v in breakdown.items())
         error = predicted - actual
 
         for signal_name, signal_score in breakdown.items():
-            if signal_name in gradients and signal_name not in LEAKING_SIGNALS:
+            if signal_name in gradients:
                 gradients[signal_name] += 2 * error * signal_score
         n += 1
 
@@ -152,8 +136,6 @@ async def update_meta_weights(
         return weights_obj
 
     for k in weights:
-        if k in LEAKING_SIGNALS:
-            continue  # weight left unchanged; not learned from a circular target
         weights[k] = weights[k] - step_size * (gradients[k] / n)
         weights[k] = max(0.01, min(0.50, weights[k]))
 

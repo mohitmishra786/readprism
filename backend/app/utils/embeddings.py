@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import hashlib
 
 import numpy as np
@@ -29,19 +28,12 @@ class EmbeddingService:
             return np.zeros((0, self.dimension), dtype=np.float32)
         return self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
-    async def _encode_async(self, texts: list[str]) -> np.ndarray:
-        # sentence-transformers encode is CPU-bound and blocking; run it in a
-        # thread so it never stalls the event loop (audit 04-4) — matters most on
-        # API-triggered paths like onboarding.
-        return await asyncio.to_thread(self.encode, texts)
-
     async def encode_single(self, text: str) -> list[float]:
         cache_key = f"emb:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
         cached = await cache_get(cache_key)
         if cached is not None:
             return cached
-        vectors = await self._encode_async([text])
-        vector = vectors[0].tolist()
+        vector = self.encode([text])[0].tolist()
         await cache_set(cache_key, vector, ttl_seconds=7 * 24 * 3600)
         return vector
 
@@ -59,7 +51,7 @@ class EmbeddingService:
 
         if to_encode:
             indices, raw_texts = zip(*to_encode, strict=False)
-            vectors = await self._encode_async(list(raw_texts))
+            vectors = self.encode(list(raw_texts))
             for idx, vec in zip(indices, vectors, strict=False):
                 vec_list = vec.tolist()
                 results.append((idx, vec_list))

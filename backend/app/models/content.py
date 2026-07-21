@@ -40,14 +40,6 @@ class ContentItem(Base):
         nullable=True,
         index=True,
     )
-    # Owner of private, per-user content (forwarded newsletter bodies, which are
-    # personalized and may carry the recipient's name/unsubscribe tokens). NULL
-    # for public content (RSS/scraped) that is safe to dedupe + share across all
-    # users. Private content is never surfaced in another user's discovery pool
-    # nor readable by a non-owner (audit 06-6).
-    owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
-    )
     url: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     author: Mapped[str | None] = mapped_column(String, nullable=True)

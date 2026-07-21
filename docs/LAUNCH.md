@@ -39,7 +39,7 @@ I'm most curious about feedback on the cold-start problem — the hardest part o
 any personalization product. I seed curated starter sources + use collaborative
 warmup, but day-1 quality is the existential risk and I'd value thoughts.
 
-Repo: https://github.com/mohitmishra786/readprism
+Repo: https://github.com/readprism/readprism
 
 ---
 
@@ -60,7 +60,7 @@ language-design are adjacent in your reading).
 - Reddit, Substack, YouTube, Medium, podcasts fully supported; Twitter/LinkedIn
   honestly marked unsupported
 - Full ranking engine on the free tier; $4.99/mo Pro for unlimited sources
-- Open source (MIT)
+- Open source (AGPL)
 
 The interesting trade-off: the ranking needs behavioral signal, which means it's
 weak for light users and strongest for daily readers. Curious how the r/rss

@@ -3,40 +3,14 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.interest_graph import InterestEdge, InterestNode
+from app.models.interest_graph import InterestNode
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 INACTIVE_WEIGHT_THRESHOLD = 0.05
-
-
-async def renormalize_edges(user_id: uuid.UUID, session: AsyncSession) -> int:
-    """Recompute every edge_weight as co_occurrence_count / max_count for the user.
-
-    Per-reinforcement normalization only updates the touched edge, so other
-    edges' weights go stale relative to a moving max. This nightly pass corrects
-    all of them at once (audit 04-7). Returns the number of edges renormalized.
-    """
-    max_count = (
-        await session.execute(
-            select(func.max(InterestEdge.co_occurrence_count)).where(
-                InterestEdge.user_id == user_id
-            )
-        )
-    ).scalar() or 1
-
-    edges = list(
-        (
-            await session.execute(select(InterestEdge).where(InterestEdge.user_id == user_id))
-        ).scalars()
-    )
-    for edge in edges:
-        edge.edge_weight = edge.co_occurrence_count / max_count
-    await session.flush()
-    return len(edges)
 
 
 async def apply_decay(user_id: uuid.UUID, session: AsyncSession) -> None:
@@ -80,9 +54,4 @@ async def apply_decay(user_id: uuid.UUID, session: AsyncSession) -> None:
             node.weight = INACTIVE_WEIGHT_THRESHOLD  # keep but nearly inactive
 
     await session.flush()
-
-    # Correct any edge weights left stale by per-write normalization.
-    edge_count = await renormalize_edges(user_id, session)
-    logger.info(
-        f"Decay applied to {len(nodes)} nodes, renormalized {edge_count} edges for user {user_id}"
-    )
+    logger.info(f"Decay applied to {len(nodes)} nodes for user {user_id}")

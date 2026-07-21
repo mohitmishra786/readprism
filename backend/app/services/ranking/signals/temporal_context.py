@@ -6,14 +6,12 @@ import numpy as np
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
+from app.services.ranking.signals import UserInterestGraph
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 SIMILARITY_SATURATION_THRESHOLD = 0.80
 SATURATION_PENALTY_PER_ITEM = 0.15
@@ -31,11 +29,7 @@ async def compute(
     medium_term = await _medium_term_score(content, user, session)
     short_term = await _short_term_adjustment(content, user, session)
 
-    temporal_score = (
-        long_term * settings.temporal_blend_long
-        + medium_term * settings.temporal_blend_medium
-        + short_term * settings.temporal_blend_short
-    )
+    temporal_score = long_term * 0.5 + medium_term * 0.35 + short_term * 0.15
     tod_adjustment = _time_of_day_adjustment(content, interaction_history)
     return float(np.clip(temporal_score + tod_adjustment, 0.0, 1.0))
 
@@ -54,7 +48,7 @@ async def _long_term_score(content: ContentItem, graph: UserInterestGraph) -> fl
             np.dot(content_vec, node_vec)
             / (np.linalg.norm(content_vec) * np.linalg.norm(node_vec) + 1e-8)
         )
-        sims.append(cosine_to_unit_score(sim))
+        sims.append((sim + 1.0) / 2.0)
     return float(np.mean(sims)) if sims else 0.5
 
 
@@ -87,7 +81,7 @@ async def _medium_term_score(content: ContentItem, user: User, session: AsyncSes
             medium_vec = medium_vec / norm
         content_vec = np.array(content.embedding, dtype=np.float32)
         sim = float(np.dot(content_vec, medium_vec) / (np.linalg.norm(content_vec) * norm + 1e-8))
-        return cosine_to_unit_score(sim)
+        return (sim + 1.0) / 2.0
     except Exception as e:
         logger.warning(f"medium_term_score query failed: {e}")
         return 0.5
@@ -121,7 +115,7 @@ async def _short_term_adjustment(content: ContentItem, user: User, session: Asyn
                 np.dot(content_vec, emb)
                 / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
             )
-            if cosine_to_unit_score(sim) > SIMILARITY_SATURATION_THRESHOLD:
+            if (sim + 1.0) / 2.0 > SIMILARITY_SATURATION_THRESHOLD:
                 seen_count += 1
         penalty = min(MAX_SATURATION_PENALTY, seen_count * SATURATION_PENALTY_PER_ITEM)
         return 1.0 - penalty

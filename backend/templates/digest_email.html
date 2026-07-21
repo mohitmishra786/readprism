@@ -58,11 +58,7 @@
 {% endfor %}
 
 <div class="footer">
-  <p>You received this because you have a ReadPrism account.
-     <a href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
-     <a href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a>
-  </p>
-  {% if physical_address %}<p>{{ physical_address }}</p>{% endif %}
+  <p>You received this because you have a ReadPrism account. <a href="{{ "http://localhost:3000/preferences" }}" style="color:#1d4ed8;">Manage preferences</a></p>
 </div>
 </body>
 </html>

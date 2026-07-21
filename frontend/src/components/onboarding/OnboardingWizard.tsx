@@ -101,7 +101,9 @@ export function OnboardingWizard() {
       {step === 2 && (
         <div>
           <p style={{ color: "#6b7280", marginBottom: 16 }}>
-            Add websites or RSS feeds you follow.
+            Add websites or RSS feeds you follow.{" "}
+            <strong>Optional</strong> — we’ll seed starter sources from your
+            interests, and you can add your own anytime.
           </p>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input
@@ -130,7 +132,8 @@ export function OnboardingWizard() {
       {step === 3 && (
         <div>
           <p style={{ color: "#6b7280", marginBottom: 16 }}>
-            Add creators you follow (name or URL).
+            Add creators you follow (name or URL). <strong>Optional</strong> —
+            skip and add later from the Creators page.
           </p>
           <input
             type="text"
@@ -179,7 +182,10 @@ export function OnboardingWizard() {
             onClick={next}
             style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
           >
-            Continue
+            {/* Optional steps (sources/creators) read as "Skip" when empty */}
+            {(step === 2 && sources.length === 0) || (step === 3 && !creatorInput)
+              ? "Skip for now"
+              : "Continue"}
           </button>
         ) : (
           <button

@@ -6,14 +6,14 @@ import numpy as np
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
+from app.services.ranking.signals import UserInterestGraph
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
+
+TARGET_NOVELTY = 0.35
 
 
 async def compute(
@@ -55,14 +55,13 @@ async def compute(
                 np.dot(content_vec, emb)
                 / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
             )
-            sim = cosine_to_unit_score(sim)
+            sim = (sim + 1.0) / 2.0
             if sim > max_sim:
                 max_sim = sim
 
         novelty = 1.0 - max_sim
-        # Score peaks at the configured novelty target, falls off at extremes.
-        target = settings.novelty_target
-        score = 1.0 - abs(novelty - target) / target
+        # Score peaks at novelty = TARGET_NOVELTY, falls off at extremes
+        score = 1.0 - abs(novelty - TARGET_NOVELTY) / TARGET_NOVELTY
         return float(np.clip(score, 0.0, 1.0))
     except Exception as e:
         logger.warning(f"novelty signal query failed: {e}")

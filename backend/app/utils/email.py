@@ -16,7 +16,6 @@ def send_email_sync(
     html_body: str,
     text_body: str | None = None,
     reply_to: str | None = None,
-    extra_headers: dict[str, str] | None = None,
 ) -> bool:
     """
     Send an email via Zoho SMTP (synchronous).
@@ -35,8 +34,6 @@ def send_email_sync(
         msg["To"] = to
         if reply_to:
             msg["Reply-To"] = reply_to
-        for header, value in (extra_headers or {}).items():
-            msg[header] = value
 
         if text_body:
             msg.attach(MIMEText(text_body, "plain"))
@@ -69,7 +66,6 @@ async def send_email(
     html_body: str,
     text_body: str | None = None,
     reply_to: str | None = None,
-    extra_headers: dict[str, str] | None = None,
 ) -> bool:
     """
     Async wrapper — runs the blocking SMTP call in a thread pool so the event
@@ -77,14 +73,4 @@ async def send_email(
     """
     import asyncio
 
-    ok = await asyncio.to_thread(
-        send_email_sync, to, subject, html_body, text_body, reply_to, extra_headers
-    )
-    # Track delivery success/failure for the deliverability metric (audit 17-6).
-    try:
-        from app.utils.cache import get_redis
-
-        await get_redis().incr("email:delivered" if ok else "email:failed")
-    except Exception:  # pragma: no cover - metrics must never break sending
-        pass
-    return ok
+    return await asyncio.to_thread(send_email_sync, to, subject, html_body, text_body, reply_to)
