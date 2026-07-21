@@ -311,6 +311,7 @@ readprism/
 - [Terms of Service](docs/TERMS.md)
 - [Third-party services & compliance](docs/THIRD_PARTY_SERVICES.md)
 - [Security policy](SECURITY.md) · [Contributing (+ CLA)](CONTRIBUTING.md)
+- [Competitive landscape (2026)](docs/COMPETITORS.md) · [Unit economics](docs/UNIT_ECONOMICS.md)
 
 These are baseline templates for the software; a hosted operator should have them
 reviewed by counsel before collecting user data. The current license is
