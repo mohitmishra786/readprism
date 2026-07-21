@@ -1,4 +1,4 @@
-import { getToken, removeToken } from './auth';
+import { getRefreshToken, getToken, removeToken, setToken } from './auth';
 import type {
   ContentItem,
   ContentItemFull,
@@ -15,10 +15,7 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const V1 = `${API_BASE}/api/v1`;
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+function buildHeaders(options: RequestInit): Record<string, string> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -27,10 +24,55 @@ async function request<T>(
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  return headers;
+}
 
-  const res = await fetch(`${V1}${path}`, { ...options, headers });
+// Single-flight refresh: concurrent 401s share one refresh request so we don't
+// stampede /auth/refresh (which is single-use and would revoke each other).
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+  if (!refreshInFlight) {
+    refreshInFlight = (async () => {
+      try {
+        const res = await fetch(`${V1}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!res.ok) return false;
+        const data = (await res.json()) as Token;
+        setToken(data.access_token, data.refresh_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshInFlight = null;
+      }
+    })();
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  _retried = false,
+): Promise<T> {
+  const res = await fetch(`${V1}${path}`, {
+    ...options,
+    headers: buildHeaders(options),
+  });
 
   if (res.status === 401) {
+    // Access token likely expired — attempt one silent refresh + retry before
+    // bouncing to /login. Don't attempt to refresh the auth endpoints themselves.
+    const isAuthPath = path.startsWith('/auth/');
+    if (!_retried && !isAuthPath && (await tryRefresh())) {
+      return request<T>(path, options, true);
+    }
     removeToken();
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
@@ -63,6 +105,11 @@ export const api = {
     me: () => request<User>('/auth/me'),
     refresh: (refresh_token: string) =>
       request<Token>('/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token }),
+      }),
+    logout: (refresh_token: string) =>
+      request<void>('/auth/logout', {
         method: 'POST',
         body: JSON.stringify({ refresh_token }),
       }),

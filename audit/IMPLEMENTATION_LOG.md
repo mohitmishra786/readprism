@@ -50,7 +50,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 06-2 | P0 | Code | SSRF protection on all server-side URL fetches — `app/utils/ssrf.py` (validate + redirect-safe `safe_get`), wired into scraper (`_check_robots`/`_fetch_with_retry`/`_fetch_with_playwright`) + rss autodiscovery; configurable via `ssrf_protection_enabled`; 18 unit tests. Commit.
 - [x] 06-3 | P0 | Code | Account deletion + data export endpoints: `app/services/account/gdpr.py` (`export_user_data`, `delete_user_account` handling RESTRICT teams + cascade + Redis purge) + `app/api/account.py` (`GET /account/export`, `DELETE /account`). 6 tests. Frontend control tracked as DDI-1. Commit.
 - [x] 06-4 | P1 | Code | Redis fixed-window `RateLimiter` (`app/utils/ratelimit.py`) on `/auth/login` (10/min) + `/auth/register` (5/min); login now runs a constant-time bcrypt check against a dummy hash for absent users (closes timing oracle) + returns identical 401. Register 409 retained (full non-enum needs email verification — see 06-4 note). 3 tests. Commit.
-- [ ] 06-5 | P1 | Code | Real refresh-token model (separate secret, rotation, revocation) OR short-lived access + server httpOnly cookie
+- [x] 06-5 | P1 | Code | Real refresh-token model: short-lived access (30m) + long-lived refresh (30d) with `type`/`jti` claims, optional separate secret, Redis jti-allowlist for rotation (single-use) + revocation; `/auth/logout` revokes; refresh tokens rejected as access. Frontend: store both, single-flight auto-refresh on 401, revoke on sign-out. 4 backend tests; tsc clean. Commit.
 - [ ] 06-6 | P1 | Code | Segregate newsletter-sourced content per user (don't dedupe personalized bodies into shared rows)
 - [ ] 06-7 | P1 | Code | Sanitize/escape scraped + newsletter HTML before reader/digest render
 - [ ] 06-8 | P2 | Code | Hard-fail startup on default `secret_key` outside development
@@ -238,3 +238,4 @@ These are logged with the specific question; not implemented until answered. Wor
 ## Discovered During Implementation
 
 - [ ] DDI-1 | Frontend UI control for account export/deletion (Preferences page → "Export my data" / "Delete account" calling the 06-3 endpoints). To be built during the UX/UI pass (file 10/09).
+- [ ] DDI-2 | `next lint` is broken under Next 16 (treats "lint" as a build dir; `next lint` removed in Next 16). Frontend CI `npx next lint` step is a silent no-op/failure. Migrate to ESLint CLI (`eslint .`) with a flat config. To address in the UI/SEO frontend pass or infra (file 07/09).

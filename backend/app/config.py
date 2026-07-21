@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     # Application
     app_env: str = "development"
     secret_key: str = "change_me_to_a_long_random_string"
+    # Optional distinct signing key for refresh tokens (defense in depth). Falls
+    # back to secret_key when empty.
+    refresh_secret_key: str = ""
+    # Short-lived access tokens + long-lived, revocable refresh tokens.
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 30
     frontend_url: str = "http://localhost:3000"
 
     # Database

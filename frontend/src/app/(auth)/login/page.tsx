@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError("");
     try {
       const token = await api.auth.login(email, password);
-      setToken(token.access_token);
+      setToken(token.access_token, token.refresh_token);
       router.replace("/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");

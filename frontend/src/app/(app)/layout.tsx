@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isAuthenticated, removeToken } from "../../lib/auth";
+import { api } from "../../lib/api";
+import { getRefreshToken, isAuthenticated, removeToken } from "../../lib/auth";
 
 const NAV = [
   { href: "/digest", label: "Digest" },
@@ -56,6 +57,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </nav>
           <button
             onClick={() => {
+              const refresh = getRefreshToken();
+              if (refresh) {
+                // Best-effort server-side revocation; don't block sign-out on it.
+                api.auth.logout(refresh).catch(() => {});
+              }
               removeToken();
               router.replace("/login");
             }}
