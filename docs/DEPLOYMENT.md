@@ -72,6 +72,16 @@ docker compose exec -T backend alembic upgrade head
 
 Test a restore periodically — an untested backup is not a backup.
 
+## Self-hosting with your own LLM key (BYO)
+
+Self-hosted instances bring their own `GROQ_API_KEY` (and optionally an OpenAI
+fallback), so heavy/niche readers pay their own inference bill directly — the
+intended pressure-release for the worst-margin users (audit 13-3). The full
+ranking engine and summarization run locally against your key; no ReadPrism
+hosted service is involved. Tier limits (`FREE_MAX_SOURCES`,
+`FREE_MAX_CREATORS`) are yours to configure or disable (set to 0) on your own
+instance.
+
 ## Minimum host sizing
 
 The sentence-transformer model loads into memory in the API and each worker.

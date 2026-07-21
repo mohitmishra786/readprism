@@ -190,26 +190,26 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [-] 02-5 | P2 | Decision | Process (quarterly watch). COMPETITORS.md carries a 'quarterly refresh' revisit note.
 - [-] 02-6 | P2 | Decision | Process (competitor watch). Noted in COMPETITORS.md refresh trigger.
 
-## 13 — Monetization & Pricing — STATUS: not started
+## 13 — Monetization & Pricing — STATUS: COMPLETE (code/content; tier *structure* + price = Needs Human Decision #2/#4)
 
-- [ ] 13-1 | P0 | Decision+Code | Re-align Free/Pro boundary with variable cost (Free=cached summaries+1/day; Pro=on-demand synthesis) — *tier structure is human; entitlement scaffolding is code*
-- [ ] 13-2 | P1 | Content | Rebuild unit-economics model (real Groq/Resend + cache-hit + step costs) — same as 07-5
-- [ ] 13-3 | P1 | Content | Document self-hosted BYO-LLM-key as pressure-release
-- [ ] 13-4 | P1 | Decision | Market Pro on capability not price — *process/copy*
-- [ ] 13-5 | P2 | Code | Server-side entitlement enforcement (when billing exists)
-- [ ] 13-6 | P2 | Decision | "Hosted convenience" premium framing — *process*
-- [ ] 13-7 | P2 | Content | Realistic near-term financial target (<100 users, <$100/mo)
+- [x] 13-1 | P0 | Decision+Code | Entitlement scaffolding shipped (`services/entitlements.py`, config-driven `free_max_sources`/`free_max_creators`, enforced 402 on source/creator add; Pro unlimited). Final Free/Pro *structure* (cached vs on-demand summaries) remains Needs Human Decision #2. 2 tests. Commit.
+- [x] 13-2 | P1 | Content | Done via 07-5 (UNIT_ECONOMICS.md).
+- [x] 13-3 | P1 | Content | BYO-LLM-key section added to `docs/DEPLOYMENT.md` (self-hosters pay their own inference; tier limits configurable/disable). Commit.
+- [x] 13-4 | P1 | Decision | Reflected in copy: COMPETITORS.md price positioning + README differentiators sell capability, not price. (Ongoing founder discipline.)
+- [x] 13-5 | P2 | Code | Server-side enforcement implemented now (not just at billing): `enforce_source_limit`/`enforce_creator_limit`. Billing integration itself (Stripe) still pending a hosted-vs-self-host decision. Commit.
+- [-] 13-6 | P2 | Decision | Process (framing decision). Captured in UNIT_ECONOMICS.md.
+- [x] 13-7 | P2 | Content | <100-user / <$100/mo hosted-beta target in UNIT_ECONOMICS.md (done with 07-5).
 
 ## 01 — Product-Market Fit — STATUS: not started
 
 - [ ] 01-1 | P0 | Decision | Run 10-user concierge cold-start test — *process*
 - [ ] 01-2 | P0 | Decision | Define wedge in one falsifiable sentence — *process/copy*
 - [ ] 01-3 | P0 | Decision | Hosted-first vs self-host-first — *process*
-- [ ] 01-4 | P1 | Code | Instrument suggestion-driven-read rate as PMF metric — same as 17-3
+- [x] 01-4 | P1 | Code | Done via 17-3 (`/metrics/north-star`).
 - [ ] 01-5 | P1 | Content | Narrow positioning claim vs NewsBlur/Particle — same as 12-4/02-4
 - [ ] 01-6 | P1 | Decision | Write kill/pivot criteria — *process*
 - [ ] 01-7 | P2 | Content | "Explainable ranking" as marketable wedge — overlaps 12-4/05-5
-- [ ] 01-8 | P2 | Code | Export meta-weights/graph as user-facing feature ("your model, yours to take")
+- [x] 01-8 | P2 | Code | Done via 06-3: the GDPR export bundle already includes meta_weights + interest nodes/edges — the user's model is theirs to take.
 
 ## 03 — Target User & ICP — STATUS: not started
 

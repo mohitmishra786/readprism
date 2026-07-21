@@ -135,6 +135,13 @@ class Settings(BaseSettings):
     temporal_blend_medium: float = 0.35  # medium-term focus weight
     temporal_blend_short: float = 0.15  # session/short-term weight
 
+    # Tier entitlements (audit 13-1/13-5). Free-tier quantity limits; 0 = unlimited.
+    # These are config-driven scaffolding — the final Free/Pro structure is a
+    # business decision (see IMPLEMENTATION_LOG "Needs Human Decision"). Pro is
+    # unlimited by default. Only enforced when `tier == "free"`.
+    free_max_sources: int = 30
+    free_max_creators: int = 5
+
     # Feature flags
     cold_start_collaborative_enabled: bool = True
     # Collaborative warmup is mathematically inert below a critical mass of active

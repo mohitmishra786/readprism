@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -13,6 +13,7 @@ from app.models.creator import Creator
 from app.models.user import User
 from app.schemas.creator import CreatorCreate, CreatorRead, CreatorResolutionResult, CreatorUpdate
 from app.services.creator.resolver import PLATFORM_CAPABILITIES, resolve_creator
+from app.services.entitlements import enforce_creator_limit
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/creators", tags=["creators"])
@@ -34,6 +35,14 @@ async def add_creator(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> CreatorResolutionResult:
+    # Enforce the free-tier creator limit (audit 13-1/13-5).
+    count = (
+        await session.execute(
+            select(func.count()).select_from(Creator).where(Creator.user_id == current_user.id)
+        )
+    ).scalar() or 0
+    enforce_creator_limit(current_user, count)
+
     result = await resolve_creator(body.name_or_url, current_user.id, session)
     if body.priority != "normal":
         result.creator.priority = body.priority
