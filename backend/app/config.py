@@ -105,9 +105,23 @@ class Settings(BaseSettings):
         )
 
 
+_DEFAULT_SECRET_KEY = "change_me_to_a_long_random_string"
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     s = Settings()
+
+    # Refuse to boot outside development with the placeholder signing key — a
+    # default SECRET_KEY means every JWT is forgeable (audit 06-8).
+    if s.app_env != "development" and s.secret_key == _DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY is still the insecure default in a non-development "
+            f"environment (APP_ENV={s.app_env!r}). Generate one with "
+            '`python -c "import secrets; print(secrets.token_hex(32))"` and set '
+            "it in the environment before deploying."
+        )
+
     if not s.llm_configured:
         # Loud, actionable warning so the operator knows summaries are disabled.
         import warnings
