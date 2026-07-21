@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     zoho_email: str = "admin@mohitmishra7.com"
     zoho_password: str = ""
     from_email: str = "admin@mohitmishra7.com"
+    # Externally-reachable base URL of this API — used to build one-click
+    # unsubscribe links in digest emails (must be publicly routable in prod).
+    public_api_url: str = "http://localhost:8000"
+    # Physical mailing address shown in the email footer (CAN-SPAM). Optional
+    # for self-host; set it for any real bulk sending.
+    email_physical_address: str = ""
 
     # Newsletter ingestion
     newsletter_inbox_domain: str = "inbox.readprism.app"

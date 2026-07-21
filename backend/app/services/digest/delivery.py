@@ -8,11 +8,13 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem
 from app.models.digest import Digest, DigestItem
 from app.models.user import User
 from app.utils.email import send_email
 from app.utils.logging import get_logger
+from app.utils.unsubscribe import unsubscribe_url
 
 logger = get_logger(__name__)
 
@@ -99,6 +101,12 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             }
         )
 
+    # Working preferences + unsubscribe links (audit 08-5); the old template
+    # hard-coded http://localhost:3000, which is broken in production.
+    settings = get_settings()
+    preferences_url = f"{settings.frontend_url.rstrip('/')}/preferences"
+    unsub_url = unsubscribe_url(user.id)
+
     # Build email HTML
     env = _get_jinja_env()
     try:
@@ -108,13 +116,22 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             digest=digest,
             sections=sections,
             generated_at=digest.generated_at.strftime("%B %d, %Y"),
+            preferences_url=preferences_url,
+            unsubscribe_url=unsub_url,
+            physical_address=settings.email_physical_address,
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")
         html_body = _fallback_html(user, sections)
 
     # Plain text fallback
-    text_body = _build_text_body(user, sections)
+    text_body = _build_text_body(user, sections, preferences_url, unsub_url)
+
+    # RFC 8058 one-click unsubscribe + mailto fallback.
+    extra_headers = {
+        "List-Unsubscribe": f"<{unsub_url}>, <mailto:{settings.from_email}?subject=unsubscribe>",
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    }
 
     subject = f"Your ReadPrism Digest — {digest.generated_at.strftime('%B %d, %Y')}"
     success = await send_email(
@@ -122,6 +139,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
         subject=subject,
         html_body=html_body,
         text_body=text_body,
+        extra_headers=extra_headers,
     )
 
     if success:
@@ -151,7 +169,9 @@ def _fallback_html(user: User, sections: dict) -> str:
     return "".join(parts)
 
 
-def _build_text_body(user: User, sections: dict) -> str:
+def _build_text_body(
+    user: User, sections: dict, preferences_url: str = "", unsubscribe: str = ""
+) -> str:
     lines = ["Your ReadPrism Digest\n", "=" * 40]
     for section_name, items in sections.items():
         lines.append(f"\n{section_name.upper().replace('_', ' ')}\n" + "-" * 30)
@@ -161,4 +181,9 @@ def _build_text_body(user: User, sections: dict) -> str:
             if content.summary_brief:
                 lines.append(content.summary_brief)
             lines.append(f"Read: {content.url}")
+    lines.append("\n" + "-" * 40)
+    if preferences_url:
+        lines.append(f"Manage preferences: {preferences_url}")
+    if unsubscribe:
+        lines.append(f"Unsubscribe: {unsubscribe}")
     return "\n".join(lines)

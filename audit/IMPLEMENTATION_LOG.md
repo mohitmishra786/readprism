@@ -42,7 +42,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 ---
 
-## 06 — Security & Privacy  — STATUS: in progress
+## 06 — Security & Privacy  — STATUS: COMPLETE (code/config). 06-10 (privacy policy) folded into 08-4.
 
 *Skills: no `find-skills`/`skills.sh` in this environment; used installed `fastapi-python` guidance. Web-researched Mailgun webhook signing (HMAC-SHA256 over timestamp+token, body-embedded signature) 2026.*
 
@@ -55,15 +55,17 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 06-7 | P1 | Code | HTML sanitization at every render boundary: frontend DOMPurify (`lib/sanitize.ts`) in reader + search; digest email `_fallback_html` now `html.escape`s all interpolated values (Jinja template already autoescapes); backend `sanitize_stored_html` strips script/iframe/on*/javascript: on RSS ingestion (defense in depth). 6 backend tests. Also satisfies 09-7. Commit.
 - [x] 06-8 | P2 | Code | `get_settings()` raises at boot if `secret_key` is the placeholder default and `app_env != development`. 3 tests. Commit.
 - [x] 06-9 | P2 | Config | Standardized on Python 3.12: Dockerfile `python:3.12-slim`, CI lint `3.12`, README tech stack `3.12`. Rebuilt image + full suite green (158). Commit.
-- [ ] 06-10 | P2 | Content | Publish a privacy policy (telemetry, retention, shared-content model) — overlaps 08-4
+- [-] 06-10 | P2 | Content | Publish a privacy policy — folded into 08-4 (done there).
 
-## 08 — Legal & Compliance — STATUS: not started
+## 08 — Legal & Compliance — STATUS: in progress
+
+*Skills: no `find-skills`/`skills.sh`; no legal-domain skill installed — proceeded without.*
 
 - [ ] 08-1 | P0 | Decision+Content | MIT vs AGPL: decide, reconcile LICENSE + LAUNCH.md, add CLA — *decision is human; reconciliation is content once decided*
 - [ ] 08-2 | P1 | Decision+Code | Scraping posture: honest bot UA + back-off on blocks OR documented accepted risk — *posture is human; code = stop UA rotation / back-off*
 - [ ] 08-3 | P1 | Code | Data-retention limits on stored `full_text` (excerpt+link, retention job)
 - [ ] 08-4 | P1 | Content | Privacy Policy + ToS (telemetry, retention, shared content, scraping disclaimer)
-- [ ] 08-5 | P1 | Code | Fix digest preferences/unsubscribe link (hard-coded localhost) + List-Unsubscribe + real footer
+- [x] 08-5 | P1 | Code | Replaced hard-coded `localhost:3000` link with `frontend_url`-based preferences link; added signed one-click unsubscribe (`utils/unsubscribe.py` + `GET/POST /digest/unsubscribe` → in_app_only), `List-Unsubscribe`/`List-Unsubscribe-Post` headers, and a configurable physical-address footer. 3 tests. Also closes the 10-5 link portion. Commit.
 - [ ] 08-6 | P2 | Code | robots.txt handling fail-closed (or configurable) + cache robots results
 - [ ] 08-7 | P2 | Code | "You confirm you may forward this" gate + abuse handling on newsletter intake
 - [ ] 08-8 | P2 | Content | Document third-party ToS compliance (Groq/Resend content + no-cold-email)
