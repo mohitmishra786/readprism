@@ -82,10 +82,10 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 04-8 | P2 | Content | `docs/adr/0001-celery-solo-pool.md` records the cross-loop-bug rationale, the scalability ceiling, the migration path (split queues / engine-per-process / async runner), and a warning against naively removing solo. Commit.
 - [x] 04-9 | P2 | Content | README reconciled to code: Next 16/React 19, worker `--pool=solo`, SMTP/Zoho (not Resend) incl. setup env + var table, migrations 0001–0006, added prune task. (Email-provider choice still tracked in 07-6.) Commit.
 
-## 05 — AI/ML Ranking Engine — STATUS: not started
+## 05 — AI/ML Ranking Engine — STATUS: in progress
 
 - [ ] 05-1 | P0 | Code | Held-out ranking-eval harness (predicted-PRS rank vs actual next-day reads)
-- [ ] 05-2 | P0 | Code | Replace single averaged interest vector with per-cluster vectors + max-similarity
+- [x] 05-2 | P0 | Code | Semantic signal now clusters interest nodes via union-find over co-occurrence edges (`_cluster_vectors`) and scores content by **max** cosine similarity across clusters, instead of one averaged vector that collapses multi-interest users. Single averaged vector retained for collaborative/cache callers. 3 tests incl. multi-interest. Commit.
 - [ ] 05-3 | P0 | Code | Remove input/target leakage from meta-learning (hold out completion/rating-derived signals) 
 - [ ] 05-4 | P1 | Code | Implement transitive/graph relevance (2-hop edge traversal) OR drop the claim from copy
 - [ ] 05-5 | P1 | Code | Generate graph-based explanations ("connects X and Y")

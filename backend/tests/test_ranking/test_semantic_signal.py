@@ -80,3 +80,32 @@ async def test_no_embedding_returns_neutral():
         score = await compute(content, user, [], graph, session)
 
     assert score == 0.5
+
+
+@pytest.mark.asyncio
+async def test_multi_interest_not_averaged_down():
+    """A user with two distinct interests scores content near ONE of them highly,
+    instead of averaging the two clusters into a centroid near neither (05-2)."""
+    content = MagicMock()
+    content.id = uuid.uuid4()
+    content.embedding = [1.0, 0.0] + [0.0] * 382  # aligned with interest A only
+
+    user = MagicMock()
+    user.id = uuid.uuid4()
+
+    node_a = MagicMock()
+    node_a.id = uuid.uuid4()
+    node_a.topic_embedding = [1.0, 0.0] + [0.0] * 382  # interest A
+    node_a.weight = 1.0
+    node_b = MagicMock()
+    node_b.id = uuid.uuid4()
+    node_b.topic_embedding = [0.0, 1.0] + [0.0] * 382  # interest B (orthogonal)
+    node_b.weight = 1.0
+
+    # No edge between them -> two separate clusters.
+    graph = UserInterestGraph(nodes=[node_a, node_b], edges=[])
+    session = AsyncMock()
+
+    score = await compute(content, user, [], graph, session)
+    # Averaged vector would give cosine ~0.707 -> ~0.85; max-sim gives ~1.0.
+    assert score > 0.95, f"Expected near-1.0 (matched cluster A) but got {score}"
