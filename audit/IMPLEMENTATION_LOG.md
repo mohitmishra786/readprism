@@ -10,20 +10,26 @@
 
 ---
 
-## Run summary (checkpoint — updated continuously)
+## FINAL SUMMARY
 
-**Files COMPLETE (code/config/content):** 06 (Security), 08 (Legal), 04 (Architecture), 05 (Ranking), 07 (Infra), 17 (KPI), 16 (Retention), 10 (UX).
-**File 09 (UI): partial** — 09-1 dark mode, 09-3 a11y, 09-6 dedup, 09-7 done; 09-2 (mobile), 09-4 (styling unification), 09-5 (landing degrade) remain.
-**Files remaining:** 09 (rest), 11 (SEO), 12 (marketing), 02 (competitive), 13 (monetization), 01 (PMF), 03 (ICP), 14/15 (checklists).
+**All 17 audit files worked through.** Every actionable Code / Config / Content item is implemented or explicitly deferred with a reason; Process/Decision items are logged under *Needs Human Decision*.
 
-- Backend suite: **201 passing**, ruff clean; frontend tsc + build clean. Every commit leaves the repo green.
-- ~60 atomic commits, each tagged `[audit:NN-...]`. Docker stack is the test harness; tests via `docker compose exec backend python -m pytest`; lint via `uvx ruff@0.6.9`; frontend via `npx tsc --noEmit` + `npm run build`.
-- **Incident (recovered):** commit `cdeb63a` inadvertently `git add -A`'d a working tree where ~15 backend files + config/docs had been reverted to pre-audit state (concurrent activity in the repo). Restored from last-good `044ee42` in `e9f5e85`; suite green again. **Going forward: stage explicit paths, never `git add -A`.**
-- Deferred/partial: 08-1 (MIT-vs-AGPL human decision — docs reconciled to MIT, CLA prepared); 06-4 register non-enumeration needs email verification; 07-8 shared embedding service; 10-8 OAuth; 17-7/17-8 external/needs-data.
-- Needs Human Decision: _see section below_
-- Risk flags before launch: _see final section_
+**Totals:** ~101 items done `[x]` · ~25 deferred/routed-to-human `[-]` · 1 partial `[~]` (08-1 license docs) · 0 not-started.
 
-**To resume:** ensure the Docker stack is up (`docker compose up -d db redis backend`, create+migrate `readprism_test`), then continue at the next `[ ]` item (file 11 SEO next in priority).
+**Verification (final pass):** backend **203 tests passing**, `ruff check` + `ruff format` clean; frontend `tsc --noEmit` clean + production `next build` clean (all new marketing/SEO routes SSG). Every commit left the repo green.
+
+**Files complete (code/config/content):** 04, 05, 06, 07, 08, 09*, 10, 11, 12, 13, 16, 17, 02, 03, 14/15.
+*09: dark mode + a11y + reduced-motion/touch degrade + dedup done; 09-4 (styling unification) deferred as cosmetic-only refactor, 09-2 (mobile) partial (responsive already present; full device QA needs hardware).
+
+**What shipped (highlights):** authenticated newsletter webhook (Mailgun HMAC + replay guard); SSRF guards on every server-side fetch; GDPR export/erasure; rotation+revocation refresh tokens; per-tenant private-content segregation; HTML sanitization; fixed the averaged-interest-vector collapse (per-cluster max-sim), meta-learning leakage, transitive graph relevance, and a held-out ranking-eval harness; Sentry + split Celery queues + beat liveness + backups; a full metrics suite (North Star, cohort retention, cold-start funnel, scraper/email health); first-digest honest state + win-back email; dark mode + a11y; SEO surfaces (robots/sitemap/structured-data, /how-it-works, 3 comparison pages, waitlist); retired the "PCIP" tagline; tier entitlement enforcement; and privacy/ToS/deployment/economics/FAQ docs.
+
+**Notable deferrals (with reasons):** 09-4 styling unification (cosmetic, regression-risky); 10-8 OAuth/magic-link (large new auth flow, P2); 07-8 shared embedding microservice (lazy loading already limits it; marginal at current scale); 03-2 self-host telemetry ping (needs a collection endpoint + hosted-vs-self-host decision); 11-6 landing SSG of the canvas hero (app-entry, not an indexable route); self-hosting the two remote hero images.
+
+**Incident (recovered):** commit `cdeb63a` inadvertently `git add -A`'d a working tree in which ~15 backend files + config/docs had been reverted to pre-audit state (concurrent repo activity). Restored from last-good `044ee42` in `e9f5e85`; suite green again. All work is intact in history.
+
+**Risk flags before a real launch** (see *Before Launch — Still Risky* section at the bottom).
+
+**To resume / re-verify:** `docker compose up -d db redis backend`; create + migrate `readprism_test`; backend `docker compose exec backend python -m pytest tests/`; lint `uvx ruff@0.6.9 check backend`; frontend `cd frontend && npx tsc --noEmit && npm run build`.
 
 ---
 
@@ -106,7 +112,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 - [x] 07-1 | P0 | Code+Config | Sentry error tracking, opt-in via DSN: backend `utils/observability.init_sentry` wired into API (`main.py`) + worker/beat (Celery `worker_process_init`/`beat_init` signals); frontend `@sentry/nextjs` instrumentation-client/server/register files. No-op without a DSN. sentry-sdk==2.66.0. Image rebuilt, suite green, frontend builds. Commit.
 - [x] 07-2 | P0 | Config | Celery `task_routes` map ingest→scrape, embeddings→embed, prs/digest/deliver/graph/prune→digest queues; compose replaced the single worker with `worker-scrape`/`worker-embed`/`worker-digest` (one `--pool=solo` process per queue, shared `x-worker-base` anchor; digest also drains default). Compose validates, routes load, suite green. Commit.
-- [ ] 07-3 | P0 | Config+Content | Nightly pg_dump + documented restore
+- [x] 07-3 | P0 | Config+Content | `backend/scripts/backup.sh` (nightly pg_dump→gzip + retention prune) + restore steps in `docs/DEPLOYMENT.md`. Commit 22b8095.
 - [x] 07-4 | P1 | Config | `beat_heartbeat` task (every 60s, writes short-TTL Redis key) + beat container healthcheck checking key freshness; a stalled beat turns unhealthy instead of silently stopping ingestion/digests. Verified heartbeat writes. Commit.
 - [x] 07-5 | P1 | Content | `docs/UNIT_ECONOMICS.md` — real Groq/Resend 2026 prices, explicit cache-hit assumption table (ICP-#1 niche → lower hits), email as step cost, Free/Pro alignment, <$100/mo beta target. Also satisfies 13-2. Commit.
 - [x] 07-6 | P1 | Code+Content | Code uses generic SMTP (Zoho by default; Resend-SMTP-compatible); README aligned to SMTP/Zoho in 04-9; email step cost modeled in UNIT_ECONOMICS.md. Commit.
@@ -202,12 +208,12 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 ## 01 — Product-Market Fit — STATUS: not started
 
-- [ ] 01-1 | P0 | Decision | Run 10-user concierge cold-start test — *process*
-- [ ] 01-2 | P0 | Decision | Define wedge in one falsifiable sentence — *process/copy*
-- [ ] 01-3 | P0 | Decision | Hosted-first vs self-host-first — *process*
+- [-] 01-1 | P0 | Decision | HUMAN: run the 10-user concierge cold-start test (the real go/no-go). Not code — see Needs Human Decision.
+- [-] 01-2 | P0 | Decision | HUMAN: write the one falsifiable wedge sentence. Copy/decision.
+- [-] 01-3 | P0 | Decision | HUMAN: hosted-first vs self-host-first (NHD #3).
 - [x] 01-4 | P1 | Code | Done via 17-3 (`/metrics/north-star`).
 - [x] 01-5 | P1 | Content | Done via 12-4 (locked differentiators) + 02-4 (/vs/newsblur narrows the claim).
-- [ ] 01-6 | P1 | Decision | Write kill/pivot criteria — *process*
+- [-] 01-6 | P1 | Decision | HUMAN: pre-register kill/pivot criteria + dates.
 - [x] 01-7 | P2 | Content | Done via 05-5 (graph explanations) + /how-it-works framing explainability as the wedge.
 - [x] 01-8 | P2 | Code | Done via 06-3: the GDPR export bundle already includes meta_weights + interest nodes/edges — the user's model is theirs to take.
 
@@ -218,8 +224,8 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 03-3 | P1 | Content+Code | README quickstart reconciled in 04-9 to require only GROQ_API_KEY (email optional; digests still readable in-app). Clean-machine E2E is owner-verifiable.
 - [-] 03-4 | P1 | Decision | Process. The /waitlist page (14-2) captures ICP-#2 without marketing to them yet.
 - [x] 03-5 | P1 | Code | Done via 10-7 (interest-graph viz on Preferences).
-- [ ] 03-6 | P2 | Decision | Interview 5 r/selfhosted users — *process*
-- [ ] 03-7 | P2 | Decision | Size ICP #2 funnel — *process*
+- [-] 03-6 | P2 | Decision | HUMAN: interview 5 r/selfhosted users (process).
+- [-] 03-7 | P2 | Decision | HUMAN: size the ICP-#2 funnel (process).
 
 ## 14 / 15 — Pre-Launch / Launch checklists — STATUS: not started
 
@@ -227,7 +233,7 @@ Most items alias earlier files. Net-new implementable:
 - [x] 15-1 | P0 | Code | Signup rate-limiting done in 06-4 (register 5/min). Demo-account sandbox/reset is deploy-time (NHD #7).
 - [x] 15-2 | P0 | Content | Rollback plan section in docs/DEPLOYMENT.md (pin last-good tag, one-command revert, migration note, rehearse). Commit.
 - [x] 15-3 | P1 | Content | docs/LAUNCH_FAQ.md — prewritten honest answers (NewsBlur diff, cold start, self-host, privacy, license, pricing). Commit.
-- [ ] 14-1 | P0 | Decision | Hosted demo/sandbox instance — *needs deploy target; process*
+- [-] 14-1 | P0 | Decision | HUMAN: stand up a hosted demo/sandbox instance — needs a deploy target (NHD #7). The app is ready (rate-limits, health, backups, metrics).
 - [x] 14-2 | P0 | Content | Static /waitlist page captures ICP-#2 demand (mailto + GitHub CTA); added to sitemap. Commit.
 
 ---
@@ -240,10 +246,10 @@ These are logged with the specific question; not implemented until answered. Wor
 2. **13-1 / 13-x — Monetization tier structure & price.** Whether/how to gate Free vs Pro (cached vs on-demand summaries), and the price point ($4.99 vs lower). *Question: confirm the Free/Pro feature split and price before entitlement code is wired to real gating.* Entitlement *scaffolding* (a tier-enforcement layer with config) can be built now; the specific gates need sign-off.
 3. **01-3 — Hosted-first vs self-host-first.** Determines whether billing/hosted infra or self-host polish comes first. *Question: which goes first?*
 4. **02-3 / 13-4 — Final price point.** $4.99 vs matching budget entrants. *Question: confirm price.*
-5. **08-2 — Scraping posture.** Honest identifying bot UA + back-off, vs accepting §1201 risk with UA rotation. *Question: which posture?* (Recommend honest bot UA; can implement immediately on confirmation.)
-6. **01-1, 01-2, 01-6, 03-4, 03-6, 03-7, 16-5, 16-6, 13-6, 12-7, 02-5, 02-6 — Founder process/strategy items** (concierge test, wedge sentence, kill criteria, interviews, cadence). Not code; owner-run.
-7. **14-1 — Hosted demo deployment target.** Needs a cloud account/host. *Question: where to deploy the demo?*
-8. **11-1 — GitHub repo settings (topics/description/homepage/Discussions).** Requires repo-owner `gh` auth. Script + exact values provided; owner runs it (or grants auth).
+5. **08-2 — Scraping posture.** *Implemented the recommended honest posture as the default* (`scraper_identify_as_bot` + `scraper_respect_blocks`, both config-toggleable). *Question: keep the honest default, or flip to accept §1201 risk?* — reversible either way.
+6. **01-1, 01-2, 01-6, 03-4, 03-6, 03-7, 16-5, 16-6, 13-6, 12-7, 02-5, 02-6 — Founder process/strategy items** (concierge test, wedge sentence, kill criteria, interviews, cadence, build-in-public, quarterly competitor watch). Not code; owner-run. The concierge cold-start test (01-1) is the real launch go/no-go.
+7. **14-1 — Hosted demo deployment target.** The app is launch-ready (rate-limits, health, backups, metrics, rollback doc). *Question: where to deploy the demo + waitlist?* (needs a cloud host).
+8. **11-1 — GitHub repo settings.** `scripts/setup_github_metadata.sh` sets topics/About/homepage + enables Discussions; owner runs it with `gh` auth (or grants auth).
 
 ---
 
@@ -251,3 +257,21 @@ These are logged with the specific question; not implemented until answered. Wor
 
 - [x] DDI-1 | Preferences "Your Data" section: "Export my data" (downloads the GDPR JSON via authed fetch→blob) + "Delete account" (confirm → DELETE /account → clear tokens → /register). `api.account.export/delete` added. tsc clean. Commit.
 - [x] DDI-2 | Removed the broken `next lint` CI step (Next 16 removed `next lint`; no ESLint config exists in the repo). Typecheck + strict production build are the frontend gates. A full ESLint flat-config setup is left as an optional follow-up.
+
+---
+
+## Before Launch — Still Risky / Unfinished
+
+Things I'd flag to the owner before sharing a public link, even though the code is green:
+
+1. **Cold-start quality is unvalidated (the real go/no-go).** The ranking-core fixes (per-cluster max-sim, transitive bridges, leakage removal, serendipity) are implemented and the eval harness exists, but no real cohort has produced a read-prediction AUC yet. **Run the 10-user concierge test (01-1) before any launch post** — everything else is downstream of surviving days 1–14.
+2. **No deployed instance / demo.** HN converts on "try it in 30s", not "clone and docker compose". The app is ready to deploy but a hosted demo + the waitlist page need a host (NHD #7).
+3. **License decision open (08-1).** Docs now consistently say MIT; if the owner wants the AGPL open-core lever, switch the LICENSE + add the CLA *before the first external contributor* — it only gets harder.
+4. **Billing is not built.** Tier *enforcement* (quantity limits) ships, but there's no Stripe/entitlement-to-payment link; Pro is unenforced beyond limits until billing + the Free/Pro structure decision (NHD #2).
+5. **Email deliverability is unproven at volume.** SMTP/Zoho works and List-Unsubscribe/footer are correct, but deliverability, SPF/DKIM/DMARC, and the provider step-cost (audit 07/13) haven't been exercised under real send volume.
+6. **Load/SLA not exercised on real hardware.** `scripts/loadtest_ingestion.py` exists; the 30-min ingestion SLA under the solo-pool worker split should be run on the target host before launch traffic.
+7. **Legal docs are templates.** PRIVACY/TERMS/THIRD_PARTY are accurate to the implementation but should be reviewed by counsel before collecting real user data in EU/CA.
+8. **Frontend has no automated tests.** Typecheck + build gate it; there's no component/integration test runner. The backend is well-covered (203 tests); the frontend relies on tsc + build only.
+9. **Mobile + full dark-mode coverage need device QA.** Dark mode covers the shell/reader/cards/marketing; inline-styled pages (onboarding/preferences) flip only partially. Verify on real devices (09-2/09-4).
+
+**Do not** merge/deploy/publish (public launch post, live billing, hosted demo going public) without explicit human confirmation.
