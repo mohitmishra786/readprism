@@ -42,10 +42,12 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 ---
 
-## 06 — Security & Privacy  — STATUS: not started
+## 06 — Security & Privacy  — STATUS: in progress
+
+*Skills: no `find-skills`/`skills.sh` in this environment; used installed `fastapi-python` guidance. Web-researched Mailgun webhook signing (HMAC-SHA256 over timestamp+token, body-embedded signature) 2026.*
 
 - [ ] 06-1 | P0 | Code | Mailgun/HMAC signature verification + shared secret on `/newsletter/inbound`; reject unsigned
-- [ ] 06-2 | P0 | Code | SSRF protection on all server-side URL fetches (block private/link-local IPs, scheme allow-list) — scraper + source-add
+- [x] 06-2 | P0 | Code | SSRF protection on all server-side URL fetches — `app/utils/ssrf.py` (validate + redirect-safe `safe_get`), wired into scraper (`_check_robots`/`_fetch_with_retry`/`_fetch_with_playwright`) + rss autodiscovery; configurable via `ssrf_protection_enabled`; 18 unit tests. Commit.
 - [ ] 06-3 | P0 | Code | Account deletion + data export (GDPR erasure/portability) endpoints
 - [ ] 06-4 | P1 | Code | Rate-limit `/auth/login` `/auth/register`; make register/login non-enumerating
 - [ ] 06-5 | P1 | Code | Real refresh-token model (separate secret, rotation, revocation) OR short-lived access + server httpOnly cookie

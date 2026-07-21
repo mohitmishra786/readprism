@@ -49,10 +49,23 @@ class Settings(BaseSettings):
     newsletter_inbox_domain: str = "inbox.readprism.app"
     mailgun_api_key: str = ""
     mailgun_domain: str = ""
+    # Dedicated Mailgun *Webhook Signing Key* (Settings → API Security), NOT the
+    # API key. Used to HMAC-verify inbound-route posts to /newsletter/inbound.
+    # When empty in a non-development environment, the webhook is fail-closed
+    # (rejects everything) so an unauthenticated open door can never ship.
+    mailgun_webhook_signing_key: str = ""
+    # Reject webhook posts whose signed timestamp is older than this (replay guard).
+    newsletter_webhook_max_age_seconds: int = 900  # 15 minutes
 
     # Scraping
     browserless_url: str = "http://browserless:3000"
     scraper_max_concurrency: int = 5
+    # SSRF protection: resolve and block private/loopback/link-local/reserved IPs
+    # before any server-side URL fetch (scraping, feed autodiscovery, robots.txt).
+    # Keep True for any hosted/multi-tenant deployment. Self-hosters who need to
+    # ingest feeds from private/LAN hosts (e.g. a homelab service on 192.168.x)
+    # may set this False, accepting the SSRF trade-off on a single-tenant box.
+    ssrf_protection_enabled: bool = True
 
     # Celery
     celery_broker_url: str = "redis://redis:6379/1"

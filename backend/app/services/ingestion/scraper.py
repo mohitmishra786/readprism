@@ -10,6 +10,7 @@ import httpx
 from app.config import get_settings
 from app.services.ingestion.rss_parser import RawContentItem
 from app.utils.logging import get_logger
+from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -28,15 +29,24 @@ _USER_AGENTS = [
 
 async def _check_robots(url: str) -> bool:
     """Returns True if scraping is allowed per robots.txt."""
+    try:
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked robots fetch for unsafe URL {url}: {e}")
+        return False
+
     parsed = urlparse(url)
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(robots_url)
+            resp = await safe_get(robots_url, client=client)
             rp = RobotFileParser()
             rp.set_url(robots_url)
             rp.parse(resp.text.splitlines())
             return rp.can_fetch("*", url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked robots fetch for unsafe URL {url}: {e}")
+        return False
     except Exception:
         return True  # if robots.txt unavailable, assume allowed
 
@@ -94,16 +104,19 @@ async def _fetch_with_retry(url: str) -> str | None:
         try:
             async with httpx.AsyncClient(
                 timeout=20,
-                follow_redirects=True,
                 headers=headers,
             ) as client:
-                resp = await client.get(url)
+                # safe_get validates the URL and every redirect hop (SSRF guard).
+                resp = await safe_get(url, client=client)
                 if resp.status_code == 200:
                     return resp.text
                 if resp.status_code in (403, 429, 503):
                     # Likely bot-protected — don't retry with httpx, go straight to Playwright
                     logger.debug(f"HTTP {resp.status_code} on {url} — will use Playwright")
                     return None
+        except UnsafeURLError as e:
+            logger.warning(f"Blocked fetch for unsafe URL {url}: {e}")
+            return None
         except (httpx.TimeoutException, httpx.ConnectError) as e:
             logger.debug(f"httpx attempt {attempt}/{_RETRY_MAX_ATTEMPTS} failed for {url}: {e}")
 
@@ -117,6 +130,14 @@ async def _fetch_with_retry(url: str) -> str | None:
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
     """Use the headless Chrome instance (Browserless) for JS-rendered pages.
     Returns (html_content, page_title)."""
+    try:
+        # Browserless renders arbitrary user-supplied URLs; validate before we
+        # hand the URL to the headless browser (SSRF guard, audit 06-2).
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked Playwright fetch for unsafe URL {url}: {e}")
+        return None, None
+
     try:
         from playwright.async_api import async_playwright
 
