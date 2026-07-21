@@ -72,7 +72,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 ## 04 — Architecture & Codebase — STATUS: in progress
 
-- [ ] 04-1 | P0 | Code | Fix serendipity selection: interest-*adjacent* candidates (embedding near cluster edges), not "recent items from other users' sources"
+- [x] 04-1 | P0 | Code | Serendipity now selects interest-*adjacent* content via pgvector cosine distance to the user's interest vector, banded to [0.35, 0.75] (related but outside core), ordered closest-first; falls back to recent public content for users without an interest vector. 2 tests. Commit.
 - [x] 04-2 | P0 | Code | `compute_prs` now runs the 8 signals sequentially over the shared session instead of `asyncio.gather` (session isn't concurrency-safe; the gather only appeared parallel). Removes the latent bug; no real latency cost. Commit.
 - [ ] 04-3 | P1 | Code | Surface source-failure state to users (`fetch_error_count` → API/UI)
 - [ ] 04-4 | P1 | Code | Move embedding encode calls off event loop in API paths (`asyncio.to_thread`)
