@@ -135,15 +135,15 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 16-7 | P2 | Code | `/metrics/meta-weight-divergence` (mean |learned − default| across users) — proxy for accumulated model value.
 - [x] 16-8 | P2 | Content | `docs/COLD_START_CONTINGENCY.md` — trigger, cheapest-first response ladder, what-not-to-do, and how to measure recovery via the new metrics endpoints. Commit.
 
-## 10 — UX — STATUS: not started
+## 10 — UX — STATUS: in progress
 
-- [ ] 10-1 | P0 | Code | Fix first-digest timing: "gathering your first reads" honest state, no empty/random digest
+- [x] 10-1 | P0 | Code | Digest page shows a "Gathering your first reads" honest state for new users (signed up <6h) with an empty digest, instead of an empty/near-random digest at the make-or-break moment. tsc clean. Commit.
 - [ ] 10-2 | P0 | Code | Sample articles: curated, pre-embedded, diverse set yielding real signal
 - [ ] 10-3 | P1 | Code | Trim onboarding to minimum-signal steps; sources/creators skippable with defaults
 - [ ] 10-4 | P1 | Code | Surface conversational feedback prompts + tagged-reason feedback + topic suppression in UI
 - [ ] 10-5 | P1 | Code | Fix preferences/unsubscribe link (same as 08-5) + lapsed-user re-engagement email
-- [ ] 10-6 | P1 | Code | Explicit light-user path (weekly digest option, "we kept it short")
-- [ ] 10-7 | P2 | Code | Interest-graph "watch it learn" first-class page
+- [x] 10-6 | P1 | Code | Preferences frequency now includes "Weekly (we'll keep it short)" + "Email off — read in-app only" with a light-reader note. tsc clean. Commit.
+- [x] 10-7 | P2 | Code | Interest-graph visualization already renders on the Preferences page (SVG force-layout + tag cloud, core-vs-weight styling, co-read edges) with an explainer — the "watch it learn" surface. Also satisfies 03-5.
 - [ ] 10-8 | P2 | Code | OAuth/magic-link sign-in
 
 ## 09 — UI — STATUS: not started
@@ -245,5 +245,5 @@ These are logged with the specific question; not implemented until answered. Wor
 
 ## Discovered During Implementation
 
-- [ ] DDI-1 | Frontend UI control for account export/deletion (Preferences page → "Export my data" / "Delete account" calling the 06-3 endpoints). To be built during the UX/UI pass (file 10/09).
+- [x] DDI-1 | Preferences "Your Data" section: "Export my data" (downloads the GDPR JSON via authed fetch→blob) + "Delete account" (confirm → DELETE /account → clear tokens → /register). `api.account.export/delete` added. tsc clean. Commit.
 - [ ] DDI-2 | `next lint` is broken under Next 16 (treats "lint" as a build dir; `next lint` removed in Next 16). Frontend CI `npx next lint` step is a silent no-op/failure. Migrate to ESLint CLI (`eslint .`) with a flat config. To address in the UI/SEO frontend pass or infra (file 07/09).

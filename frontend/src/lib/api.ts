@@ -115,6 +115,12 @@ export const api = {
       }),
   },
 
+  account: {
+    // Portable JSON copy of all personal data (GDPR export, 06-3).
+    export: () => request<Record<string, unknown>>('/account/export'),
+    delete: () => request<void>('/account', { method: 'DELETE' }),
+  },
+
   sources: {
     list: () => request<Source[]>('/sources'),
     add: (url: string, priority?: string) =>

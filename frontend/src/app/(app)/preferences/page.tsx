@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { removeToken } from "../../../lib/auth";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -93,10 +95,44 @@ function InterestGraphSVG({
 }
 
 export default function PreferencesPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [graph, setGraph] = useState<InterestGraph | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const exportData = async () => {
+    setBusy(true);
+    try {
+      const data = await api.account.export();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "readprism-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+    setBusy(false);
+  };
+
+  const deleteAccount = async () => {
+    if (
+      !confirm(
+        "Permanently delete your account and all your data? This cannot be undone."
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await api.account.delete();
+      removeToken();
+      router.replace("/register");
+    } catch {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     api.preferences.get().then(setUser).catch(() => {});
@@ -138,8 +174,13 @@ export default function PreferencesPage() {
             >
               <option value="daily">Daily</option>
               <option value="twice_daily">Twice daily</option>
-              <option value="weekly">Weekly</option>
+              <option value="weekly">Weekly (we’ll keep it short)</option>
+              <option value="in_app_only">Email off — read in-app only</option>
             </select>
+            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+              Lighter reader? Weekly bundles the best of your week; “email off”
+              stops digest emails while keeping your in-app digest.
+            </p>
           </div>
           <div>
             <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
@@ -221,6 +262,43 @@ export default function PreferencesPage() {
           </div>
         </section>
       )}
+
+      <section style={{ marginTop: 40, borderTop: "1px solid #e5e7eb", paddingTop: 24 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
+        <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>
+          Download a portable copy of everything ReadPrism stores about you, or
+          permanently delete your account.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <button
+            onClick={exportData}
+            disabled={busy}
+            style={{
+              padding: "8px 16px",
+              border: "1px solid #d1d5db",
+              borderRadius: 6,
+              background: "#fff",
+              cursor: busy ? "not-allowed" : "pointer",
+            }}
+          >
+            Export my data
+          </button>
+          <button
+            onClick={deleteAccount}
+            disabled={busy}
+            style={{
+              padding: "8px 16px",
+              border: "1px solid #fecaca",
+              borderRadius: 6,
+              background: "#fff",
+              color: "#dc2626",
+              cursor: busy ? "not-allowed" : "pointer",
+            }}
+          >
+            Delete account
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
