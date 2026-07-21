@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # Observability — error tracking. Opt-in: no DSN => Sentry stays disabled.
     sentry_dsn: str = ""
     sentry_traces_sample_rate: float = 0.0
+    # Aggregate/operator metrics (cohort retention, North Star, scraper health)
+    # are gated behind this token via the X-Metrics-Token header. Required in
+    # non-development environments; open in development for convenience.
+    metrics_token: str = ""
 
     # Application
     app_env: str = "development"

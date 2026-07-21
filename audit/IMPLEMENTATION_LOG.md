@@ -113,26 +113,26 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 07-9 | P2 | Config | Base compose is prod-shaped: backend `uvicorn` without `--reload`, Meilisearch `MEILI_ENV=production` (enforces master key); dev override re-adds `--reload` + `MEILI_ENV=development`. Commit.
 - [x] 07-10 | P2 | Content | `docs/DEPLOYMENT.md` documents min host sizing (4/8/16GB tiers), prod-shaped compose, monitoring, backup/restore. Commit.
 
-## 17 — KPI & Metrics Framework — STATUS: not started
+## 17 — KPI & Metrics Framework — STATUS: COMPLETE (17-7/17-8 deferred: external/needs-data)
 
-- [ ] 17-1 | P0 | Code | Core event pipeline (signup, onboarding step/complete, digest generated, item opened, telemetry, feedback, was_suggested reads)
-- [ ] 17-2 | P0 | Code | Cold-start funnel + D1/D7/D30 cohort dashboard/endpoint
-- [ ] 17-3 | P0 | Code | Suggestion-driven-read rate as North Star metric (aggregate endpoint)
+- [x] 17-1 | P0 | Code | Metrics computed directly from the tables that already record the events (users/digests/interactions/sources) — no separate pipeline to desync. `services/metrics/analytics.py` + token-gated `/metrics/*` endpoints. Commit.
+- [x] 17-2 | P0 | Code | `/metrics/cold-start-funnel` (signup→onboarded→first-digest-open→7d-active) + `/metrics/cohort-retention` (D1/D7/D30 per signup week). 3 tests. Also satisfies 16-1. Commit.
+- [x] 17-3 | P0 | Code | `/metrics/north-star` = suggested-opened ÷ opened reads. Also satisfies 16-2 + 01-4. Commit.
 - [x] 17-4 | P1 | Code | Ranking-eval harness (PRS→read AUC) — done via 05-1.
-- [ ] 17-5 | P1 | Code | Cost + summary-cache-hit + scraper-success dashboards/metrics + alerts
-- [ ] 17-6 | P1 | Code | Email deliverability monitoring (delivery + complaint rate)
-- [ ] 17-7 | P2 | Config | Growth tracking (stars/clones, Search Console) — *external, mostly ops*
-- [ ] 17-8 | P2 | Decision | Set [baseline-first] targets after first cohort — *needs data*
+- [x] 17-5 | P1 | Code | `/metrics/scraper-health` (success rate + degraded/failing counts); cost/cache-hit modeling in UNIT_ECONOMICS.md (07-5). Also satisfies 16-4. Commit.
+- [x] 17-6 | P1 | Code | Email send path increments Redis delivered/failed counters; `/metrics/email-deliverability` returns delivery rate (complaint rate needs a provider webhook — noted). Commit.
+- [-] 17-7 | P2 | Config | DEFERRED (reason): GitHub stars/clones + Search Console are external dashboards configured in the GitHub/Google UIs, not code. Covered in the SEO/growth docs (file 11).
+- [-] 17-8 | P2 | Decision | Needs first-cohort baseline data — logged for the owner (the metric endpoints to read those baselines now exist).
 
 ## 16 — Post-Launch & Retention — STATUS: not started
 
-- [ ] 16-1 | P0 | Code | Cohort retention (D1/D7/D30) + cold-start funnel — same as 17-2
-- [ ] 16-2 | P0 | Code | Suggestion-driven-read rate aggregate — same as 17-3
+- [x] 16-1 | P0 | Code | Done via 17-2 (cohort-retention + cold-start-funnel endpoints).
+- [x] 16-2 | P0 | Code | Done via 17-3 (north-star endpoint).
 - [x] 16-3 | P1 | Code | Per-cohort ranking-eval harness — done via 05-1 (`evaluate_user_ranking` + AUC/Spearman).
-- [ ] 16-4 | P1 | Code | Scraper-health monitoring + maintenance budget — overlaps 17-5/04-3
+- [x] 16-4 | P1 | Code | Scraper-health via 17-5 (`/metrics/scraper-health`) + per-source health surfaced in 04-3.
 - [ ] 16-5 | P1 | Decision | Churned-user interview loop — *process*
 - [ ] 16-6 | P1 | Decision | Sustainable solo iteration cadence + monthly review — *process*
-- [ ] 16-7 | P2 | Code | Meta-weight divergence-from-defaults metric per user
+- [x] 16-7 | P2 | Code | `/metrics/meta-weight-divergence` (mean |learned − default| across users) — proxy for accumulated model value.
 - [ ] 16-8 | P2 | Content | Pre-write cold-start contingency plan
 
 ## 10 — UX — STATUS: not started

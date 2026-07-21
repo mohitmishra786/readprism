@@ -77,6 +77,14 @@ async def send_email(
     """
     import asyncio
 
-    return await asyncio.to_thread(
+    ok = await asyncio.to_thread(
         send_email_sync, to, subject, html_body, text_body, reply_to, extra_headers
     )
+    # Track delivery success/failure for the deliverability metric (audit 17-6).
+    try:
+        from app.utils.cache import get_redis
+
+        await get_redis().incr("email:delivered" if ok else "email:failed")
+    except Exception:  # pragma: no cover - metrics must never break sending
+        pass
+    return ok
