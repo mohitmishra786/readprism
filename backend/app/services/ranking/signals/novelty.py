@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.signals import UserInterestGraph
+from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -55,7 +55,7 @@ async def compute(
                 np.dot(content_vec, emb)
                 / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
             )
-            sim = (sim + 1.0) / 2.0
+            sim = cosine_to_unit_score(sim)
             if sim > max_sim:
                 max_sim = sim
 

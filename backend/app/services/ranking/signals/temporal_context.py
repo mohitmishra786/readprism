@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.signals import UserInterestGraph
+from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -48,7 +48,7 @@ async def _long_term_score(content: ContentItem, graph: UserInterestGraph) -> fl
             np.dot(content_vec, node_vec)
             / (np.linalg.norm(content_vec) * np.linalg.norm(node_vec) + 1e-8)
         )
-        sims.append((sim + 1.0) / 2.0)
+        sims.append(cosine_to_unit_score(sim))
     return float(np.mean(sims)) if sims else 0.5
 
 
@@ -81,7 +81,7 @@ async def _medium_term_score(content: ContentItem, user: User, session: AsyncSes
             medium_vec = medium_vec / norm
         content_vec = np.array(content.embedding, dtype=np.float32)
         sim = float(np.dot(content_vec, medium_vec) / (np.linalg.norm(content_vec) * norm + 1e-8))
-        return (sim + 1.0) / 2.0
+        return cosine_to_unit_score(sim)
     except Exception as e:
         logger.warning(f"medium_term_score query failed: {e}")
         return 0.5
@@ -115,7 +115,7 @@ async def _short_term_adjustment(content: ContentItem, user: User, session: Asyn
                 np.dot(content_vec, emb)
                 / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
             )
-            if (sim + 1.0) / 2.0 > SIMILARITY_SATURATION_THRESHOLD:
+            if cosine_to_unit_score(sim) > SIMILARITY_SATURATION_THRESHOLD:
                 seen_count += 1
         penalty = min(MAX_SATURATION_PENALTY, seen_count * SATURATION_PENALTY_PER_ITEM)
         return 1.0 - penalty

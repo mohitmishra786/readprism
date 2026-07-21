@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.signals import UserInterestGraph
+from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
 from app.utils.cache import cache_get, cache_set
 from app.utils.logging import get_logger
 
@@ -122,7 +122,7 @@ async def compute(
     # content near ANY distinct interest — or the intersection of two connected
     # interests — scores highly, instead of being averaged down.
     best_sim = max(_cosine(vec, content_vec) for vec in match_vecs)
-    return (best_sim + 1.0) / 2.0
+    return cosine_to_unit_score(best_sim)
 
 
 async def _get_user_interest_vector(user: User, graph: UserInterestGraph) -> np.ndarray | None:
