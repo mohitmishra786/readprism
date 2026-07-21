@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     # Reject webhook posts whose signed timestamp is older than this (replay guard).
     newsletter_webhook_max_age_seconds: int = 900  # 15 minutes
 
+    # Content retention: after this many days, the stored full article text is
+    # pruned to a short excerpt (keeping summary + link). Limits how long we hold
+    # full third-party copies — a copyright-exposure control (audit 08-3).
+    # Set 0 to disable pruning (keep full text indefinitely).
+    content_full_text_retention_days: int = 90
+    content_excerpt_chars: int = 500
+
     # Scraping
     browserless_url: str = "http://browserless:3000"
     scraper_max_concurrency: int = 5

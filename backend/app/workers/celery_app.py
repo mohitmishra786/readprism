@@ -17,6 +17,7 @@ celery_app = Celery(
         "app.workers.tasks.build_digest",
         "app.workers.tasks.deliver_digest",
         "app.workers.tasks.update_interest_graph",
+        "app.workers.tasks.prune_content",
     ],
 )
 

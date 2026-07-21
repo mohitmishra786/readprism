@@ -63,7 +63,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 - [ ] 08-1 | P0 | Decision+Content | MIT vs AGPL: decide, reconcile LICENSE + LAUNCH.md, add CLA — *decision is human; reconciliation is content once decided*
 - [ ] 08-2 | P1 | Decision+Code | Scraping posture: honest bot UA + back-off on blocks OR documented accepted risk — *posture is human; code = stop UA rotation / back-off*
-- [ ] 08-3 | P1 | Code | Data-retention limits on stored `full_text` (excerpt+link, retention job)
+- [x] 08-3 | P1 | Code | Retention pruning task (`prune_content.prune_old_full_text`, daily 3:30 UTC) truncates `full_text` to an excerpt once older than `content_full_text_retention_days` (default 90; 0=disabled), keeping summary+link. Idempotent SQL `func.left`. 2 integration tests. Commit.
 - [ ] 08-4 | P1 | Content | Privacy Policy + ToS (telemetry, retention, shared content, scraping disclaimer)
 - [x] 08-5 | P1 | Code | Replaced hard-coded `localhost:3000` link with `frontend_url`-based preferences link; added signed one-click unsubscribe (`utils/unsubscribe.py` + `GET/POST /digest/unsubscribe` → in_app_only), `List-Unsubscribe`/`List-Unsubscribe-Post` headers, and a configurable physical-address footer. 3 tests. Also closes the 10-5 link portion. Commit.
 - [ ] 08-6 | P2 | Code | robots.txt handling fail-closed (or configurable) + cache robots results
