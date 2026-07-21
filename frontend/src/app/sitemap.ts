@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const routes = [
     "",
     "/how-it-works",
+    "/waitlist",
     "/vs/feedly",
     "/vs/inoreader",
     "/vs/newsblur",

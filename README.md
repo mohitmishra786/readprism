@@ -10,6 +10,8 @@ What makes it different:
 - **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
 - **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
+**Who it's for:** built first for developers who self-host and follow 50+ technical feeds — people who enjoy running their own stack, tolerate rough edges, and want to introspect (and improve) the ranking engine. A hosted option for knowledge workers is planned.
+
 The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md).
 
 ---

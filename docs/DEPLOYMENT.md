@@ -42,6 +42,25 @@ and the migration path for higher throughput.
 - **Ranking quality:** `python scripts/ranking_eval.py --days 30` prints
   per-cohort read-prediction AUC.
 
+## Rollback plan (launch-day safety, audit 15-2)
+
+CI builds and tags images per commit. Keep the last-known-good tag pinned so a
+launch-day regression is a 5-minute undo:
+
+1. **Pin the good tag** before launch: note the currently-deployed image tag
+   (e.g. the commit SHA) as `LAST_GOOD`.
+2. **Revert:** re-deploy `LAST_GOOD` — `docker compose pull` the pinned tag (or
+   `git checkout LAST_GOOD` for a build-on-host deploy) and
+   `docker compose up -d` the affected services.
+3. **Migrations:** the app only forward-migrates; a rollback keeps the newer
+   schema (backward-compatible within a release). If a migration must be undone,
+   `alembic downgrade -1` before deploying the older image.
+4. **Status note:** post a short heads-up in GitHub Discussions if the hosted
+   demo is affected.
+
+Rehearse the revert once before launch — a rollback plan you haven't run isn't a
+plan.
+
 ## Backups & restore
 
 The interest graph and reading history are the product; back the database up.
