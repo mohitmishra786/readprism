@@ -84,7 +84,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 ## 05 — AI/ML Ranking Engine — STATUS: in progress
 
-- [ ] 05-1 | P0 | Code | Held-out ranking-eval harness (predicted-PRS rank vs actual next-day reads)
+- [x] 05-1 | P0 | Code | `services/ranking/evaluation.py`: dependency-free read-prediction AUC (Mann-Whitney) + Spearman(PRS, completion) over held-out observed engagement; `evaluate_user_ranking` joins DigestItem prs_score → interactions; `GET /metrics/ranking-eval` endpoint. 8 tests. Also satisfies 16-3, 17-4. Commit.
 - [x] 05-2 | P0 | Code | Semantic signal now clusters interest nodes via union-find over co-occurrence edges (`_cluster_vectors`) and scores content by **max** cosine similarity across clusters, instead of one averaged vector that collapses multi-interest users. Single averaged vector retained for collaborative/cache callers. 3 tests incl. multi-interest. Commit.
 - [x] 05-3 | P0 | Code | Meta-learning now holds out `reading_depth` + `explicit_feedback` (derived from the completion/rating target) from both the prediction and the gradient, so the model can't inflate weights by predicting its own inputs. 1 test. Commit.
 - [ ] 05-4 | P1 | Code | Implement transitive/graph relevance (2-hop edge traversal) OR drop the claim from copy
@@ -112,7 +112,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [ ] 17-1 | P0 | Code | Core event pipeline (signup, onboarding step/complete, digest generated, item opened, telemetry, feedback, was_suggested reads)
 - [ ] 17-2 | P0 | Code | Cold-start funnel + D1/D7/D30 cohort dashboard/endpoint
 - [ ] 17-3 | P0 | Code | Suggestion-driven-read rate as North Star metric (aggregate endpoint)
-- [ ] 17-4 | P1 | Code | Ranking-eval harness (PRS→read AUC per cohort) — same as 05-1
+- [x] 17-4 | P1 | Code | Ranking-eval harness (PRS→read AUC) — done via 05-1.
 - [ ] 17-5 | P1 | Code | Cost + summary-cache-hit + scraper-success dashboards/metrics + alerts
 - [ ] 17-6 | P1 | Code | Email deliverability monitoring (delivery + complaint rate)
 - [ ] 17-7 | P2 | Config | Growth tracking (stars/clones, Search Console) — *external, mostly ops*
@@ -122,7 +122,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 - [ ] 16-1 | P0 | Code | Cohort retention (D1/D7/D30) + cold-start funnel — same as 17-2
 - [ ] 16-2 | P0 | Code | Suggestion-driven-read rate aggregate — same as 17-3
-- [ ] 16-3 | P1 | Code | Per-cohort ranking-eval harness — same as 05-1/17-4
+- [x] 16-3 | P1 | Code | Per-cohort ranking-eval harness — done via 05-1 (`evaluate_user_ranking` + AUC/Spearman).
 - [ ] 16-4 | P1 | Code | Scraper-health monitoring + maintenance budget — overlaps 17-5/04-3
 - [ ] 16-5 | P1 | Decision | Churned-user interview loop — *process*
 - [ ] 16-6 | P1 | Decision | Sustainable solo iteration cadence + monthly review — *process*
