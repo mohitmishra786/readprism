@@ -16,10 +16,39 @@ settings = get_settings()
 
 # Edges at or above this weight join two topics into one interest cluster.
 CLUSTER_EDGE_THRESHOLD = 0.3
+# Edges at or above this (stronger) weight also contribute a "bridge" vector at
+# the midpoint of the two topics, giving transitive relevance (audit 05-4).
+BRIDGE_EDGE_THRESHOLD = 0.5
 
 
 def _cosine(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8))
+
+
+def _bridge_vectors(graph: UserInterestGraph) -> list[np.ndarray]:
+    """Vectors at the midpoint of strongly-connected topic pairs.
+
+    Implements the spec's transitive relevance: content at the *intersection* of
+    two strongly-connected interests (e.g. compiler-optimization ∩ language-design)
+    scores highly via the bridge even if it's not near either topic alone —
+    something a per-node or per-cluster centroid can't capture (audit 05-4).
+    """
+    by_id = {n.id: n for n in graph.nodes if n.topic_embedding is not None}
+    vectors: list[np.ndarray] = []
+    for edge in graph.edges:
+        if edge.edge_weight < BRIDGE_EDGE_THRESHOLD:
+            continue
+        a, b = by_id.get(edge.from_node_id), by_id.get(edge.to_node_id)
+        if a is None or b is None:
+            continue
+        mid = (
+            np.array(a.topic_embedding, dtype=np.float32)
+            + np.array(b.topic_embedding, dtype=np.float32)
+        ) / 2.0
+        norm = np.linalg.norm(mid)
+        if norm > 0:
+            vectors.append(mid / norm)
+    return vectors
 
 
 def _cluster_vectors(graph: UserInterestGraph) -> list[np.ndarray]:
@@ -77,8 +106,8 @@ async def compute(
     interest_graph: UserInterestGraph,
     session: AsyncSession,
 ) -> float:
-    cluster_vecs = _cluster_vectors(interest_graph)
-    if not cluster_vecs:
+    match_vecs = _cluster_vectors(interest_graph) + _bridge_vectors(interest_graph)
+    if not match_vecs:
         return 0.5
 
     content_vec = await _get_content_embedding(content)
@@ -89,9 +118,10 @@ async def compute(
         compute_embedding_for_item.delay(str(content.id))
         return 0.5
 
-    # Max similarity across interest clusters: content near ANY of the user's
-    # distinct interests scores highly, instead of being averaged down.
-    best_sim = max(_cosine(vec, content_vec) for vec in cluster_vecs)
+    # Max similarity across per-cluster vectors AND transitive bridge vectors:
+    # content near ANY distinct interest — or the intersection of two connected
+    # interests — scores highly, instead of being averaged down.
+    best_sim = max(_cosine(vec, content_vec) for vec in match_vecs)
     return (best_sim + 1.0) / 2.0
 
 

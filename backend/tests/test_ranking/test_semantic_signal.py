@@ -109,3 +109,49 @@ async def test_multi_interest_not_averaged_down():
     score = await compute(content, user, [], graph, session)
     # Averaged vector would give cosine ~0.707 -> ~0.85; max-sim gives ~1.0.
     assert score > 0.95, f"Expected near-1.0 (matched cluster A) but got {score}"
+
+
+def test_bridge_vectors_only_for_strong_edges():
+    """Transitive bridge vectors are created only for strongly-connected pairs (05-4)."""
+    from app.services.ranking.signals.semantic import _bridge_vectors
+
+    node_a = MagicMock()
+    node_a.id = uuid.uuid4()
+    node_a.topic_embedding = [1.0, 0.0] + [0.0] * 382
+    node_b = MagicMock()
+    node_b.id = uuid.uuid4()
+    node_b.topic_embedding = [0.0, 1.0] + [0.0] * 382
+
+    strong = MagicMock()
+    strong.from_node_id, strong.to_node_id, strong.edge_weight = node_a.id, node_b.id, 0.6
+    weak = MagicMock()
+    weak.from_node_id, weak.to_node_id, weak.edge_weight = node_a.id, node_b.id, 0.2
+
+    assert len(_bridge_vectors(UserInterestGraph(nodes=[node_a, node_b], edges=[strong]))) == 1
+    assert len(_bridge_vectors(UserInterestGraph(nodes=[node_a, node_b], edges=[weak]))) == 0
+
+
+@pytest.mark.asyncio
+async def test_intersection_content_scores_high_via_bridge():
+    """Content at the intersection of two strongly-connected topics scores highly
+    even though it's only partially aligned with either topic alone (05-4)."""
+    content = MagicMock()
+    content.id = uuid.uuid4()
+    content.embedding = [0.7071, 0.7071] + [0.0] * 382  # midpoint of A and B
+
+    user = MagicMock()
+    user.id = uuid.uuid4()
+    node_a = MagicMock()
+    node_a.id = uuid.uuid4()
+    node_a.topic_embedding = [1.0, 0.0] + [0.0] * 382
+    node_a.weight = 1.0
+    node_b = MagicMock()
+    node_b.id = uuid.uuid4()
+    node_b.topic_embedding = [0.0, 1.0] + [0.0] * 382
+    node_b.weight = 1.0
+    edge = MagicMock()
+    edge.from_node_id, edge.to_node_id, edge.edge_weight = node_a.id, node_b.id, 0.7
+
+    graph = UserInterestGraph(nodes=[node_a, node_b], edges=[edge])
+    score = await compute(content, user, [], graph, AsyncMock())
+    assert score > 0.97, f"Expected intersection content to score ~1.0, got {score}"
