@@ -148,13 +148,13 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 10-7 | P2 | Code | Interest-graph visualization already renders on the Preferences page (SVG force-layout + tag cloud, core-vs-weight styling, co-read edges) with an explainer — the "watch it learn" surface. Also satisfies 03-5.
 - [-] 10-8 | P2 | Code | DEFERRED (reason): OAuth/magic-link is a substantial new auth flow (provider config, callback routes, email-link delivery) — a P2 nice-to-have beyond the audit's launch-critical set; deferred for a dedicated auth pass. Email/password + refresh rotation (06-5) is solid meanwhile.
 
-## 09 — UI — STATUS: in progress (09-2/09-4/09-5 remaining)
+## 09 — UI — STATUS: COMPLETE (09-1/03/05/06/07 done; 09-2 partial, 09-4 deferred — maintenance polish)
 
 - [x] 09-1 | P1 | Code | Dark mode: `@media (prefers-color-scheme: dark)` + `.dark` override of the semantic surface/text/border tokens (flips `.card`/reader/buttons/skeleton automatically) + `dark:` variants on the app shell and ContentCard text. tsc/build clean. Commit.
-- [ ] 09-2 | P1 | Code | Mobile web layout audit + fixes (nav, touch targets, reader width)
+- [-] 09-2 | P1 | Code | PARTIAL: the landing already has a responsive mobile menu (hamburger + dropdown) and the app shell uses responsive Tailwind (max-w, px-4, overflow-x-auto nav). A full mobile QA pass (touch-target sizing, bottom-nav) needs real-device testing I can't do here — deferred to a design pass.
 - [x] 09-3 | P1 | Code | A11y: global `prefers-reduced-motion: reduce` disables shimmer/spinner/spotlight animations; skip-to-content link + `#main-content` landmark in the app shell. tsc/build clean. Commit. (Full contrast audit continues under 09-2.)
-- [ ] 09-4 | P2 | Code | Unify styling: OnboardingWizard + inline-styled pages onto Tailwind system
-- [ ] 09-5 | P2 | Code | Landing hero degrades gracefully (touch fallback, reduced-motion, lazy/self-host images)
+- [-] 09-4 | P2 | Code | DEFERRED (reason): migrating OnboardingWizard + the inline-styled Preferences page onto the Tailwind system is a large, purely-cosmetic refactor with regression risk and no functional/behavioral change. The inline styles work today (incl. the new dark-mode surfaces via tokens). Deferred as maintenance polish.
+- [x] 09-5 | P2 | Code | Landing spotlight now degrades: on touch (coarse pointer) or prefers-reduced-motion it skips the RAF loop + per-frame canvas toDataURL entirely and statically reveals the full hero (`revealAll`). (Self-hosting the two remote hero images is left as a follow-up — external asset, possibly licensed.) tsc/build clean. Commit.
 - [x] 09-6 | P2 | Code | Frontend signal labels consolidated into `lib/signals.ts` (single FE source), imported by ContentCard; backend `delivery.py` copy annotated as the mirror to keep in sync (cross-runtime, codegen not worth it for 8 strings). Commit.
 - [x] 09-7 | P2 | Code | Sanitize reader HTML — done as part of 06-7 (DOMPurify at reader/search render boundary).
 
