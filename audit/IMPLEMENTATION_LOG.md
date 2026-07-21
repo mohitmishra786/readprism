@@ -61,7 +61,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 *Skills: no `find-skills`/`skills.sh`; no legal-domain skill installed — proceeded without.*
 
-- [ ] 08-1 | P0 | Decision+Content | MIT vs AGPL: decide, reconcile LICENSE + LAUNCH.md, add CLA — *decision is human; reconciliation is content once decided*
+- [~] 08-1 | P0 | Decision+Content | Contradiction removed: LAUNCH.md now states MIT (matching the operative LICENSE); CONTRIBUTING.md adds a DCO + relicensing-grant CLA template (keeps the AGPL option cheap) + SECURITY.md. **MIT-vs-AGPL decision remains human** (Needs Human Decision #1). Commit.
 - [x] 08-2 | P1 | Decision+Code | Implemented the audit's recommended honest posture as the default: `scraper_identify_as_bot` (single ReadPrism UA, no browser impersonation) + `scraper_respect_blocks` (back off on 403/429/503 instead of escalating to headless browser). Both configurable for operators who accept §1201 risk. 1 test. Residual posture choice noted in Needs Human Decision #5. Commit.
 - [x] 08-3 | P1 | Code | Retention pruning task (`prune_content.prune_old_full_text`, daily 3:30 UTC) truncates `full_text` to an excerpt once older than `content_full_text_retention_days` (default 90; 0=disabled), keeping summary+link. Idempotent SQL `func.left`. 2 integration tests. Commit.
 - [ ] 08-4 | P1 | Content | Privacy Policy + ToS (telemetry, retention, shared content, scraping disclaimer)
@@ -164,7 +164,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 ## 12 — Marketing & Positioning — STATUS: not started
 
 - [ ] 12-1 | P0 | Content | Replace "PCIP / Personalized Content Intelligence Platform" with plain-value one-liner everywhere
-- [ ] 12-2 | P0 | Content | Fix LAUNCH.md placeholder repo URL + AGPL/MIT claim (ties to 08-1)
+- [x] 12-2 | P0 | Content | LAUNCH.md placeholder URL → real repo; "Open source (AGPL)" → "(MIT)" (matches LICENSE). Done with 08-1. Commit.
 - [ ] 12-3 | P1 | Content | Flagship "how the ranking works" post — same as 11-5
 - [ ] 12-4 | P1 | Content | Lock 3 differentiators (behavioral/explainable/open) verbatim everywhere
 - [ ] 12-5 | P1 | Content | 60–90s demo GIF/video — *needs running app; provide storyboard + capture doc*
