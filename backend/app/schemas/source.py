@@ -32,6 +32,7 @@ class SourceRead(BaseModel):
     is_active: bool
     last_fetched_at: datetime | None
     fetch_error_count: int
+    health: str  # 'ok' | 'degraded' | 'failing' — derived from fetch_error_count
     topics: list
     priority: str
     created_at: datetime

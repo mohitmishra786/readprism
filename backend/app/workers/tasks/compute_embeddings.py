@@ -51,7 +51,7 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
         # Semantic deduplication: mark item inactive if near-duplicate exists
         from app.services.ingestion.dispatcher import semantic_dedup
 
-        is_dup = await semantic_dedup(item.id, embedding, session)
+        is_dup = await semantic_dedup(item.id, embedding, session, owner_user_id=item.owner_user_id)
         if is_dup:
             logger.info(f"Semantic duplicate detected for {item.id} — skipping PRS computation")
             await session.commit()

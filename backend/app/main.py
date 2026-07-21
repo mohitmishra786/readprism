@@ -10,10 +10,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.config import get_settings
 from app.utils.logging import setup_logging
+from app.utils.observability import init_sentry
 
 setup_logging()
 logger = logging.getLogger(__name__)
 settings = get_settings()
+init_sentry("api")
 
 
 @asynccontextmanager

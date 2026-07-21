@@ -66,6 +66,17 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     app.dependency_overrides.clear()
 
 
+@pytest.fixture(autouse=True)
+def _disable_rate_limit(monkeypatch):
+    """Disable auth rate limiting by default: the whole suite shares one client
+    IP, so the fixed-window counters would otherwise accumulate across tests and
+    spuriously 429. The dedicated rate-limit test re-enables it explicitly.
+    """
+    from app.utils import ratelimit
+
+    monkeypatch.setattr(ratelimit.settings, "rate_limit_enabled", False)
+
+
 @pytest.fixture
 def test_user_data():
     return {

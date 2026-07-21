@@ -8,6 +8,8 @@ import feedparser
 import httpx
 
 from app.utils.logging import get_logger
+from app.utils.sanitize import sanitize_stored_html
+from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
 logger = get_logger(__name__)
 
@@ -29,10 +31,12 @@ def _count_words(text: str) -> int:
 
 
 def _extract_text(entry: feedparser.FeedParserDict) -> str:
+    # Feed content/summary is raw third-party HTML; strip executable markup
+    # before it is stored (audit 06-7 defense in depth).
     if hasattr(entry, "content") and entry.content:
-        return entry.content[0].get("value", "")
+        return sanitize_stored_html(entry.content[0].get("value", ""))
     if hasattr(entry, "summary"):
-        return entry.summary or ""
+        return sanitize_stored_html(entry.summary or "")
     return ""
 
 
@@ -54,8 +58,13 @@ def _parse_date(entry: feedparser.FeedParserDict) -> datetime | None:
 async def _autodiscover_feed(page_url: str) -> str | None:
     common_paths = ["/feed", "/rss", "/atom.xml", "/feed.xml", "/rss.xml", "/feed/rss"]
     try:
-        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
-            resp = await client.get(page_url)
+        validate_public_url(page_url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked feed autodiscovery for unsafe URL {page_url}: {e}")
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await safe_get(page_url, client=client)
             html = resp.text
             # Try to find <link rel="alternate" type="application/rss+xml">
             pattern = r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*href=["\']([^"\']+)["\']'
@@ -74,11 +83,11 @@ async def _autodiscover_feed(page_url: str) -> str | None:
 
     parsed = urlparse(page_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
-    async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+    async with httpx.AsyncClient(timeout=10) as client:
         for path in common_paths:
             try:
                 url = urljoin(base, path)
-                resp = await client.get(url)
+                resp = await safe_get(url, client=client)
                 if resp.status_code == 200 and (
                     "rss" in resp.text[:500].lower()
                     or "atom" in resp.text[:500].lower()

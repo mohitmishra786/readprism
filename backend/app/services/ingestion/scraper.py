@@ -10,6 +10,7 @@ import httpx
 from app.config import get_settings
 from app.services.ingestion.rss_parser import RawContentItem
 from app.utils.logging import get_logger
+from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -26,19 +27,59 @@ _USER_AGENTS = [
 ]
 
 
-async def _check_robots(url: str) -> bool:
-    """Returns True if scraping is allowed per robots.txt."""
-    parsed = urlparse(url)
-    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+async def _fetch_robots_text(robots_url: str) -> tuple[str, str]:
+    """Fetch robots.txt (cached per host). Returns (status, text) where status is
+    'ok' (served), 'absent' (clean 404/410), or 'error' (unreachable/5xx)."""
+    from app.utils.cache import cache_get, cache_set
+
+    cache_key = f"robots:{robots_url}"
+    cached = await cache_get(cache_key)
+    if cached is not None:
+        return cached.get("status", "error"), cached.get("text", "")
+
+    status, text = "error", ""
     try:
         async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(robots_url)
-            rp = RobotFileParser()
-            rp.set_url(robots_url)
-            rp.parse(resp.text.splitlines())
-            return rp.can_fetch("*", url)
-    except Exception:
-        return True  # if robots.txt unavailable, assume allowed
+            resp = await safe_get(robots_url, client=client)
+            if resp.status_code == 200:
+                status, text = "ok", resp.text
+            elif resp.status_code in (404, 410):
+                status = "absent"  # no robots.txt served => allowed by convention
+    except Exception as e:
+        logger.debug(f"robots.txt fetch failed for {robots_url}: {e}")
+
+    # Cache errors too (short-circuits repeated failing fetches within the TTL).
+    await cache_set(
+        cache_key, {"status": status, "text": text}, ttl_seconds=settings.robots_cache_ttl_seconds
+    )
+    return status, text
+
+
+async def _check_robots(url: str) -> bool:
+    """Returns True if scraping is allowed per robots.txt.
+
+    A served robots.txt is honored; a clean 404/410 (none served) is allowed by
+    convention; a fetch error fails **closed** by default (audit 08-6), which
+    `robots_fail_open` can override.
+    """
+    try:
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked robots fetch for unsafe URL {url}: {e}")
+        return False
+
+    parsed = urlparse(url)
+    robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
+    status, text = await _fetch_robots_text(robots_url)
+
+    if status == "absent":
+        return True
+    if status == "error":
+        return settings.robots_fail_open
+    rp = RobotFileParser()
+    rp.set_url(robots_url)
+    rp.parse(text.splitlines())
+    return rp.can_fetch("*", url)
 
 
 def _extract_with_trafilatura(html_content: str, url: str) -> str:
@@ -77,13 +118,18 @@ def _extract_with_trafilatura(html_content: str, url: str) -> str:
         return ""
 
 
-async def _fetch_with_retry(url: str) -> str | None:
+async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
     """
-    Attempt a lightweight httpx GET with exponential-backoff retry before
-    falling back to the Playwright/Browserless path.
-    Returns the response HTML or None on all failures.
+    Attempt a lightweight httpx GET with exponential-backoff retry.
+    Returns (html, was_blocked): `was_blocked` is True when the site explicitly
+    refused our bot (403/429/503), so the caller can respect the block instead
+    of circumventing it (audit 08-2).
     """
-    user_agent = random.choice(_USER_AGENTS)
+    # Honest posture: identify as the ReadPrism bot rather than rotating
+    # browser-impersonation User-Agents.
+    user_agent = (
+        _USER_AGENTS[0] if settings.scraper_identify_as_bot else random.choice(_USER_AGENTS)
+    )
     headers = {
         "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -94,16 +140,18 @@ async def _fetch_with_retry(url: str) -> str | None:
         try:
             async with httpx.AsyncClient(
                 timeout=20,
-                follow_redirects=True,
                 headers=headers,
             ) as client:
-                resp = await client.get(url)
+                # safe_get validates the URL and every redirect hop (SSRF guard).
+                resp = await safe_get(url, client=client)
                 if resp.status_code == 200:
-                    return resp.text
+                    return resp.text, False
                 if resp.status_code in (403, 429, 503):
-                    # Likely bot-protected — don't retry with httpx, go straight to Playwright
-                    logger.debug(f"HTTP {resp.status_code} on {url} — will use Playwright")
-                    return None
+                    logger.debug(f"HTTP {resp.status_code} on {url} — site blocked our bot")
+                    return None, True
+        except UnsafeURLError as e:
+            logger.warning(f"Blocked fetch for unsafe URL {url}: {e}")
+            return None, False
         except (httpx.TimeoutException, httpx.ConnectError) as e:
             logger.debug(f"httpx attempt {attempt}/{_RETRY_MAX_ATTEMPTS} failed for {url}: {e}")
 
@@ -111,12 +159,20 @@ async def _fetch_with_retry(url: str) -> str | None:
             delay = min(_RETRY_MAX_DELAY, _RETRY_BASE_DELAY * (2 ** (attempt - 1)))
             await asyncio.sleep(delay + random.uniform(0, 1))
 
-    return None
+    return None, False
 
 
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
     """Use the headless Chrome instance (Browserless) for JS-rendered pages.
     Returns (html_content, page_title)."""
+    try:
+        # Browserless renders arbitrary user-supplied URLs; validate before we
+        # hand the URL to the headless browser (SSRF guard, audit 06-2).
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked Playwright fetch for unsafe URL {url}: {e}")
+        return None, None
+
     try:
         from playwright.async_api import async_playwright
 
@@ -154,7 +210,7 @@ async def scrape_page(url: str) -> RawContentItem | None:
     html_content: str | None = None
 
     # 1. Fast path: plain httpx GET with retry
-    html_content = await _fetch_with_retry(url)
+    html_content, was_blocked = await _fetch_with_retry(url)
 
     if html_content:
         # Extract title from <title> tag
@@ -163,8 +219,13 @@ async def scrape_page(url: str) -> RawContentItem | None:
         title_match = re.search(r"<title[^>]*>([^<]+)</title>", html_content, re.IGNORECASE)
         title = title_match.group(1).strip() if title_match else None
 
-    # 2. Fallback: Playwright for JS-heavy pages
+    # 2. Fallback: Playwright for JS-heavy pages. If the site *explicitly blocked*
+    #    our identified bot, respect that rather than circumventing it with a
+    #    headless browser (audit 08-2); still fall back for genuine JS rendering.
     if not html_content:
+        if was_blocked and settings.scraper_respect_blocks:
+            logger.info(f"Respecting {url} block — not escalating to headless browser")
+            return None
         result = await _fetch_with_playwright(url)
         if isinstance(result, tuple):
             html_content, title = result
@@ -178,7 +239,6 @@ async def scrape_page(url: str) -> RawContentItem | None:
     title = title or "Untitled"
     full_text = _extract_with_trafilatura(html_content, url)
     word_count = len(full_text.split()) if full_text else 0
-    max(1, round(word_count / 238))
 
     return RawContentItem(
         url=url,
