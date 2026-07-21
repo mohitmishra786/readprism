@@ -103,7 +103,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 ## 07 — Infra, Reliability & Scalability — STATUS: in progress
 
 - [x] 07-1 | P0 | Code+Config | Sentry error tracking, opt-in via DSN: backend `utils/observability.init_sentry` wired into API (`main.py`) + worker/beat (Celery `worker_process_init`/`beat_init` signals); frontend `@sentry/nextjs` instrumentation-client/server/register files. No-op without a DSN. sentry-sdk==2.66.0. Image rebuilt, suite green, frontend builds. Commit.
-- [ ] 07-2 | P0 | Config | Split Celery into scrape/embed/digest queues + worker per queue
+- [x] 07-2 | P0 | Config | Celery `task_routes` map ingest→scrape, embeddings→embed, prs/digest/deliver/graph/prune→digest queues; compose replaced the single worker with `worker-scrape`/`worker-embed`/`worker-digest` (one `--pool=solo` process per queue, shared `x-worker-base` anchor; digest also drains default). Compose validates, routes load, suite green. Commit.
 - [ ] 07-3 | P0 | Config+Content | Nightly pg_dump + documented restore
 - [ ] 07-4 | P1 | Config | Beat healthcheck / liveness
 - [ ] 07-5 | P1 | Content | Re-model unit economics (real Groq/Resend + cache-hit + step costs) — overlaps 13-2

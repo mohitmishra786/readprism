@@ -67,7 +67,7 @@ This starts seven services:
 | `db` | 5432 | PostgreSQL 16 with pgvector extension |
 | `redis` | 6379 | Cache and Celery broker |
 | `backend` | 8000 | FastAPI application server |
-| `worker` | — | Celery task worker (`--pool=solo`, one task at a time) |
+| `worker-scrape` / `worker-embed` / `worker-digest` | — | Celery workers, one `--pool=solo` process per queue (scrape / embed / digest) so a slow scrape can't starve digests |
 | `beat` | — | Celery beat scheduler |
 | `browserless` | 3000 | Headless Chrome pool for scraping |
 | `frontend` | 3001 | Next.js web application |

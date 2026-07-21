@@ -34,6 +34,19 @@ celery_app = Celery(
     ],
 )
 
+# Route tasks to dedicated queues so a slow scrape can't block embeddings or
+# digest delivery on the same solo worker (audit 07-2). One worker container per
+# queue consumes these; the digest worker also drains the default queue.
+celery_app.conf.task_routes = {
+    "app.workers.tasks.ingest_feeds.*": {"queue": "scrape"},
+    "app.workers.tasks.compute_embeddings.*": {"queue": "embed"},
+    "app.workers.tasks.compute_prs.*": {"queue": "digest"},
+    "app.workers.tasks.build_digest.*": {"queue": "digest"},
+    "app.workers.tasks.deliver_digest.*": {"queue": "digest"},
+    "app.workers.tasks.update_interest_graph.*": {"queue": "digest"},
+    "app.workers.tasks.prune_content.*": {"queue": "digest"},
+}
+
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
