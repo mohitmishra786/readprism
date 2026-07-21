@@ -73,7 +73,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 ## 04 — Architecture & Codebase — STATUS: in progress
 
 - [ ] 04-1 | P0 | Code | Fix serendipity selection: interest-*adjacent* candidates (embedding near cluster edges), not "recent items from other users' sources"
-- [ ] 04-2 | P0 | Code | Stop sharing one AsyncSession across gathered signal coroutines (session factory or serialize)
+- [x] 04-2 | P0 | Code | `compute_prs` now runs the 8 signals sequentially over the shared session instead of `asyncio.gather` (session isn't concurrency-safe; the gather only appeared parallel). Removes the latent bug; no real latency cost. Commit.
 - [ ] 04-3 | P1 | Code | Surface source-failure state to users (`fetch_error_count` → API/UI)
 - [ ] 04-4 | P1 | Code | Move embedding encode calls off event loop in API paths (`asyncio.to_thread`)
 - [x] 04-5 | P1 | Code | Removed dead expr in scraper.py (reading-time calc) + orphan set in builder.py; fixed the misleading "pgvector similarity" comment in collaborative.py to match reality. Commit.

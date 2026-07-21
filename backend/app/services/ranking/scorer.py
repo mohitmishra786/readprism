@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -65,21 +63,19 @@ async def compute_prs(
         edges=list(edges_result.scalars().all()),
     )
 
-    # Compute all signals in parallel
-    tasks = {
-        name: mod.compute(content, user, interaction_history, graph, session)
-        for name, mod in SIGNAL_MODULES.items()
-    }
-
-    results = await asyncio.gather(*tasks.values(), return_exceptions=True)
+    # Compute signals sequentially. They all query through the same AsyncSession,
+    # which is NOT safe to use concurrently (SQLAlchemy async sessions aren't
+    # concurrency-safe); a previous asyncio.gather here only appeared parallel
+    # because the awaits serialized on the session anyway. Running them in
+    # sequence removes that latent bug without a real latency cost (audit 04-2).
     signal_scores: dict[str, float] = {}
-
-    for name, result in zip(tasks.keys(), results, strict=False):
-        if isinstance(result, Exception):
-            logger.warning(f"Signal {name} failed: {result}")
-            signal_scores[name] = 0.5  # neutral fallback
-        else:
+    for name, mod in SIGNAL_MODULES.items():
+        try:
+            result = await mod.compute(content, user, interaction_history, graph, session)
             signal_scores[name] = float(result)
+        except Exception as e:
+            logger.warning(f"Signal {name} failed: {e}")
+            signal_scores[name] = 0.5  # neutral fallback
 
     # Compute weighted PRS
     prs = sum(meta.weights.get(name, 0.0) * score for name, score in signal_scores.items())
