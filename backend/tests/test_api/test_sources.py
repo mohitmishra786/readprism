@@ -63,3 +63,30 @@ async def test_delete_source(client: AsyncClient, test_user_data: dict):
 
     del_resp = await client.delete(f"/api/v1/sources/{source_id}", headers=headers)
     assert del_resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_source_health_surfaced(client: AsyncClient, test_user_data: dict, db_session):
+    """fetch_error_count is surfaced as a user-facing health status (audit 04-3)."""
+    from sqlalchemy import select
+
+    from app.models.source import Source
+    from app.models.user import User
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    token = reg.json()["access_token"]
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+
+    db_session.add(Source(user_id=user.id, url="https://ok.com", fetch_error_count=0))
+    db_session.add(Source(user_id=user.id, url="https://degraded.com", fetch_error_count=1))
+    db_session.add(Source(user_id=user.id, url="https://failing.com", fetch_error_count=5))
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/sources", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    health_by_url = {s["url"]: s["health"] for s in resp.json()}
+    assert health_by_url["https://ok.com"] == "ok"
+    assert health_by_url["https://degraded.com"] == "degraded"
+    assert health_by_url["https://failing.com"] == "failing"

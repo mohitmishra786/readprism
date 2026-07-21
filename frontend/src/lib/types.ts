@@ -23,6 +23,7 @@ export interface Source {
   is_active: boolean;
   last_fetched_at: string | null;
   fetch_error_count: number;
+  health: "ok" | "degraded" | "failing";
   topics: string[];
   priority: string;
   created_at: string;
