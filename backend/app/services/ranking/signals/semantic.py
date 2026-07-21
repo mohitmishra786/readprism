@@ -125,6 +125,54 @@ async def compute(
     return cosine_to_unit_score(best_sim)
 
 
+def explain_top_topics(content_embedding, graph: UserInterestGraph) -> str | None:
+    """Human explanation naming the interest-graph connection that drove ranking.
+
+    Returns e.g. "connects your interest in Compilers and Language Design" when
+    the best match is a transitive bridge, or "matches your interest in Rust"
+    for a single topic — the graph-based explanation the spec promised, beyond
+    raw signal contributions (audit 05-5).
+    """
+    if content_embedding is None:
+        return None
+    nodes = [n for n in graph.nodes if n.topic_embedding is not None]
+    if not nodes:
+        return None
+    cvec = np.array(content_embedding, dtype=np.float32)
+
+    # Best single topic.
+    best_node = max(
+        nodes, key=lambda n: _cosine(np.array(n.topic_embedding, dtype=np.float32), cvec)
+    )
+    best_node_sim = _cosine(np.array(best_node.topic_embedding, dtype=np.float32), cvec)
+
+    # Best transitive bridge, if any beats the single topic by a margin.
+    by_id = {n.id: n for n in nodes}
+    best_bridge = None
+    best_bridge_sim = -1.0
+    for edge in graph.edges:
+        if edge.edge_weight < BRIDGE_EDGE_THRESHOLD:
+            continue
+        a, b = by_id.get(edge.from_node_id), by_id.get(edge.to_node_id)
+        if a is None or b is None:
+            continue
+        mid = (
+            np.array(a.topic_embedding, dtype=np.float32)
+            + np.array(b.topic_embedding, dtype=np.float32)
+        ) / 2.0
+        norm = np.linalg.norm(mid)
+        if norm == 0:
+            continue
+        sim = _cosine(mid / norm, cvec)
+        if sim > best_bridge_sim:
+            best_bridge_sim, best_bridge = sim, (a, b)
+
+    if best_bridge is not None and best_bridge_sim > best_node_sim + 0.02:
+        a, b = best_bridge
+        return f"connects your interest in {a.topic_label} and {b.topic_label}"
+    return f"matches your interest in {best_node.topic_label}"
+
+
 async def _get_user_interest_vector(user: User, graph: UserInterestGraph) -> np.ndarray | None:
     """Single averaged interest vector — retained for callers that need one broad
     centroid (collaborative warmup, cache warmers). The semantic *signal* now uses

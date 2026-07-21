@@ -77,8 +77,13 @@ async def compute_prs(
             logger.warning(f"Signal {name} failed: {e}")
             signal_scores[name] = 0.5  # neutral fallback
 
-    # Compute weighted PRS
-    prs = sum(meta.weights.get(name, 0.0) * score for name, score in signal_scores.items())
+    # Compute weighted PRS (only numeric signal scores; the breakdown may also
+    # carry a non-numeric "why_topics" explanation string).
+    prs = sum(
+        meta.weights.get(name, 0.0) * score
+        for name, score in signal_scores.items()
+        if isinstance(score, int | float)
+    )
     prs = max(0.0, min(1.0, prs))
 
     return prs, signal_scores

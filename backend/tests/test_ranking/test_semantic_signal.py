@@ -155,3 +155,31 @@ async def test_intersection_content_scores_high_via_bridge():
     graph = UserInterestGraph(nodes=[node_a, node_b], edges=[edge])
     score = await compute(content, user, [], graph, AsyncMock())
     assert score > 0.97, f"Expected intersection content to score ~1.0, got {score}"
+
+
+def test_explain_top_topics_names_bridge_and_single():
+    from app.services.ranking.signals.semantic import explain_top_topics
+
+    node_a = MagicMock()
+    node_a.id = uuid.uuid4()
+    node_a.topic_label = "Compilers"
+    node_a.topic_embedding = [1.0, 0.0] + [0.0] * 382
+    node_b = MagicMock()
+    node_b.id = uuid.uuid4()
+    node_b.topic_label = "Language Design"
+    node_b.topic_embedding = [0.0, 1.0] + [0.0] * 382
+    edge = MagicMock()
+    edge.from_node_id, edge.to_node_id, edge.edge_weight = node_a.id, node_b.id, 0.7
+    graph = UserInterestGraph(nodes=[node_a, node_b], edges=[edge])
+
+    # Content at the intersection -> bridge explanation naming both topics.
+    bridge_expl = explain_top_topics([0.7071, 0.7071] + [0.0] * 382, graph)
+    assert "Compilers" in bridge_expl and "Language Design" in bridge_expl
+    assert bridge_expl.startswith("connects your interest in")
+
+    # Content aligned with one topic -> single-topic explanation.
+    single_expl = explain_top_topics([1.0, 0.0] + [0.0] * 382, graph)
+    assert "Compilers" in single_expl
+    assert single_expl.startswith("matches your interest in")
+
+    assert explain_top_topics(None, graph) is None

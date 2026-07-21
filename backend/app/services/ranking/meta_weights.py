@@ -137,7 +137,9 @@ async def update_meta_weights(
         # functions of the target (audit 05-3).
         breakdown = digest_item.signal_breakdown or {}
         predicted = sum(
-            weights.get(k, 0.0) * v for k, v in breakdown.items() if k not in LEAKING_SIGNALS
+            weights.get(k, 0.0) * v
+            for k, v in breakdown.items()
+            if k not in LEAKING_SIGNALS and isinstance(v, int | float)
         )
         error = predicted - actual
 

@@ -26,7 +26,7 @@ const SECTION_ACCENTS: Record<string, string> = {
 interface ContentCardProps {
   content: ContentItem;
   prsScore?: number | null;
-  signalBreakdown?: Record<string, number>;
+  signalBreakdown?: Record<string, number | string>;
   isDiscovery?: boolean;
   section?: string;
   position?: number;
@@ -64,12 +64,19 @@ export function ContentCard({
         : 0,
   }));
 
+  // Graph-based explanation (05-5), e.g. "connects your interest in X and Y".
+  const whyTopics =
+    signalBreakdown && typeof signalBreakdown.why_topics === "string"
+      ? (signalBreakdown.why_topics as string)
+      : null;
+
   const whySummary =
-    rankedSignals.length > 0
+    whyTopics ||
+    (rankedSignals.length > 0
       ? `Ranked because it ${rankedSignals[0].label}${
           rankedSignals[1] ? ` and ${rankedSignals[1].label}` : ""
         }`
-      : null;
+      : null);
 
   const accent = section ? SECTION_ACCENTS[section] : "from-prism-600 to-prism-400";
 
@@ -173,6 +180,11 @@ export function ContentCard({
             {showWhyTooltip && (
               <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg bg-stone-900 p-3 text-xs text-white shadow-xl">
                 <div className="mb-2 font-semibold">Why this is ranked here</div>
+                {whyTopics && (
+                  <div className="mb-2 rounded bg-white/10 px-2 py-1 capitalize opacity-95">
+                    {whyTopics}
+                  </div>
+                )}
                 {rankedSignals.map((s) => (
                   <div key={s.key} className="mb-1.5 flex items-center gap-2">
                     <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">

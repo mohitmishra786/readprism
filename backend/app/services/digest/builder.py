@@ -172,11 +172,31 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
+    # Load the interest graph once to generate graph-based explanations (05-5).
+    from app.models.interest_graph import InterestEdge, InterestNode
+    from app.services.ranking.signals import UserInterestGraph
+    from app.services.ranking.signals.semantic import explain_top_topics
+
+    nodes = list(
+        (
+            await session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
+        ).scalars()
+    )
+    edges = list(
+        (
+            await session.execute(select(InterestEdge).where(InterestEdge.user_id == user.id))
+        ).scalars()
+    )
+    interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
+
     # Create digest items
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
+            explanation = explain_top_topics(getattr(item, "embedding", None), interest_graph)
+            if explanation:
+                clean_breakdown["why_topics"] = explanation
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,

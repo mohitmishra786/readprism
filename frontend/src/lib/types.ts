@@ -92,7 +92,7 @@ export interface DigestItem {
   position: number;
   section: string;
   prs_score: number;
-  signal_breakdown: Record<string, number>;
+  signal_breakdown: Record<string, number | string>;
   content: ContentItem | null;
 }
 
@@ -112,7 +112,7 @@ export interface Digest {
 export interface FeedItem {
   content: ContentItem;
   prs_score: number | null;
-  signal_breakdown: Record<string, number>;
+  signal_breakdown: Record<string, number | string>;
 }
 
 export interface InterestGraphNode {
