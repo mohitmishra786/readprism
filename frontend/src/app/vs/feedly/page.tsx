@@ -19,7 +19,7 @@ export default function VsFeedly() {
           { dimension: "Ranking basis", competitor: "Leo: keyword/topic rules, train-by-example (Pro+)", readprism: "8 behavioral signals + per-user learned weights" },
           { dimension: "Explainability", competitor: "Prioritization, limited reasoning", readprism: "Per-item why-ranked + named interest-graph connections" },
           { dimension: "Pricing", competitor: "Free / Pro $6.99 / Pro+ ~$99/yr", readprism: "Full engine free; $4.99/mo Pro (planned)" },
-          { dimension: "Self-hosting", competitor: "No", readprism: "Yes — Docker Compose, MIT-licensed" },
+          { dimension: "Self-hosting", competitor: "No", readprism: "Yes — Docker Compose, AGPL-3.0" },
         ],
         differsBecause: [
           "Behavioral, not keyword: ReadPrism learns from scroll depth and active reading time, not rules you maintain by hand.",

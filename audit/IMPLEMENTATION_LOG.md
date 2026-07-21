@@ -75,7 +75,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 *Skills: no `find-skills`/`skills.sh`; no legal-domain skill installed — proceeded without.*
 
-- [~] 08-1 | P0 | Decision+Content | Contradiction removed: LAUNCH.md now states MIT (matching the operative LICENSE); CONTRIBUTING.md adds a DCO + relicensing-grant CLA template (keeps the AGPL option cheap) + SECURITY.md. **MIT-vs-AGPL decision remains human** (Needs Human Decision #1). Commit.
+- [x] 08-1 | P0 | Decision+Content | **RESOLVED (owner chose AGPL-3.0).** LICENSE → verbatim AGPL-3.0; README/LAUNCH.md/CONTRIBUTING/LAUNCH_FAQ/comparison pages all state AGPL-3.0; DCO + relicensing-grant CLA in CONTRIBUTING. Commit.
 - [x] 08-2 | P1 | Decision+Code | Implemented the audit's recommended honest posture as the default: `scraper_identify_as_bot` (single ReadPrism UA, no browser impersonation) + `scraper_respect_blocks` (back off on 403/429/503 instead of escalating to headless browser). Both configurable for operators who accept §1201 risk. 1 test. Residual posture choice noted in Needs Human Decision #5. Commit.
 - [x] 08-3 | P1 | Code | Retention pruning task (`prune_content.prune_old_full_text`, daily 3:30 UTC) truncates `full_text` to an excerpt once older than `content_full_text_retention_days` (default 90; 0=disabled), keeping summary+link. Idempotent SQL `func.left`. 2 integration tests. Commit.
 - [x] 08-4 | P1 | Content | `docs/PRIVACY.md` + `docs/TERMS.md` (telemetry, retention, shared-content model, scraping disclaimer, export/erasure rights) accurate to the implementation; linked from README. Also satisfies 06-10. Commit.
@@ -242,10 +242,10 @@ Most items alias earlier files. Net-new implementable:
 
 These are logged with the specific question; not implemented until answered. Work continues on non-blocked items.
 
-1. **08-1 / 12-2 — License: MIT or AGPL-3.0?** LICENSE says MIT; LAUNCH.md says AGPL. The audit recommends AGPL-3.0 + CLA for the open-core/hosted monetization strategy, but this is a founder business decision with legal weight. *Question: adopt AGPL-3.0 (+ contributor CLA) now, or stay MIT?* Until answered, I will reconcile the docs to remove the contradiction only in a way that is reversible, and prepare both a CLA doc and the AGPL text without switching the LICENSE file.
-2. **13-1 / 13-x — Monetization tier structure & price.** Whether/how to gate Free vs Pro (cached vs on-demand summaries), and the price point ($4.99 vs lower). *Question: confirm the Free/Pro feature split and price before entitlement code is wired to real gating.* Entitlement *scaffolding* (a tier-enforcement layer with config) can be built now; the specific gates need sign-off.
-3. **01-3 — Hosted-first vs self-host-first.** Determines whether billing/hosted infra or self-host polish comes first. *Question: which goes first?*
-4. **02-3 / 13-4 — Final price point.** $4.99 vs matching budget entrants. *Question: confirm price.*
+1. **08-1 / 12-2 — License: RESOLVED → AGPL-3.0** (owner decision, this session). LICENSE is verbatim AGPL-3.0 and all docs/pages say AGPL-3.0; DCO + relicensing-grant CLA in CONTRIBUTING.md. *Action for owner: have counsel review the CLA before merging the first external contribution.*
+2. **13 — Monetization: price CONFIRMED $4.99/mo** (owner). The Free/Pro *feature split* (cached vs on-demand summaries) and Stripe billing still need building/sign-off; entitlement enforcement (quantity limits) already ships.
+3. **01-3 — Self-host-first** (chosen for greater reach: ICP #1 is reachable free via HN/r/selfhosted; hosted needs infra). Positioning/README already lead self-host.
+4. **02-3 / 13-4 — Price: CONFIRMED $4.99/mo** (owner). Copy positions it on capability, not price.
 5. **08-2 — Scraping posture.** *Implemented the recommended honest posture as the default* (`scraper_identify_as_bot` + `scraper_respect_blocks`, both config-toggleable). *Question: keep the honest default, or flip to accept §1201 risk?* — reversible either way.
 6. **01-1, 01-2, 01-6, 03-4, 03-6, 03-7, 16-5, 16-6, 13-6, 12-7, 02-5, 02-6 — Founder process/strategy items** (concierge test, wedge sentence, kill criteria, interviews, cadence, build-in-public, quarterly competitor watch). Not code; owner-run. The concierge cold-start test (01-1) is the real launch go/no-go.
 7. **14-1 — Hosted demo deployment target.** The app is launch-ready (rate-limits, health, backups, metrics, rollback doc). *Question: where to deploy the demo + waitlist?* (needs a cloud host).
@@ -266,7 +266,7 @@ Things I'd flag to the owner before sharing a public link, even though the code 
 
 1. **Cold-start quality is unvalidated (the real go/no-go).** The ranking-core fixes (per-cluster max-sim, transitive bridges, leakage removal, serendipity) are implemented and the eval harness exists, but no real cohort has produced a read-prediction AUC yet. **Run the 10-user concierge test (01-1) before any launch post** — everything else is downstream of surviving days 1–14.
 2. **No deployed instance / demo.** HN converts on "try it in 30s", not "clone and docker compose". The app is ready to deploy but a hosted demo + the waitlist page need a host (NHD #7).
-3. **License decision open (08-1).** Docs now consistently say MIT; if the owner wants the AGPL open-core lever, switch the LICENSE + add the CLA *before the first external contributor* — it only gets harder.
+3. **License: RESOLVED — AGPL-3.0** (owner decision). LICENSE + all docs consistent; CLA/DCO in place. Have counsel review the CLA before the first external PR.
 4. **Billing is not built.** Tier *enforcement* (quantity limits) ships, but there's no Stripe/entitlement-to-payment link; Pro is unenforced beyond limits until billing + the Free/Pro structure decision (NHD #2).
 5. **Email deliverability is unproven at volume.** SMTP/Zoho works and List-Unsubscribe/footer are correct, but deliverability, SPF/DKIM/DMARC, and the provider step-cost (audit 07/13) haven't been exercised under real send volume.
 6. **Load/SLA not exercised on real hardware.** `scripts/loadtest_ingestion.py` exists; the 30-min ingestion SLA under the solo-pool worker split should be run on the target host before launch traffic.

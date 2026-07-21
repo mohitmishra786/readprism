@@ -19,7 +19,7 @@ export default function VsInoreader() {
           { dimension: "AI features", competitor: "Intelligence: summaries, smart tags, BYO OpenAI/Anthropic/Mistral key", readprism: "Summaries + a behavioral ranking engine" },
           { dimension: "Ranking basis", competitor: "Filtering/rules; no behavioral ranking", readprism: "8 behavioral signals + per-user learned weights" },
           { dimension: "Pricing", competitor: "Free (150 feeds, ads) / Pro ~$7.50/mo annual", readprism: "Full engine free; $4.99/mo Pro (planned)" },
-          { dimension: "Self-hosting", competitor: "No", readprism: "Yes — Docker Compose, MIT-licensed" },
+          { dimension: "Self-hosting", competitor: "No", readprism: "Yes — Docker Compose, AGPL-3.0" },
         ],
         differsBecause: [
           "Inoreader's AI summarizes and tags; ReadPrism additionally re-orders your digest by learned personal relevance.",

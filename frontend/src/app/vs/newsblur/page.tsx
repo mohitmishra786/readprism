@@ -20,7 +20,7 @@ export default function VsNewsBlur() {
           { dimension: "Interest model", competitor: "Flat per-feed classifiers", readprism: "Decaying interest graph with transitive (2-hop) relevance" },
           { dimension: "Signal source", competitor: "Explicit like/dislike training", readprism: "Behavioral telemetry + explicit feedback + suggestion reads" },
           { dimension: "Pricing", competitor: "$36/yr Premium", readprism: "Full engine free; $4.99/mo Pro (planned)" },
-          { dimension: "Self-hosting", competitor: "Yes (open source)", readprism: "Yes — Docker Compose, MIT-licensed" },
+          { dimension: "Self-hosting", competitor: "Yes (open source)", readprism: "Yes — Docker Compose, AGPL-3.0" },
         ],
         differsBecause: [
           "NewsBlur trains on keyword/author/tag likes you set; ReadPrism learns from how you actually read (semantic + behavioral), so it needs less manual training but more reading history.",
