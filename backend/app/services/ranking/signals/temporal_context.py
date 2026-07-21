@@ -6,12 +6,14 @@ import numpy as np
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
 from app.services.ranking.signals import UserInterestGraph, cosine_to_unit_score
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+settings = get_settings()
 
 SIMILARITY_SATURATION_THRESHOLD = 0.80
 SATURATION_PENALTY_PER_ITEM = 0.15
@@ -29,7 +31,11 @@ async def compute(
     medium_term = await _medium_term_score(content, user, session)
     short_term = await _short_term_adjustment(content, user, session)
 
-    temporal_score = long_term * 0.5 + medium_term * 0.35 + short_term * 0.15
+    temporal_score = (
+        long_term * settings.temporal_blend_long
+        + medium_term * settings.temporal_blend_medium
+        + short_term * settings.temporal_blend_short
+    )
     tod_adjustment = _time_of_day_adjustment(content, interaction_history)
     return float(np.clip(temporal_score + tod_adjustment, 0.0, 1.0))
 

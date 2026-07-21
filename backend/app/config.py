@@ -114,6 +114,14 @@ class Settings(BaseSettings):
     rate_limit_login_per_minute: int = 10
     rate_limit_register_per_minute: int = 5
 
+    # Ranking-signal tunables (audit 05-8). Previously hard-coded magic constants;
+    # exposed so they can be tuned per-deployment (and eventually learned) without
+    # a code change.
+    novelty_target: float = 0.35  # novelty level the novelty signal peaks at
+    temporal_blend_long: float = 0.50  # long-term interest weight
+    temporal_blend_medium: float = 0.35  # medium-term focus weight
+    temporal_blend_short: float = 0.15  # session/short-term weight
+
     # Feature flags
     cold_start_collaborative_enabled: bool = True
     # Collaborative warmup is mathematically inert below a critical mass of active

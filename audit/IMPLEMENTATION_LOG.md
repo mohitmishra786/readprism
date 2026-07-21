@@ -91,7 +91,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [ ] 05-5 | P1 | Code | Generate graph-based explanations ("connects X and Y")
 - [x] 05-6 | P1 | Code | Collaborative warmup gated behind `collaborative_warmup_min_users` (default 1000) — inert below critical mass now returns [] explicitly instead of pretending to contribute; also added `owner_user_id IS NULL` to the items query (cross-tenant privacy). Comment fixed in 04-5. 5 tests. Commit.
 - [x] 05-7 | P1 | Code | Chose the "document" option: centralized the `(sim+1)/2` mapping into `cosine_to_unit_score()` with a docstring explaining the intentional [0.5,1]-ish compression (unrelated≈neutral, not negative), and replaced the duplicated expression across all 6 signal files. Suite green. Commit.
-- [ ] 05-8 | P2 | Code | Make novelty target + temporal blend weights config-exposed/learnable
+- [x] 05-8 | P2 | Code | Exposed `novelty_target` + `temporal_blend_long/medium/short` as config (were hard-coded 0.35 / 0.5/0.35/0.15), wired into the novelty + temporal signals. Suite green. Commit.
 - [ ] 05-9 | P2 | Code | Offline ranking-eval notebook (nDCG / read-prediction AUC per cohort)
 
 ## 07 — Infra, Reliability & Scalability — STATUS: not started
