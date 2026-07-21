@@ -13,6 +13,7 @@ Test credentials (after a successful run, printed at the end):
     email:    demo@readprism.local
     password: DemoPass!2026
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +22,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import bcrypt
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 import app.models  # noqa: F401 — register all models on Base.metadata
 from app.database import AsyncSessionLocal
@@ -80,7 +81,11 @@ SOURCES = [
 ]
 
 CREATORS = [
-    {"name": "Gergely Orosz", "platform": "substack", "url": "https://newsletter.pragmaticengineer.com"},
+    {
+        "name": "Gergely Orosz",
+        "platform": "substack",
+        "url": "https://newsletter.pragmaticengineer.com",
+    },
     {"name": "Simon Willison", "platform": "substack", "url": "https://simonwillison.net"},
 ]
 
@@ -403,7 +408,9 @@ async def run_onboarding(session, user: User) -> None:
     log.info("Onboarding complete: interest graph + nodes built.")
 
 
-async def create_sources_and_creators(session, user: User) -> tuple[dict[str, Source], dict[str, CreatorPlatform]]:
+async def create_sources_and_creators(
+    session, user: User
+) -> tuple[dict[str, Source], dict[str, CreatorPlatform]]:
     sources: dict[str, Source] = {}
     for s in SOURCES:
         src = Source(
@@ -484,7 +491,7 @@ async def enrich(session, items: list[ContentItem]) -> None:
         if not item.summarization_cached:
             try:
                 await summarizer.summarize(item.id, item.title, item.full_text or "", session)
-            except Exception as e:  # noqa: BLE001 — keep going on per-item failures
+            except Exception as e:
                 log.warning(f"  [{i}/{len(items)}] summarize failed for {item.title!r}: {e}")
             await session.flush()
 
@@ -498,11 +505,13 @@ async def enrich(session, items: list[ContentItem]) -> None:
         try:
             vec = await emb_service.encode_single(emb_text)
             item.embedding = vec
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning(f"  [{i}/{len(items)}] embed failed for {item.title!r}: {e}")
         await session.flush()
-        log.info(f"  [{i}/{len(items)}] {item.title!r} — depth={item.content_depth_score}, "
-                 f"topics={item.topic_clusters}, rt={item.reading_time_minutes}m")
+        log.info(
+            f"  [{i}/{len(items)}] {item.title!r} — depth={item.content_depth_score}, "
+            f"topics={item.topic_clusters}, rt={item.reading_time_minutes}m"
+        )
     await session.commit()
     log.info("Enrichment complete.")
 
@@ -559,7 +568,7 @@ async def compute_scores(session, user: User, items: list[ContentItem]) -> None:
     for i, item in enumerate(items, 1):
         try:
             prs, breakdown = await compute_prs(item, user, session)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             log.warning(f"  [{i}/{len(items)}] PRS failed for {item.title!r}: {e}")
             continue
         # Persist into the interaction cache the engine reads first.
