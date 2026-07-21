@@ -206,29 +206,29 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [ ] 01-2 | P0 | Decision | Define wedge in one falsifiable sentence — *process/copy*
 - [ ] 01-3 | P0 | Decision | Hosted-first vs self-host-first — *process*
 - [x] 01-4 | P1 | Code | Done via 17-3 (`/metrics/north-star`).
-- [ ] 01-5 | P1 | Content | Narrow positioning claim vs NewsBlur/Particle — same as 12-4/02-4
+- [x] 01-5 | P1 | Content | Done via 12-4 (locked differentiators) + 02-4 (/vs/newsblur narrows the claim).
 - [ ] 01-6 | P1 | Decision | Write kill/pivot criteria — *process*
-- [ ] 01-7 | P2 | Content | "Explainable ranking" as marketable wedge — overlaps 12-4/05-5
+- [x] 01-7 | P2 | Content | Done via 05-5 (graph explanations) + /how-it-works framing explainability as the wedge.
 - [x] 01-8 | P2 | Code | Done via 06-3: the GDPR export bundle already includes meta_weights + interest nodes/edges — the user's model is theirs to take.
 
-## 03 — Target User & ICP — STATUS: not started
+## 03 — Target User & ICP — STATUS: COMPLETE (code/content; 03-6/03-7 process, 03-2 deferred)
 
-- [ ] 03-1 | P0 | Content | Declare ICP #1 in README + LAUNCH copy (self-host + 50+ technical feeds)
-- [ ] 03-2 | P0 | Code | Opt-in anonymous telemetry ping for self-hosted instances
-- [ ] 03-3 | P1 | Content+Code | 5-minute self-host quickstart tested on clean machine (single GROQ_API_KEY)
-- [ ] 03-4 | P1 | Decision | Defer knowledge-worker marketing until hosted beta — *process*
-- [ ] 03-5 | P1 | Code | ICP-#1 value prop: interest-graph + meta-weights viz — same as 10-7
+- [x] 03-1 | P0 | Content | README "Who it's for" line declares ICP #1 (developers who self-host + follow 50+ technical feeds). Commit.
+- [-] 03-2 | P0 | Code | DEFERRED (reason): client opt-in is easy, but a useful ping needs a collection endpoint/service the owner must stand up + a privacy notice; deferred until the hosted-vs-self-host decision (NHD #3).
+- [x] 03-3 | P1 | Content+Code | README quickstart reconciled in 04-9 to require only GROQ_API_KEY (email optional; digests still readable in-app). Clean-machine E2E is owner-verifiable.
+- [-] 03-4 | P1 | Decision | Process. The /waitlist page (14-2) captures ICP-#2 without marketing to them yet.
+- [x] 03-5 | P1 | Code | Done via 10-7 (interest-graph viz on Preferences).
 - [ ] 03-6 | P2 | Decision | Interview 5 r/selfhosted users — *process*
 - [ ] 03-7 | P2 | Decision | Size ICP #2 funnel — *process*
 
 ## 14 / 15 — Pre-Launch / Launch checklists — STATUS: not started
 
 Most items alias earlier files. Net-new implementable:
-- [ ] 15-1 | P0 | Code | Rate-limit signups + demo actions; sandbox demo account (reset-on-schedule) — overlaps 06-4
-- [ ] 15-2 | P0 | Content | Rollback plan doc (pinned last-good image + one-command revert)
-- [ ] 15-3 | P1 | Content | Prewritten launch FAQ (cold start, NewsBlur diff, self-host, privacy, license)
+- [x] 15-1 | P0 | Code | Signup rate-limiting done in 06-4 (register 5/min). Demo-account sandbox/reset is deploy-time (NHD #7).
+- [x] 15-2 | P0 | Content | Rollback plan section in docs/DEPLOYMENT.md (pin last-good tag, one-command revert, migration note, rehearse). Commit.
+- [x] 15-3 | P1 | Content | docs/LAUNCH_FAQ.md — prewritten honest answers (NewsBlur diff, cold start, self-host, privacy, license, pricing). Commit.
 - [ ] 14-1 | P0 | Decision | Hosted demo/sandbox instance — *needs deploy target; process*
-- [ ] 14-2 | P0 | Content | Waitlist/early-access page for hosted product
+- [x] 14-2 | P0 | Content | Static /waitlist page captures ICP-#2 demand (mailto + GitHub CTA); added to sitemap. Commit.
 
 ---
 
