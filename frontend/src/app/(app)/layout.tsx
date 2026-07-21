@@ -27,8 +27,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-lg">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-lg dark:border-stone-800 dark:bg-stone-900/80">
         <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 px-4">
           <Link
             href="/digest"
@@ -46,8 +49,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-stone-900 text-white"
-                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900"
+                      ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
+                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
                   }`}
                 >
                   {item.label}
@@ -65,13 +68,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               removeToken();
               router.replace("/login");
             }}
-            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900"
+            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
           >
             Sign out
           </button>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-8">{children}</main>
+      <main id="main-content" className="mx-auto max-w-3xl px-4 py-8">
+        {children}
+      </main>
     </div>
   );
 }

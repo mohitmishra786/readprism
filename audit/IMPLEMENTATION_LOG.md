@@ -146,14 +146,14 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 10-7 | P2 | Code | Interest-graph visualization already renders on the Preferences page (SVG force-layout + tag cloud, core-vs-weight styling, co-read edges) with an explainer — the "watch it learn" surface. Also satisfies 03-5.
 - [-] 10-8 | P2 | Code | DEFERRED (reason): OAuth/magic-link is a substantial new auth flow (provider config, callback routes, email-link delivery) — a P2 nice-to-have beyond the audit's launch-critical set; deferred for a dedicated auth pass. Email/password + refresh rotation (06-5) is solid meanwhile.
 
-## 09 — UI — STATUS: not started
+## 09 — UI — STATUS: in progress (09-2/09-4/09-5 remaining)
 
-- [ ] 09-1 | P1 | Code | Dark mode for the app (`.dark`/media-query variants on existing tokens)
+- [x] 09-1 | P1 | Code | Dark mode: `@media (prefers-color-scheme: dark)` + `.dark` override of the semantic surface/text/border tokens (flips `.card`/reader/buttons/skeleton automatically) + `dark:` variants on the app shell and ContentCard text. tsc/build clean. Commit.
 - [ ] 09-2 | P1 | Code | Mobile web layout audit + fixes (nav, touch targets, reader width)
-- [ ] 09-3 | P1 | Code | Accessibility pass (contrast, skip link, prefers-reduced-motion, keyboard path)
+- [x] 09-3 | P1 | Code | A11y: global `prefers-reduced-motion: reduce` disables shimmer/spinner/spotlight animations; skip-to-content link + `#main-content` landmark in the app shell. tsc/build clean. Commit. (Full contrast audit continues under 09-2.)
 - [ ] 09-4 | P2 | Code | Unify styling: OnboardingWizard + inline-styled pages onto Tailwind system
 - [ ] 09-5 | P2 | Code | Landing hero degrades gracefully (touch fallback, reduced-motion, lazy/self-host images)
-- [ ] 09-6 | P2 | Code | De-duplicate signal-label map (share FE/BE source of truth)
+- [x] 09-6 | P2 | Code | Frontend signal labels consolidated into `lib/signals.ts` (single FE source), imported by ContentCard; backend `delivery.py` copy annotated as the mirror to keep in sync (cross-runtime, codegen not worth it for 8 strings). Commit.
 - [x] 09-7 | P2 | Code | Sanitize reader HTML — done as part of 06-7 (DOMPurify at reader/search render boundary).
 
 ## 11 — SEO & Discoverability — STATUS: not started

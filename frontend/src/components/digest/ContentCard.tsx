@@ -2,18 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContentItem } from "../../lib/types";
+import { SIGNAL_LABELS } from "../../lib/signals";
 import { FeedbackBar } from "./FeedbackBar";
-
-const SIGNAL_LABELS: Record<string, string> = {
-  semantic: "matches your interests",
-  reading_depth: "matches your reading depth",
-  suggestion: "similar to content you discovered",
-  explicit_feedback: "aligns with your ratings",
-  source_trust: "from a trusted source",
-  content_quality: "high quality content",
-  temporal_context: "matches your current focus",
-  novelty: "expands your reading",
-};
 
 // Section accent colors — the prism splits content into ranked bands.
 const SECTION_ACCENTS: Record<string, string> = {
@@ -108,14 +98,14 @@ export function ContentCard({
           <a
             href={`/read/${content.id}`}
             onClick={handleRead}
-            className="text-stone-900 transition-colors hover:text-prism-700"
+            className="text-stone-900 transition-colors hover:text-prism-700 dark:text-stone-100"
           >
             {content.title}
           </a>
         </h3>
         {prsScore != null && (
           <span
-            className="shrink-0 font-mono text-xs font-medium text-stone-400"
+            className="shrink-0 font-mono text-xs font-medium text-stone-400 dark:text-stone-500"
             title="Personalized Relevance Score"
           >
             {prsScore.toFixed(2)}
@@ -124,9 +114,9 @@ export function ContentCard({
       </div>
 
       {/* Metadata row */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
         {content.author && (
-          <span className="font-medium text-stone-600">{content.author}</span>
+          <span className="font-medium text-stone-600 dark:text-stone-300">{content.author}</span>
         )}
         {content.reading_time_minutes && (
           <span>{content.reading_time_minutes} min read</span>
@@ -138,18 +128,18 @@ export function ContentCard({
 
       {/* Summary */}
       {content.summary_headline && (
-        <p className="mt-3 font-serif text-sm italic text-stone-500">
+        <p className="mt-3 font-serif text-sm italic text-stone-500 dark:text-stone-400">
           {content.summary_headline}
         </p>
       )}
 
       {summaryLevel === "brief" && content.summary_brief && (
-        <p className="mt-2 text-sm leading-relaxed text-stone-700">
+        <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
           {content.summary_brief}
         </p>
       )}
       {summaryLevel === "detailed" && (content.summary_detailed || content.summary_brief) && (
-        <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700">
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700 dark:text-stone-300">
           {content.summary_detailed || content.summary_brief}
         </p>
       )}
@@ -159,20 +149,20 @@ export function ContentCard({
           onClick={() =>
             setSummaryLevel(summaryLevel === "brief" ? "detailed" : "brief")
           }
-          className="mt-2 text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-prism-600 hover:underline"
+          className="mt-2 text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-prism-600 hover:underline dark:text-stone-400"
         >
           {summaryLevel === "brief" ? "Show detailed takeaway" : "Show brief summary"}
         </button>
       )}
 
       {/* Footer: why-this + feedback */}
-      <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3">
+      <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
         {whySummary ? (
           <div className="relative">
             <button
               onClick={() => setShowWhyTooltip(!showWhyTooltip)}
               title={whySummary}
-              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-prism-500 to-spectrum-violet" />
               Why this?
