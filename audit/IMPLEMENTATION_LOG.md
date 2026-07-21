@@ -48,7 +48,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 
 - [x] 06-1 | P0 | Code | Mailgun HMAC signature verification on `/newsletter/inbound`: `verify_mailgun_signature` (SHA256 timestamp+token, constant-time, stale-reject) + endpoint fail-closed outside dev + Redis token replay-dedupe (`cache_set_nx`). 7 tests. Commit.
 - [x] 06-2 | P0 | Code | SSRF protection on all server-side URL fetches — `app/utils/ssrf.py` (validate + redirect-safe `safe_get`), wired into scraper (`_check_robots`/`_fetch_with_retry`/`_fetch_with_playwright`) + rss autodiscovery; configurable via `ssrf_protection_enabled`; 18 unit tests. Commit.
-- [ ] 06-3 | P0 | Code | Account deletion + data export (GDPR erasure/portability) endpoints
+- [x] 06-3 | P0 | Code | Account deletion + data export endpoints: `app/services/account/gdpr.py` (`export_user_data`, `delete_user_account` handling RESTRICT teams + cascade + Redis purge) + `app/api/account.py` (`GET /account/export`, `DELETE /account`). 6 tests. Frontend control tracked as DDI-1. Commit.
 - [ ] 06-4 | P1 | Code | Rate-limit `/auth/login` `/auth/register`; make register/login non-enumerating
 - [ ] 06-5 | P1 | Code | Real refresh-token model (separate secret, rotation, revocation) OR short-lived access + server httpOnly cookie
 - [ ] 06-6 | P1 | Code | Segregate newsletter-sourced content per user (don't dedupe personalized bodies into shared rows)
@@ -237,4 +237,4 @@ These are logged with the specific question; not implemented until answered. Wor
 
 ## Discovered During Implementation
 
-*(none yet)*
+- [ ] DDI-1 | Frontend UI control for account export/deletion (Preferences page → "Export my data" / "Delete account" calling the 06-3 endpoints). To be built during the UX/UI pass (file 10/09).
