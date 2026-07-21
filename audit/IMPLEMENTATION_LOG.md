@@ -77,7 +77,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 04-3 | P1 | Code | `Source.health` property ('ok'/'degraded'/'failing' from fetch_error_count) surfaced in `SourceRead`; frontend SourceList shows a "Fetch issues"/"Not updating" badge with a tooltip. 1 test. Commit.
 - [x] 04-4 | P1 | Code | `EmbeddingService.encode_single`/`encode_batch_cached` now run the blocking sentence-transformers encode via `asyncio.to_thread` (`_encode_async`), so onboarding + other API paths don't stall the event loop. Commit.
 - [x] 04-5 | P1 | Code | Removed dead expr in scraper.py (reading-time calc) + orphan set in builder.py; fixed the misleading "pgvector similarity" comment in collaborative.py to match reality. Commit.
-- [ ] 04-6 | P1 | Code | Tests for digest delivery rendering + newsletter webhook
+- [x] 04-6 | P1 | Code | Newsletter webhook tests added in 06-1; added `test_delivery_rendering.py` (fallback-HTML escaping, template render w/ unsubscribe/preferences/address + autoescape, text-body links, top-signals). 4 tests. Commit.
 - [ ] 04-7 | P2 | Code | Renormalize edge weights in decay job (not per-write)
 - [ ] 04-8 | P2 | Content | ADR for `--pool=solo` + migration path
 - [ ] 04-9 | P2 | Content | Reconcile README (Next 14/React 18, Resend, worker concurrency) with code (Next 16/React 19, Zoho SMTP, solo pool)
