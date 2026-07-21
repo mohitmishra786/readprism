@@ -12,16 +12,18 @@
 
 ## Run summary (checkpoint — updated continuously)
 
-**Files COMPLETE (code/config/content):** 06 (Security), 08 (Legal), 04 (Architecture), 05 (Ranking).
-**Files remaining:** 07, 17, 16, 10, 09, 11, 12, 02, 13, 01, 03, 14/15.
+**Files COMPLETE (code/config/content):** 06 (Security), 08 (Legal), 04 (Architecture), 05 (Ranking), 07 (Infra), 17 (KPI), 16 (Retention), 10 (UX).
+**File 09 (UI): partial** — 09-1 dark mode, 09-3 a11y, 09-6 dedup, 09-7 done; 09-2 (mobile), 09-4 (styling unification), 09-5 (landing degrade) remain.
+**Files remaining:** 09 (rest), 11 (SEO), 12 (marketing), 02 (competitive), 13 (monetization), 01 (PMF), 03 (ICP), 14/15 (checklists).
 
-- Backend suite: **197 passing**, ruff clean; frontend tsc clean. Every commit leaves the repo green.
-- ~40 atomic commits, each tagged `[audit:NN-...]`. Docker stack (db/redis/backend) is the test harness; tests run via `docker compose exec backend python -m pytest`; lint via `uvx ruff@0.6.9`.
-- Deferred/partial: 08-1 (MIT-vs-AGPL is a human decision — docs reconciled to MIT, CLA prepared); 06-4 register non-enumeration needs email verification (rate-limited meanwhile).
+- Backend suite: **201 passing**, ruff clean; frontend tsc + build clean. Every commit leaves the repo green.
+- ~60 atomic commits, each tagged `[audit:NN-...]`. Docker stack is the test harness; tests via `docker compose exec backend python -m pytest`; lint via `uvx ruff@0.6.9`; frontend via `npx tsc --noEmit` + `npm run build`.
+- **Incident (recovered):** commit `cdeb63a` inadvertently `git add -A`'d a working tree where ~15 backend files + config/docs had been reverted to pre-audit state (concurrent activity in the repo). Restored from last-good `044ee42` in `e9f5e85`; suite green again. **Going forward: stage explicit paths, never `git add -A`.**
+- Deferred/partial: 08-1 (MIT-vs-AGPL human decision — docs reconciled to MIT, CLA prepared); 06-4 register non-enumeration needs email verification; 07-8 shared embedding service; 10-8 OAuth; 17-7/17-8 external/needs-data.
 - Needs Human Decision: _see section below_
 - Risk flags before launch: _see final section_
 
-**To resume:** ensure the Docker stack is up (`docker compose up -d db redis backend`, then create+migrate `readprism_test`), then continue at the next `[ ]` item in priority order (file 07).
+**To resume:** ensure the Docker stack is up (`docker compose up -d db redis backend`, create+migrate `readprism_test`), then continue at the next `[ ]` item (file 11 SEO next in priority).
 
 ---
 
