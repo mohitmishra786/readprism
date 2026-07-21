@@ -285,6 +285,19 @@ readprism/
 
 ---
 
+## Legal & Privacy
+
+- [Privacy Policy](docs/PRIVACY.md) — what's collected, retention, and your export/erasure controls
+- [Terms of Service](docs/TERMS.md)
+- [Third-party services & compliance](docs/THIRD_PARTY_SERVICES.md)
+- [Security policy](SECURITY.md) · [Contributing (+ CLA)](CONTRIBUTING.md)
+
+These are baseline templates for the software; a hosted operator should have them
+reviewed by counsel before collecting user data. The current license is
+[MIT](LICENSE).
+
+---
+
 ## Technology Stack
 
 | Component | Technology |
