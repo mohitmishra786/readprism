@@ -19,14 +19,14 @@ export function InterestInput({ value, onChange }: InterestInputProps) {
         style={{
           width: "100%",
           padding: "12px",
-          border: "1px solid #d1d5db",
+          border: "1px solid var(--border-strong)",
           borderRadius: 8,
           fontSize: "0.95rem",
           lineHeight: 1.6,
           resize: "vertical",
         }}
       />
-      <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+      <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
         Be specific. The more detail you provide, the better your first digest will be.
       </p>
     </div>

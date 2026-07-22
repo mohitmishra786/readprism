@@ -42,7 +42,7 @@ function InterestGraphSVG({
     <svg
       width="100%"
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-      style={{ background: "#f8fafc", borderRadius: 8, border: "1px solid #e5e7eb" }}
+      style={{ background: "var(--bg-sunken)", borderRadius: 8, border: "1px solid var(--border)" }}
     >
       {visibleEdges.map((edge, i) => {
         const from = positions.get(edge.from_label);
@@ -165,7 +165,7 @@ export default function PreferencesPage() {
     setSaving(false);
   };
 
-  if (!user) return <p style={{ color: "#6b7280" }}>Loading preferences...</p>;
+  if (!user) return <p style={{ color: "var(--text-tertiary)" }}>Loading preferences...</p>;
 
   return (
     <div>
@@ -179,14 +179,14 @@ export default function PreferencesPage() {
             <select
               value={user.digest_frequency}
               onChange={(e) => setUser({ ...user, digest_frequency: e.target.value })}
-              style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
             >
               <option value="daily">Daily</option>
               <option value="twice_daily">Twice daily</option>
               <option value="weekly">Weekly (we’ll keep it short)</option>
               <option value="in_app_only">Email off — read in-app only</option>
             </select>
-            <p style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
               Lighter reader? Weekly bundles the best of your week; “email off”
               stops digest emails while keeping your in-app digest.
             </p>
@@ -216,7 +216,7 @@ export default function PreferencesPage() {
               onChange={(e) => setUser({ ...user, serendipity_percentage: Number(e.target.value) })}
               style={{ width: "100%" }}
             />
-            <p style={{ fontSize: 12, color: "#6b7280" }}>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               Percentage of digest items from outside your usual sources.
             </p>
           </div>
@@ -242,7 +242,7 @@ export default function PreferencesPage() {
       {graph && (
         <section>
           <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Interest Graph</h2>
-          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>
+          <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
             Nodes = topics you engage with. Larger = higher weight. Bold border = core stable interest.
             Lines between nodes = topics you often read together.
           </p>
@@ -251,7 +251,7 @@ export default function PreferencesPage() {
           <InterestGraphSVG nodes={graph.nodes} edges={graph.edges} />
 
           {/* Tag cloud — click a topic to suppress it for a while (audit 10-4). */}
-          <p style={{ color: "#6b7280", fontSize: 13, marginTop: 16 }}>
+          <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginTop: 16 }}>
             Seeing too much of a topic? Click it to mute it for 30 days.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
@@ -278,9 +278,9 @@ export default function PreferencesPage() {
         </section>
       )}
 
-      <section style={{ marginTop: 40, borderTop: "1px solid #e5e7eb", paddingTop: 24 }}>
+      <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
-        <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>
+        <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
           Download a portable copy of everything ReadPrism stores about you, or
           permanently delete your account.
         </p>
@@ -290,9 +290,9 @@ export default function PreferencesPage() {
             disabled={busy}
             style={{
               padding: "8px 16px",
-              border: "1px solid #d1d5db",
+              border: "1px solid var(--border-strong)",
               borderRadius: 6,
-              background: "#fff",
+              background: "var(--bg-elevated)",
               cursor: busy ? "not-allowed" : "pointer",
             }}
           >
@@ -305,7 +305,7 @@ export default function PreferencesPage() {
               padding: "8px 16px",
               border: "1px solid #fecaca",
               borderRadius: 6,
-              background: "#fff",
+              background: "var(--bg-elevated)",
               color: "#dc2626",
               cursor: busy ? "not-allowed" : "pointer",
             }}

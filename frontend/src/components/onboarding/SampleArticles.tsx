@@ -39,7 +39,7 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
 
   return (
     <div>
-      <p style={{ color: "#6b7280", marginBottom: 16 }}>
+      <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
         Rate these sample articles to help calibrate your feed.
       </p>
       {SAMPLES.map((s) => {
@@ -49,10 +49,10 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
             key={s.url}
             style={{
               padding: 16,
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               marginBottom: 10,
-              background: "#fff",
+              background: "var(--bg-elevated)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -60,8 +60,8 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
                 <span
                   style={{
                     fontSize: 11,
-                    background: "#f3f4f6",
-                    color: "#6b7280",
+                    background: "var(--bg-sunken)",
+                    color: "var(--text-tertiary)",
                     padding: "2px 6px",
                     borderRadius: 10,
                     marginRight: 8,
@@ -83,7 +83,7 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
                         border: "1px solid",
                         borderColor: r === v ? "#2563eb" : "#d1d5db",
                         background: r === v ? "#eff6ff" : "#fff",
-                        color: r === v ? "#1d4ed8" : "#374151",
+                        color: r === v ? "#1d4ed8" : "var(--text-secondary)",
                         borderRadius: 6,
                         cursor: "pointer",
                       }}

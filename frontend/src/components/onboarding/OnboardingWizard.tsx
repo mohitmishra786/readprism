@@ -72,7 +72,7 @@ export function OnboardingWizard() {
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 4 }}>
           Welcome to ReadPrism
         </h1>
-        <p style={{ color: "#6b7280" }}>
+        <p style={{ color: "var(--text-tertiary)" }}>
           Step {step + 1} of {STEPS.length}: {STEPS[step]}
         </p>
         <div style={{ display: "flex", gap: 4, marginTop: 12 }}>
@@ -100,7 +100,7 @@ export function OnboardingWizard() {
 
       {step === 2 && (
         <div>
-          <p style={{ color: "#6b7280", marginBottom: 16 }}>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add websites or RSS feeds you follow.{" "}
             <strong>Optional</strong> — we’ll seed starter sources from your
             interests, and you can add your own anytime.
@@ -112,7 +112,7 @@ export function OnboardingWizard() {
               onChange={(e) => setSourceUrl(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSource()}
               placeholder="https://example.com/blog"
-              style={{ flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
+              style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
             />
             <button
               onClick={addSource}
@@ -122,7 +122,7 @@ export function OnboardingWizard() {
             </button>
           </div>
           {sources.map((s) => (
-            <div key={s} style={{ padding: "6px 12px", background: "#f9fafb", borderRadius: 6, marginBottom: 6, fontSize: 14 }}>
+            <div key={s} style={{ padding: "6px 12px", background: "var(--bg-sunken)", borderRadius: 6, marginBottom: 6, fontSize: 14 }}>
               {s}
             </div>
           ))}
@@ -131,7 +131,7 @@ export function OnboardingWizard() {
 
       {step === 3 && (
         <div>
-          <p style={{ color: "#6b7280", marginBottom: 16 }}>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add creators you follow (name or URL). <strong>Optional</strong> —
             skip and add later from the Creators page.
           </p>
@@ -140,7 +140,7 @@ export function OnboardingWizard() {
             value={creatorInput}
             onChange={(e) => setCreatorInput(e.target.value)}
             placeholder="https://simonwillison.substack.com or Simon Willison"
-            style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
+            style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
           />
         </div>
       )}
@@ -151,7 +151,7 @@ export function OnboardingWizard() {
           <select
             value={digestFreq}
             onChange={(e) => setDigestFreq(e.target.value)}
-            style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
+            style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
           >
             <option value="daily">Daily</option>
             <option value="twice_daily">Twice daily</option>
@@ -168,9 +168,9 @@ export function OnboardingWizard() {
           disabled={step === 0}
           style={{
             padding: "10px 20px",
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--border-strong)",
             borderRadius: 6,
-            background: "#fff",
+            background: "var(--bg-elevated)",
             cursor: step === 0 ? "not-allowed" : "pointer",
             opacity: step === 0 ? 0.4 : 1,
           }}
