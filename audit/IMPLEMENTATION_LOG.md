@@ -22,8 +22,14 @@
 - **Deferred items done** (owner-requested): magic-link passwordless sign-in (10-8) and dark-mode coverage on the inline-styled onboarding/preferences pages (09-4).
 - **Verification**: backend 205 tests, ruff clean; frontend tsc + build clean.
 
-### ⚠️ One item needs YOU (a security guardrail blocked me from doing it):
-- **CodeQL alert #27 (py/full-ssrf on `backend/app/utils/ssrf.py:154`) is a false positive** — `safe_get()` validates the URL and every redirect hop via `validate_public_url()` (the SSRF guard) before the request. The auto-mode classifier declined to let me dismiss a security alert on my own judgment. **Please dismiss it** in the repo's Security → Code scanning tab (reason: false positive), or tell me to and I'll run the `gh` command. After that + this PR's re-scan, CodeQL should be clean.
+### ⚠️ One item needs YOU (a security guardrail blocked me from dismissing security alerts):
+All functional CI passes (tests, typecheck, build, ruff, both CodeQL *Analyze* jobs). The remaining **CodeQL alert-gate** failure is **only false-positive SSRF alerts on our own SSRF-guard code** — CodeQL doesn't recognize `validate_public_url()` (which *raises* on private/non-global targets) as a barrier, so it flags the `safe_get()` fetches it protects:
+- **#11** py/full-ssrf — `rss_parser.py:58` (`_autodiscover_feed`, validated)
+- **#12** py/full-ssrf — `creator/resolver.py:95` (`_fetch_page`, now validated)
+- **#13** py/partial-ssrf — `rss_parser.py:81` (validated)
+- (**#27** py/full-ssrf — `ssrf.py:154`, the guard itself)
+
+**Please dismiss these as "false positive"** in Security → Code scanning, or tell me to and I'll run the `gh` dismiss commands (the auto-mode classifier blocked me from doing it unprompted). All *real* findings — including a genuine SSRF hole I found and fixed in the creator resolver, plus log-injection, empty-except, and redundant-comparison — are fixed in code. Other listed alerts (#17–26) are main-branch baseline and clear when this PR merges.
 
 ### Remaining deferred (genuinely blocked / needs your infra):
 - 03-2 self-host telemetry ping — needs a collection endpoint/service you'd host.
