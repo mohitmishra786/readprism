@@ -32,10 +32,12 @@ function RevealLayer({
   image,
   cursorX,
   cursorY,
+  revealAll = false,
 }: {
   image: string;
   cursorX: number;
   cursorY: number;
+  revealAll?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const revealRef = useRef<HTMLDivElement | null>(null);
@@ -58,6 +60,14 @@ function RevealLayer({
     const canvas = canvasRef.current;
     const reveal = revealRef.current;
     if (!canvas || !reveal) return;
+    // Static-reveal mode (touch / reduced-motion): show the whole hero, no
+    // per-frame canvas work (audit 09-5).
+    if (revealAll) {
+      reveal.style.maskImage = "none";
+      reveal.style.webkitMaskImage = "none";
+      return;
+    }
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
@@ -86,7 +96,7 @@ function RevealLayer({
     reveal.style.webkitMaskImage = `url(${url})`;
     reveal.style.maskSize = "100% 100%";
     reveal.style.webkitMaskSize = "100% 100%";
-  }, [cursorX, cursorY]);
+  }, [cursorX, cursorY, revealAll]);
 
   return (
     <>
@@ -114,12 +124,26 @@ export default function RootPage() {
   const [cursorPos, setCursorPos] = useState({ x: -999, y: -999 });
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [staticReveal, setStaticReveal] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated()) router.replace("/digest");
   }, [router]);
 
   useEffect(() => {
+    // Degrade gracefully (audit 09-5): on touch devices (no fine pointer) or
+    // when the user prefers reduced motion, skip the RAF spotlight loop and its
+    // per-frame canvas work entirely — just reveal the hero statically.
+    const reduce =
+      typeof window !== "undefined" &&
+      (window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(pointer: coarse)").matches);
+
+    if (reduce) {
+      setStaticReveal(true);
+      return;
+    }
+
     const onMove = (e: MouseEvent) => {
       mouse.current.x = e.clientX;
       mouse.current.y = e.clientY;
@@ -243,7 +267,12 @@ export default function RootPage() {
         />
 
         {/* 2. Reveal layer (cursor spotlight) */}
-        <RevealLayer image={BG_IMAGE_2} cursorX={cursorPos.x} cursorY={cursorPos.y} />
+        <RevealLayer
+          image={BG_IMAGE_2}
+          cursorX={cursorPos.x}
+          cursorY={cursorPos.y}
+          revealAll={staticReveal}
+        />
 
         {/* 3. Heading */}
         <div className="absolute top-[14%] left-0 right-0 flex flex-col items-center text-center px-5 pointer-events-none z-50">

@@ -18,7 +18,7 @@ export default function RegisterPage() {
     setError("");
     try {
       const token = await api.auth.register(email, password, displayName || undefined);
-      setToken(token.access_token);
+      setToken(token.access_token, token.refresh_token);
       router.replace("/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");

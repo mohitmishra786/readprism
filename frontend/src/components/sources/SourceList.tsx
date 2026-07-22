@@ -33,8 +33,26 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <div className="truncate font-medium text-stone-900">
-                {s.name || s.url}
+              <div className="flex items-center gap-2">
+                <span className="truncate font-medium text-stone-900">
+                  {s.name || s.url}
+                </span>
+                {s.health !== "ok" && (
+                  <span
+                    title={
+                      s.health === "failing"
+                        ? `This source has failed to fetch ${s.fetch_error_count} times. Its content may be missing from your digest.`
+                        : "This source recently failed to fetch."
+                    }
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      s.health === "failing"
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {s.health === "failing" ? "Not updating" : "Fetch issues"}
+                  </span>
+                )}
               </div>
               <div className="mt-0.5 text-xs text-stone-500">
                 <span className="font-mono uppercase tracking-wide">{s.source_type}</span>

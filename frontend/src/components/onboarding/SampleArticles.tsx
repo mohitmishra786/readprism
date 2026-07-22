@@ -1,11 +1,20 @@
 "use client";
 
+// A curated, deliberately diverse set spanning distinct topic clusters. Titles
+// are embedded server-side, so spreading them across the embedding space (ML,
+// systems, web, science, finance, health, design, climate, humanities) makes
+// the ratings yield well-separated interest nodes rather than one blurry
+// centroid (audit 10-2; pairs with the per-cluster ranking in 05-2).
 const SAMPLES = [
-  { url: "https://example.com/1", title: "How Large Language Models Learn", domain: "AI/ML" },
-  { url: "https://example.com/2", title: "The Future of Remote Work in Tech", domain: "Work" },
-  { url: "https://example.com/3", title: "Urban Housing Policy in 2025", domain: "Policy" },
-  { url: "https://example.com/4", title: "Rust vs Go: Systems Programming in 2025", domain: "Programming" },
-  { url: "https://example.com/5", title: "How Interest Rates Affect Startup Funding", domain: "Finance" },
+  { url: "https://example.com/llm", title: "How large language models actually learn from text", domain: "AI / ML" },
+  { url: "https://example.com/rust", title: "Rust vs Go for systems programming in 2026", domain: "Systems programming" },
+  { url: "https://example.com/webperf", title: "Making the web fast: Core Web Vitals in practice", domain: "Web development" },
+  { url: "https://example.com/crispr", title: "CRISPR base editing reaches the clinic", domain: "Science / biology" },
+  { url: "https://example.com/rates", title: "How interest rates ripple through startup funding", domain: "Finance / economics" },
+  { url: "https://example.com/sleep", title: "What the latest sleep research says about focus", domain: "Health" },
+  { url: "https://example.com/typography", title: "The quiet craft of editorial typography", domain: "Design" },
+  { url: "https://example.com/grid", title: "Why the power grid is the hardest climate problem", domain: "Climate / energy" },
+  { url: "https://example.com/rome", title: "What the fall of Rome teaches about institutions", domain: "History" },
 ];
 
 export interface SampleRating {
@@ -30,7 +39,7 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
 
   return (
     <div>
-      <p style={{ color: "#6b7280", marginBottom: 16 }}>
+      <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
         Rate these sample articles to help calibrate your feed.
       </p>
       {SAMPLES.map((s) => {
@@ -40,10 +49,10 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
             key={s.url}
             style={{
               padding: 16,
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--border)",
               borderRadius: 8,
               marginBottom: 10,
-              background: "#fff",
+              background: "var(--bg-elevated)",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -51,8 +60,8 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
                 <span
                   style={{
                     fontSize: 11,
-                    background: "#f3f4f6",
-                    color: "#6b7280",
+                    background: "var(--bg-sunken)",
+                    color: "var(--text-tertiary)",
                     padding: "2px 6px",
                     borderRadius: 10,
                     marginRight: 8,
@@ -74,7 +83,7 @@ export function SampleArticles({ ratings, onRate }: SampleArticlesProps) {
                         border: "1px solid",
                         borderColor: r === v ? "#2563eb" : "#d1d5db",
                         background: r === v ? "#eff6ff" : "#fff",
-                        color: r === v ? "#1d4ed8" : "#374151",
+                        color: r === v ? "#1d4ed8" : "var(--text-secondary)",
                         borderRadius: 6,
                         cursor: "pointer",
                       }}

@@ -6,7 +6,7 @@ from typing import Any
 import redis.asyncio as aioredis
 
 from app.config import get_settings
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -33,7 +33,7 @@ async def cache_get(key: str) -> Any | None:
             return json.loads(value)
         return None
     except Exception as e:
-        logger.warning(f"Redis GET failed for key {key}: {e}")
+        logger.warning(f"Redis GET failed for key {sanitize_log(key)}: {e}")
         return None
 
 
@@ -44,8 +44,26 @@ async def cache_set(key: str, value: Any, ttl_seconds: int = 3600) -> bool:
         await client.setex(key, ttl_seconds, serialized)
         return True
     except Exception as e:
-        logger.warning(f"Redis SET failed for key {key}: {e}")
+        logger.warning(f"Redis SET failed for key {sanitize_log(key)}: {e}")
         return False
+
+
+async def cache_set_nx(key: str, value: Any, ttl_seconds: int) -> bool:
+    """Atomically set `key` only if absent (SET NX EX). Returns True if the key
+    was newly set, False if it already existed. Used for replay-attack dedupe.
+
+    On a Redis error we return True (fail-open on the dedupe layer) so that a
+    cache outage never silently drops legitimate, already-signature-verified
+    webhooks; the HMAC signature remains the authoritative gate.
+    """
+    client = get_redis()
+    try:
+        serialized = json.dumps(value, default=str)
+        result = await client.set(key, serialized, ex=ttl_seconds, nx=True)
+        return bool(result)
+    except Exception as e:
+        logger.warning(f"Redis SET NX failed for key {sanitize_log(key)}: {e}")
+        return True
 
 
 async def cache_delete(key: str) -> bool:
@@ -54,7 +72,7 @@ async def cache_delete(key: str) -> bool:
         await client.delete(key)
         return True
     except Exception as e:
-        logger.warning(f"Redis DELETE failed for key {key}: {e}")
+        logger.warning(f"Redis DELETE failed for key {sanitize_log(key)}: {e}")
         return False
 
 
@@ -63,7 +81,7 @@ async def cache_exists(key: str) -> bool:
     try:
         return bool(await client.exists(key))
     except Exception as e:
-        logger.warning(f"Redis EXISTS failed for key {key}: {e}")
+        logger.warning(f"Redis EXISTS failed for key {sanitize_log(key)}: {e}")
         return False
 
 

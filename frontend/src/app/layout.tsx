@@ -2,19 +2,64 @@ import type { Metadata, Viewport } from "next";
 import "../styles/globals.css";
 import { ServiceWorkerRegister } from "../components/ServiceWorkerRegister";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
+
+// Positioning per audit 12-1: retire "Personalized Content Intelligence
+// Platform"; lead with the plain, provable value.
+const TAGLINE = "The reading app that ranks by how you actually read";
+const DESCRIPTION =
+  "ReadPrism aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read. Open source and self-hostable.";
+
 export const metadata: Metadata = {
-  title: "ReadPrism — Personalized Content Intelligence",
-  description:
-    "Aggregate every source and creator you follow, ranked by personal relevance. A daily digest with exactly what you need to read, in the right order, for you.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `ReadPrism — ${TAGLINE}`,
+    template: "%s — ReadPrism",
+  },
+  description: DESCRIPTION,
   applicationName: "ReadPrism",
+  keywords: [
+    "RSS reader",
+    "self-hosted RSS reader",
+    "open source Feedly alternative",
+    "personalized news aggregator",
+    "behavioral content ranking",
+    "AI news digest",
+    "newsletter aggregator",
+  ],
   manifest: "/manifest.json",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "ReadPrism" },
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "ReadPrism",
+    title: `ReadPrism — ${TAGLINE}`,
+    description: DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `ReadPrism — ${TAGLINE}`,
+    description: DESCRIPTION,
+  },
   icons: {
     // SVG works for modern browsers. iOS apple-touch-icon requires PNG, so we
     // omit the `apple` key rather than point it at an SVG that iOS can't render
     // (it would fall back to a screenshot, which is fine).
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
   },
+};
+
+// SoftwareApplication structured data for rich results / AI citation (11-7).
+const STRUCTURED_DATA = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "ReadPrism",
+  applicationCategory: "News aggregator, RSS reader",
+  operatingSystem: "Web, self-hostable (Docker)",
+  description: DESCRIPTION,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  url: SITE_URL,
 };
 
 export const viewport: Viewport = {
@@ -40,6 +85,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
+        />
         <ServiceWorkerRegister />
         {children}
       </body>

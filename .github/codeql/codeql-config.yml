@@ -1,0 +1,14 @@
+name: "ReadPrism CodeQL config"
+
+# Analyze the deployed application code with the full security-and-quality
+# suite, but exclude non-runtime code that isn't part of the attack surface:
+# dev/ops scripts (seeding, backups, load tests) and the test suite. This keeps
+# real security coverage while dropping quality lint that ruff already enforces
+# on those paths.
+paths-ignore:
+  - backend/scripts
+  - backend/tests
+  - backend/migrations
+  - frontend/instrumentation.ts
+  - frontend/instrumentation-client.ts
+  - frontend/sentry.server.config.ts

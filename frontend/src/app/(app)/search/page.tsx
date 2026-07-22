@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { api } from "../../../lib/api";
+import { sanitizeHtml } from "../../../lib/sanitize";
 import type { ContentItem } from "../../../lib/types";
 
 export default function SearchPage() {
@@ -64,9 +65,10 @@ export default function SearchPage() {
                     rel="noopener noreferrer"
                     className="text-stone-900 hover:text-prism-700"
                     dangerouslySetInnerHTML={{
-                      __html:
-                        (item as unknown as { _formatted?: Record<string, string> })._formatted?.title ||
-                        item.title,
+                      __html: sanitizeHtml(
+                        (item as unknown as { _formatted?: Record<string, string> })._formatted
+                          ?.title || item.title,
+                      ),
                     }}
                   />
                 </h3>
@@ -77,9 +79,10 @@ export default function SearchPage() {
                   <p
                     className="mt-2 text-sm leading-relaxed text-stone-600"
                     dangerouslySetInnerHTML={{
-                      __html:
+                      __html: sanitizeHtml(
                         (item as unknown as { _formatted?: Record<string, string> })._formatted
                           ?.summary_brief || item.summary_brief,
+                      ),
                     }}
                   />
                 )}

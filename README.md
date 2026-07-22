@@ -1,10 +1,27 @@
 # ReadPrism
 
-**Personalized Content Intelligence Platform**
+**The reading app that ranks by how you actually read.**
 
-ReadPrism is a self-hostable reading tool that aggregates content from every source and creator you follow, ranks it by personal relevance using a continuously learning model, and delivers a daily digest containing exactly what you need to read — in the right order, for you specifically.
+ReadPrism is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read.
+
+What makes it different:
+
+- **Behavioral, not keyword** — learns from real scroll depth and active reading time, not rules you maintain by hand (vs Feedly Leo).
+- **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
+- **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
+
+**Who it's for:** built first for developers who self-host and follow 50+ technical feeds — people who enjoy running their own stack, tolerate rough edges, and want to introspect (and improve) the ranking engine. A hosted option for knowledge workers is planned.
 
 The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md).
+
+---
+
+## Screenshots
+
+> Visuals are captured into `docs/media/` — see [`docs/MEDIA.md`](docs/MEDIA.md)
+> for the shot list and the `scripts/seed_demo.py` demo-data script. The hero
+> shots are the ranked daily digest, the "why ranked" explanation, and the
+> interest graph.
 
 ---
 
@@ -24,7 +41,7 @@ The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Prop
 
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (v2)
 - A [Groq](https://console.groq.com/) API key (free tier is sufficient)
-- A [Resend](https://resend.com/) API key for email digest delivery
+- SMTP credentials for email digest delivery (Zoho SMTP by default; any SMTP host works)
 - 4 GB RAM minimum for the full stack (sentence-transformer model loads into memory)
 
 ---
@@ -44,12 +61,15 @@ Edit `.env` and fill in the required values:
 ```env
 SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 GROQ_API_KEY=<your Groq API key>
-RESEND_API_KEY=<your Resend API key>
+ZOHO_EMAIL=<your SMTP username>
+ZOHO_PASSWORD=<your SMTP app password>
 FROM_EMAIL=digest@yourdomain.com
 FRONTEND_URL=http://localhost:3001
 ```
 
-All other values have working defaults for local development.
+Only `GROQ_API_KEY` is strictly required to try the app locally — without email
+credentials, digests are still readable in-app (email delivery is skipped). All
+other values have working defaults for local development.
 
 ### 2. Start the stack
 
@@ -64,7 +84,7 @@ This starts seven services:
 | `db` | 5432 | PostgreSQL 16 with pgvector extension |
 | `redis` | 6379 | Cache and Celery broker |
 | `backend` | 8000 | FastAPI application server |
-| `worker` | — | Celery task worker (4 concurrency) |
+| `worker-scrape` / `worker-embed` / `worker-digest` | — | Celery workers, one `--pool=solo` process per queue (scrape / embed / digest) so a slow scrape can't starve digests |
 | `beat` | — | Celery beat scheduler |
 | `browserless` | 3000 | Headless Chrome pool for scraping |
 | `frontend` | 3001 | Next.js web application |
@@ -212,9 +232,10 @@ FastAPI generates interactive docs at:
 |---|---|---|
 | `SECRET_KEY` | Yes | JWT signing key — generate with `secrets.token_hex(32)` |
 | `GROQ_API_KEY` | Yes | Primary LLM for summarization (Llama 3.3 70B) |
-| `RESEND_API_KEY` | Yes | Email digest delivery |
-| `FROM_EMAIL` | Yes | Sender address for digest emails |
+| `ZOHO_EMAIL` / `ZOHO_PASSWORD` | For email | SMTP credentials for digest delivery (email is skipped if unset) |
+| `FROM_EMAIL` | For email | Sender address for digest emails |
 | `FRONTEND_URL` | Yes | Used for CORS and email links |
+| `PUBLIC_API_URL` | For email | Externally-reachable API URL for unsubscribe links |
 | `OPENAI_API_KEY` | No | Fallback LLM (only used if `OPENAI_FALLBACK_ENABLED=true`) |
 | `OPENAI_FALLBACK_ENABLED` | No | Default `false`. Set `true` to enable OpenAI fallback |
 | `EMBEDDING_MODEL` | No | Default `sentence-transformers/all-MiniLM-L6-v2` |
@@ -232,6 +253,7 @@ All variables are documented in [`.env.example`](.env.example).
 | `ingest_creator_feeds` | Every 60 minutes | Fetches content from tracked creators across platforms |
 | `schedule_daily_digests` | Daily at 05:00 UTC | Builds and queues digest delivery for all users |
 | `apply_decay_all_users` | Daily at 02:00 UTC | Applies exponential decay to all interest graph node weights |
+| `prune_old_full_text` | Daily at 03:30 UTC | Truncates stored article text to an excerpt after the retention window |
 
 ---
 
@@ -250,7 +272,7 @@ readprism/
 │   ├── init.sql                       # pgvector extension initialization
 │   ├── templates/digest_email.html    # Jinja2 email template
 │   ├── migrations/
-│   │   └── versions/                  # 0001 initial, 0002 suppressed_until + meta_weights, 0003 reading telemetry
+│   │   └── versions/                  # 0001 initial … 0006 content owner_user_id (per-user private content)
 │   ├── tests/                         # pytest suite
 │   └── app/
 │       ├── main.py                    # FastAPI app factory + lifespan
@@ -274,7 +296,7 @@ readprism/
 │           └── cold_start/            # onboarding, collaborative
 └── frontend/
     ├── Dockerfile
-    ├── package.json                   # All deps pinned (Next.js 14, React 18)
+    ├── package.json                   # All deps pinned (Next.js 16, React 19)
     ├── tsconfig.json
     ├── next.config.ts
     └── src/
@@ -285,17 +307,31 @@ readprism/
 
 ---
 
+## Legal & Privacy
+
+- [Privacy Policy](docs/PRIVACY.md) — what's collected, retention, and your export/erasure controls
+- [Terms of Service](docs/TERMS.md)
+- [Third-party services & compliance](docs/THIRD_PARTY_SERVICES.md)
+- [Security policy](SECURITY.md) · [Contributing (+ CLA)](CONTRIBUTING.md)
+- [Competitive landscape (2026)](docs/COMPETITORS.md) · [Unit economics](docs/UNIT_ECONOMICS.md)
+
+These are baseline templates for the software; a hosted operator should have them
+reviewed by counsel before collecting user data. Licensed under
+[AGPL-3.0](LICENSE) — network-use modifications must be shared back.
+
+---
+
 ## Technology Stack
 
 | Component | Technology |
 |---|---|
-| Backend API | Python 3.11 / FastAPI |
-| Frontend | Next.js 14 (React 18, TypeScript) |
+| Backend API | Python 3.12 / FastAPI |
+| Frontend | Next.js 16 (React 19, TypeScript) |
 | Database | PostgreSQL 16 + pgvector |
 | Cache & Queue | Redis 7 + Celery |
 | Embeddings | sentence-transformers (local, no API cost) |
 | Summarization LLM | Groq — Llama 3.3 70B (primary), Llama 3.1 8B (fast) |
-| Email delivery | Resend |
+| Email delivery | SMTP (Zoho by default) |
 | Scraping | Playwright + Browserless/Chrome |
 | ORM | SQLAlchemy 2.0 (async) |
 | Migrations | Alembic |

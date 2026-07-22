@@ -84,6 +84,40 @@ export default function DigestPage() {
     return <OnboardingWizard />;
   }
 
+  // First-run honest state (audit 10-1): a brand-new user's sources haven't been
+  // ingested + embedded yet (feeds run on a schedule), so ranking is meaningless.
+  // Show an honest "gathering" screen instead of an empty/near-random digest at
+  // the exact make-or-break moment.
+  const isNewUser =
+    userCreatedAt != null &&
+    Date.now() - new Date(userCreatedAt).getTime() < 6 * 60 * 60 * 1000;
+  const digestIsEmpty = !digest || digest.total_items === 0;
+  if (isNewUser && digestIsEmpty && !generating) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="relative mb-6 h-12 w-12">
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-stone-200 border-t-prism-600" />
+        </div>
+        <h2 className="font-serif text-2xl font-bold text-stone-900">
+          Gathering your first reads
+        </h2>
+        <p className="mt-2 max-w-md text-sm text-stone-500">
+          We’re fetching and reading through your sources now. Your first ranked
+          digest gets noticeably sharper as real articles come in — check back in
+          a little while, or try building one from what we have so far.
+        </p>
+        <button
+          onClick={generate}
+          disabled={generating}
+          className="btn-ghost mt-6 border border-stone-200 px-5 py-2 text-sm"
+        >
+          Try building it now
+        </button>
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
   if (!digest && !generating) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">

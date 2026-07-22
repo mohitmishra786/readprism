@@ -20,6 +20,66 @@ logger = get_logger(__name__)
 
 NEW_USER_THRESHOLD_DAYS = 14  # Use collaborative warmup for users younger than this
 
+# Serendipity ("discovery") candidates should be interest-*adjacent* — near the
+# edges of the user's interest clusters — not merely recent items from strangers'
+# sources (audit 04-1). In pgvector cosine-distance terms (1 - cosine_similarity),
+# we take items whose distance to the user's interest vector falls in a band that
+# is related but outside the already-core region.
+SERENDIPITY_MIN_DISTANCE = 0.35  # closer than this ≈ already core interest
+SERENDIPITY_MAX_DISTANCE = 0.75  # farther than this ≈ unrelated noise
+
+
+async def _select_serendipity_candidates(
+    user: User,
+    source_ids: list,
+    cutoff: datetime,
+    count: int,
+    session: AsyncSession,
+) -> list[ContentItem]:
+    """Pick discovery candidates adjacent to the user's interests.
+
+    Uses the user's aggregated interest vector and pgvector cosine distance to
+    surface content near — but outside — their established clusters. Falls back
+    to recent public content when the user has no interest vector yet (brand-new
+    users), preserving day-1 behaviour.
+    """
+    from app.services.interest_graph.graph import InterestGraphManager
+
+    base_filters = [
+        ContentItem.fetched_at >= cutoff,
+        ContentItem.owner_user_id.is_(None),  # never surface others' private content
+    ]
+    if source_ids:
+        base_filters.append(ContentItem.source_id.notin_(source_ids))
+
+    interest_vec = await InterestGraphManager().build_user_interest_vector(user.id, session)
+    if interest_vec is not None:
+        vec = interest_vec.tolist()
+        distance = ContentItem.embedding.cosine_distance(vec)
+        result = await session.execute(
+            select(ContentItem)
+            .where(
+                *base_filters,
+                ContentItem.embedding.isnot(None),
+                distance >= SERENDIPITY_MIN_DISTANCE,
+                distance <= SERENDIPITY_MAX_DISTANCE,
+            )
+            .order_by(distance.asc())  # closest within the adjacent band first
+            .limit(count)
+        )
+        candidates = list(result.scalars().all())
+        if candidates:
+            return candidates
+        # No adjacent items in-window — fall through to the recency fallback.
+
+    result = await session.execute(
+        select(ContentItem)
+        .where(*base_filters)
+        .order_by(ContentItem.fetched_at.desc())
+        .limit(count)
+    )
+    return list(result.scalars().all())
+
 
 async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Determine time window
@@ -49,20 +109,11 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     else:
         content_items = []
 
-    # Serendipity candidates: fetch extra from all recent content not in user sources
+    # Serendipity candidates: interest-adjacent discovery, not recent-random.
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
-    {str(sid) for sid in source_ids}
-
-    serendipity_result = await session.execute(
-        select(ContentItem)
-        .where(
-            ContentItem.fetched_at >= cutoff,
-            ContentItem.source_id.notin_(source_ids) if source_ids else True,
-        )
-        .order_by(ContentItem.fetched_at.desc())
-        .limit(serendipity_count)
+    serendipity_items = await _select_serendipity_candidates(
+        user, source_ids, cutoff, serendipity_count, session
     )
-    serendipity_items = list(serendipity_result.scalars().all())
 
     # Collaborative warmup for new users
     user_age_days = (datetime.now(UTC) - user.created_at.replace(tzinfo=UTC)).days
@@ -121,11 +172,31 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
+    # Load the interest graph once to generate graph-based explanations (05-5).
+    from app.models.interest_graph import InterestEdge, InterestNode
+    from app.services.ranking.signals import UserInterestGraph
+    from app.services.ranking.signals.semantic import explain_top_topics
+
+    nodes = list(
+        (
+            await session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
+        ).scalars()
+    )
+    edges = list(
+        (
+            await session.execute(select(InterestEdge).where(InterestEdge.user_id == user.id))
+        ).scalars()
+    )
+    interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
+
     # Create digest items
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
+            explanation = explain_top_topics(getattr(item, "embedding", None), interest_graph)
+            if explanation:
+                clean_breakdown["why_topics"] = explanation
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,

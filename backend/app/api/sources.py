@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceRead, SourceUpdate
+from app.services.entitlements import enforce_source_limit
 from app.services.ingestion.rss_parser import _autodiscover_feed
 from app.utils.logging import get_logger
 
@@ -24,6 +25,14 @@ async def add_source(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SourceRead:
+    # Enforce the free-tier source limit (audit 13-1/13-5).
+    count = (
+        await session.execute(
+            select(func.count()).select_from(Source).where(Source.user_id == current_user.id)
+        )
+    ).scalar() or 0
+    enforce_source_limit(current_user, count)
+
     # Autodiscover feed URL
     feed_url = await _autodiscover_feed(body.url)
     source_type = "rss" if feed_url else "scraped"

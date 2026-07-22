@@ -45,6 +45,9 @@ trafilatura==1.12.2
 # Email
 jinja2==3.1.6
 
+# Observability — error tracking (opt-in via SENTRY_DSN)
+sentry-sdk==2.66.0
+
 # Testing
 # pytest 9 is incompatible with pytest-asyncio (which requires pytest<9,>=8.2).
 # Pin to the latest 8.x until pytest-asyncio adds pytest 9 support.

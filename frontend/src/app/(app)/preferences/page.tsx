@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { removeToken } from "../../../lib/auth";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -40,7 +42,7 @@ function InterestGraphSVG({
     <svg
       width="100%"
       viewBox={`0 0 ${SVG_W} ${SVG_H}`}
-      style={{ background: "#f8fafc", borderRadius: 8, border: "1px solid #e5e7eb" }}
+      style={{ background: "var(--bg-sunken)", borderRadius: 8, border: "1px solid var(--border)" }}
     >
       {visibleEdges.map((edge, i) => {
         const from = positions.get(edge.from_label);
@@ -93,10 +95,53 @@ function InterestGraphSVG({
 }
 
 export default function PreferencesPage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [graph, setGraph] = useState<InterestGraph | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const exportData = async () => {
+    setBusy(true);
+    try {
+      const data = await api.account.export();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "readprism-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+    setBusy(false);
+  };
+
+  const suppressTopic = async (label: string) => {
+    if (!confirm(`Mute "${label}" for 30 days? It will gradually resurface after.`)) return;
+    try {
+      await api.feedback.adjustInterests(label, "suppress", 30);
+      const g = await api.preferences.interestGraph();
+      setGraph(g);
+    } catch {}
+  };
+
+  const deleteAccount = async () => {
+    if (
+      !confirm(
+        "Permanently delete your account and all your data? This cannot be undone."
+      )
+    )
+      return;
+    setBusy(true);
+    try {
+      await api.account.delete();
+      removeToken();
+      router.replace("/register");
+    } catch {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     api.preferences.get().then(setUser).catch(() => {});
@@ -120,7 +165,7 @@ export default function PreferencesPage() {
     setSaving(false);
   };
 
-  if (!user) return <p style={{ color: "#6b7280" }}>Loading preferences...</p>;
+  if (!user) return <p style={{ color: "var(--text-tertiary)" }}>Loading preferences...</p>;
 
   return (
     <div>
@@ -134,12 +179,17 @@ export default function PreferencesPage() {
             <select
               value={user.digest_frequency}
               onChange={(e) => setUser({ ...user, digest_frequency: e.target.value })}
-              style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6 }}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
             >
               <option value="daily">Daily</option>
               <option value="twice_daily">Twice daily</option>
-              <option value="weekly">Weekly</option>
+              <option value="weekly">Weekly (we’ll keep it short)</option>
+              <option value="in_app_only">Email off — read in-app only</option>
             </select>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
+              Lighter reader? Weekly bundles the best of your week; “email off”
+              stops digest emails while keeping your in-app digest.
+            </p>
           </div>
           <div>
             <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
@@ -166,7 +216,7 @@ export default function PreferencesPage() {
               onChange={(e) => setUser({ ...user, serendipity_percentage: Number(e.target.value) })}
               style={{ width: "100%" }}
             />
-            <p style={{ fontSize: 12, color: "#6b7280" }}>
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               Percentage of digest items from outside your usual sources.
             </p>
           </div>
@@ -192,7 +242,7 @@ export default function PreferencesPage() {
       {graph && (
         <section>
           <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Interest Graph</h2>
-          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 16 }}>
+          <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
             Nodes = topics you engage with. Larger = higher weight. Bold border = core stable interest.
             Lines between nodes = topics you often read together.
           </p>
@@ -200,11 +250,16 @@ export default function PreferencesPage() {
           {/* SVG graph visualization */}
           <InterestGraphSVG nodes={graph.nodes} edges={graph.edges} />
 
-          {/* Tag cloud fallback */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 16 }}>
+          {/* Tag cloud — click a topic to suppress it for a while (audit 10-4). */}
+          <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginTop: 16 }}>
+            Seeing too much of a topic? Click it to mute it for 30 days.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {graph.nodes.slice(0, 30).map((node) => (
-              <span
+              <button
                 key={node.label}
+                onClick={() => suppressTopic(node.label)}
+                title={`Mute "${node.label}" for 30 days`}
                 style={{
                   padding: "4px 12px",
                   borderRadius: 20,
@@ -213,14 +268,52 @@ export default function PreferencesPage() {
                   fontSize: `${0.75 + node.weight * 0.5}rem`,
                   fontWeight: node.is_core ? 700 : 400,
                   border: node.is_core ? "2px solid #93c5fd" : "1px solid #dbeafe",
+                  cursor: "pointer",
                 }}
               >
                 {node.label}
-              </span>
+              </button>
             ))}
           </div>
         </section>
       )}
+
+      <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
+        <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
+          Download a portable copy of everything ReadPrism stores about you, or
+          permanently delete your account.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <button
+            onClick={exportData}
+            disabled={busy}
+            style={{
+              padding: "8px 16px",
+              border: "1px solid var(--border-strong)",
+              borderRadius: 6,
+              background: "var(--bg-elevated)",
+              cursor: busy ? "not-allowed" : "pointer",
+            }}
+          >
+            Export my data
+          </button>
+          <button
+            onClick={deleteAccount}
+            disabled={busy}
+            style={{
+              padding: "8px 16px",
+              border: "1px solid #fecaca",
+              borderRadius: 6,
+              background: "var(--bg-elevated)",
+              color: "#dc2626",
+              cursor: busy ? "not-allowed" : "pointer",
+            }}
+          >
+            Delete account
+          </button>
+        </div>
+      </section>
     </div>
   );
 }

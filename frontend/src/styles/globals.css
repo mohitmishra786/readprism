@@ -148,8 +148,68 @@
     --accent-soft: #eff6ff;
   }
 
+  /* Dark mode (audit 09-1). The design system is already token-driven, so
+     overriding the semantic surface/text/border tokens flips cards, the reader,
+     buttons, and skeletons automatically. Honors the OS preference; the .dark
+     class allows a future manual toggle. */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c0a09;
+      --bg-elevated: #1c1917;
+      --bg-sunken: #171412;
+      --border: #292524;
+      --border-strong: #3f3a36;
+      --text: #f5f5f4;
+      --text-secondary: #a8a29e;
+      --text-tertiary: #78716c;
+      --text-inverse: #1c1917;
+      --accent-soft: #172033;
+    }
+  }
+
+  .dark {
+    --bg: #0c0a09;
+    --bg-elevated: #1c1917;
+    --bg-sunken: #171412;
+    --border: #292524;
+    --border-strong: #3f3a36;
+    --text: #f5f5f4;
+    --text-secondary: #a8a29e;
+    --text-tertiary: #78716c;
+    --text-inverse: #1c1917;
+    --accent-soft: #172033;
+  }
+
   * {
     border-color: var(--border);
+  }
+
+  /* Accessibility: honor reduced-motion for the shimmer/spinner/spotlight
+     animations (audit 09-3). */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Skip-to-content link: visible only on keyboard focus. */
+  .skip-link {
+    position: absolute;
+    left: -999px;
+    top: 0;
+    z-index: 100;
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 0 0 0.375rem 0;
+  }
+  .skip-link:focus {
+    left: 0;
   }
 
   html {

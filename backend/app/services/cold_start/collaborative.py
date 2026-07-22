@@ -6,6 +6,7 @@ import numpy as np
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem
 from app.models.user import User
 from app.services.interest_graph.graph import InterestGraphManager
@@ -13,6 +14,7 @@ from app.utils.cache import cache_get
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
+settings = get_settings()
 graph_manager = InterestGraphManager()
 
 SIMILAR_USERS_COUNT = 10
@@ -24,12 +26,35 @@ async def get_collaborative_warmup_items(
     limit: int,
     session: AsyncSession,
 ) -> list[ContentItem]:
+    if not settings.cold_start_collaborative_enabled:
+        return []
+
+    # Gate: below a critical mass of active users this is inert (few/no similar
+    # users, cold Redis vectors). Don't pretend it contributes (audit 05-6).
+    from sqlalchemy import func
+
+    from app.models.content import UserContentInteraction
+
+    active_users = (
+        await session.execute(select(func.count(func.distinct(UserContentInteraction.user_id))))
+    ).scalar() or 0
+    if active_users < settings.collaborative_warmup_min_users:
+        logger.debug(
+            f"Collaborative warmup skipped: {active_users} active users < "
+            f"{settings.collaborative_warmup_min_users} threshold"
+        )
+        return []
+
     # Get user's interest vector
     user_vec = await graph_manager.build_user_interest_vector(user.id, session)
     if user_vec is None:
         return []
 
-    # Find 10 similar users via pgvector similarity
+    # Gather up to 200 candidate users who have any interaction history; their
+    # interest-vector similarity is computed below from warm Redis vectors. (This
+    # is not a pgvector similarity query — see audit 05-6 for the known
+    # limitation that this warmup is effectively inert until there are many
+    # active users with cached vectors.)
     try:
         result = await session.execute(
             text(
@@ -81,6 +106,7 @@ async def get_collaborative_warmup_items(
                 JOIN user_content_interactions uci ON ci.id = uci.content_item_id
                 WHERE uci.user_id = ANY(:user_ids)
                   AND uci.created_at >= :cutoff
+                  AND ci.owner_user_id IS NULL
                   AND (uci.explicit_rating = 1 OR uci.read_completion_pct >= :min_completion)
                 GROUP BY ci.id
                 ORDER BY engagement_count DESC

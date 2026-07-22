@@ -23,6 +23,7 @@ export interface Source {
   is_active: boolean;
   last_fetched_at: string | null;
   fetch_error_count: number;
+  health: "ok" | "degraded" | "failing";
   topics: string[];
   priority: string;
   created_at: string;
@@ -91,7 +92,7 @@ export interface DigestItem {
   position: number;
   section: string;
   prs_score: number;
-  signal_breakdown: Record<string, number>;
+  signal_breakdown: Record<string, number | string>;
   content: ContentItem | null;
 }
 
@@ -111,7 +112,7 @@ export interface Digest {
 export interface FeedItem {
   content: ContentItem;
   prs_score: number | null;
-  signal_breakdown: Record<string, number>;
+  signal_breakdown: Record<string, number | string>;
 }
 
 export interface InterestGraphNode {
@@ -133,6 +134,7 @@ export interface InterestGraph {
 
 export interface Token {
   access_token: string;
+  refresh_token?: string;
   token_type: string;
   expires_in: number;
 }

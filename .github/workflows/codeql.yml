@@ -36,6 +36,8 @@ jobs:
           languages: ${{ matrix.language }}
           # Use the default security-and-quality suite for deeper analysis.
           queries: security-and-quality
+          # Exclude non-runtime code (dev/ops scripts, tests) from analysis.
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4

@@ -9,6 +9,41 @@ volumes:
   redis_data:
   meilisearch_data:
 
+# Shared config for the queue-specific Celery workers (audit 07-2). `x-` keys are
+# ignored by Compose; the anchor is merged into each worker service below.
+x-worker-base: &worker-base
+  image: readprism-backend
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  env_file:
+    - .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
+    DATABASE_SYNC_URL: postgresql://readprism:readprism@db:5432/readprism
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+    CELERY_RESULT_BACKEND: redis://redis:6379/2
+    BROWSERLESS_URL: http://browserless:3000
+    MEILISEARCH_URL: http://meilisearch:7700
+    MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  networks:
+    - readprism_net
+  volumes:
+    - ./backend:/app
+  healthcheck:
+    test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+    interval: 30s
+    timeout: 10s
+    retries: 3
+    # sentence-transformers model load can take ~60s on first boot; give it room.
+    start_period: 90s
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -54,7 +89,8 @@ services:
       BROWSERLESS_URL: http://browserless:3000
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    # Production-shaped: no --reload here. The dev override adds --reload.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
       - "8000:8000"
     depends_on:
@@ -73,46 +109,21 @@ services:
       retries: 5
       start_period: 30s
 
-  worker:
-    # Reuse the backend image (same code, same deps) instead of rebuilding —
-    # the build context is identical and a separate cache just wastes minutes.
-    image: readprism-backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
-      DATABASE_SYNC_URL: postgresql://readprism:readprism@db:5432/readprism
-      REDIS_URL: redis://redis:6379/0
-      CELERY_BROKER_URL: redis://redis:6379/1
-      CELERY_RESULT_BACKEND: redis://redis:6379/2
-      BROWSERLESS_URL: http://browserless:3000
-      MEILISEARCH_URL: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
-    # Use --pool=solo (single process) because the async SQLAlchemy engine +
-    # asyncpg connections are bound to one event loop and break under Celery's
-    # default prefork model (cross-loop "Future attached to a different loop").
-    # For higher throughput, switch to a dedicated worker per process or use
-    # `gevent` with care; solo is correct and safe for dev/single-host.
-    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - readprism_net
-    volumes:
-      - ./backend:/app
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      # sentence-transformers model load can take ~60s on first boot; give it room.
-      start_period: 90s
+  # One --pool=solo worker per queue (audit 07-2), so a slow Playwright scrape on
+  # the scrape queue can't block embeddings or digest delivery. See
+  # docs/adr/0001-celery-solo-pool.md for why each worker is single-process.
+  worker-scrape:
+    <<: *worker-base
+    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q scrape -n scrape@%h
+
+  worker-embed:
+    <<: *worker-base
+    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q embed -n embed@%h
+
+  worker-digest:
+    # Also drains the default "celery" queue for any unrouted task.
+    <<: *worker-base
+    command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q digest,celery -n digest@%h
 
   beat:
     image: readprism-backend
@@ -140,12 +151,23 @@ services:
       - readprism_net
     volumes:
       - ./backend:/app
+    # Liveness: the beat_heartbeat task (scheduled every 60s) writes a short-TTL
+    # Redis key. If beat stops scheduling, the key expires and this fails,
+    # surfacing an otherwise-silent ingestion/digest stop (audit 07-4).
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys; from app.utils.cache import get_redis; import asyncio; sys.exit(0 if asyncio.run(get_redis().exists('beat:heartbeat')) else 1)\""]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 150s  # allow first heartbeat + worker warm-up
 
   meilisearch:
     image: getmeili/meilisearch:v1.6
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
-      MEILI_ENV: development
+      # production mode enforces the master key (search isn't left open); the dev
+      # override switches this back to development locally (audit 07-9).
+      MEILI_ENV: production
     ports:
       - "7700:7700"
     volumes:

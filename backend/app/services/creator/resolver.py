@@ -9,7 +9,8 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.creator import Creator, CreatorPlatform
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
+from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
 logger = get_logger(__name__)
 
@@ -90,12 +91,26 @@ def _detect_platform(url: str) -> str:
 
 
 async def _fetch_page(url: str) -> str | None:
+    # SSRF guard: creator URLs come from user input, so validate the host and
+    # every redirect hop before fetching (audit 06-2).
     try:
-        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
-            resp = await client.get(url, headers={"User-Agent": "ReadPrism/1.0"})
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked creator fetch for unsafe URL {sanitize_log(url)}: {e}")
+        return None
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await safe_get(
+                url,
+                client=client,
+                headers={"User-Agent": "ReadPrism/1.0 (+https://readprism.app/bot)"},
+            )
             return resp.text
+    except UnsafeURLError as e:
+        logger.warning(f"Blocked creator fetch for unsafe URL {sanitize_log(url)}: {e}")
+        return None
     except Exception as e:
-        logger.warning(f"Failed to fetch {url}: {e}")
+        logger.warning(f"Failed to fetch {sanitize_log(url)}: {e}")
         return None
 
 
@@ -128,7 +143,7 @@ async def _lookup_podcast_feed(show_name: str) -> str | None:
                 if feed:
                     return feed
     except Exception as e:
-        logger.warning(f"iTunes podcast lookup failed for '{show_name}': {e}")
+        logger.warning(f"iTunes podcast lookup failed for '{sanitize_log(show_name)}': {e}")
     return None
 
 
