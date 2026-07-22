@@ -51,3 +51,12 @@ class Token(BaseModel):
 
 class TokenRefresh(BaseModel):
     refresh_token: str
+
+
+class MagicLinkRequest(BaseModel):
+    email: EmailStr
+    display_name: str | None = None
+
+
+class MagicLinkVerify(BaseModel):
+    token: str

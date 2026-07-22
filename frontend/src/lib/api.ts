@@ -113,6 +113,17 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ refresh_token }),
       }),
+    // Passwordless sign-in (audit 10-8).
+    magicLinkRequest: (email: string) =>
+      request<{ status: string }>('/auth/magic-link/request', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+    magicLinkVerify: (token: string) =>
+      request<Token>('/auth/magic-link/verify', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
   },
 
   account: {

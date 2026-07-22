@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # Short-lived access tokens + long-lived, revocable refresh tokens.
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    # Passwordless magic-link sign-in (audit 10-8): single-use, short-lived.
+    magic_link_expire_minutes: int = 20
     frontend_url: str = "http://localhost:3000"
 
     # Database

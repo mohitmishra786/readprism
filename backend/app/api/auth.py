@@ -13,9 +13,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import Token, TokenRefresh, UserCreate, UserLogin, UserRead
+from app.schemas.user import (
+    MagicLinkRequest,
+    MagicLinkVerify,
+    Token,
+    TokenRefresh,
+    UserCreate,
+    UserLogin,
+    UserRead,
+)
 from app.utils.cache import cache_delete, cache_get, cache_set
+from app.utils.logging import get_logger
 from app.utils.ratelimit import RateLimiter
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
@@ -42,6 +53,9 @@ login_rate_limit = RateLimiter(
 )
 register_rate_limit = RateLimiter(
     max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="register"
+)
+magic_link_rate_limit = RateLimiter(
+    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="magic"
 )
 
 # Precomputed bcrypt hash of a random string, used to spend the same time on a
@@ -157,6 +171,94 @@ async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Tok
     password_ok = _verify_password(body.password, user.hashed_password if user else _DUMMY_HASH)
     if not user or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    return await _issue_tokens(user.id)
+
+
+def _magic_secret() -> str:
+    return settings.secret_key
+
+
+async def _create_magic_token(email: str) -> str:
+    """Mint a single-use, short-lived magic-link token (jti tracked in Redis)."""
+    now = datetime.now(UTC)
+    jti = uuid.uuid4().hex
+    payload = {
+        "email": email,
+        "type": "magic",
+        "jti": jti,
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.magic_link_expire_minutes),
+    }
+    token = jwt.encode(payload, _magic_secret(), algorithm=ALGORITHM)
+    await cache_set(f"magic:{jti}", email, ttl_seconds=settings.magic_link_expire_minutes * 60)
+    return token
+
+
+@router.post(
+    "/magic-link/request",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(magic_link_rate_limit)],
+)
+async def magic_link_request(
+    body: MagicLinkRequest, session: AsyncSession = Depends(get_db)
+) -> dict:
+    """Email a passwordless sign-in link. Always returns 202 (non-enumerating):
+    the response is identical whether or not the email has an account."""
+    email = body.email.lower()
+    # Create the account lazily if it doesn't exist (magic link doubles as signup).
+    existing = await session.execute(select(User).where(User.email == email))
+    user = existing.scalar_one_or_none()
+    if user is None:
+        user = User(
+            email=email,
+            hashed_password=_hash_password(uuid.uuid4().hex),  # unusable random pw
+            display_name=body.display_name,
+        )
+        session.add(user)
+        await session.flush()
+
+    token = await _create_magic_token(email)
+    link = f"{settings.frontend_url.rstrip('/')}/auth/magic?token={token}"
+    html = (
+        '<div style="font-family:sans-serif;max-width:480px;margin:0 auto">'
+        '<h1 style="font-size:1.3rem;color:#1d4ed8">Sign in to ReadPrism</h1>'
+        f"<p>Click to sign in. This link expires in {settings.magic_link_expire_minutes} "
+        "minutes and can be used once.</p>"
+        f'<p><a href="{link}" style="display:inline-block;background:#1d4ed8;color:#fff;'
+        'padding:10px 18px;border-radius:6px;text-decoration:none">Sign in</a></p>'
+        '<p style="font-size:12px;color:#6b7280">If you didn\'t request this, ignore it.</p>'
+        "</div>"
+    )
+    from app.utils.email import send_email
+
+    await send_email(to=email, subject="Your ReadPrism sign-in link", html_body=html)
+    return {"status": "sent"}
+
+
+@router.post("/magic-link/verify", response_model=Token)
+async def magic_link_verify(
+    body: MagicLinkVerify, session: AsyncSession = Depends(get_db)
+) -> Token:
+    """Verify a magic-link token (single-use) and issue an access+refresh pair."""
+    payload = _decode_token(body.token, secret=_magic_secret())
+    if payload.get("type") != "magic":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link")
+    email = payload.get("email")
+    jti = payload.get("jti")
+    if not email or not jti:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid link")
+    # Single-use: the jti must still be present; consume it.
+    stored = await cache_get(f"magic:{jti}")
+    if stored != email:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Link already used or expired"
+        )
+    await cache_delete(f"magic:{jti}")
+
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return await _issue_tokens(user.id)
 
 

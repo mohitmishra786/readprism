@@ -10,6 +10,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
+
+  const sendMagicLink = async () => {
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      await api.auth.magicLinkRequest(email);
+      setMagicSent(true);
+    } catch {
+      // Non-enumerating: show the same success either way.
+      setMagicSent(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +94,23 @@ export default function LoginPage() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
+
+          <div className="pt-1 text-center">
+            {magicSent ? (
+              <p className="text-sm text-emerald-700">
+                Check your email for a sign-in link.
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={sendMagicLink}
+                disabled={loading}
+                className="text-sm text-stone-500 underline-offset-2 hover:text-prism-600 hover:underline"
+              >
+                Email me a sign-in link instead
+              </button>
+            )}
+          </div>
         </form>
 
         <p className="mt-6 text-center text-sm text-stone-500">

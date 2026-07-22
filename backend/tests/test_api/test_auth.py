@@ -95,3 +95,41 @@ async def test_refresh_token_rejected_as_access(client: AsyncClient, test_user_d
     # A refresh token must not authenticate protected endpoints.
     resp = await client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {refresh_token}"})
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_magic_link_request_and_verify(client: AsyncClient, monkeypatch):
+    """Request emails a link (non-enumerating 202) and the token signs you in once."""
+    from app.api import auth as auth_mod
+
+    sent = {}
+
+    async def fake_send(**kwargs):
+        sent["to"] = kwargs["to"]
+        sent["html"] = kwargs["html_body"]
+        return True
+
+    monkeypatch.setattr("app.utils.email.send_email", fake_send)
+
+    import uuid as _uuid
+
+    email = f"magic_{_uuid.uuid4().hex[:8]}@example.com"
+    resp = await client.post("/api/v1/auth/magic-link/request", json={"email": email})
+    assert resp.status_code == 202
+    assert sent["to"] == email
+
+    # Extract the token from the emailed link.
+    token = sent["html"].split("token=")[1].split('"')[0]
+    v = await client.post("/api/v1/auth/magic-link/verify", json={"token": token})
+    assert v.status_code == 200
+    assert v.json()["access_token"] and v.json()["refresh_token"]
+
+    # Single-use: replay is rejected.
+    replay = await client.post("/api/v1/auth/magic-link/verify", json={"token": token})
+    assert replay.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_magic_link_verify_rejects_garbage(client: AsyncClient):
+    resp = await client.post("/api/v1/auth/magic-link/verify", json={"token": "not-a-token"})
+    assert resp.status_code == 401

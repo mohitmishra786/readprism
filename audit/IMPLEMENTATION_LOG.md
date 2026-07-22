@@ -152,7 +152,7 @@ Derived from the master summary's "one-month if you do nothing else" P0 list + a
 - [x] 10-5 | P1 | Code | Unsubscribe link fixed in 08-5; added `reengagement.send_reengagement_emails` (daily 16:00 UTC) — emails users with no opened digest in `reengagement_inactivity_days`, Redis cooldown to avoid spam, respects in_app_only + List-Unsubscribe. 1 test. Commit.
 - [x] 10-6 | P1 | Code | Preferences frequency now includes "Weekly (we'll keep it short)" + "Email off — read in-app only" with a light-reader note. tsc clean. Commit.
 - [x] 10-7 | P2 | Code | Interest-graph visualization already renders on the Preferences page (SVG force-layout + tag cloud, core-vs-weight styling, co-read edges) with an explainer — the "watch it learn" surface. Also satisfies 03-5.
-- [-] 10-8 | P2 | Code | DEFERRED (reason): OAuth/magic-link is a substantial new auth flow (provider config, callback routes, email-link delivery) — a P2 nice-to-have beyond the audit's launch-critical set; deferred for a dedicated auth pass. Email/password + refresh rotation (06-5) is solid meanwhile.
+- [x] 10-8 | P2 | Code | **Passwordless magic-link sign-in implemented** (owner asked to do deferrals): `POST /auth/magic-link/request` (emails a single-use, 20-min, jti-tracked link; non-enumerating 202; lazily creates the account) + `/auth/magic-link/verify` (issues access+refresh, single-use). Frontend `/auth/magic` verify page + "Email me a sign-in link" on the login page. 2 tests. (OAuth providers still deferred — separate config-heavy flow.)
 
 ## 09 — UI — STATUS: COMPLETE (09-1/03/05/06/07 done; 09-2 partial, 09-4 deferred — maintenance polish)
 
