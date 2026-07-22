@@ -8,6 +8,7 @@ name: "ReadPrism CodeQL config"
 paths-ignore:
   - backend/scripts
   - backend/tests
+  - backend/migrations
   - frontend/instrumentation.ts
   - frontend/instrumentation-client.ts
   - frontend/sentry.server.config.ts

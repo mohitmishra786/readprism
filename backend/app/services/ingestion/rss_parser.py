@@ -77,7 +77,7 @@ async def _autodiscover_feed(page_url: str) -> str | None:
 
                 return urljoin(page_url, href)
     except Exception as e:
-        logger.debug(f"Autodiscover HTML parse failed for {page_url}: {e}")
+        logger.debug(f"Autodiscover HTML parse failed for {sanitize_log(page_url)}: {e}")
 
     from urllib.parse import urljoin, urlparse
 
@@ -94,8 +94,8 @@ async def _autodiscover_feed(page_url: str) -> str | None:
                     or "<feed" in resp.text[:500].lower()
                 ):
                     return url
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Feed probe failed for {sanitize_log(url)}: {e}")
     return None
 
 

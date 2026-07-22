@@ -45,7 +45,7 @@ def _compute_signal_strength(interaction: UserContentInteraction) -> float:
         if interaction.was_suggested:
             signal = 1.2  # capped in reinforce_node
         return signal
-    if 0.50 <= completion < 0.85:
+    if completion >= 0.50:  # (already < 0.85 here)
         return 0.4
     return 0.0
 
