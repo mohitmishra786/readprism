@@ -40,7 +40,8 @@ async def _apply_unsubscribe(uid: str, token: str, session: AsyncSession) -> boo
         return False
     user.digest_frequency = "in_app_only"
     await session.flush()
-    logger.info(f"User {uid} unsubscribed from digest emails via email link")
+    # Log the parsed UUID (validated above), never the raw request string.
+    logger.info(f"User {user_uuid} unsubscribed from digest emails via email link")
     return True
 
 

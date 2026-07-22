@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import feedparser
 import httpx
 
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 from app.utils.sanitize import sanitize_stored_html
 from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
 
@@ -60,7 +60,7 @@ async def _autodiscover_feed(page_url: str) -> str | None:
     try:
         validate_public_url(page_url)
     except UnsafeURLError as e:
-        logger.warning(f"Blocked feed autodiscovery for unsafe URL {page_url}: {e}")
+        logger.warning(f"Blocked feed autodiscovery for unsafe URL {sanitize_log(page_url)}: {e}")
         return None
     try:
         async with httpx.AsyncClient(timeout=10) as client:

@@ -6,7 +6,6 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
 
 from app.api import metrics as metrics_api
 from app.models.content import ContentItem, UserContentInteraction
