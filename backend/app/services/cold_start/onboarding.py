@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.source import Source
 from app.models.user import User
 from app.services.cold_start.starter_sources import get_starter_sources
@@ -13,6 +14,7 @@ from app.services.interest_graph.graph import InterestGraphManager
 from app.services.summarization.groq_client import GroqSummarizer
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
+from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
 
 logger = get_logger(__name__)
 graph_manager = InterestGraphManager()
@@ -169,7 +171,6 @@ async def _seed_starter_sources(
             # what should raise a source's weight over time.
             trust_weight=0.45,
         )
-        source._is_starter = True  # tagged for analytics/UI (not persisted)
         session.add(source)
         created += 1
     if created:
@@ -182,7 +183,13 @@ async def _import_opml(user_id: uuid.UUID, opml_content: str, session: AsyncSess
     try:
         import listparser
 
-        result = listparser.parse(opml_content)
+        limits = get_settings()
+        safe = assert_xml_safe(
+            opml_content,
+            max_bytes=limits.xml_max_bytes,
+            max_outlines=limits.opml_max_outlines,
+        )
+        result = listparser.parse(safe.decode("utf-8", errors="replace"))
         for feed in result.feeds:
             url = feed.url or feed.feed or ""
             if not url:
@@ -199,5 +206,7 @@ async def _import_opml(user_id: uuid.UUID, opml_content: str, session: AsyncSess
         logger.info(f"Imported {len(result.feeds)} OPML sources for user {user_id}")
     except ImportError:
         logger.warning("listparser not installed, OPML import skipped")
+    except UnsafeXMLError as e:
+        logger.warning(f"OPML rejected for user {user_id}: {e}")
     except Exception as e:
         logger.error(f"OPML import failed: {e}")

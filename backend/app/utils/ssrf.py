@@ -69,6 +69,25 @@ def _default_resolver(host: str) -> list[str]:
     return list({info[4][0] for info in infos})
 
 
+def _literal_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Parse an IP literal, including decimal and hex forms of an IPv4 address."""
+    try:
+        return ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    if host.isdigit():
+        try:
+            return ipaddress.ip_address(int(host))
+        except ValueError:
+            return None
+    if host.lower().startswith("0x"):
+        try:
+            return ipaddress.ip_address(int(host, 16))
+        except ValueError:
+            return None
+    return None
+
+
 def validate_public_url(
     url: str,
     *,
@@ -87,20 +106,20 @@ def validate_public_url(
     scheme = parsed.scheme.lower()
     if scheme not in _ALLOWED_SCHEMES:
         raise UnsafeURLError(f"scheme {scheme!r} not allowed (only http/https)")
+    if parsed.username or parsed.password:
+        raise UnsafeURLError("credentials in URLs are not allowed")
 
     host = parsed.hostname
     if not host:
         raise UnsafeURLError("URL has no host")
+    host = host.rstrip(".")
 
     lowered = host.lower()
     if lowered in _BLOCKED_HOSTNAMES or lowered.endswith(".localhost"):
         raise UnsafeURLError(f"host {host!r} is not permitted")
 
     # If the host is already an IP literal, check it directly (no DNS).
-    try:
-        literal_ip = ipaddress.ip_address(host)
-    except ValueError:
-        literal_ip = None
+    literal_ip = _literal_ip(lowered)
     if literal_ip is not None:
         reason = _blocked_ip_reason(literal_ip)
         if reason:
@@ -134,26 +153,102 @@ def is_public_url(url: str) -> bool:
         return False
 
 
+# Cap a single fetched body. Feeds and articles above this are rejected rather
+# than buffered without limit.
+DEFAULT_MAX_BYTES = 5_000_000
+DEFAULT_TIMEOUT_SECONDS = 20.0
+DEFAULT_MAX_REDIRECTS = 5
+
+
+async def _read_capped(resp: httpx.Response, max_bytes: int) -> bytes:
+    declared = resp.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > max_bytes:
+        raise UnsafeURLError(f"response exceeded {max_bytes} bytes")
+    buf = bytearray()
+    async for chunk in resp.aiter_bytes():
+        buf.extend(chunk)
+        if len(buf) > max_bytes:
+            raise UnsafeURLError(f"response exceeded {max_bytes} bytes")
+    return bytes(buf)
+
+
+async def safe_fetch(
+    url: str,
+    *,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    timeout: float = DEFAULT_TIMEOUT_SECONDS,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    resolver: Callable[[str], Iterable[str]] = _default_resolver,
+    transport: httpx.AsyncBaseTransport | None = None,
+) -> httpx.Response:
+    """Fetch `url`, validating every hop before connecting.
+
+    This is the only function that should open a connection to a user-supplied
+    URL. It enforces the scheme allowlist, blocks credentials in the URL,
+    re-checks DNS (or IP literals) on every redirect, caps the body, and applies
+    a timeout. `resolver` and `transport` are injectable for tests.
+    """
+    current = url
+    client = httpx.AsyncClient(
+        transport=transport,
+        timeout=httpx.Timeout(timeout),
+        follow_redirects=False,
+    )
+    try:
+        for _ in range(max_redirects + 1):
+            validate_public_url(current, resolver=resolver)
+            async with client.stream(method, current, headers=headers) as resp:
+                if resp.is_redirect and resp.headers.get("location"):
+                    current = urljoin(str(resp.url), resp.headers["location"])
+                    continue
+                body = await _read_capped(resp, max_bytes)
+                # aiter_bytes already decoded Content-Encoding. Copying that
+                # header onto the decoded body makes httpx decode it again.
+                forwarded = [
+                    (key, value)
+                    for key, value in resp.headers.multi_items()
+                    if key.lower()
+                    not in {"content-encoding", "content-length", "transfer-encoding"}
+                ]
+                return httpx.Response(
+                    status_code=resp.status_code,
+                    headers=forwarded,
+                    content=body,
+                    request=resp.request,
+                )
+        raise UnsafeURLError(f"too many redirects fetching {url!r}")
+    finally:
+        await client.aclose()
+
+
 async def safe_get(
     url: str,
     *,
-    client: httpx.AsyncClient,
-    max_redirects: int = 5,
+    client: httpx.AsyncClient | None = None,
+    max_redirects: int = DEFAULT_MAX_REDIRECTS,
     **kwargs,
 ) -> httpx.Response:
-    """GET `url` with SSRF validation on the initial URL *and every redirect hop*.
+    """GET `url` through `safe_fetch`.
 
-    Redirects are followed manually (rather than by httpx) so that each `Location`
-    is validated before we connect to it — closing the "public URL 302s to an
-    internal host" bypass. The provided `client` must have redirect-following
-    disabled (we pass `follow_redirects=False` per request to be safe).
+    `client` is accepted for older call sites and ignored: the shared fetcher
+    owns the connection, the timeout, and the redirect policy.
     """
-    current = url
-    for _ in range(max_redirects + 1):
-        validate_public_url(current)
-        resp = await client.get(current, follow_redirects=False, **kwargs)
-        if resp.is_redirect and "location" in resp.headers:
-            current = urljoin(current, resp.headers["location"])
-            continue
-        return resp
-    raise UnsafeURLError(f"too many redirects fetching {url!r}")
+    del client
+    timeout = float(kwargs.pop("timeout", DEFAULT_TIMEOUT_SECONDS))
+    headers = kwargs.pop("headers", None)
+    max_bytes = int(kwargs.pop("max_bytes", DEFAULT_MAX_BYTES))
+    resolver = kwargs.pop("resolver", _default_resolver)
+    transport = kwargs.pop("transport", None)
+    if kwargs:
+        raise TypeError(f"unexpected safe_get arguments: {sorted(kwargs)}")
+    return await safe_fetch(
+        url,
+        headers=headers,
+        timeout=timeout,
+        max_redirects=max_redirects,
+        max_bytes=max_bytes,
+        resolver=resolver,
+        transport=transport,
+    )

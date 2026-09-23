@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.config import get_settings
 from app.database import get_db
 from app.models.source import Source
 from app.models.user import User
@@ -14,6 +15,7 @@ from app.schemas.source import SourceCreate, SourceRead, SourceUpdate
 from app.services.entitlements import enforce_source_limit
 from app.services.ingestion.rss_parser import _autodiscover_feed
 from app.utils.logging import get_logger
+from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
 
 router = APIRouter(prefix="/sources", tags=["sources"])
 logger = get_logger(__name__)
@@ -73,7 +75,16 @@ async def import_opml(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     content = await file.read()
-    opml_text = content.decode("utf-8", errors="replace")
+    limits = get_settings()
+    try:
+        opml_bytes = assert_xml_safe(
+            content,
+            max_bytes=limits.xml_max_bytes,
+            max_outlines=limits.opml_max_outlines,
+        )
+    except UnsafeXMLError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    opml_text = opml_bytes.decode("utf-8", errors="replace")
 
     try:
         import listparser

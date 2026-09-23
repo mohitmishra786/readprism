@@ -10,9 +10,9 @@ What makes it different:
 - **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
 - **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
-**Who it's for:** built first for developers who self-host and follow 50+ technical feeds — people who enjoy running their own stack, tolerate rough edges, and want to introspect (and improve) the ranking engine. A hosted option for knowledge workers is planned.
+**Who it's for:** built first for developers who self-host and follow 50+ technical feeds — people who enjoy running their own stack, tolerate rough edges, and want to introspect (and improve) the ranking engine. A hosted offering is not part of the current plan.
 
-The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md).
+The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md). The running system is described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ---
 
@@ -51,7 +51,7 @@ The full product specification is in [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Prop
 ### 1. Clone and configure environment
 
 ```bash
-git clone https://github.com/your-org/readprism.git
+git clone https://github.com/mohitmishra786/readprism.git
 cd readprism
 cp .env.example .env
 ```
@@ -60,14 +60,14 @@ Edit `.env` and fill in the required values:
 
 ```env
 SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
-GROQ_API_KEY=<your Groq API key>
+LLM_API_KEY=<your Groq (or other OpenAI-compatible) API key>
 ZOHO_EMAIL=<your SMTP username>
 ZOHO_PASSWORD=<your SMTP app password>
 FROM_EMAIL=digest@yourdomain.com
 FRONTEND_URL=http://localhost:3001
 ```
 
-Only `GROQ_API_KEY` is strictly required to try the app locally — without email
+Only `LLM_API_KEY` (or the legacy `GROQ_API_KEY`) is required for model summaries. Without a key the digest still builds, using extractive summaries. Without email
 credentials, digests are still readable in-app (email delivery is skipped). All
 other values have working defaults for local development.
 
@@ -135,7 +135,7 @@ Navigate to [http://localhost:3001](http://localhost:3001) and create an account
 2. Semantic embedding via `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional, local — no API cost)
 3. PRS computation against all users following that source (8 signals in parallel)
 4. Deduplication by semantic similarity across items already in the user's queue
-5. Summarization via Groq (`llama-3.3-70b-versatile`), cached in Redis
+5. Summarization via the configured OpenAI-compatible model (Groq `openai/gpt-oss-120b` by default), cached in Redis. If the model is down or no key is set, an extractive summary is stored instead (`summary_source=extractive`).
 
 ---
 
@@ -330,7 +330,7 @@ reviewed by counsel before collecting user data. Licensed under
 | Database | PostgreSQL 16 + pgvector |
 | Cache & Queue | Redis 7 + Celery |
 | Embeddings | sentence-transformers (local, no API cost) |
-| Summarization LLM | Groq — Llama 3.3 70B (primary), Llama 3.1 8B (fast) |
+| Summarization LLM | OpenAI-compatible HTTP (`LLM_BASE_URL` + `LLM_MODEL_*`). Default host is Groq with `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. No model id is hard-coded. |
 | Email delivery | SMTP (Zoho by default) |
 | Scraping | Playwright + Browserless/Chrome |
 | ORM | SQLAlchemy 2.0 (async) |

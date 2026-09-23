@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.content import ContentItem
+from app.services.llm.client import PROMPT_VERSION
+from app.services.summarization.extractive import extractive_summary
 from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
 from app.utils.cache import cache_get, cache_set
 from app.utils.logging import get_logger
@@ -28,24 +30,27 @@ class SummarizationService:
     async def summarize(
         self, content_item_id: uuid.UUID, title: str, full_text: str, session: AsyncSession
     ) -> SummarizationResult | None:
-        cache_key = f"summary:{content_item_id}"
+        model_tag = settings.llm_model_primary if settings.llm_configured else "extractive"
+        cache_key = f"summary:{content_item_id}:{PROMPT_VERSION}:{model_tag}"
         cached = await cache_get(cache_key)
         if cached is not None:
             logger.debug(f"Cache hit for summary:{content_item_id}")
             return SummarizationResult(**cached)
 
-        # Primary: Groq
+        # LLM when configured. A miss, a 404, or a rate limit must not block the digest.
         result = await get_groq_summarizer().summarize(title, full_text)
-
-        # Fallback: OpenAI (only if enabled)
-        if result is None and settings.openai_fallback_enabled:
-            logger.info(f"Groq failed, falling back to OpenAI for {content_item_id}")
-            from app.services.summarization.openai_client import OpenAISummarizer
-
-            result = await OpenAISummarizer().summarize(title, full_text)
+        if result is None:
+            logger.info("extractive summary for item %s (llm unavailable)", content_item_id)
+            result = extractive_summary(title, full_text)
 
         if result is not None:
-            # Cache the result
+            # An extractive stand-in must not occupy the LLM cache for 30 days,
+            # or a recovered provider is never asked again.
+            ttl = (
+                30 * 24 * 3600
+                if result.summary_source == "llm" or not settings.llm_configured
+                else 3600
+            )
             await cache_set(
                 cache_key,
                 {
@@ -57,8 +62,9 @@ class SummarizationService:
                     "has_citations": result.has_citations,
                     "topic_clusters": result.topic_clusters,
                     "reading_time_minutes": result.reading_time_minutes,
+                    "summary_source": result.summary_source,
                 },
-                ttl_seconds=30 * 24 * 3600,
+                ttl_seconds=ttl,
             )
 
             # Update DB
@@ -74,7 +80,10 @@ class SummarizationService:
                 item.has_citations = result.has_citations
                 item.topic_clusters = result.topic_clusters
                 item.reading_time_minutes = result.reading_time_minutes
-                item.summarization_cached = True
+                item.summary_source = result.summary_source
+                # The embedding worker retries while this is false. Only an LLM
+                # summary should suppress that retry.
+                item.summarization_cached = result.summary_source == "llm"
                 await session.flush()
 
         return result

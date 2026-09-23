@@ -62,15 +62,14 @@ async def _run() -> dict:
         )
 
         # Last opened-digest time per user.
-        opened = dict(
-            (
-                await session.execute(
-                    select(Digest.user_id, func.max(Digest.generated_at))
-                    .where(Digest.opened.is_(True))
-                    .group_by(Digest.user_id)
-                )
-            ).all()
-        )
+        opened_rows = (
+            await session.execute(
+                select(Digest.user_id, func.max(Digest.generated_at))
+                .where(Digest.opened.is_(True))
+                .group_by(Digest.user_id)
+            )
+        ).all()
+        opened: dict = {row[0]: row[1] for row in opened_rows}
 
         sent = 0
         for user in users:

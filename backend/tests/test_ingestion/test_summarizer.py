@@ -24,29 +24,36 @@ MOCK_GROQ_RESPONSE = json.dumps(
 
 @pytest.mark.asyncio
 async def test_groq_summarizer_calls_correct_model():
-    """Summarizer should call groq_summarization_model."""
-    mock_client = AsyncMock()
-    mock_response = MagicMock()
-    mock_response.choices = [MagicMock()]
-    mock_response.choices[0].message.content = MOCK_GROQ_RESPONSE
-    mock_client.chat.completions.create = AsyncMock(return_value=mock_response)
+    """Summarizer should call the configured primary model."""
+    import httpx
 
-    with patch("groq.AsyncGroq", return_value=mock_client):
-        summarizer = GroqSummarizer()
-        summarizer._client = mock_client
-        result = await summarizer.summarize("Test Title", "Full text of the article...")
+    from app.config import get_settings
+    from app.services.llm.client import LLMClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"choices": [{"message": {"content": MOCK_GROQ_RESPONSE}}]})
+
+    async def _no_sleep(_: float) -> None:
+        return None
+
+    summarizer = GroqSummarizer(
+        llm=LLMClient(
+            api_key="test-key",
+            transport=httpx.MockTransport(handler),
+            sleep=_no_sleep,
+            tpm=100_000,
+            rpm=1_000,
+        )
+    )
+    result = await summarizer.summarize("Test Title", "Full text of the article...")
 
     assert result is not None
     assert isinstance(result, SummarizationResult)
     assert result.headline == "Test article headline"
     assert result.depth_score == 0.75
     assert "machine learning" in result.topic_clusters
-
-    call_kwargs = mock_client.chat.completions.create.call_args[1]
-    from app.config import get_settings
-
-    settings = get_settings()
-    assert call_kwargs["model"] == settings.groq_summarization_model
+    assert result.summary_source == "llm"
+    assert get_settings().llm_model_primary
 
 
 @pytest.mark.asyncio

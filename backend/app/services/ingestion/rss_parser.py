@@ -5,11 +5,17 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 import feedparser
-import httpx
 
 from app.utils.logging import get_logger, sanitize_log
 from app.utils.sanitize import sanitize_stored_html
-from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
+from app.utils.ssrf import UnsafeURLError, safe_fetch, validate_public_url
+from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
+
+_FEED_HEADERS = {
+    "User-Agent": "ReadPrism/1.0 (+https://readprism.app/bot)",
+    "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
+}
+_FEED_MAX_BYTES = 2_000_000
 
 logger = get_logger(__name__)
 
@@ -63,19 +69,21 @@ async def _autodiscover_feed(page_url: str) -> str | None:
         logger.warning(f"Blocked feed autodiscovery for unsafe URL {sanitize_log(page_url)}: {e}")
         return None
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await safe_get(page_url, client=client)
-            html = resp.text
-            # Try to find <link rel="alternate" type="application/rss+xml">
-            pattern = r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*href=["\']([^"\']+)["\']'
-            matches = re.findall(pattern, html, re.IGNORECASE)
-            if matches:
-                href = matches[0]
-                if href.startswith("http"):
-                    return href
-                from urllib.parse import urljoin
+        resp = await safe_fetch(
+            page_url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
+        )
+        html = resp.text
+        pattern = (
+            r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*href=["\']([^"\']+)["\']'
+        )
+        matches = re.findall(pattern, html, re.IGNORECASE)
+        if matches:
+            href = matches[0]
+            if href.startswith("http"):
+                return href
+            from urllib.parse import urljoin
 
-                return urljoin(page_url, href)
+            return urljoin(page_url, href)
     except Exception as e:
         logger.debug(f"Autodiscover HTML parse failed for {sanitize_log(page_url)}: {e}")
 
@@ -83,29 +91,62 @@ async def _autodiscover_feed(page_url: str) -> str | None:
 
     parsed = urlparse(page_url)
     base = f"{parsed.scheme}://{parsed.netloc}"
-    async with httpx.AsyncClient(timeout=10) as client:
-        for path in common_paths:
-            try:
-                url = urljoin(base, path)
-                resp = await safe_get(url, client=client)
-                if resp.status_code == 200 and (
-                    "rss" in resp.text[:500].lower()
-                    or "atom" in resp.text[:500].lower()
-                    or "<feed" in resp.text[:500].lower()
-                ):
-                    return url
-            except Exception as e:
-                logger.debug(f"Feed probe failed for {sanitize_log(url)}: {e}")
+    for path in common_paths:
+        url = urljoin(base, path)
+        try:
+            resp = await safe_fetch(
+                url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
+            )
+            if resp.status_code == 200 and (
+                "rss" in resp.text[:500].lower()
+                or "atom" in resp.text[:500].lower()
+                or "<feed" in resp.text[:500].lower()
+            ):
+                return url
+        except Exception as e:
+            logger.debug(f"Feed probe failed for {sanitize_log(url)}: {e}")
     return None
+
+
+async def _load_feed_bytes(url: str) -> bytes | None:
+    """Fetch a feed through safe_fetch. feedparser must not fetch the URL itself."""
+    try:
+        validate_public_url(url)
+    except UnsafeURLError as e:
+        logger.warning("Blocked feed fetch for unsafe URL %s: %s", sanitize_log(url), e)
+        return None
+    try:
+        resp = await safe_fetch(url, headers=_FEED_HEADERS, timeout=20, max_bytes=_FEED_MAX_BYTES)
+    except UnsafeURLError as e:
+        logger.warning("Blocked feed fetch for %s: %s", sanitize_log(url), e)
+        return None
+    except Exception as e:
+        logger.error("Failed to fetch feed %s: %s", sanitize_log(url), e)
+        return None
+    if resp.status_code >= 400:
+        logger.warning("Feed %s returned HTTP %s", sanitize_log(url), resp.status_code)
+        return None
+    try:
+        return assert_xml_safe(resp.content, max_bytes=_FEED_MAX_BYTES)
+    except UnsafeXMLError as e:
+        logger.warning("Rejected unsafe feed XML from %s: %s", sanitize_log(url), e)
+        return None
 
 
 async def parse_feed(url: str) -> list[RawContentItem]:
     try:
-        feed = feedparser.parse(url)
-        if feed.bozo and not feed.entries:
+        body = await _load_feed_bytes(url)
+        feed = feedparser.parse(body) if body is not None else None
+        # A site homepage is HTML, not a feed. feedparser marks that bozo and
+        # returns no entries; a failed fetch does the same. Try autodiscovery
+        # before giving up, which is what feedparser.parse(url) used to do.
+        if feed is None or not feed.entries:
             discovered = await _autodiscover_feed(url)
-            if discovered:
-                feed = feedparser.parse(discovered)
+            if discovered and discovered != url:
+                discovered_body = await _load_feed_bytes(discovered)
+                feed = feedparser.parse(discovered_body) if discovered_body is not None else None
+        if feed is None:
+            return []
 
         items: list[RawContentItem] = []
         for entry in feed.entries:

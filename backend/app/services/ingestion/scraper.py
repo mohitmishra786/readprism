@@ -10,7 +10,7 @@ import httpx
 from app.config import get_settings
 from app.services.ingestion.rss_parser import RawContentItem
 from app.utils.logging import get_logger
-from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
+from app.utils.ssrf import UnsafeURLError, safe_fetch, validate_public_url
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -39,12 +39,11 @@ async def _fetch_robots_text(robots_url: str) -> tuple[str, str]:
 
     status, text = "error", ""
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await safe_get(robots_url, client=client)
-            if resp.status_code == 200:
-                status, text = "ok", resp.text
-            elif resp.status_code in (404, 410):
-                status = "absent"  # no robots.txt served => allowed by convention
+        resp = await safe_fetch(robots_url, timeout=5, max_bytes=500_000)
+        if resp.status_code == 200:
+            status, text = "ok", resp.text
+        elif resp.status_code in (404, 410):
+            status = "absent"  # no robots.txt served => allowed by convention
     except Exception as e:
         logger.debug(f"robots.txt fetch failed for {robots_url}: {e}")
 
@@ -138,17 +137,12 @@ async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
 
     for attempt in range(1, _RETRY_MAX_ATTEMPTS + 1):
         try:
-            async with httpx.AsyncClient(
-                timeout=20,
-                headers=headers,
-            ) as client:
-                # safe_get validates the URL and every redirect hop (SSRF guard).
-                resp = await safe_get(url, client=client)
-                if resp.status_code == 200:
-                    return resp.text, False
-                if resp.status_code in (403, 429, 503):
-                    logger.debug(f"HTTP {resp.status_code} on {url} — site blocked our bot")
-                    return None, True
+            resp = await safe_fetch(url, headers=headers, timeout=20)
+            if resp.status_code == 200:
+                return resp.text, False
+            if resp.status_code in (403, 429, 503):
+                logger.debug(f"HTTP {resp.status_code} on {url} — site blocked our bot")
+                return None, True
         except UnsafeURLError as e:
             logger.warning(f"Blocked fetch for unsafe URL {url}: {e}")
             return None, False
@@ -160,6 +154,47 @@ async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
             await asyncio.sleep(delay + random.uniform(0, 1))
 
     return None, False
+
+
+def _browser_url_allowed(url: str) -> bool:
+    """http(s) must be public. about/data/blob are browser-internal."""
+    if url.startswith(("about:", "data:", "blob:")):
+        return True
+    try:
+        validate_public_url(url)
+    except UnsafeURLError:
+        return False
+    return True
+
+
+async def _arm_cdp_fetch_guard(page) -> None:  # type: ignore[no-untyped-def]
+    cdp = await page.context.new_cdp_session(page)
+    await cdp.send("Fetch.enable")
+
+    async def _paused(event: dict) -> None:
+        request_id = event.get("requestId")
+        target = str((event.get("request") or {}).get("url", ""))
+        try:
+            if _browser_url_allowed(target):
+                await cdp.send("Fetch.continueRequest", {"requestId": request_id})
+            else:
+                await cdp.send(
+                    "Fetch.failRequest",
+                    {"requestId": request_id, "errorReason": "BlockedByClient"},
+                )
+        except Exception as e:
+            logger.warning(f"CDP fetch guard failed for {target}: {e}")
+
+    pending: set[asyncio.Task[None]] = set()
+
+    def _on_paused(event: dict) -> None:
+        task = asyncio.create_task(_paused(event))
+        pending.add(task)
+        task.add_done_callback(pending.discard)
+
+    # Keep the set alive for as long as the page is.
+    page._cdp_fetch_tasks = pending  # type: ignore[attr-defined]
+    cdp.on("Fetch.requestPaused", _on_paused)
 
 
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
@@ -179,7 +214,17 @@ async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
         async with async_playwright() as pw:
             browser = await pw.chromium.connect_over_cdp(settings.browserless_url)
             page = await browser.new_page()
+            # page.route is not invoked for redirect hops. CDP Fetch pauses
+            # every request, including the URL after a 302, so a public page
+            # cannot bounce the browser onto a metadata address.
+            await _arm_cdp_fetch_guard(page)
             await page.goto(url, wait_until="networkidle", timeout=30000)
+            try:
+                validate_public_url(page.url)
+            except UnsafeURLError as e:
+                logger.warning(f"Playwright landed on an unsafe URL {page.url}: {e}")
+                await browser.close()
+                return None, None
 
             # Extract HTML from most-specific content container first
             content_html = ""

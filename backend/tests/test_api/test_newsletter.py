@@ -101,6 +101,20 @@ async def test_webhook_accepts_valid_signature_and_blocks_replay(client: AsyncCl
     }
     resp = await client.post("/api/v1/newsletter/inbound", data=data)
     assert resp.status_code == 200
+
+    json_body = {
+        "sender": "a@b.com",
+        "subject": "Hi",
+        "body-plain": "hello from json",
+        "recipient": "user-abc@inbox",
+        "signature": {
+            "token": tok + "-json",
+            "timestamp": ts,
+            "signature": _sign(tok + "-json", ts),
+        },
+    }
+    json_resp = await client.post("/api/v1/newsletter/inbound", json=json_body)
+    assert json_resp.status_code == 200
     assert resp.json()["status"] == "ok"
 
     # Same token replayed => rejected.

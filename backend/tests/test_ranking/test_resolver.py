@@ -178,9 +178,7 @@ async def test_podcast_lookup_returns_itunes_feed():
     from app.services.creator.resolver import _lookup_podcast_feed
 
     fake_response = MagicMock()
-    fake_response.json.return_value = {
-        "results": [{"feedUrl": "https://podcasts.example.com/show.rss"}]
-    }
+    fake_response.json.return_value = {"results": [{"feedUrl": "https://1.1.1.1/show.rss"}]}
     with patch("httpx.AsyncClient") as mock_client_cls:
         mock_client = AsyncMock()
         mock_client.get = AsyncMock(return_value=fake_response)
@@ -189,7 +187,7 @@ async def test_podcast_lookup_returns_itunes_feed():
         mock_client_cls.return_value = mock_client
 
         feed = await _lookup_podcast_feed("My Show")
-        assert feed == "https://podcasts.example.com/show.rss"
+        assert feed == "https://1.1.1.1/show.rss"
 
 
 @pytest.mark.asyncio
@@ -207,6 +205,21 @@ async def test_podcast_lookup_no_results_returns_none():
 
         feed = await _lookup_podcast_feed("Obscure Show")
         assert feed is None
+
+
+@pytest.mark.asyncio
+async def test_podcast_lookup_rejects_private_feed_url():
+    from app.services.creator.resolver import _lookup_podcast_feed
+
+    fake_response = MagicMock()
+    fake_response.json.return_value = {"results": [{"feedUrl": "http://127.0.0.1/secret.rss"}]}
+    with patch("httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=fake_response)
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client_cls.return_value = mock_client
+        assert await _lookup_podcast_feed("My Show") is None
 
 
 @pytest.mark.asyncio

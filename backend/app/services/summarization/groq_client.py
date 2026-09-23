@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import json
 
-import groq
-
 from app.config import get_settings
+from app.services.llm.client import LLMClient
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 
 class SummarizationResult:
@@ -22,6 +20,7 @@ class SummarizationResult:
         has_citations: bool,
         topic_clusters: list[str],
         reading_time_minutes: int,
+        summary_source: str = "llm",
     ) -> None:
         self.headline = headline
         self.brief = brief
@@ -31,6 +30,7 @@ class SummarizationResult:
         self.has_citations = has_citations
         self.topic_clusters = topic_clusters
         self.reading_time_minutes = reading_time_minutes
+        self.summary_source = summary_source
 
 
 _SYSTEM_PROMPT = (
@@ -81,84 +81,100 @@ def _parse_result(raw: str) -> SummarizationResult | None:
 
 
 class GroqSummarizer:
-    def __init__(self) -> None:
-        # Only build the client if a key is configured. When no key is present
-        # every call short-circuits to None instantly rather than retrying into
-        # connection errors for ~10s per item.
-        self._client = (
-            groq.AsyncGroq(api_key=settings.groq_api_key) if settings.groq_api_key else None
-        )
+    """Historical name. Talks to whatever OpenAI-compatible endpoint is configured."""
+
+    def __init__(self, llm: LLMClient | None = None) -> None:
+        self._llm_client = llm
+        self._fallback_client: LLMClient | None = None
+
+    def _llm(self) -> LLMClient:
+        if self._llm_client is None:
+            self._llm_client = LLMClient()
+        return self._llm_client
 
     async def summarize(self, title: str, full_text: str) -> SummarizationResult | None:
-        if self._client is None:
-            # No key configured — skip summarization entirely.
-            return None
         content = _truncate_text(full_text)
         prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content)
-
-        for attempt in range(2):
-            try:
-                temperature = 0.1 if attempt == 0 else 0.0
-                response = await self._client.chat.completions.create(
-                    model=settings.groq_summarization_model,
-                    messages=[
-                        {"role": "system", "content": _SYSTEM_PROMPT},
-                        {"role": "user", "content": prompt},
-                    ],
-                    temperature=temperature,
-                    max_tokens=1024,
+        current = get_settings()
+        data = await self._llm().complete_json(
+            model=current.llm_model_primary,
+            system=_SYSTEM_PROMPT,
+            user=prompt,
+            max_tokens=1024,
+        )
+        if (
+            data is None
+            and current.openai_fallback_enabled
+            and current.openai_api_key
+            and current.openai_model
+        ):
+            if self._fallback_client is None:
+                self._fallback_client = LLMClient(
+                    base_url=current.openai_base_url,
+                    api_key=current.openai_api_key,
                 )
-                raw = response.choices[0].message.content or ""
-                result = _parse_result(raw)
-                if result:
-                    return result
-            except Exception as e:
-                logger.error(f"Groq summarization attempt {attempt + 1} failed: {e}")
-                if attempt == 1:
-                    return None
-        return None
+            fallback = self._fallback_client
+            data = await fallback.complete_json(
+                model=current.openai_model,
+                system=_SYSTEM_PROMPT,
+                user=prompt,
+                max_tokens=1024,
+            )
+        if not data:
+            return None
+        result = _parse_result_data(data)
+        if result is not None:
+            result.summary_source = "llm"
+        return result
 
     async def synthesize_topic(self, items: list[SummarizationResult], topic: str) -> str:
-        if self._client is None:
-            return ""
         briefs = "\n\n".join([f"- {item.brief}" for item in items[:5]])
         prompt = (
             f"Given these summaries of articles about {topic}, write a single 3-4 sentence briefing "
             f"that captures what happened, the key disagreements or different angles between sources, "
             f"and what a reader should know. Return only the briefing text.\n\n{briefs}"
         )
-        try:
-            response = await self._client.chat.completions.create(
-                model=settings.groq_summarization_model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2,
-                max_tokens=256,
-            )
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            logger.error(f"Groq topic synthesis failed: {e}")
-            return ""
+        text = await self._llm().complete(
+            model=get_settings().llm_model_primary,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            max_tokens=256,
+        )
+        return text or ""
 
     async def extract_topics(self, text: str) -> list[str]:
-        if self._client is None:
+        prompt = (
+            "Extract 5-10 specific topic labels from this text. "
+            'Return a JSON object {"topics": ["..."]}. Be specific, not generic.\n\n'
+            f"{text[:2000]}"
+        )
+        data = await self._llm().complete_json(
+            model=get_settings().llm_model_fast,
+            system="Return only a JSON object with a topics array of strings.",
+            user=prompt,
+            max_tokens=256,
+        )
+        if not data:
             return []
-        prompt = f"Extract 5-10 specific topic labels from this text. Return as JSON array of strings. Be specific, not generic.\n\n{text[:2000]}"
-        try:
-            response = await self._client.chat.completions.create(
-                model=settings.groq_fast_model,
-                messages=[
-                    {"role": "system", "content": "Return only a valid JSON array of strings."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.1,
-                max_tokens=256,
-            )
-            raw = response.choices[0].message.content or "[]"
-            clean = raw.strip()
-            if clean.startswith("```"):
-                lines = clean.split("\n")
-                clean = "\n".join(lines[1:-1])
-            return json.loads(clean)
-        except Exception as e:
-            logger.error(f"Groq topic extraction failed: {e}")
+        topics = data.get("topics", [])
+        if not isinstance(topics, list):
             return []
+        return [str(topic) for topic in topics if isinstance(topic, str) and topic.strip()]
+
+
+def _parse_result_data(data: dict) -> SummarizationResult | None:
+    try:
+        return SummarizationResult(
+            headline=str(data.get("headline", "")),
+            brief=str(data.get("brief", "")),
+            detailed=str(data.get("detailed", "")),
+            depth_score=float(data.get("depth_score", 0.5)),
+            is_original_reporting=bool(data.get("is_original_reporting", False)),
+            has_citations=bool(data.get("has_citations", False)),
+            topic_clusters=[str(t) for t in data.get("topic_clusters", [])],
+            reading_time_minutes=int(data.get("reading_time_minutes", 5)),
+            summary_source="llm",
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        logger.warning(f"Failed to parse summarization JSON: {e}")
+        return None

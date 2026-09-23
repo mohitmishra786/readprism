@@ -12,7 +12,25 @@ import DOMPurify from 'dompurify';
  * nothing unsanitized is ever emitted — the reader is a client component and
  * hydrates the real content in the browser.
  */
+let hooked = false;
+
+function ensureLinkHook(): void {
+  if (hooked || typeof window === 'undefined') return;
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('rel', 'noopener noreferrer');
+      node.setAttribute('target', '_blank');
+    }
+  });
+  hooked = true;
+}
+
 export function sanitizeHtml(dirty: string): string {
   if (typeof window === 'undefined') return '';
-  return DOMPurify.sanitize(dirty, { USE_PROFILES: { html: true } });
+  ensureLinkHook();
+  return DOMPurify.sanitize(dirty, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['style', 'svg', 'math', 'form'],
+    FORBID_ATTR: ['style'],
+  });
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -52,7 +52,7 @@ def _is_digest_time_for_user(user) -> bool:
     try:
         tz = zoneinfo.ZoneInfo(user.timezone or "UTC")
     except Exception:
-        tz = UTC
+        tz = zoneinfo.ZoneInfo("UTC")
 
     now_local = datetime.now(tz)
     preferred = user.digest_time_morning  # datetime.time object, e.g. 07:00

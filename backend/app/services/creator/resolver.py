@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.creator import Creator, CreatorPlatform
 from app.utils.logging import get_logger, sanitize_log
-from app.utils.ssrf import UnsafeURLError, safe_get, validate_public_url
+from app.utils.ssrf import UnsafeURLError, safe_fetch, validate_public_url
 
 logger = get_logger(__name__)
 
@@ -99,13 +99,12 @@ async def _fetch_page(url: str) -> str | None:
         logger.warning(f"Blocked creator fetch for unsafe URL {sanitize_log(url)}: {e}")
         return None
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await safe_get(
-                url,
-                client=client,
-                headers={"User-Agent": "ReadPrism/1.0 (+https://readprism.app/bot)"},
-            )
-            return resp.text
+        resp = await safe_fetch(
+            url,
+            timeout=15,
+            headers={"User-Agent": "ReadPrism/1.0 (+https://readprism.app/bot)"},
+        )
+        return resp.text
     except UnsafeURLError as e:
         logger.warning(f"Blocked creator fetch for unsafe URL {sanitize_log(url)}: {e}")
         return None
@@ -141,6 +140,11 @@ async def _lookup_podcast_feed(show_name: str) -> str | None:
             if results:
                 feed = results[0].get("feedUrl")
                 if feed:
+                    try:
+                        validate_public_url(feed)
+                    except UnsafeURLError:
+                        logger.warning("iTunes feed URL failed the public-URL check")
+                        return None
                     return feed
     except Exception as e:
         logger.warning(f"iTunes podcast lookup failed for '{sanitize_log(show_name)}': {e}")

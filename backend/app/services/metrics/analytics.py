@@ -99,7 +99,7 @@ async def cohort_retention(session: AsyncSession) -> list[dict]:
             .group_by(Digest.user_id)
         )
     ).all()
-    last_open = dict(opened_rows)
+    last_open: dict = {row[0]: row[1] for row in opened_rows}
 
     cohorts: dict[str, list] = {}
     for uid, created in users:

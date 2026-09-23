@@ -45,7 +45,7 @@ async def _prune_full_text_async() -> dict:
             )
             .values(full_text=func.left(ContentItem.full_text, excerpt_chars))
         )
-        pruned = result.rowcount or 0
+        pruned = int(getattr(result, "rowcount", 0) or 0)
         await session.commit()
 
     logger.info(f"Pruned full_text on {pruned} content items older than {retention_days}d")
