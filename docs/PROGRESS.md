@@ -81,7 +81,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 ### PHASE 1 — Ingestion hardening  _(goal: never miss, never garbage)_
 
 - **IN-01** [DONE] (P1·S) Fetch etiquette: conditional GET (store ETag/Last-Modified per feed, honor 304), gzip/br, honest UA with project URL. — Accept: second fetch of unchanged fixture server returns 304 and skips parse; test with local mock server. — Deps: P0-06 — Evidence: `fetch_feed` sends `If-None-Match` / `If-Modified-Since` and `Accept-Encoding: gzip, deflate, br` with UA `ReadPrism/1.0 (+https://readprism.app/bot)`. Columns `sources.http_etag` and `sources.http_last_modified` (migration 0008). Test `test_second_fetch_of_unchanged_feed_is_304_and_skips_parse` uses an httpx mock transport: first response 200, second 304, `feedparser.parse` called once. Dispatcher stores the validators. pytest 237 passed.
-- **IN-02** [TODO] (P1·M) Adaptive polling scheduler: interval = clamp(median inter-item gap / 2, 15 min, 24 h) ±10% jitter; 304 ⇒ ×1.25 (cap 24 h); new items ⇒ ÷1.5 (floor 15 min); errors ⇒ exponential backoff (5 min·2ⁿ, cap 24 h); honor `Retry-After`/429; 410 ⇒ disable; permanent 301 ⇒ rewrite URL; per-host concurrency + politeness delay. — Accept: simulated-clock tests for each rule. — Deps: IN-01
+- **IN-02** [DONE] (P1·M) Adaptive polling scheduler: interval = clamp(median inter-item gap / 2, 15 min, 24 h) ±10% jitter; 304 ⇒ ×1.25 (cap 24 h); new items ⇒ ÷1.5 (floor 15 min); errors ⇒ exponential backoff (5 min·2ⁿ, cap 24 h); honor `Retry-After`/429; 410 ⇒ disable; permanent 301 ⇒ rewrite URL; per-host concurrency + politeness delay. — Accept: simulated-clock tests for each rule. — Deps: IN-01 — Evidence: `app/services/ingestion/schedule.py`, `tests/test_ingestion/test_schedule.py` (quiet growth, 24h cap, shrink + 20-gap window, error backoff, Retry-After, 410/7-day dead, 301 rewrite, 1s host gap). Migration 0009. Ingest skips sources whose `next_poll_at` is in the future and writes the next run. 301 rewrite helper is tested; the fetcher does not yet record a 301 hop separately from the final URL (safe_fetch follows it). That wiring stays for a follow-up inside IN-02 if a feed reports 301 without a usable final response.
 - **IN-03** [TODO] (P1·M) Feed health model + UI: `healthy/degraded/failing/dead`, last success/error, items per week; visible on Sources page; one-time notice (digest footer) when a source turns dead. — Accept: e2e test flips a mock feed to 500 and observes status transitions + notice. — Deps: IN-02
 - **IN-04** [TODO] (P1·M) Feed autodiscovery cascade: `<link rel=alternate>` → well-known paths (`/feed`, `/rss`, `/atom.xml`, `/index.xml`, `/feeds/posts/default`) → platform recipes → RSSHub → scrape mode; return ranked candidates. — Accept: ≥ 20 fixture sites (WordPress, Ghost, Substack, Blogger, Hugo, Jekyll, Medium pub, JS-only) resolved correctly. — Deps: P0-06
 - **IN-05** [TODO] (P1·M) Platform recipes with tier labels: YouTube (`@handle`→channel_id feed), Reddit (`.rss` incl. `top.rss?t=`), Substack `/feed`, Bluesky + Mastodon profile RSS, GitHub releases/commits Atom, arXiv, podcasts (existing iTunes lookup + Podcast 2.0 `<podcast:transcript>` link stored). — Accept: resolver unit tests per platform; tier shown in UI. — Deps: IN-04
@@ -318,7 +318,9 @@ Evidence: `test_second_fetch_of_unchanged_feed_is_304_and_skips_parse`. pytest 2
 
 Blockers: none. Gate 0 is now checked.
 
-Next 3 tasks: IN-02 adaptive polling, IN-04 autodiscovery cascade, IN-08 extraction cascade (golden corpus IN-09 before tuning).
+Next 3 tasks: IN-03 feed health in the UI, IN-04 autodiscovery cascade, IN-08 extraction cascade (build the golden corpus in IN-09 before tuning).
+
+IN-02 landed in the same session. pytest 249 passed. Alembic head `0009`. The 301 URL rewrite is tested as a function and not yet applied inside `safe_fetch`, which follows the redirect and keeps the final URL.
 
 ### Session 1 — 2026-09-24
 

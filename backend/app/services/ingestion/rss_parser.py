@@ -32,6 +32,7 @@ class FeedFetchResult:
     not_modified: bool = False
     etag: str | None = None
     last_modified: str | None = None
+    status_code: int | None = None
 
 
 @dataclass
@@ -178,7 +179,7 @@ async def _load_feed_bytes(
         return _HttpFeed(304, None, response_etag or etag, response_modified or last_modified)
     if resp.status_code >= 400:
         logger.warning("Feed %s returned HTTP %s", sanitize_log(url), resp.status_code)
-        return None
+        return _HttpFeed(resp.status_code, None, response_etag, response_modified)
     try:
         body = assert_xml_safe(resp.content, max_bytes=_FEED_MAX_BYTES)
     except UnsafeXMLError as e:
@@ -225,6 +226,16 @@ async def fetch_feed(
                 not_modified=True,
                 etag=primary.etag,
                 last_modified=primary.last_modified,
+                status_code=304,
+            )
+        if primary is not None and primary.status in {410, 429} or (
+            primary is not None and primary.status >= 500
+        ):
+            return FeedFetchResult(
+                items=[],
+                etag=primary.etag,
+                last_modified=primary.last_modified,
+                status_code=primary.status,
             )
         feed = feedparser.parse(primary.body) if primary and primary.body else None
         # A site homepage is not a feed. A 304 must not reach this branch.

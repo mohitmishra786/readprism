@@ -39,6 +39,7 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
             last_modified=getattr(source, "http_last_modified", None),
         )
         _remember_validators(source, fetched)
+        source.last_http_status = fetched.status_code  # type: ignore[attr-defined]
         raw_items = [] if fetched.not_modified else fetched.items
         if not raw_items and not fetched.not_modified and source.feed_url is None:
             # Try autodiscovery
