@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,14 +42,31 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://redis:6379/0"
 
-    # LLM — Primary: Groq
+    # LLM — OpenAI-compatible endpoint. Groq is the default base URL.
+    # Model ids are configuration, not code. GROQ_* names still work.
+    llm_base_url: str = "https://api.groq.com/openai/v1"
+    llm_api_key: str = ""
+    llm_model_primary: str = "openai/gpt-oss-120b"
+    llm_model_fast: str = "openai/gpt-oss-20b"
+    llm_tpm_limit: int = 6000
+    llm_rpm_limit: int = 30
+    llm_timeout_seconds: float = 30.0
+    # Legacy aliases. A retired model id is rewritten in `_normalize_llm`.
     groq_api_key: str = ""
-    groq_summarization_model: str = "llama-3.3-70b-versatile"
-    groq_fast_model: str = "llama-3.1-8b-instant"
+    groq_summarization_model: str = ""
+    groq_fast_model: str = ""
 
-    # LLM — Fallback: OpenAI (disabled by default)
+    # Optional second provider. Used only when all three are set.
     openai_fallback_enabled: bool = False
     openai_api_key: str = ""
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_model: str = ""
+    # Comma-separated origins allowed in addition to FRONTEND_URL.
+    cors_extra_origins: str = ""
+    rate_limit_feedback_per_minute: int = 60
+    # Feed / OPML body cap and outline cap (XML bombs and huge imports).
+    xml_max_bytes: int = 2_000_000
+    opml_max_outlines: int = 5000
 
     # Embeddings (local sentence-transformers)
     embedding_model: str = "all-MiniLM-L6-v2"
@@ -153,20 +171,74 @@ class Settings(BaseSettings):
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
 
+    @model_validator(mode="after")
+    def _normalize_llm(self) -> Settings:
+        """Honor legacy GROQ_* env vars and refuse retired Groq model ids."""
+        if not self.llm_api_key and self.groq_api_key:
+            self.llm_api_key = self.groq_api_key
+        self.llm_model_primary = _resolve_model(
+            configured=self.llm_model_primary,
+            legacy=self.groq_summarization_model,
+            default=_DEFAULT_LLM_PRIMARY,
+            legacy_name="GROQ_SUMMARIZATION_MODEL",
+        )
+        self.llm_model_fast = _resolve_model(
+            configured=self.llm_model_fast,
+            legacy=self.groq_fast_model,
+            default=_DEFAULT_LLM_FAST,
+            legacy_name="GROQ_FAST_MODEL",
+        )
+        return self
+
     @property
     def llm_configured(self) -> bool:
         """True if at least one LLM backend is configured.
 
-        When False, the summarizer short-circuits (no retries) and onboarding
-        falls back to keyword topic extraction, so the app still works — just
-        without AI summaries. The health endpoint reports this explicitly.
+        When False, summaries are extractive and onboarding falls back to
+        keyword topic extraction. The health endpoint reports this explicitly.
         """
-        return bool(self.groq_api_key) or (
-            self.openai_fallback_enabled and bool(self.openai_api_key)
+        return bool(self.llm_api_key) or (
+            self.openai_fallback_enabled and bool(self.openai_api_key) and bool(self.openai_model)
         )
 
 
 _DEFAULT_SECRET_KEY = "change_me_to_a_long_random_string"
+_MIN_SECRET_LEN = 32
+_DEFAULT_LLM_PRIMARY = "openai/gpt-oss-120b"
+_DEFAULT_LLM_FAST = "openai/gpt-oss-20b"
+# Recognized only so a leftover env var cannot keep calling a dead model.
+_RETIRED_LLM_MODELS = {
+    "llama-3.3-70b-versatile": _DEFAULT_LLM_PRIMARY,
+    "llama-3.1-8b-instant": _DEFAULT_LLM_FAST,
+}
+
+
+def _resolve_model(*, configured: str, legacy: str, default: str, legacy_name: str) -> str:
+    """Prefer an explicit LLM_MODEL_* value; otherwise map a legacy GROQ_* value."""
+    import warnings
+
+    if configured and configured != default:
+        if configured in _RETIRED_LLM_MODELS:
+            replacement = _RETIRED_LLM_MODELS[configured]
+            warnings.warn(
+                f"LLM model {configured!r} was retired. Using {replacement!r}. "
+                "Set LLM_MODEL_PRIMARY / LLM_MODEL_FAST to a live model id.",
+                stacklevel=2,
+            )
+            return replacement
+        return configured
+    if not legacy:
+        return default
+    if legacy in _RETIRED_LLM_MODELS:
+        replacement = _RETIRED_LLM_MODELS[legacy]
+        warnings.warn(
+            f"{legacy_name}={legacy!r} was retired by the provider on 2026-08-16. "
+            f"Using {replacement!r}. Set LLM_MODEL_PRIMARY and LLM_MODEL_FAST "
+            "and remove the GROQ_* model variables.",
+            stacklevel=2,
+        )
+        return replacement
+    return legacy
 
 
 @lru_cache(maxsize=1)
@@ -175,22 +247,24 @@ def get_settings() -> Settings:
 
     # Refuse to boot outside development with the placeholder signing key — a
     # default SECRET_KEY means every JWT is forgeable (audit 06-8).
-    if s.app_env != "development" and s.secret_key == _DEFAULT_SECRET_KEY:
+    if s.app_env != "development" and (
+        s.secret_key == _DEFAULT_SECRET_KEY or len(s.secret_key) < _MIN_SECRET_LEN
+    ):
         raise RuntimeError(
-            "SECRET_KEY is still the insecure default in a non-development "
-            f"environment (APP_ENV={s.app_env!r}). Generate one with "
+            "SECRET_KEY is missing, still the insecure default, or shorter than "
+            f"{_MIN_SECRET_LEN} characters in a non-development environment "
+            f"(APP_ENV={s.app_env!r}). Generate one with "
             '`python -c "import secrets; print(secrets.token_hex(32))"` and set '
             "it in the environment before deploying."
         )
 
     if not s.llm_configured:
-        # Loud, actionable warning so the operator knows summaries are disabled.
         import warnings
 
         warnings.warn(
-            "GROQ_API_KEY is not set. Summaries, topic extraction, and "
-            "cross-source synthesis will be skipped. Get a free key at "
-            "https://console.groq.com/ and set it in .env.",
+            "LLM_API_KEY is not set (GROQ_API_KEY is also accepted). "
+            "Summaries will use the extractive fallback and topic extraction "
+            "will use keywords. The digest still builds.",
             stacklevel=2,
         )
     return s

@@ -66,6 +66,8 @@ class ContentItem(Base):
     is_original_reporting: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     topic_clusters: Mapped[list] = mapped_column(JSONB, default=list)
     summarization_cached: Mapped[bool] = mapped_column(Boolean, default=False)
+    # "llm" or "extractive". Null on rows written before the column existed.
+    summary_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
