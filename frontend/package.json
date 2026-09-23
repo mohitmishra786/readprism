@@ -14,7 +14,7 @@
     "dompurify": "^3.4.13",
     "js-cookie": "3.0.8",
     "lucide-react": "^1.25.0",
-    "next": "16.2.12",
+    "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
