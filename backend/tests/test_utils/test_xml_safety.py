@@ -50,3 +50,8 @@ def test_too_many_outlines_rejected():
 
 def test_small_opml_allowed():
     assert assert_xml_safe(_OK, max_bytes=10_000, max_outlines=10).startswith(b"<?xml")
+
+
+def test_html_doctype_is_allowed():
+    page = b"<!DOCTYPE html><html><head><title>Site</title></head><body>hi</body></html>"
+    assert assert_xml_safe(page, max_bytes=10_000) == page

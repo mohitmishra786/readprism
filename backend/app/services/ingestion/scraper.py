@@ -156,6 +156,47 @@ async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
     return None, False
 
 
+def _browser_url_allowed(url: str) -> bool:
+    """http(s) must be public. about/data/blob are browser-internal."""
+    if url.startswith(("about:", "data:", "blob:")):
+        return True
+    try:
+        validate_public_url(url)
+    except UnsafeURLError:
+        return False
+    return True
+
+
+async def _arm_cdp_fetch_guard(page) -> None:  # type: ignore[no-untyped-def]
+    cdp = await page.context.new_cdp_session(page)
+    await cdp.send("Fetch.enable")
+
+    async def _paused(event: dict) -> None:
+        request_id = event.get("requestId")
+        target = str((event.get("request") or {}).get("url", ""))
+        try:
+            if _browser_url_allowed(target):
+                await cdp.send("Fetch.continueRequest", {"requestId": request_id})
+            else:
+                await cdp.send(
+                    "Fetch.failRequest",
+                    {"requestId": request_id, "errorReason": "BlockedByClient"},
+                )
+        except Exception as e:
+            logger.warning(f"CDP fetch guard failed for {target}: {e}")
+
+    pending: set[asyncio.Task[None]] = set()
+
+    def _on_paused(event: dict) -> None:
+        task = asyncio.create_task(_paused(event))
+        pending.add(task)
+        task.add_done_callback(pending.discard)
+
+    # Keep the set alive for as long as the page is.
+    page._cdp_fetch_tasks = pending  # type: ignore[attr-defined]
+    cdp.on("Fetch.requestPaused", _on_paused)
+
+
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
     """Use the headless Chrome instance (Browserless) for JS-rendered pages.
     Returns (html_content, page_title)."""
@@ -173,19 +214,17 @@ async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
         async with async_playwright() as pw:
             browser = await pw.chromium.connect_over_cdp(settings.browserless_url)
             page = await browser.new_page()
-
-            async def _guard(route) -> None:  # type: ignore[no-untyped-def]
-                # Browserless follows redirects and subresources itself. Abort
-                # anything that fails the same public-URL check as safe_fetch.
-                try:
-                    validate_public_url(route.request.url)
-                except UnsafeURLError:
-                    await route.abort()
-                    return
-                await route.continue_()
-
-            await page.route("**/*", _guard)
+            # page.route is not invoked for redirect hops. CDP Fetch pauses
+            # every request, including the URL after a 302, so a public page
+            # cannot bounce the browser onto a metadata address.
+            await _arm_cdp_fetch_guard(page)
             await page.goto(url, wait_until="networkidle", timeout=30000)
+            try:
+                validate_public_url(page.url)
+            except UnsafeURLError as e:
+                logger.warning(f"Playwright landed on an unsafe URL {page.url}: {e}")
+                await browser.close()
+                return None, None
 
             # Extract HTML from most-specific content container first
             content_html = ""

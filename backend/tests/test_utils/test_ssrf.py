@@ -103,6 +103,26 @@ async def test_redirect_to_private_is_blocked():
 
 
 @pytest.mark.asyncio
+async def test_gzip_body_is_returned_without_a_second_decode():
+    import gzip
+
+    import httpx
+
+    raw = b"<rss><channel><title>Feed</title></channel></rss>"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-encoding": "gzip"},
+            content=gzip.compress(raw),
+        )
+
+    resp = await ssrf.safe_fetch("https://1.1.1.1/feed.xml", transport=httpx.MockTransport(handler))
+    assert b"<rss>" in resp.content
+    assert "content-encoding" not in {k.lower() for k in resp.headers}
+
+
+@pytest.mark.asyncio
 async def test_body_over_cap_is_rejected():
     import httpx
 

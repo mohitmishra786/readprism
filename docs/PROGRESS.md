@@ -301,6 +301,7 @@ Recorded 2026-09-24 on the tree at `37b7f16` before the phase-0 edits, except wh
 - 2026-09-24 · P0-03 · `next build` printed 16.2.11 while `package.json` pins 16.2.12. · Not investigated past the banner. P0-12's Next bump is a separate PR.
 - 2026-09-24 · P0-06 · HTTPS `safe_fetch` does not pin the connection to the resolved IP, so a rebind after the check can still land on a private address. Browserless has the same window. · Documented in ADR 0003. Not fixed; pinning breaks certificate checks if done naively.
 - 2026-09-24 · P0-10 · OQ-01 stays open. `LICENSE` and the README are both AGPL-3.0. The owner still has to confirm that was intended.
+- 2026-09-24 · review · PR #55 CI: mypy failed because the CI job installs celery (and therefore redis) without `types-redis`, plus `email.message` payload typing. CodeQL alert gate failed on `py/full-ssrf` inside `safe_fetch` (the guard itself). CodeRabbit: gzip double-decode, HTML pages skipped autodiscovery, JSON newsletter signature dropped, token bucket hang, extractive cache TTL, reader CSP blocked Next inline scripts. · Fixed on the branch. CodeQL on the guard is the same false positive class as alerts 11/12/27.
 
 No backlog ids were reprioritized. The audit confirmed the existing order: impressions and labels (IQ-07, IQ-08) before weight learning, and a discovery corpus (IQ-06) before the suggestion signal can mean what the spec says.
 

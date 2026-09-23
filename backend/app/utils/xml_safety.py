@@ -12,7 +12,8 @@ import re
 from defusedxml import ElementTree as DefusedElementTree
 from defusedxml.common import DefusedXmlException
 
-_DOCTYPE_OR_ENTITY = re.compile(rb"<!DOCTYPE|<!ENTITY", re.IGNORECASE)
+_ENTITY = re.compile(rb"<!ENTITY", re.IGNORECASE)
+_DOCTYPE_NAME = re.compile(rb"<!DOCTYPE\s+([^\s>\[/]+)", re.IGNORECASE)
 _OUTLINE = re.compile(rb"<outline\b", re.IGNORECASE)
 
 
@@ -34,8 +35,13 @@ def assert_xml_safe(
     data = payload.encode("utf-8", errors="replace") if isinstance(payload, str) else payload
     if len(data) > max_bytes:
         raise UnsafeXMLError(f"document exceeds {max_bytes} bytes")
-    if _DOCTYPE_OR_ENTITY.search(data):
-        raise UnsafeXMLError("DOCTYPE and entity declarations are not allowed")
+    if _ENTITY.search(data):
+        raise UnsafeXMLError("entity declarations are not allowed")
+    for match in _DOCTYPE_NAME.finditer(data):
+        # An HTML page (`<!DOCTYPE html>`) is how a site URL reaches autodiscovery.
+        # Any other DOCTYPE can carry an external subset, so it is rejected.
+        if match.group(1).lower() != b"html":
+            raise UnsafeXMLError("DOCTYPE is not allowed on feeds or OPML")
     if max_outlines is not None:
         outlines = len(_OUTLINE.findall(data))
         if outlines > max_outlines:

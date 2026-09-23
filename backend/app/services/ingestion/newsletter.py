@@ -129,16 +129,16 @@ async def process_raw_email(raw_email: str, user_id: uuid.UUID) -> RawContentIte
                 ctype = part.get_content_type()
                 if ctype == "text/html":
                     payload = part.get_payload(decode=True)
-                    if payload:
+                    if isinstance(payload, bytes):
                         body = _html_to_text(payload.decode("utf-8", errors="replace"))
                         break
                 elif ctype == "text/plain" and not body:
                     payload = part.get_payload(decode=True)
-                    if payload:
+                    if isinstance(payload, bytes):
                         body = payload.decode("utf-8", errors="replace")
         else:
             payload = msg.get_payload(decode=True)
-            if payload:
+            if isinstance(payload, bytes):
                 body = payload.decode("utf-8", errors="replace")
 
         return await process_inbound_email(

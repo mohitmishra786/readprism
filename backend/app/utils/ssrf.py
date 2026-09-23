@@ -204,9 +204,17 @@ async def safe_fetch(
                     current = urljoin(str(resp.url), resp.headers["location"])
                     continue
                 body = await _read_capped(resp, max_bytes)
+                # aiter_bytes already decoded Content-Encoding. Copying that
+                # header onto the decoded body makes httpx decode it again.
+                forwarded = [
+                    (key, value)
+                    for key, value in resp.headers.multi_items()
+                    if key.lower()
+                    not in {"content-encoding", "content-length", "transfer-encoding"}
+                ]
                 return httpx.Response(
                     status_code=resp.status_code,
-                    headers=resp.headers,
+                    headers=forwarded,
                     content=body,
                     request=resp.request,
                 )

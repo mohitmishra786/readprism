@@ -136,16 +136,17 @@ async def _load_feed_bytes(url: str) -> bytes | None:
 async def parse_feed(url: str) -> list[RawContentItem]:
     try:
         body = await _load_feed_bytes(url)
-        if body is None:
-            return []
-        feed = feedparser.parse(body)
-        if feed.bozo and not feed.entries:
+        feed = feedparser.parse(body) if body is not None else None
+        # A site homepage is HTML, not a feed. feedparser marks that bozo and
+        # returns no entries; a failed fetch does the same. Try autodiscovery
+        # before giving up, which is what feedparser.parse(url) used to do.
+        if feed is None or not feed.entries:
             discovered = await _autodiscover_feed(url)
-            if discovered:
+            if discovered and discovered != url:
                 discovered_body = await _load_feed_bytes(discovered)
-                if discovered_body is None:
-                    return []
-                feed = feedparser.parse(discovered_body)
+                feed = feedparser.parse(discovered_body) if discovered_body is not None else None
+        if feed is None:
+            return []
 
         items: list[RawContentItem] = []
         for entry in feed.entries:

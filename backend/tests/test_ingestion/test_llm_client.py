@@ -131,6 +131,14 @@ async def test_token_bucket_waits_until_the_window_refills():
     assert clock.t >= 29
 
 
+@pytest.mark.asyncio
+async def test_token_bucket_accepts_a_request_larger_than_the_bucket():
+    clock = _Clock()
+    bucket = TokenBucket(tpm=60, rpm=60, clock=clock, sleep=clock.sleep)
+    await bucket.acquire(61)
+    assert clock.t < 5
+
+
 def test_extractive_summary_without_a_model():
     result = extractive_summary(
         "Rust async runtimes",

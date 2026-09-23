@@ -64,6 +64,30 @@ async def test_parse_feed_returns_empty_on_error():
 
 
 @pytest.mark.asyncio
+async def test_parse_feed_autodiscovers_an_html_page():
+    html = b"""<!DOCTYPE html><html><head>
+    <link rel="alternate" type="application/rss+xml" href="https://example.com/feed.xml"/>
+    </head><body>not a feed</body></html>"""
+    seen: list[str] = []
+
+    async def fake_fetch(url: str, **kwargs):
+        seen.append(url)
+        if url.endswith("/feed.xml"):
+            return httpx.Response(200, content=SAMPLE_RSS.encode())
+        return httpx.Response(200, content=html)
+
+    with (
+        patch("app.services.ingestion.rss_parser.validate_public_url", lambda url, **k: None),
+        patch("app.services.ingestion.rss_parser.safe_fetch", fake_fetch),
+    ):
+        items = await parse_feed("https://example.com/")
+
+    assert seen[0] == "https://example.com/"
+    assert "https://example.com/feed.xml" in seen
+    assert len(items) == 2
+
+
+@pytest.mark.asyncio
 async def test_parse_feed_rejects_entity_expansion():
     bomb = b"""<?xml version="1.0"?>
     <!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;">]>

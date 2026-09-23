@@ -30,7 +30,7 @@ class SummarizationService:
     async def summarize(
         self, content_item_id: uuid.UUID, title: str, full_text: str, session: AsyncSession
     ) -> SummarizationResult | None:
-        model_tag = settings.llm_model_primary if settings.llm_api_key else "extractive"
+        model_tag = settings.llm_model_primary if settings.llm_configured else "extractive"
         cache_key = f"summary:{content_item_id}:{PROMPT_VERSION}:{model_tag}"
         cached = await cache_get(cache_key)
         if cached is not None:
@@ -44,7 +44,13 @@ class SummarizationService:
             result = extractive_summary(title, full_text)
 
         if result is not None:
-            # Cache the result
+            # An extractive stand-in must not occupy the LLM cache for 30 days,
+            # or a recovered provider is never asked again.
+            ttl = (
+                30 * 24 * 3600
+                if result.summary_source == "llm" or not settings.llm_configured
+                else 3600
+            )
             await cache_set(
                 cache_key,
                 {
@@ -58,7 +64,7 @@ class SummarizationService:
                     "reading_time_minutes": result.reading_time_minutes,
                     "summary_source": result.summary_source,
                 },
-                ttl_seconds=30 * 24 * 3600,
+                ttl_seconds=ttl,
             )
 
             # Update DB
@@ -75,7 +81,9 @@ class SummarizationService:
                 item.topic_clusters = result.topic_clusters
                 item.reading_time_minutes = result.reading_time_minutes
                 item.summary_source = result.summary_source
-                item.summarization_cached = True
+                # The embedding worker retries while this is false. Only an LLM
+                # summary should suppress that retry.
+                item.summarization_cached = result.summary_source == "llm"
                 await session.flush()
 
         return result

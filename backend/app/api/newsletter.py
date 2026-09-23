@@ -65,6 +65,7 @@ async def inbound_email(request: Request) -> dict:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload"
                 )
+            payload = raw
             sender = raw.get("sender") or raw.get("from", "")
             subject = raw.get("subject", "Newsletter")
             body_text = raw.get("body-plain") or raw.get("body", "")

@@ -74,7 +74,7 @@ Legend: 🟢 README claims it · 🟡 partially/unclear · 🔴 not evident · �
 Each finding lists evidence → consequence → action (task IDs in `PROGRESS.md`).
 
 ### F1 — LLM model deprecation ✅ (P0)
-Groq's deprecation page lists both `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` with a shutdown date of 16 Aug 2026 and suggests `openai/gpt-oss-120b`, `qwen/qwen3.6-27b` (and `openai/gpt-oss-20b` for the small model); other projects report 404s since then. Free-tier limits are per-minute token caps (≈6k–12k TPM), which is the real constraint for a summarizer.
+Groq's deprecation page lists both `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` with a shutdown date of 16 Aug 2026 and suggests `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. `qwen/qwen3.6-27b` was itself shut down on 14 Sep 2026 in favor of `qwen/qwen3.8-27b`. Other projects report 404s since the Llama shutdown. Free-tier limits are per-minute token caps (≈6k–12k TPM), which is the real constraint for a summarizer.
 **Action:** provider-agnostic client, configurable model IDs, rate limiter, extractive fallback so the digest never depends on an LLM → **P0-05**. Decision **D-01/D-02**.
 
 ### F2 — Security surface of a URL-fetching, HTML-rendering app (P0, unverified)
@@ -211,10 +211,11 @@ Time estimates assume one focused human-plus-agent workflow; treat them as relat
 - **P0-06/07** before any new ingestion or reader work touching external content.
 - Consider pulling **UX-04 (email feedback links)** forward: it's the highest-yield source of learning signal.
 
-**Now / Next / Later**
-- **Now:** Phase 0. Especially P0-05 (LLM), P0-04 (audit), P0-06/07 (security).
-- **Next:** IN-08/09 (extraction quality), IQ-16 (eval harness), IQ-07/08 (logging + labels).
-- **Later:** ecosystem (PWA, extension, MCP), sidecar/Fever decision, docs site, v0.1.0.
+**Now / Next / Later** (updated 2026-09-24 to match `docs/PROGRESS.md`; the phase table above is the original plan)
+
+- **Now:** owner review of Phase 0. Still open inside the phase: P0-11 (CI green on `main`) and P0-12 (Dependabot #53 and #54).
+- **Next:** IN-01 (conditional GET), then the rest of ingestion. IQ-07/08/16 and IQ-04 stay ahead of weight learning, as in the sequencing rules.
+- **Later:** IN-08/09 tuning once the golden corpus exists, then ecosystem, the sidecar decision, the docs site, v0.1.0.
 
 ---
 

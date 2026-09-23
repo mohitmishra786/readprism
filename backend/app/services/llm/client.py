@@ -58,7 +58,9 @@ class TokenBucket:
         self._requests = min(float(self.rpm), self._requests + elapsed * (self.rpm / 60.0))
 
     async def acquire(self, tokens: int) -> None:
-        needed = float(max(1, tokens))
+        # A request larger than the bucket can never fill `_tokens` (the refill
+        # caps at `tpm`). Charge at most one full bucket so the call proceeds.
+        needed = float(min(max(1, tokens), self.tpm))
         while True:
             self._refill()
             if self._tokens >= needed and self._requests >= 1.0:

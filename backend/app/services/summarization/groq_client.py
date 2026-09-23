@@ -85,6 +85,7 @@ class GroqSummarizer:
 
     def __init__(self, llm: LLMClient | None = None) -> None:
         self._llm_client = llm
+        self._fallback_client: LLMClient | None = None
 
     def _llm(self) -> LLMClient:
         if self._llm_client is None:
@@ -107,10 +108,12 @@ class GroqSummarizer:
             and current.openai_api_key
             and current.openai_model
         ):
-            fallback = LLMClient(
-                base_url=current.openai_base_url,
-                api_key=current.openai_api_key,
-            )
+            if self._fallback_client is None:
+                self._fallback_client = LLMClient(
+                    base_url=current.openai_base_url,
+                    api_key=current.openai_api_key,
+                )
+            fallback = self._fallback_client
             data = await fallback.complete_json(
                 model=current.openai_model,
                 system=_SYSTEM_PROMPT,
