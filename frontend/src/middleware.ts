@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const nonce = btoa(crypto.randomUUID());
   const configured = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  let apiOrigin = "http://localhost:8000";
+  let apiOrigin: string;
   try {
     apiOrigin = new URL(configured).origin;
   } catch {
