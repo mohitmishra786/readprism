@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.ingestion.dispatcher import dispatch_source
-from app.services.ingestion.rss_parser import RawContentItem
+from app.services.ingestion.rss_parser import FeedFetchResult, RawContentItem
 
 
 def _make_source(source_type="rss", feed_url=None, url="https://example.com"):
@@ -43,8 +43,8 @@ async def test_dispatch_filters_already_ingested_urls():
     session.execute = AsyncMock(return_value=existing_result)
 
     with patch(
-        "app.services.ingestion.dispatcher.parse_feed",
-        AsyncMock(return_value=raw_items),
+        "app.services.ingestion.dispatcher.fetch_feed",
+        AsyncMock(return_value=FeedFetchResult(items=raw_items, etag='W/"abc"')),
     ):
         new_items = await dispatch_source(source, session)
 
@@ -61,8 +61,8 @@ async def test_dispatch_returns_empty_when_parse_returns_nothing():
     session = AsyncMock()
 
     with patch(
-        "app.services.ingestion.dispatcher.parse_feed",
-        AsyncMock(return_value=[]),
+        "app.services.ingestion.dispatcher.fetch_feed",
+        AsyncMock(return_value=FeedFetchResult(items=[])),
     ):
         new_items = await dispatch_source(source, session)
 
@@ -86,7 +86,7 @@ async def test_dispatch_scraped_source_uses_scraper():
             AsyncMock(return_value=scraped),
         ) as mock_scrape,
         patch(
-            "app.services.ingestion.dispatcher.parse_feed",
+            "app.services.ingestion.dispatcher.fetch_feed",
             AsyncMock(),
         ) as mock_parse,
     ):

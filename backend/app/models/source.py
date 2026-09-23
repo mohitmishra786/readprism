@@ -24,6 +24,9 @@ class Source(Base):
     trust_weight: Mapped[float] = mapped_column(Float, default=0.5)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Conditional GET validators. Sent back as If-None-Match / If-Modified-Since.
+    http_etag: Mapped[str | None] = mapped_column(String, nullable=True)
+    http_last_modified: Mapped[str | None] = mapped_column(String, nullable=True)
     fetch_error_count: Mapped[int] = mapped_column(Integer, default=0)
     topics: Mapped[list] = mapped_column(JSONB, default=list)
     priority: Mapped[str] = mapped_column(String, default="normal")

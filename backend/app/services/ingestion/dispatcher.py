@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
 from app.models.source import Source
-from app.services.ingestion.rss_parser import RawContentItem, parse_feed
+from app.services.ingestion.rss_parser import FeedFetchResult, RawContentItem, fetch_feed
 from app.services.ingestion.scraper import scrape_page
 from app.utils.cache import get_redis
 from app.utils.logging import get_logger
@@ -18,6 +18,14 @@ logger = get_logger(__name__)
 SEMANTIC_DEDUP_THRESHOLD = 0.92  # cosine similarity above which items are considered duplicates
 
 
+def _remember_validators(source: Source, fetched: FeedFetchResult) -> None:
+    """Keep the validators the server just sent. A 304 often omits them."""
+    if fetched.etag:
+        source.http_etag = fetched.etag
+    if fetched.last_modified:
+        source.http_last_modified = fetched.last_modified
+
+
 async def dispatch_source(source: Source, session: AsyncSession) -> list[RawContentItem]:
     raw_items: list[RawContentItem] = []
 
@@ -25,14 +33,22 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
         raw_items = await _fetch_newsletter_items(source, session)
     elif source.feed_url or source.source_type == "rss":
         feed_url = source.feed_url or source.url
-        raw_items = await parse_feed(feed_url)
-        if not raw_items and source.feed_url is None:
+        fetched = await fetch_feed(
+            feed_url,
+            etag=getattr(source, "http_etag", None),
+            last_modified=getattr(source, "http_last_modified", None),
+        )
+        _remember_validators(source, fetched)
+        raw_items = [] if fetched.not_modified else fetched.items
+        if not raw_items and not fetched.not_modified and source.feed_url is None:
             # Try autodiscovery
             from app.services.ingestion.rss_parser import _autodiscover_feed
 
             discovered = await _autodiscover_feed(source.url)
             if discovered:
-                raw_items = await parse_feed(discovered)
+                fetched = await fetch_feed(discovered)
+                _remember_validators(source, fetched)
+                raw_items = fetched.items
                 if raw_items:
                     source.feed_url = discovered
                     await session.flush()
