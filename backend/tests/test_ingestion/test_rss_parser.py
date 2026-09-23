@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import httpx
 import pytest
 
 from app.services.ingestion.rss_parser import parse_feed
@@ -29,29 +30,16 @@ SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 
 @pytest.mark.asyncio
 async def test_parse_feed_extracts_items():
-    """parse_feed should return correct number of items from RSS fixture."""
-    import feedparser
+    """parse_feed reads bytes from safe_fetch and never asks feedparser to fetch."""
 
-    with patch.object(feedparser, "parse") as mock_parse:
-        mock_result = MagicMock()
-        mock_result.bozo = False
-        entry1 = MagicMock()
-        entry1.link = "https://example.com/article-1"
-        entry1.title = "Article One"
-        entry1.author = "Test Author"
-        entry1.published_parsed = (2024, 1, 1, 10, 0, 0, 0, 1, 0)
-        entry1.summary = "Summary of article one."
-        entry1.content = []
-        entry2 = MagicMock()
-        entry2.link = "https://example.com/article-2"
-        entry2.title = "Article Two"
-        entry2.author = None
-        entry2.published_parsed = None
-        entry2.summary = "Summary of article two."
-        entry2.content = []
-        mock_result.entries = [entry1, entry2]
-        mock_parse.return_value = mock_result
+    async def fake_fetch(url: str, **kwargs):
+        assert url == "https://example.com/feed"
+        return httpx.Response(200, content=SAMPLE_RSS.encode())
 
+    with (
+        patch("app.services.ingestion.rss_parser.validate_public_url", lambda url, **k: None),
+        patch("app.services.ingestion.rss_parser.safe_fetch", fake_fetch),
+    ):
         items = await parse_feed("https://example.com/feed")
 
     assert len(items) == 2
@@ -63,8 +51,29 @@ async def test_parse_feed_extracts_items():
 @pytest.mark.asyncio
 async def test_parse_feed_returns_empty_on_error():
     """parse_feed should return empty list on failure without raising."""
-    import feedparser
 
-    with patch.object(feedparser, "parse", side_effect=Exception("Connection refused")):
+    async def fake_fetch(url: str, **kwargs):
+        raise RuntimeError("Connection refused")
+
+    with (
+        patch("app.services.ingestion.rss_parser.validate_public_url", lambda url, **k: None),
+        patch("app.services.ingestion.rss_parser.safe_fetch", fake_fetch),
+    ):
         items = await parse_feed("https://bad-url.invalid/feed")
     assert items == []
+
+
+@pytest.mark.asyncio
+async def test_parse_feed_rejects_entity_expansion():
+    bomb = b"""<?xml version="1.0"?>
+    <!DOCTYPE lolz [<!ENTITY lol "lol"><!ENTITY lol2 "&lol;&lol;">]>
+    <rss version="2.0"><channel><item><title>&lol2;</title><link>https://e.com/a</link></item></channel></rss>"""
+
+    async def fake_fetch(url: str, **kwargs):
+        return httpx.Response(200, content=bomb)
+
+    with (
+        patch("app.services.ingestion.rss_parser.validate_public_url", lambda url, **k: None),
+        patch("app.services.ingestion.rss_parser.safe_fetch", fake_fetch),
+    ):
+        assert await parse_feed("https://example.com/feed") == []

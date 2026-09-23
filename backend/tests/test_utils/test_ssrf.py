@@ -68,3 +68,50 @@ def test_disabled_toggle_is_noop(monkeypatch):
     monkeypatch.setattr(ssrf.settings, "ssrf_protection_enabled", False)
     # Would normally be blocked; disabled => allowed.
     validate_public_url("http://169.254.169.254/latest/meta-data/")
+
+
+def test_rejects_credentials_in_url():
+    with pytest.raises(UnsafeURLError):
+        validate_public_url("https://user:secret@1.1.1.1/feed")
+
+
+def test_rejects_decimal_loopback():
+    # 2130706433 == 127.0.0.1
+    with pytest.raises(UnsafeURLError):
+        validate_public_url("http://2130706433/")
+
+
+@pytest.mark.asyncio
+async def test_redirect_to_private_is_blocked():
+    import httpx
+
+    hits = {"private": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "127.0.0.1":
+            hits["private"] += 1
+            return httpx.Response(200, text="secret")
+        return httpx.Response(302, headers={"Location": "http://127.0.0.1/secret"})
+
+    with pytest.raises(UnsafeURLError):
+        await ssrf.safe_fetch(
+            "https://feeds.example.com/start",
+            transport=httpx.MockTransport(handler),
+            resolver=lambda host: ["93.184.216.34"],
+        )
+    assert hits["private"] == 0
+
+
+@pytest.mark.asyncio
+async def test_body_over_cap_is_rejected():
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"x" * 50)
+
+    with pytest.raises(UnsafeURLError, match="exceeded"):
+        await ssrf.safe_fetch(
+            "https://1.1.1.1/big",
+            max_bytes=20,
+            transport=httpx.MockTransport(handler),
+        )
