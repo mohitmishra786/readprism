@@ -40,7 +40,7 @@ async def _get_saved_items(
         .where(UserContentInteraction.saved.is_(True))
         .order_by(UserContentInteraction.created_at.desc())
     )
-    return list(result.fetchall())
+    return [(row[0], row[1]) for row in result.all()]
 
 
 # ---------------------------------------------------------------------------

@@ -60,12 +60,16 @@ async def inbound_email(request: Request) -> dict:
     form = None
     try:
         if "application/json" in content_type:
-            payload = await request.json()
-            sender = payload.get("sender") or payload.get("from", "")
-            subject = payload.get("subject", "Newsletter")
-            body_text = payload.get("body-plain") or payload.get("body", "")
-            message_id = payload.get("Message-Id") or payload.get("message_id", "")
-            recipient = payload.get("recipient") or payload.get("to", "")
+            raw = await request.json()
+            if not isinstance(raw, dict):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload"
+                )
+            sender = raw.get("sender") or raw.get("from", "")
+            subject = raw.get("subject", "Newsletter")
+            body_text = raw.get("body-plain") or raw.get("body", "")
+            message_id = raw.get("Message-Id") or raw.get("message_id", "")
+            recipient = raw.get("recipient") or raw.get("to", "")
         else:
             form = await request.form()
             sender = str(form.get("sender") or form.get("from", ""))

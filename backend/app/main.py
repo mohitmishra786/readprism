@@ -76,9 +76,21 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    origins = [settings.frontend_url]
+    for extra in settings.cors_extra_origins.split(","):
+        extra = extra.strip()
+        if extra and extra not in origins:
+            origins.append(extra)
+    # Local dev serves the UI on 3000 (next dev) and 3001 (compose). Production
+    # is exactly FRONTEND_URL plus CORS_EXTRA_ORIGINS.
+    if settings.app_env == "development":
+        for local in ("http://localhost:3000", "http://localhost:3001"):
+            if local not in origins:
+                origins.append(local)
+
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[settings.frontend_url, "http://localhost:3000", "http://localhost:3001"],
+        allow_origins=origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -89,12 +101,14 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health() -> dict:
         # Check Groq connectivity
-        groq_ok = bool(settings.groq_api_key)
         return {
             "status": "ok",
             "db": getattr(app.state, "db_ok", False),
             "redis": getattr(app.state, "redis_ok", False),
-            "groq": groq_ok,
+            "llm": settings.llm_configured,
+            "llm_model": settings.llm_model_primary if settings.llm_configured else None,
+            # Kept so older health checks that look at `groq` still see a bool.
+            "groq": settings.llm_configured,
         }
 
     return app

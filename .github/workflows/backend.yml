@@ -30,6 +30,21 @@ jobs:
         working-directory: backend
         run: ruff format --check .
 
+  typecheck:
+    name: Typecheck (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install mypy and the libraries it needs to see real types
+        run: pip install 'mypy==1.13.0' 'sqlalchemy>=2.0.54' 'pydantic>=2.13' pydantic-settings httpx celery alembic
+      - name: Run mypy
+        working-directory: backend
+        # Third-party libraries without stubs are ignored. The tree itself is checked.
+        run: mypy app --python-version 3.11 --ignore-missing-imports
+
   test:
     name: Tests (pytest)
     runs-on: ubuntu-latest
@@ -80,6 +95,12 @@ jobs:
             docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism_test;"
           docker compose exec -T db psql -U readprism -d readprism_test -c \
             "CREATE EXTENSION IF NOT EXISTS vector;"
+
+      - name: Alembic has a single head
+        run: |
+          HEADS=$(docker compose exec -T -e DATABASE_SYNC_URL="postgresql://readprism:readprism@db:5432/readprism_test" backend alembic heads | grep -c '(head)' || true)
+          echo "alembic heads: $HEADS"
+          test "$HEADS" = "1"
 
       - name: Run migrations on test DB
         # Use `exec` on the already-running backend (which has the volume mount

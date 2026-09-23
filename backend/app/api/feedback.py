@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.config import get_settings
 from app.database import get_db
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
@@ -15,13 +16,24 @@ from app.schemas.content import UserContentInteractionCreate, UserContentInterac
 from app.schemas.ranking import InterestAdjustment
 from app.services.interest_graph.graph import InterestGraphManager
 from app.utils.logging import get_logger
+from app.utils.ratelimit import RateLimiter
 
 router = APIRouter(prefix="/feedback", tags=["feedback"])
 logger = get_logger(__name__)
 graph_manager = InterestGraphManager()
+_settings = get_settings()
+feedback_rate_limit = RateLimiter(
+    max_requests=_settings.rate_limit_feedback_per_minute,
+    window_seconds=60,
+    scope="feedback",
+)
 
 
-@router.post("/interaction", response_model=UserContentInteractionRead)
+@router.post(
+    "/interaction",
+    response_model=UserContentInteractionRead,
+    dependencies=[Depends(feedback_rate_limit)],
+)
 async def record_interaction(
     body: UserContentInteractionCreate,
     session: AsyncSession = Depends(get_db),

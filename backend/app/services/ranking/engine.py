@@ -51,7 +51,7 @@ async def rank_content_for_user(
         batch_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for item, result in zip(batch, batch_results, strict=False):
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 logger.warning(f"PRS live computation failed for {item.id}: {result}")
                 live_scores[item.id] = 0.0
                 live_breakdowns[item.id] = {}
