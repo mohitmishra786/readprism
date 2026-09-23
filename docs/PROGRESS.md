@@ -316,7 +316,7 @@ Evidence: commits `6c68dd9`, `17f0d03`, `95dd760`, `2e93706`, `28f9b42` on `agen
 
 Blockers / questions raised: OQ-01 still open (AGPL confirmed in the file, not confirmed by the owner). Gate 0 CI-on-main is unchecked because this branch is not merged. P0-12 bumps were not built.
 
-Next 3 tasks: push this branch and open the phase PR (so CI can run); P0-12 only after `next@16.3.6` and `fast-uri@3.1.8` are built; do not start Phase 1 until the owner reviews this audit.
+Next 3 tasks: wait for CI on PR #55 (https://github.com/mohitmishra786/readprism/pull/55); P0-12 only after `next@16.3.6` and `fast-uri@3.1.8` are built; do not start Phase 1 until the owner reviews this audit.
 
 ## Session 1 report — 2026-09-24
 
