@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.content import ContentItem
 from app.models.digest import Digest, DigestItem
+from app.models.source import Source
 from app.models.user import User
 from app.utils.email import send_email
 from app.utils.logging import get_logger
@@ -70,6 +71,21 @@ def _top_signals(breakdown: dict, n: int = 2) -> list[str]:
     return out
 
 
+async def _pending_dead_sources(user_id, session: AsyncSession) -> list[str]:
+    result = await session.execute(
+        select(Source).where(Source.user_id == user_id, Source.dead_notice_pending.is_(True))
+    )
+    return [source.name or source.url for source in result.scalars().all()]
+
+
+async def _clear_dead_notices(user_id, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(Source).where(Source.user_id == user_id, Source.dead_notice_pending.is_(True))
+    )
+    for source in result.scalars().all():
+        source.dead_notice_pending = False
+
+
 async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> bool:
     # Load digest items with content
     items_result = await session.execute(
@@ -121,6 +137,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             preferences_url=preferences_url,
             unsubscribe_url=unsub_url,
             physical_address=settings.email_physical_address,
+            dead_sources=await _pending_dead_sources(user.id, session),
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")
@@ -146,6 +163,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
 
     if success:
         digest.delivered_at = datetime.now(UTC)
+        await _clear_dead_notices(user.id, session)
         await session.flush()
 
     return success

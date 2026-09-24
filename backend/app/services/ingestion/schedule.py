@@ -169,11 +169,12 @@ def apply_poll_result(
     gap_seconds: int = 0,
 ) -> None:
     """Write the next schedule onto a source row."""
+    previous = str(getattr(source, "feed_status", None) or "healthy")
     state = ScheduleState(
         interval_seconds=int(getattr(source, "poll_interval_seconds", None) or DEFAULT_INTERVAL),
         consecutive_errors=int(getattr(source, "fetch_error_count", None) or 0),
         recent_gaps=list(getattr(source, "recent_gap_seconds", None) or []),
-        status=str(getattr(source, "feed_status", None) or "healthy"),
+        status=previous,
         failure_since=getattr(source, "failure_since", None),
     )
     if gone:
@@ -194,6 +195,8 @@ def apply_poll_result(
     source.next_poll_at = when  # type: ignore[attr-defined]
     if nxt.status == "dead":
         source.is_active = False  # type: ignore[attr-defined]
+        if previous != "dead":
+            source.dead_notice_pending = True  # type: ignore[attr-defined]
 
 
 def permanent_redirect_target(location: str | None, current_url: str) -> str | None:

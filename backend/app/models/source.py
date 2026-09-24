@@ -32,6 +32,12 @@ class Source(Base):
     recent_gap_seconds: Mapped[list] = mapped_column(JSONB, default=list)
     feed_status: Mapped[str] = mapped_column(String, default="healthy", server_default="healthy")
     failure_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Set when the feed first becomes dead. Cleared after the digest footer mentions it.
+    dead_notice_pending: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     fetch_error_count: Mapped[int] = mapped_column(Integer, default=0)
     topics: Mapped[list] = mapped_column(JSONB, default=list)
     priority: Mapped[str] = mapped_column(String, default="normal")
@@ -45,19 +51,7 @@ class Source(Base):
         nullable=False,
     )
 
-    # Failure thresholds for the user-facing health status (audit 04-3).
-    _HEALTH_DEGRADED_ERRORS = 1
-    _HEALTH_FAILING_ERRORS = 3
-
     @property
     def health(self) -> str:
-        """User-facing fetch health: 'ok', 'degraded', or 'failing'.
-
-        Surfaced so a silently-dead source (accumulating fetch errors) is visible
-        instead of just quietly degrading the digest.
-        """
-        if self.fetch_error_count >= self._HEALTH_FAILING_ERRORS:
-            return "failing"
-        if self.fetch_error_count >= self._HEALTH_DEGRADED_ERRORS:
-            return "degraded"
-        return "ok"
+        """Scheduler label: healthy, degraded, failing, or dead."""
+        return self.feed_status or "healthy"

@@ -108,6 +108,64 @@ def test_gone_and_week_long_failure_are_dead():
     assert health_status(3, failure_since=NOW, now=NOW + timedelta(days=6)) == "failing"
 
 
+def test_repeated_500_then_410_marks_dead_and_queues_one_notice():
+    from types import SimpleNamespace
+
+    from app.services.ingestion.schedule import apply_poll_result
+
+    source = SimpleNamespace(
+        poll_interval_seconds=3600,
+        fetch_error_count=0,
+        recent_gap_seconds=[],
+        feed_status="healthy",
+        failure_since=None,
+        is_active=True,
+        dead_notice_pending=False,
+    )
+    now = NOW
+    rng = random.Random(0)
+    for _ in range(3):
+        apply_poll_result(source, now=now, rng=rng, error=True)
+        now = source.next_poll_at
+    assert source.feed_status == "failing"
+    assert source.dead_notice_pending is False
+    apply_poll_result(source, now=now, rng=rng, gone=True)
+    assert source.feed_status == "dead"
+    assert source.is_active is False
+    assert source.dead_notice_pending is True
+    apply_poll_result(source, now=source.next_poll_at, rng=rng, gone=True)
+    assert source.dead_notice_pending is True  # already pending; not cleared here
+
+
+def test_dead_notice_is_rendered_once():
+    from app.services.digest.delivery import _get_jinja_env
+
+    env = _get_jinja_env()
+    html = env.get_template("digest_email.html").render(
+        user=None,
+        digest=type("D", (), {"total_items": 0})(),
+        sections={},
+        generated_at="September 24, 2026",
+        preferences_url="https://example.com/preferences",
+        unsubscribe_url="https://example.com/unsub",
+        physical_address="",
+        dead_sources=["Example Blog"],
+    )
+    assert "Example Blog" in html
+    assert "turned off" in html
+    quiet = env.get_template("digest_email.html").render(
+        user=None,
+        digest=type("D", (), {"total_items": 0})(),
+        sections={},
+        generated_at="September 24, 2026",
+        preferences_url="https://example.com/preferences",
+        unsubscribe_url="https://example.com/unsub",
+        physical_address="",
+        dead_sources=[],
+    )
+    assert "turned off" not in quiet
+
+
 def test_same_host_waits_out_the_one_second_gap():
     from app.services.ingestion.schedule import politeness_delay
 

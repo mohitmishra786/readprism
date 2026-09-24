@@ -79,14 +79,32 @@ async def test_source_health_surfaced(client: AsyncClient, test_user_data: dict,
         await db_session.execute(select(User).where(User.email == test_user_data["email"]))
     ).scalar_one()
 
-    db_session.add(Source(user_id=user.id, url="https://ok.com", fetch_error_count=0))
-    db_session.add(Source(user_id=user.id, url="https://degraded.com", fetch_error_count=1))
-    db_session.add(Source(user_id=user.id, url="https://failing.com", fetch_error_count=5))
+    db_session.add(Source(user_id=user.id, url="https://ok.com", feed_status="healthy"))
+    db_session.add(
+        Source(
+            user_id=user.id,
+            url="https://degraded.com",
+            feed_status="degraded",
+            fetch_error_count=1,
+            last_error="HTTP 500",
+        )
+    )
+    db_session.add(
+        Source(
+            user_id=user.id, url="https://failing.com", feed_status="failing", fetch_error_count=3
+        )
+    )
+    db_session.add(
+        Source(user_id=user.id, url="https://dead.com", feed_status="dead", is_active=False)
+    )
     await db_session.commit()
 
     resp = await client.get("/api/v1/sources", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
-    health_by_url = {s["url"]: s["health"] for s in resp.json()}
-    assert health_by_url["https://ok.com"] == "ok"
-    assert health_by_url["https://degraded.com"] == "degraded"
-    assert health_by_url["https://failing.com"] == "failing"
+    by_url = {s["url"]: s for s in resp.json()}
+    assert by_url["https://ok.com"]["health"] == "healthy"
+    assert by_url["https://degraded.com"]["health"] == "degraded"
+    assert by_url["https://degraded.com"]["last_error"] == "HTTP 500"
+    assert by_url["https://failing.com"]["health"] == "failing"
+    assert by_url["https://dead.com"]["health"] == "dead"
+    assert by_url["https://ok.com"]["items_per_week"] == 0

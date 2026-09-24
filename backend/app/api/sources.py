@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import func, select
@@ -9,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
+from app.models.content import ContentItem
 from app.models.source import Source
 from app.models.user import User
 from app.schemas.source import SourceCreate, SourceRead, SourceUpdate
@@ -64,7 +66,26 @@ async def list_sources(
     current_user: User = Depends(get_current_user),
 ) -> list[SourceRead]:
     result = await session.execute(select(Source).where(Source.user_id == current_user.id))
-    return [SourceRead.model_validate(s) for s in result.scalars().all()]
+    sources = list(result.scalars().all())
+    counts = await _items_per_week(session, [s.id for s in sources])
+    rows = []
+    for source in sources:
+        row = SourceRead.model_validate(source)
+        row.items_per_week = counts.get(source.id, 0)
+        rows.append(row)
+    return rows
+
+
+async def _items_per_week(session: AsyncSession, source_ids: list) -> dict:
+    if not source_ids:
+        return {}
+    cutoff = datetime.now(UTC) - timedelta(days=7)
+    result = await session.execute(
+        select(ContentItem.source_id, func.count())
+        .where(ContentItem.source_id.in_(source_ids), ContentItem.fetched_at >= cutoff)
+        .group_by(ContentItem.source_id)
+    )
+    return {row[0]: int(row[1]) for row in result.all()}
 
 
 # Static path must be registered before /{source_id} to prevent shadowing

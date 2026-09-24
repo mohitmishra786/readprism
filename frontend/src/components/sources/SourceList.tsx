@@ -37,20 +37,20 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 <span className="truncate font-medium text-stone-900">
                   {s.name || s.url}
                 </span>
-                {s.health !== "ok" && (
+                {s.health !== "healthy" && (
                   <span
-                    title={
-                      s.health === "failing"
-                        ? `This source has failed to fetch ${s.fetch_error_count} times. Its content may be missing from your digest.`
-                        : "This source recently failed to fetch."
-                    }
+                    title={s.last_error || "This source is having trouble updating."}
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      s.health === "failing"
-                        ? "bg-rose-100 text-rose-700"
-                        : "bg-amber-100 text-amber-700"
+                      s.health === "degraded"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-rose-100 text-rose-700"
                     }`}
                   >
-                    {s.health === "failing" ? "Not updating" : "Fetch issues"}
+                    {s.health === "degraded"
+                      ? "Fetch issues"
+                      : s.health === "failing"
+                        ? "Not updating"
+                        : "Turned off"}
                   </span>
                 )}
               </div>
@@ -58,8 +58,11 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 <span className="font-mono uppercase tracking-wide">{s.source_type}</span>
                 {" · "}
                 {s.last_fetched_at
-                  ? `Fetched ${new Date(s.last_fetched_at).toLocaleDateString()}`
-                  : "Not yet fetched"}
+                  ? `Last success ${new Date(s.last_fetched_at).toLocaleDateString()}`
+                  : "No successful fetch yet"}
+                {s.last_error_at ? ` · Last error ${new Date(s.last_error_at).toLocaleDateString()}` : ""}
+                {" · "}
+                {s.items_per_week} this week
                 {" · "}
                 Relevance {Math.round(s.trust_weight * 100)}%
               </div>
