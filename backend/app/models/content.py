@@ -29,6 +29,7 @@ except ImportError:
 
 class ContentItem(Base):
     __tablename__ = "content_items"
+    __table_args__ = (UniqueConstraint("source_id", "guid", name="uq_content_source_guid"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -69,6 +70,17 @@ class ContentItem(Base):
     # "llm" or "extractive". Null on rows written before the column existed.
     summary_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
     transcript_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    guid: Mapped[str | None] = mapped_column(String, nullable=True)
+    simhash: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    extraction_method: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    extraction_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    page_type: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    lead_image_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    paywalled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    rankable: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    origin: Mapped[str] = mapped_column(String(32), default="followed", server_default="followed")
+    scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

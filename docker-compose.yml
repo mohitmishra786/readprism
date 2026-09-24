@@ -74,6 +74,16 @@ services:
       timeout: 5s
       retries: 5
 
+  # Optional. `docker compose --profile bridge up` starts RSSHub. Leave
+  # RSSHUB_BASE_URL empty and this service is never required.
+  rsshub:
+    image: diygod/rsshub:latest
+    profiles: ["bridge"]
+    ports:
+      - "1200:1200"
+    networks:
+      - readprism_net
+
   backend:
     build:
       context: ./backend

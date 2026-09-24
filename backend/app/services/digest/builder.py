@@ -105,9 +105,14 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             )
             .limit(200)
         )
-        content_items = list(content_result.scalars().all())
+        content_items = [item for item in content_result.scalars().all() if item.rankable]
     else:
         content_items = []
+
+    from app.config import get_settings
+    from app.services.ingestion.backfill import cap_per_source
+
+    content_items = cap_per_source(content_items, get_settings().digest_per_source_cap)
 
     # Serendipity candidates: interest-adjacent discovery, not recent-random.
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))

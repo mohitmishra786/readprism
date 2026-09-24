@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC
+from datetime import UTC, datetime
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -134,5 +134,7 @@ async def _compute_prs_async(user_id: uuid.UUID, content_item_id: uuid.UUID) -> 
             )
             session.add(interaction)
 
+        if content.scored_at is None:
+            content.scored_at = datetime.now(UTC)
         await session.commit()
         return {"status": "ok", "prs_score": prs}

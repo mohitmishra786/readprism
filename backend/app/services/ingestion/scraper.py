@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import random
 from urllib.parse import urlparse
-from urllib.robotparser import RobotFileParser
 
 import httpx
 
@@ -61,6 +60,12 @@ async def _check_robots(url: str) -> bool:
     convention; a fetch error fails **closed** by default (audit 08-6), which
     `robots_fail_open` can override.
     """
+    from app.services.ingestion.robots import domain_denied
+
+    if domain_denied(url, settings.scraper_deny_domains):
+        logger.info(f"Scrape kill switch blocked {url}")
+        return False
+
     try:
         validate_public_url(url)
     except UnsafeURLError as e:
@@ -71,14 +76,9 @@ async def _check_robots(url: str) -> bool:
     robots_url = f"{parsed.scheme}://{parsed.netloc}/robots.txt"
     status, text = await _fetch_robots_text(robots_url)
 
-    if status == "absent":
-        return True
-    if status == "error":
-        return settings.robots_fail_open
-    rp = RobotFileParser()
-    rp.set_url(robots_url)
-    rp.parse(text.splitlines())
-    return rp.can_fetch("*", url)
+    from app.services.ingestion.robots import robots_decision
+
+    return robots_decision(status, text, url, fail_open=settings.robots_fail_open)
 
 
 def _extract_with_trafilatura(html_content: str, url: str) -> str:
@@ -245,7 +245,23 @@ async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
         return None, None
 
 
+async def _wait_for_host(url: str) -> None:
+    import time
+
+    from app.services.ingestion.robots import host_of, host_wait
+
+    host = host_of(url)
+    delay = host_wait(_HOST_LAST.get(host), time.monotonic())
+    if delay:
+        await asyncio.sleep(delay)
+    _HOST_LAST[host] = time.monotonic()
+
+
+_HOST_LAST: dict[str, float] = {}
+
+
 async def scrape_page(url: str) -> RawContentItem | None:
+    await _wait_for_host(url)
     allowed = await _check_robots(url)
     if not allowed:
         logger.warning(f"Robots.txt disallows scraping: {url}")
@@ -282,12 +298,39 @@ async def scrape_page(url: str) -> RawContentItem | None:
         return None
 
     title = title or "Untitled"
-    full_text = _extract_with_trafilatura(html_content, url)
-    word_count = len(full_text.split()) if full_text else 0
+    from app.services.ingestion.extract import extract_html, looks_js_only
+    from app.services.ingestion.identity import canonical_from_html
+    from app.services.ingestion.metadata import extract_metadata
 
+    rendered = None
+    extracted = extract_html(html_content, url)
+    if (
+        extracted.method == "failed"
+        and looks_js_only(html_content)
+        and not (was_blocked and settings.scraper_respect_blocks)
+    ):
+        rendered_html, rendered_title = await _fetch_with_playwright(url)
+        if rendered_html:
+            rendered = rendered_html
+            title = rendered_title or title
+            extracted = extract_html(html_content, url, rendered_html=rendered)
+    canonical = canonical_from_html(rendered or html_content, url)
+    meta = extract_metadata(
+        rendered or html_content,
+        text=extracted.text,
+        author=None,
+    )
     return RawContentItem(
-        url=url,
+        url=canonical or url,
         title=title,
-        full_text=full_text or None,
-        word_count=word_count,
+        full_text=extracted.text or None,
+        word_count=meta.word_count or None,
+        extraction_method=extracted.method,
+        extraction_confidence=extracted.confidence,
+        page_type=extracted.page_type,
+        language=meta.language,
+        lead_image_url=meta.lead_image_url,
+        paywalled=meta.paywalled,
+        rankable=extracted.rankable,
+        reading_time_minutes=meta.reading_time_minutes,
     )

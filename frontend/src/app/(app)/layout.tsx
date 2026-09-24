@@ -12,6 +12,7 @@ const NAV = [
   { href: "/creators", label: "Creators" },
   { href: "/search", label: "Search" },
   { href: "/preferences", label: "Preferences" },
+  { href: "/admin/ingestion", label: "Ingestion" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

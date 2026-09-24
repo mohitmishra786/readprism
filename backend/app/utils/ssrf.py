@@ -191,6 +191,8 @@ async def safe_fetch(
     a timeout. `resolver` and `transport` are injectable for tests.
     """
     current = url
+    saw_redirect = False
+    all_permanent = True
     client = httpx.AsyncClient(
         transport=transport,
         timeout=httpx.Timeout(timeout),
@@ -201,6 +203,9 @@ async def safe_fetch(
             validate_public_url(current, resolver=resolver)
             async with client.stream(method, current, headers=headers) as resp:
                 if resp.is_redirect and resp.headers.get("location"):
+                    saw_redirect = True
+                    if resp.status_code != 301:
+                        all_permanent = False
                     current = urljoin(str(resp.url), resp.headers["location"])
                     continue
                 body = await _read_capped(resp, max_bytes)
@@ -212,6 +217,8 @@ async def safe_fetch(
                     if key.lower()
                     not in {"content-encoding", "content-length", "transfer-encoding"}
                 ]
+                if saw_redirect and all_permanent and current.rstrip("/") != url.rstrip("/"):
+                    forwarded.append(("x-readprism-permanent-url", current))
                 return httpx.Response(
                     status_code=resp.status_code,
                     headers=forwarded,

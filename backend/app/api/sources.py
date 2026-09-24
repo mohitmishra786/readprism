@@ -48,6 +48,7 @@ async def add_source(
         source_type=source_type,
         priority=body.priority,
         topics=body.topics,
+        initial_backfill_done=False,
     )
     session.add(source)
     await session.flush()
@@ -131,6 +132,115 @@ async def import_opml(
         raise HTTPException(status_code=500, detail="listparser not installed")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"OPML parse error: {e}")
+
+
+@router.post("/import-opml-v2", response_model=dict)
+async def import_opml_tagged(
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Folders become tags, duplicate URLs are skipped, large files are queued."""
+    content = await file.read()
+    limits = get_settings()
+    try:
+        opml_bytes = assert_xml_safe(
+            content,
+            max_bytes=limits.xml_max_bytes,
+            max_outlines=limits.opml_max_outlines,
+        )
+    except UnsafeXMLError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    from app.services.ingestion.opml_io import plan_import
+
+    existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
+    plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
+    for feed in plan.feeds:
+        session.add(
+            Source(
+                user_id=current_user.id,
+                url=feed.url,
+                name=feed.title,
+                feed_url=feed.url,
+                source_type="rss",
+                tags=feed.tags,
+                initial_backfill_done=False,
+            )
+        )
+    await session.flush()
+    return {
+        "created": plan.created,
+        "skipped": plan.skipped,
+        "queued": plan.queued,
+        "progress": plan.progress,
+    }
+
+
+@router.get("/export-opml")
+async def export_opml_file(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    from app.services.ingestion.opml_io import OpmlFeed, export_opml
+
+    result = await session.execute(select(Source).where(Source.user_id == current_user.id))
+    feeds = [
+        OpmlFeed(
+            url=source.feed_url or source.url,
+            title=source.name or source.url,
+            tags=list(source.tags or []),
+        )
+        for source in result.scalars()
+    ]
+    body = export_opml(feeds)
+    return Response(content=body, media_type="application/xml")
+
+
+@router.post("/import-saved", response_model=dict)
+async def import_saved(
+    kind: str,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from app.models.content import ContentItem, UserContentInteraction
+    from app.services.ingestion.importers import import_csv, import_opml_starred
+
+    raw = (await file.read()).decode("utf-8", errors="replace")
+    if kind == "opml":
+        imported = import_opml_starred(raw)
+    else:
+        try:
+            imported = import_csv(raw, kind)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    created = 0
+    for item in imported:
+        if not item.url:
+            continue
+        exists = await session.execute(select(ContentItem.id).where(ContentItem.url == item.url))
+        if exists.scalar_one_or_none():
+            continue
+        row = ContentItem(
+            owner_user_id=current_user.id,
+            url=item.url,
+            title=item.title,
+            full_text=item.note,
+            origin="import",
+        )
+        session.add(row)
+        await session.flush()
+        session.add(
+            UserContentInteraction(
+                user_id=current_user.id,
+                content_item_id=row.id,
+                saved=True,
+                explicit_rating=1,
+            )
+        )
+        created += 1
+    await session.flush()
+    return {"created": created, "origin": "import"}
 
 
 @router.put("/{source_id}", response_model=SourceRead)

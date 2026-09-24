@@ -40,6 +40,11 @@ class Source(Base):
     )
     fetch_error_count: Mapped[int] = mapped_column(Integer, default=0)
     topics: Mapped[list] = mapped_column(JSONB, default=list)
+    tags: Mapped[list] = mapped_column(JSONB, default=list)
+    # False only for a source that has not completed its first fetch (IN-15).
+    initial_backfill_done: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true"
+    )
     priority: Mapped[str] = mapped_column(String, default="normal")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
