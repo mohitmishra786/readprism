@@ -39,7 +39,7 @@ async def test_dispatch_filters_already_ingested_urls():
     session = AsyncMock()
     # Existing-URL query returns "B" as already ingested.
     existing_result = MagicMock()
-    existing_result.fetchall.return_value = [("https://example.com/b",)]
+    existing_result.fetchall.return_value = [("https://example.com/b", None, None)]
     session.execute = AsyncMock(return_value=existing_result)
 
     with patch(
@@ -60,7 +60,7 @@ async def test_dispatch_matches_a_legacy_tracking_url():
     raw_items = [RawContentItem(url="https://www.example.com/post?utm_source=hn", title="Post")]
     session = AsyncMock()
     existing_result = MagicMock()
-    existing_result.fetchall.return_value = [("https://example.com/post?utm_reader=1",)]
+    existing_result.fetchall.return_value = [("https://example.com/post?utm_reader=1", None, None)]
     session.execute = AsyncMock(return_value=existing_result)
     with patch(
         "app.services.ingestion.dispatcher.fetch_feed",

@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.database import get_db
+from app.models.user import User
 from app.services.ingestion.newsletter import (
+    ensure_newsletter_source,
     process_inbound_email,
     verify_mailgun_signature,
 )
@@ -45,8 +52,18 @@ def _extract_signature_fields(
     return "", "", ""
 
 
+async def _remember_sender(session: AsyncSession, user_id_str: str | None, sender: str) -> None:
+    if not user_id_str:
+        return
+    try:
+        user_id = uuid.UUID(user_id_str)
+    except ValueError:
+        return
+    await ensure_newsletter_source(session, user_id, sender)
+
+
 @router.post("/inbound", status_code=status.HTTP_200_OK)
-async def inbound_email(request: Request) -> dict:
+async def inbound_email(request: Request, session: AsyncSession = Depends(get_db)) -> dict:
     """
     Webhook endpoint for inbound newsletter emails from Mailgun.
 
@@ -140,5 +157,83 @@ async def inbound_email(request: Request) -> dict:
         message_id=message_id,
         user_id=user_id_str,
     )
+    await _remember_sender(session, user_id_str, sender)
 
     return {"status": "ok"}
+
+
+@router.post("/inbound/{provider}", status_code=status.HTTP_200_OK)
+async def inbound_provider(
+    provider: str, request: Request, session: AsyncSession = Depends(get_db)
+) -> dict:
+    """Postmark, Resend, and Cloudflare Email webhooks. IMAP uses parse_rfc822 directly.
+
+    Each provider signs the raw body with HMAC-SHA256. Outside development an
+    empty secret rejects the call. A repeated message id is a replay.
+    """
+    import json
+
+    from app.services.ingestion.newsletter_parse import (
+        parse_cloudflare,
+        parse_postmark,
+        parse_resend,
+        verify_body_hmac,
+    )
+
+    parsers = {
+        "postmark": (settings.postmark_webhook_secret, parse_postmark),
+        "resend": (settings.resend_webhook_secret, parse_resend),
+        "cloudflare": (settings.cloudflare_email_webhook_secret, parse_cloudflare),
+    }
+    if provider not in parsers:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown provider")
+    secret, parser = parsers[provider]
+    raw = await request.body()
+    signature = (
+        request.headers.get("x-webhook-signature")
+        or request.headers.get("x-postmark-signature")
+        or ""
+    )
+    if not secret:
+        if settings.app_env != "development":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Webhook not authenticated"
+            )
+    elif not verify_body_hmac(secret=secret, payload=raw, signature=signature):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid signature")
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
+    parsed = parser(payload)
+    first_seen = await cache_set_nx(
+        f"newsletter:webhook:{provider}:{parsed.dedupe_key}",
+        "1",
+        ttl_seconds=settings.newsletter_webhook_max_age_seconds,
+    )
+    if not first_seen:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate webhook")
+    from app.services.ingestion.newsletter_parse import recipient_token
+
+    token = recipient_token(parsed.recipient)
+    owner = None
+    if token:
+        found = await session.execute(select(User.id).where(User.newsletter_token == token))
+        owner = found.scalar_one_or_none()
+    await process_inbound_email(
+        sender=parsed.sender,
+        subject=parsed.subject,
+        body=parsed.text,
+        message_id=parsed.message_id,
+        user_id=str(owner) if owner else None,
+    )
+    if owner:
+        await ensure_newsletter_source(session, owner, parsed.sender)
+    return {
+        "status": "ok",
+        "confirmation": parsed.is_confirmation,
+        "list_unsubscribe": parsed.list_unsubscribe,
+        "view_in_browser": parsed.view_in_browser,
+    }

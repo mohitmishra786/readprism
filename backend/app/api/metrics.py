@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -92,3 +93,27 @@ async def meta_weight_divergence(session: AsyncSession = Depends(get_db)) -> dic
 @router.get("/email-deliverability", dependencies=[Depends(require_metrics_token)])
 async def email_deliverability() -> dict:
     return await analytics.email_deliverability()
+
+
+@router.get("/ingestion", dependencies=[Depends(require_metrics_token)])
+async def ingestion_metrics(session: AsyncSession = Depends(get_db)) -> dict:
+    """Fetch success, extraction method mix, and ingest-to-score lag."""
+    from app.models.content import ContentItem
+    from app.models.source import Source
+    from app.services.ingestion.observe import ingestion_report
+    from app.services.ingestion.retention import storage_stats
+
+    sources = list((await session.execute(select(Source))).scalars())
+    items = list((await session.execute(select(ContentItem))).scalars())
+    report = ingestion_report(sources, items)
+    report["storage"] = storage_stats(
+        [
+            {
+                "id": item.id,
+                "source_id": item.source_id,
+                "text_length": len(item.full_text or ""),
+            }
+            for item in items
+        ]
+    )
+    return report

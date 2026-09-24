@@ -115,6 +115,11 @@ export function ContentCard({
 
       {/* Metadata row */}
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
+        {content.paywalled && (
+          <span className="rounded-full bg-stone-200 px-2 py-0.5 font-medium text-stone-700 dark:bg-stone-800 dark:text-stone-200">
+            Paywalled
+          </span>
+        )}
         {content.author && (
           <span className="font-medium text-stone-600 dark:text-stone-300">{content.author}</span>
         )}

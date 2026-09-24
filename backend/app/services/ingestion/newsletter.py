@@ -77,6 +77,34 @@ def _html_to_text(html: str) -> str:
     return " ".join(p.parts)
 
 
+async def ensure_newsletter_source(session, user_id: uuid.UUID, sender: str) -> None:
+    """One newsletter source per sender. A second forward does not create another."""
+    from sqlalchemy import select
+
+    from app.models.source import Source
+
+    name = sender.strip() or "Newsletter"
+    await session.flush()
+    existing = await session.execute(
+        select(Source.id).where(
+            Source.user_id == user_id,
+            Source.source_type == "newsletter",
+            Source.name == name,
+        )
+    )
+    if existing.scalar_one_or_none() is not None:
+        return
+    session.add(
+        Source(
+            user_id=user_id,
+            url=f"newsletter://{user_id}/{name}",
+            name=name,
+            source_type="newsletter",
+            initial_backfill_done=True,
+        )
+    )
+
+
 async def process_inbound_email(
     sender: str,
     subject: str,

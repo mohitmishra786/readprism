@@ -30,6 +30,16 @@ validated, and a route hook aborts any request that fails `validate_public_url`.
 A DNS rebind between that check and the browser's connect is a residual risk
 (ADR 0003).
 
+## Scraping
+
+Scrape mode checks robots.txt before a page fetch. A served file is honored
+for `User-agent: *`. A clean 404 or 410 means the host published no file, so
+the fetch is allowed. A network error or 5xx fails closed unless
+`ROBOTS_FAIL_OPEN=true`. `SCRAPER_DENY_DOMAINS` is a kill switch that blocks
+those hosts even when robots allows them. Two scrapes of the same host stay
+at least one second apart. A paywall is labeled from page markup and is not
+fetched by an alternate URL.
+
 ## HTML
 
 Ingested HTML is allowlisted with `nh3` (`app.utils.sanitize`). Links receive

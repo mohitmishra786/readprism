@@ -15,7 +15,6 @@ from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
 
-from app.config import get_settings
 from app.utils.logging import get_logger, sanitize_log
 from app.utils.ssrf import UnsafeURLError, safe_fetch, validate_public_url
 
@@ -45,6 +44,7 @@ class FeedCandidate:
     url: str
     method: str
     rank: int
+    tier: str = "fully_tracked"
 
 
 def _origin(url: str) -> str:
@@ -157,18 +157,11 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
 
 
 def rsshub_candidates(page_url: str) -> list[FeedCandidate]:
-    base = get_settings().rsshub_base_url.strip().rstrip("/")
-    if not base:
-        return []
-    parsed = urlparse(page_url)
-    host = parsed.netloc.lower().removeprefix("www.")
-    parts = _segments(page_url)
-    routes: list[str] = []
-    if host in {"twitter.com", "x.com"} and parts:
-        routes.append(f"{base}/twitter/user/{parts[0]}")
-    if not routes:
-        return []
-    return [FeedCandidate(url, "rsshub", _RANK["rsshub"]) for url in routes]
+    from app.services.ingestion.rsshub import TIER, candidate_urls
+
+    return [
+        FeedCandidate(url, "rsshub", _RANK["rsshub"], tier=TIER) for url in candidate_urls(page_url)
+    ]
 
 
 def _looks_like_feed(text: str) -> bool:

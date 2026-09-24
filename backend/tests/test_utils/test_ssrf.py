@@ -82,6 +82,27 @@ def test_rejects_decimal_loopback():
 
 
 @pytest.mark.asyncio
+async def test_permanent_redirect_is_recorded_and_temporary_is_not():
+    import httpx
+
+    def permanent(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/old":
+            return httpx.Response(301, headers={"Location": "https://1.0.0.1/new"})
+        return httpx.Response(200, text="ok")
+
+    resp = await ssrf.safe_fetch("https://1.1.1.1/old", transport=httpx.MockTransport(permanent))
+    assert resp.headers.get("x-readprism-permanent-url") == "https://1.0.0.1/new"
+
+    def temporary(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/old":
+            return httpx.Response(302, headers={"Location": "https://1.0.0.1/new"})
+        return httpx.Response(200, text="ok")
+
+    resp = await ssrf.safe_fetch("https://1.1.1.1/old", transport=httpx.MockTransport(temporary))
+    assert "x-readprism-permanent-url" not in {key.lower() for key in resp.headers}
+
+
+@pytest.mark.asyncio
 async def test_redirect_to_private_is_blocked():
     import httpx
 

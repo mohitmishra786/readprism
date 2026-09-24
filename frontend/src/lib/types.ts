@@ -80,6 +80,9 @@ export interface ContentItem {
   is_original_reporting: boolean | null;
   topic_clusters: string[];
   summarization_cached: boolean;
+  paywalled?: boolean;
+  page_type?: string | null;
+  language?: string | null;
   created_at: string;
 }
 

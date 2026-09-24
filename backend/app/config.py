@@ -108,6 +108,15 @@ class Settings(BaseSettings):
     # Set 0 to disable pruning (keep full text indefinitely).
     content_full_text_retention_days: int = 90
     content_excerpt_chars: int = 500
+    content_per_source_cap: int = 500
+    source_backfill_limit: int = 20
+    digest_per_source_cap: int = 3
+    # Comma-separated hosts the scraper will not touch, even if robots allows them.
+    scraper_deny_domains: str = ""
+    postmark_webhook_secret: str = ""
+    resend_webhook_secret: str = ""
+    cloudflare_email_webhook_secret: str = ""
+    newsletter_domain: str = "newsletters.readprism.local"
 
     # Scraping
     browserless_url: str = "http://browserless:3000"

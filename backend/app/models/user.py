@@ -25,6 +25,8 @@ class User(Base):
     serendipity_percentage: Mapped[int] = mapped_column(Integer, default=15)
     tier: Mapped[str] = mapped_column(String, default="free")
     timezone: Mapped[str] = mapped_column(String, default="UTC")
+    # Local part of the inbound newsletter address: u.{token}@the configured domain.
+    newsletter_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

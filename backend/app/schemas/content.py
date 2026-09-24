@@ -27,6 +27,11 @@ class ContentItemRead(BaseModel):
     is_original_reporting: bool | None
     topic_clusters: list
     summarization_cached: bool
+    paywalled: bool = False
+    page_type: str | None = None
+    language: str | None = None
+    lead_image_url: str | None = None
+    origin: str = "followed"
     created_at: datetime
 
 

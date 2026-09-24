@@ -55,6 +55,17 @@ async def _ingest_all_feeds_async() -> dict:
                         full_text=raw.full_text,
                         word_count=raw.word_count,
                         transcript_url=raw.transcript_url,
+                        guid=raw.guid,
+                        simhash=raw.simhash,
+                        extraction_method=raw.extraction_method,
+                        extraction_confidence=raw.extraction_confidence,
+                        page_type=raw.page_type,
+                        language=raw.language,
+                        lead_image_url=raw.lead_image_url,
+                        paywalled=raw.paywalled,
+                        rankable=raw.rankable,
+                        origin=raw.origin or "followed",
+                        reading_time_minutes=raw.reading_time_minutes,
                     )
                     session.add(item)
                     total_new += 1

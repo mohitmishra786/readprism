@@ -33,6 +33,7 @@ class FeedFetchResult:
     etag: str | None = None
     last_modified: str | None = None
     status_code: int | None = None
+    permanent_url: str | None = None
 
 
 @dataclass
@@ -41,6 +42,7 @@ class _HttpFeed:
     body: bytes | None
     etag: str | None
     last_modified: str | None
+    permanent_url: str | None = None
 
 
 def _conditional_headers(etag: str | None, last_modified: str | None) -> dict[str, str]:
@@ -63,6 +65,17 @@ class RawContentItem:
     source_feed_url: str | None = None
     creator_platform_id: str | None = None
     transcript_url: str | None = None
+    guid: str | None = None
+    simhash: str | None = None
+    extraction_method: str | None = None
+    extraction_confidence: float | None = None
+    page_type: str | None = None
+    language: str | None = None
+    lead_image_url: str | None = None
+    paywalled: bool = False
+    rankable: bool = True
+    origin: str = "followed"
+    reading_time_minutes: int | None = None
 
 
 def _count_words(text: str) -> int:
@@ -165,7 +178,8 @@ async def _load_feed_bytes(
     except UnsafeXMLError as e:
         logger.warning("Rejected unsafe feed XML from %s: %s", sanitize_log(url), e)
         return None
-    return _HttpFeed(resp.status_code, body, response_etag, response_modified)
+    permanent = resp.headers.get("x-readprism-permanent-url")
+    return _HttpFeed(resp.status_code, body, response_etag, response_modified, permanent)
 
 
 _PODCAST_NS = "https://podcastindex.org/namespace/1.0"
@@ -219,6 +233,7 @@ def _items_from_feed(feed, source_url: str, raw_xml: str | None = None) -> list[
             continue
         text = _extract_text(entry)
         word_count = _count_words(text) if text else None
+        guid = getattr(entry, "id", None) or getattr(entry, "guid", None)
         items.append(
             RawContentItem(
                 url=link,
@@ -231,6 +246,7 @@ def _items_from_feed(feed, source_url: str, raw_xml: str | None = None) -> list[
                 transcript_url=from_xml[index]
                 if index < len(from_xml)
                 else _transcript_url(entry, feed),
+                guid=str(guid) if guid else None,
             )
         )
     return items
@@ -252,6 +268,7 @@ async def fetch_feed(
                 etag=primary.etag,
                 last_modified=primary.last_modified,
                 status_code=304,
+                permanent_url=primary.permanent_url,
             )
         if (
             primary is not None
@@ -263,6 +280,7 @@ async def fetch_feed(
                 etag=primary.etag,
                 last_modified=primary.last_modified,
                 status_code=primary.status,
+                permanent_url=primary.permanent_url,
             )
         feed = feedparser.parse(primary.body) if primary and primary.body else None
         # A site homepage is not a feed. A 304 must not reach this branch.
@@ -299,6 +317,7 @@ async def fetch_feed(
             ),
             etag=primary.etag if primary else None,
             last_modified=primary.last_modified if primary else None,
+            permanent_url=primary.permanent_url if primary else None,
         )
     except Exception as e:
         logger.error(f"Failed to parse feed {url}: {e}")
