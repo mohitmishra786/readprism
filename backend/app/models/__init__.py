@@ -1,7 +1,13 @@
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.creator import Creator, CreatorPlatform
 from app.models.creator_trust import CreatorTopicTrust
-from app.models.digest import Digest, DigestFeedbackPrompt, DigestItem
+from app.models.digest import (
+    Digest,
+    DigestFeedbackPrompt,
+    DigestImpression,
+    DigestItem,
+    RankerWeightRevision,
+)
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.source import Source
@@ -25,7 +31,9 @@ __all__ = [
     "InterestEdge",
     "Digest",
     "DigestItem",
+    "DigestImpression",
     "DigestFeedbackPrompt",
+    "RankerWeightRevision",
     "UserMetaWeights",
     "Team",
     "TeamMember",

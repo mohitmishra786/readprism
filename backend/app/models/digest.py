@@ -59,6 +59,48 @@ class Digest(Base):
     )
 
 
+class DigestImpression(Base):
+    """One row every time a ranked item is shown. Training skips unread skips."""
+
+    __tablename__ = "digest_impressions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    content_item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("content_items.id", ondelete="CASCADE"), nullable=False
+    )
+    digest_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("digests.id", ondelete="CASCADE"), nullable=True
+    )
+    section: Mapped[str] = mapped_column(String, default="feed")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    features_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    weights_version: Mapped[str] = mapped_column(String, default="2")
+    exploration: Mapped[bool] = mapped_column(Boolean, default=False)
+    propensity: Mapped[float] = mapped_column(Float, default=1.0)
+    viewed: Mapped[bool] = mapped_column(Boolean, default=False)
+    shown_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class RankerWeightRevision(Base):
+    __tablename__ = "ranker_weight_revisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    version: Mapped[str] = mapped_column(String, nullable=False)
+    weights: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class DigestItem(Base):
     __tablename__ = "digest_items"
 

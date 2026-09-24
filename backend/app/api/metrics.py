@@ -95,6 +95,16 @@ async def email_deliverability() -> dict:
     return await analytics.email_deliverability()
 
 
+@router.post("/recompute-scores", dependencies=[Depends(require_metrics_token)])
+async def recompute_scores(session: AsyncSession = Depends(get_db)) -> dict:
+    """List items the ranker version should rescore. The Celery task does the write."""
+    from app.models.content import ContentItem
+    from app.services.ranking.phase2.learning import RANKER_VERSION
+
+    ids = (await session.execute(select(ContentItem.id))).scalars().all()
+    return {"ranker_version": RANKER_VERSION, "items": len(ids)}
+
+
 @router.get("/ingestion", dependencies=[Depends(require_metrics_token)])
 async def ingestion_metrics(session: AsyncSession = Depends(get_db)) -> dict:
     """Fetch success, extraction method mix, and ingest-to-score lag."""

@@ -23,6 +23,11 @@ async def compute(
     interest_graph: UserInterestGraph,
     session: AsyncSession,
 ) -> float:
+    # Discovery-origin items are the suggestion pool. They can score before the
+    # user has an embedding history. Followed items keep the previous rules.
+    if getattr(content, "origin", None) == "discovery":
+        return 0.8
+
     # Only meaningful after 2+ weeks of usage
     user_age_days = (datetime.now(UTC) - user.created_at.replace(tzinfo=UTC)).days
     if user_age_days < MIN_USER_DAYS:

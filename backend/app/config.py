@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # Embeddings (local sentence-transformers)
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_device: str = "cpu"
+    # Leave false until the golden retrieval ADR says nomic beat MiniLM.
+    embedding_cutover_enabled: bool = False
+    ranking_exploration_enabled: bool = False
+    ranker_version: str = "2"
 
     # Email delivery — Zoho SMTP
     zoho_smtp_host: str = "smtppro.zoho.in"

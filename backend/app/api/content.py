@@ -44,13 +44,29 @@ async def get_feed(
     result = await session.execute(query)
     rows = result.fetchall()
 
+    from app.models.digest import DigestImpression
+    from app.services.ranking.phase2.learning import RANKER_VERSION
+
     feed_items = []
-    for content_item, interaction in rows:
+    for index, (content_item, interaction) in enumerate(rows):
         feed_items.append(
             FeedItem(
                 content=ContentItemRead.model_validate(content_item),
                 prs_score=interaction.prs_score if interaction else None,
                 signal_breakdown={},
+            )
+        )
+        session.add(
+            DigestImpression(
+                user_id=current_user.id,
+                content_item_id=content_item.id,
+                section=section or "feed",
+                position=offset + index,
+                score=float(interaction.prs_score)
+                if interaction and interaction.prs_score is not None
+                else 0.0,
+                features_json={},
+                weights_version=RANKER_VERSION,
             )
         )
 

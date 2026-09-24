@@ -46,6 +46,11 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
         )
         embedding = await embedding_svc.encode_single(embed_text)
         item.embedding = embedding
+        from app.services.embeddings.registry import MINILM, MINILM_DIM, VERSION
+
+        item.embedding_model = MINILM
+        item.embedding_dim = MINILM_DIM
+        item.embedding_version = VERSION
         await session.flush()
 
         # Semantic deduplication: mark item inactive if near-duplicate exists

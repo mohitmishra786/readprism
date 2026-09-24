@@ -81,6 +81,9 @@ class ContentItem(Base):
     rankable: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     origin: Mapped[str] = mapped_column(String(32), default="followed", server_default="followed")
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    embedding_dim: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    embedding_version: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -43,11 +43,16 @@ async def compute(
                 WHERE uci.user_id = :user_id
                   AND uci.read_completion_pct IS NOT NULL
                   AND ci.embedding IS NOT NULL
+                  AND ci.id != :item_id
                 ORDER BY ci.embedding <=> CAST(:embedding AS vector)
                 LIMIT 20
             """
             ),
-            {"user_id": str(user.id), "embedding": str(content.embedding)},
+            {
+                "user_id": str(user.id),
+                "embedding": str(content.embedding),
+                "item_id": str(content.id),
+            },
         )
         rows = result.fetchall()
     except Exception as e:
