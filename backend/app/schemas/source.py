@@ -31,8 +31,11 @@ class SourceRead(BaseModel):
     trust_weight: float
     is_active: bool
     last_fetched_at: datetime | None
+    last_error_at: datetime | None = None
+    last_error: str | None = None
     fetch_error_count: int
-    health: str  # 'ok' | 'degraded' | 'failing' — derived from fetch_error_count
+    health: str  # healthy | degraded | failing | dead
+    items_per_week: int = 0
     topics: list
     priority: str
     created_at: datetime

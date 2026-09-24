@@ -22,8 +22,11 @@ export interface Source {
   trust_weight: number;
   is_active: boolean;
   last_fetched_at: string | null;
+  last_error_at: string | null;
+  last_error: string | null;
   fetch_error_count: number;
-  health: "ok" | "degraded" | "failing";
+  health: "healthy" | "degraded" | "failing" | "dead";
+  items_per_week: number;
   topics: string[];
   priority: string;
   created_at: string;

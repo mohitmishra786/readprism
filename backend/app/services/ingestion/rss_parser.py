@@ -228,8 +228,10 @@ async def fetch_feed(
                 last_modified=primary.last_modified,
                 status_code=304,
             )
-        if primary is not None and primary.status in {410, 429} or (
-            primary is not None and primary.status >= 500
+        if (
+            primary is not None
+            and primary.status in {410, 429}
+            or (primary is not None and primary.status >= 500)
         ):
             return FeedFetchResult(
                 items=[],

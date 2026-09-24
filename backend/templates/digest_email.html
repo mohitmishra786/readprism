@@ -58,6 +58,9 @@
 {% endfor %}
 
 <div class="footer">
+  {% if dead_sources %}
+  <p>These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.</p>
+  {% endif %}
   <p>You received this because you have a ReadPrism account.
      <a href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
      <a href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a>

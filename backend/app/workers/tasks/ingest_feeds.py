@@ -62,17 +62,25 @@ async def _ingest_all_feeds_async() -> dict:
 
                 status = getattr(source, "last_http_status", None)
                 moment = datetime.now(UTC)
+                failed = status == 429 or (isinstance(status, int) and status >= 500)
+                gone = status == 410
+                if failed or gone:
+                    source.last_error_at = moment
+                    source.last_error = f"HTTP {status}"
                 apply_poll_result(
                     source,
                     now=moment,
                     rng=rng,
-                    new_items=bool(raw_items) and status not in {410, 429},
-                    error=status == 429 or (isinstance(status, int) and status >= 500),
-                    gone=status == 410,
+                    new_items=bool(raw_items) and not failed and not gone,
+                    error=failed,
+                    gone=gone,
                     retry_after=getattr(source, "retry_after", None),
                     gap_seconds=_seconds_since(source.last_fetched_at, moment),
                 )
-                source.last_fetched_at = datetime.now(UTC)
+                if not failed and not gone:
+                    source.last_fetched_at = moment
+                    source.last_error = None
+                    source.last_error_at = None
                 await session.flush()
 
                 # Enqueue embedding computation for each new item
