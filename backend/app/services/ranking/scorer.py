@@ -49,7 +49,9 @@ async def compute_prs(
         .order_by(UserContentInteraction.created_at.desc())
         .limit(200)
     )
-    interaction_history = list(history_result.scalars().all())
+    interaction_history = [
+        row for row in history_result.scalars().all() if row.content_item_id != content.id
+    ]
 
     # Load interest graph
     nodes_result = await session.execute(

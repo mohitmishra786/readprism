@@ -175,6 +175,9 @@ export function ContentCard({
             {showWhyTooltip && (
               <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg bg-stone-900 p-3 text-xs text-white shadow-xl">
                 <div className="mb-2 font-semibold">Why this is ranked here</div>
+                {typeof signalBreakdown?.explanation === "string" && (
+                  <p className="mb-2 text-stone-100">{signalBreakdown.explanation}</p>
+                )}
                 {whyTopics && (
                   <div className="mb-2 rounded bg-white/10 px-2 py-1 capitalize opacity-95">
                     {whyTopics}

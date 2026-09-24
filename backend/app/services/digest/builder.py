@@ -195,6 +195,10 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
 
     # Create digest items
+    from app.services.ranking.meta_weights import get_meta_weights
+    from app.services.ranking.phase2.contract import SIGNALS
+
+    meta = await get_meta_weights(user.id, session)
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
@@ -202,6 +206,18 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             explanation = explain_top_topics(getattr(item, "embedding", None), interest_graph)
             if explanation:
                 clean_breakdown["why_topics"] = explanation
+            from app.services.ranking.phase2.learning import RANKER_VERSION
+            from app.services.ranking.phase2.learning import explain as explain_score
+
+            numeric = {
+                key: float(value)
+                for key, value in clean_breakdown.items()
+                if key in SIGNALS and isinstance(value, int | float)
+            }
+            if numeric:
+                text, contributions = explain_score(numeric, meta.weights)
+                clean_breakdown["explanation"] = text
+                clean_breakdown["contributions"] = contributions
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,
@@ -211,6 +227,22 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 signal_breakdown=clean_breakdown,
             )
             session.add(di)
+            from app.models.digest import DigestImpression
+
+            session.add(
+                DigestImpression(
+                    user_id=user.id,
+                    content_item_id=item.id,
+                    digest_id=digest.id,
+                    section=section_name,
+                    position=position,
+                    score=float(prs),
+                    features_json=numeric,
+                    weights_version=RANKER_VERSION,
+                    exploration=bool(clean_breakdown.get("exploration")),
+                    propensity=1.0,
+                )
+            )
             position += 1
 
             # Update interaction to mark as surfaced in digest

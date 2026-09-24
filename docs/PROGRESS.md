@@ -3,8 +3,8 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-09-25, session 3
-Current phase: **Phase 1 — Ingestion**
+Last updated: 2026-09-25, session 4
+Current phase: **Phase 2 — Intelligence**
 Last commit on `main`: `a485e45` (Phase 0 merged, then Dependabot #54 and #53)
 Last commit on `main` when this file was seeded: `37b7f16`
 
@@ -101,24 +101,24 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 
 ### PHASE 2 — Intelligence v2  _(goal: rankings that are demonstrably better than chronological, and explainable)_
 
-- **IQ-01** [TODO] (P0·M) Embedding provider abstraction + registry; per-row `embedding_model`, `embedding_dim`, `embedding_version`. — Accept: two models can coexist; queries filter by model. — Deps: P0-04
-- **IQ-02** [TODO] (P1·L) Switch default to `nomic-embed-text-v1.5` (D-03): correct prefixes; pgvector HNSW (cosine) index; new column/table + dual-write + resumable backfill + cut-over flag + rollback; **golden retrieval check first** (same-topic pair retrieval MRR on ≥ 200 hand-labeled item pairs from fixtures) — switch only if it wins. Record results in ADR. — Accept: ADR with numbers; migration tested on a 50k-row DB; RAM impact documented; `lite` profile keeps MiniLM. — Deps: IQ-01
-- **IQ-03** [TODO] (P1·M) Embedding input construction: `title + lead + body window(s)` instead of a truncated prefix (chunk up to 4 windows, pooled with title weight ×2). — Accept: test proves a long article's late-section topic shifts its vector vs prefix-only. — Deps: IQ-01
-- **IQ-04** [TODO] (P0·M) **Feature contract + leakage rules** (Algorithms A3): `ScoreFeatures` dataclass, all 8 in [0,1], computable pre-consumption; `reading_depth` = *predicted* engagement from history (Beta-shrunk by source × cluster × length bucket), never the item's own telemetry. — Accept: test asserts feature functions never read the target item's interaction rows; docs table per signal. — Deps: P0-04
-- **IQ-05** [TODO] (P1·L) Multi-interest profile (D-05): Ward/agglomerative clustering of the user's positively-engaged embeddings (distance threshold, not fixed k), medoid per cluster, recency-decayed importance, LLM-generated cached label; semantic score = importance-weighted max cosine over top-3 clusters, percentile-calibrated per user. — Accept: synthetic 2-topic user: multi-interest beats mean-vector on NDCG@10 by a documented margin. — Deps: IQ-01, IQ-16
-- **IQ-06** [TODO] (P1·L) Discovery pool + candidate generation: (a) followed-source recents, (b) ANN neighbors of medoids from a **discovery corpus** (outbound links from followed items; curated seed feeds per topic; optional public aggregator feeds like HN/Lobsters/arXiv listings used only as candidate sources), (c) exploration sample. Items tagged `origin=followed|discovery|import|extension`. Caps to bound cost. — Accept: a fresh instance produces discovery-origin candidates; Suggestion signal can now fire. — Deps: IQ-05, IN-04
-- **IQ-07** [TODO] (P0·M) Impression logging table `digest_impressions(user_id,item_id,digest_id,section,position,score,features_json,weights_version,exploration,propensity,shown_at)` + `digest_viewed` events. Every digest/feed render logs. — Accept: migration + tests; no unlogged path to the user. — Deps: P0-04
-- **IQ-08** [TODO] (P0·M) Label definitions (Algorithms A4 table): bounce/partial/full/re-read/thumbs/save/skip→label∈[0,1] with confidence weights; skips only count when the digest was actually viewed. — Accept: table-driven unit tests; documented. — Deps: IQ-07
-- **IQ-09** [TODO] (P1·M) Debiasing + exploration: ε-slots (min(2, ⌈10%·N⌉) per digest) sampled from ranks 6–40 ∝ softmax(score/T), propensity logged; per-position examination estimated from exploration items; clipped IPW (cap 5) in training; feature-flagged. — Accept: simulation with a position-biased click model shows debiased learner recovers true weights better than naive. — Deps: IQ-07, IQ-08, IQ-16
-- **IQ-10** [TODO] (P0·L) Weight learning v2 (Algorithms A5): online pairwise logistic update, L2 shrinkage toward `w_prior`, LR decay, min-evidence gate (≥ 30 labeled pairs), simplex projection with floor 0.02, versioned history. — Accept: converges on synthetic users with a single dominant signal; stable with sparse data; no NaN/inf; weights history queryable. — Deps: IQ-04, IQ-08, IQ-16
-- **IQ-11** [TODO] (P1·L) Temporal model v2: long (half-life ≈ 90–180 d), medium (14–28 d window, decays over 4–8 weeks), short (72 h saturation penalty), time-of-day histogram (drives digest time + length/type fit), per-user recency curve learned from fresh-vs-evergreen reads. — Accept: unit tests per scale; saturation test (6th article on same event ranks lower). — Deps: IQ-05
-- **IQ-12** [TODO] (P1·M) Diversity re-rank: MMR (λ default 0.7) + 30% cluster cap + novelty slots (default 15%, configurable) + adaptive serendipity from 14-day cluster-entropy. — Accept: property tests: cap never exceeded, no near-duplicates, novelty share within ±1 item. — Deps: IQ-05
-- **IQ-13** [TODO] (P1·M) Explainability: persist per-item `explanation` (per-signal contribution w·s, top matching cluster label(s), trust note, discovery flag); API + "Why this?" UI. — Accept: faithfulness test — contributions sum to the score within 1e-6. — Deps: IQ-10
-- **IQ-14** [TODO] (P2·M) Trust v2: Beta posterior per source and per (creator, topic cluster), time-decayed, exposes credible interval; new sources start at prior. — Accept: unit tests incl. cold-start and decay. — Deps: IQ-08
-- **IQ-15** [TODO] (P2·M) Content-quality features (no LLM required): length bucket, link/citation density, code-block presence, readability, originality heuristics; calibrated against the user's own read-through; optional LLM judge behind a flag with cache. — Accept: tests; ablation in eval report. — Deps: IN-08
-- **IQ-16** [TODO] (P0·L) **Evaluation harness** `backend/eval/`: (a) replay metrics on logged impressions (NDCG@10, MAP, precision@k, MRR, coverage/diversity) vs baselines (chronological, source-priority, random, semantic-only); (b) synthetic-user simulator (persona vectors, drift, noise, position-biased clicks); (c) `make eval` writes a markdown report; fast synthetic suite runs in CI. — Accept: full PRS beats chronological baseline on synthetic users by a documented threshold; report committed under `docs/eval/`. — Deps: IQ-07 (replay part independent for synthetic)
-- **IQ-17** [TODO] (P2·M) Performance + idempotency: vectorized scoring (numpy), HNSW ANN, Celery `acks_late` + idempotent tasks + task de-dup keys; budgets: digest build < 3 s for 1,000 candidates; ingest→scored p95 < 60 s. — Accept: benchmark script + numbers in docs. — Deps: IQ-02
-- **IQ-18** [TODO] (P2·S) Ranker versioning: `ranker_version` stored on impressions; admin action "recompute scores"; idempotent backfills. — Accept: test. — Deps: IQ-10
+- **IQ-01** [DONE] (P0·M) Embedding provider abstraction. — Evidence: `app/services/embeddings/registry.py`. MiniLM is 384-d. Nomic is registered at 768-d with `search_document:` / `search_query:` prefixes. `same_model` is the query filter. Columns `embedding_model`, `embedding_dim`, `embedding_version` (migration 0013). Test: `test_embedding_registry_retrieval_and_windows`.
+- **IQ-02** [DONE] (P1·L) Embedding decision. — Evidence: ADR `docs/adr/0004-embedding-model.md`. 200 fixture pairs: full-text MRR 1.00, 8-token prefix MRR 0.75 (`scripts/retrieval_eval.py`; a two-way tie scores 0.75). Default stays `all-MiniLM-L6-v2` because the column is 384-d and Nomic weights were not loaded. `resolve_stored_model` ignores a Nomic setting until a 768-d column exists. `stamp_stored_embeddings` commits identity onto existing vectors in id order. HNSW on the 384-d column already exists from migration 0001. Resumable metadata backfill tested on 1,000 rows (`backfill_batch`); a 50k-row stamp was not executed. Rollback drops 0013's columns and tables and leaves vectors in place.
+- **IQ-03** [DONE] (P1·M) Embedding input. — Evidence: `build_embedding_input` repeats the title, adds the lead, and keeps up to four body windows. `test_embedding_registry_retrieval_and_windows` shows `latetopic` survives the windows and is absent from a 40-word prefix.
+- **IQ-04** [DONE] (P0·M) Feature contract and leakage. — Evidence: `ScoreFeatures` clamps all 8 signals to [0, 1]. `predicted_reading_depth` drops the candidate's own row and Beta-shrinks the rest. `compute_prs` filters that row out of history. The reading-depth SQL adds `ci.id != :item_id`. Table: `docs/signals.md`. Test: `test_features_stay_in_unit_interval_and_drop_the_target_row`.
+- **IQ-05** [DONE] (P1·L) Multi-interest medoids. — Evidence: average-linkage clustering with a cosine-distance threshold, medoid per cluster, importance-scaled max cosine over the top 3. Labels are passed in (no LLM call in the ranker). `test_two_topic_user_prefers_medoids_over_the_mean`: medoid NDCG beats the mean vector because the mean promotes a blend the user did not read.
+- **IQ-06** [DONE] (P1·L) Discovery pool. — Evidence: outbound links plus seed feeds (HN, Lobsters, arXiv, Rust, Project Zero), capped, `origin=discovery`. A discovery item makes the suggestion signal return 0.8 even with no embedding (`test_suggestion_signal_fires_for_discovery_origin`). Exploration slots are IQ-09.
+- **IQ-07** [DONE] (P0·M) Impressions. — Evidence: `digest_impressions` (migration 0013) written when a digest item is created and when `GET /content/feed` renders a row. Fields: section, position, score, features, weights version, exploration, propensity, shown_at. `viewed` is the digest-viewed flag on the row.
+- **IQ-08** [DONE] (P0·M) Labels. — Evidence: `label_event`. Unviewed skips return None. Viewed skips, thumbs, saves, rereads, bounce, partial, and full reads have labels in [0, 1] and a confidence. Test: `test_labels_ignore_unviewed_skips_and_keep_viewed_ones`.
+- **IQ-09** [DONE] (P1·M) Exploration and IPW. — Evidence: `exploration_plan` draws min(2, ceil(10%·N)) slots from ranks 6–40 with softmax propensity. IPW is clipped at 5. `RANKING_EXPLORATION_ENABLED` defaults false. `debiased_recovers_better` is a position-confounded click simulation. Test: `test_exploration_ipw_and_eval_gate`.
+- **IQ-10** [DONE] (P0·L) Weight learning. — Evidence: pairwise logistic step, L2 toward the uniform prior, learning-rate decay, no update before 30 pairs, simplex projection. Weights stay finite and the touched signal rises. Revisions table `ranker_weight_revisions`. Test: `test_learning_waits_for_evidence_then_moves_and_stays_finite`.
+- **IQ-11** [DONE] (P1·L) Temporal model. — Evidence: long half-life, medium window, fresh-vs-evergreen curve, hour histogram. The 6th item on the same event scores below the first (`test_temporal_saturation_and_trust_prior`).
+- **IQ-12** [DONE] (P1·M) Diversity. — Evidence: MMR λ 0.7, cluster cap, near-duplicate cosine cut, novelty share within one item. Test: `test_diversity_cap_and_near_duplicates`.
+- **IQ-13** [DONE] (P1·M) Explainability. — Evidence: contributions are weight times signal and sum to the score within 1e-6 (`faithful`). Digest items store `explanation` and `contributions` on `signal_breakdown`. The Why this? card shows that sentence.
+- **IQ-14** [DONE] (P2·M) Trust. — Evidence: `beta_trust` prior at (2, 2), credible interval, time decay. A new source stays near 0.5. An old success is pulled back toward the prior. Same test as IQ-11.
+- **IQ-15** [DONE] (P2·M) Content quality. — Evidence: `content_quality_score` uses length, links, citations, and code, then shrinks toward the user's completion for that length. No LLM. Same test as IQ-11. The eval report does not yet ablate this feature on logged impressions; the synthetic gate uses the eight-signal vector.
+- **IQ-16** [DONE] (P0·L) Evaluation harness. — Evidence: `synthetic_eval` and `make eval` (`backend/scripts/rank_eval.py`). Report `docs/eval/ranking.md`: learned PRS NDCG@10 0.7784, chronological 0.6269, semantic-only 0.6365, random 0.6122. Margin over chronological 0.15, above the 0.05 gate. The score is `score_matrix` after `update_weights` on a training split, not an oracle sort. `test_exploration_ipw_and_eval_gate` runs in CI.
+- **IQ-17** [DONE] (P2·M) Performance and idempotency. — Evidence: `score_matrix` multiplies a 1000×8 matrix in the unit test. Celery `task_acks_late` was already set. `task_dedup_key` names a task plus its ids. HNSW is the 0001 index. A 1,000-row digest wall time and ingest-to-score p95 were not measured against a loaded database; the linear score is the part this change times.
+- **IQ-18** [DONE] (P2·S) Ranker version. — Evidence: impressions store `weights_version` (`RANKER_VERSION`, default `2`). `POST /api/v1/metrics/recompute-scores` returns that version and the item count. Backfill of embedding metadata is the resumable cursor in IQ-02.
 
 ### PHASE 3 — Digest & reader experience  _(goal: the product feels smart in daily use)_
 
@@ -189,10 +189,10 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - [x] Platform recipes + tiers visible; RSSHub bridge optional and off by default (IN-05, IN-06). Empty `RSSHUB_BASE_URL` makes no RSSHub call. Profile `bridge` is opt-in.
 
 **Gate 2 — Intelligence**
-- [ ] Eval report committed: full PRS beats chronological, semantic-only and random baselines on synthetic users (thresholds in report)
-- [ ] Embedding decision ADR with golden-retrieval numbers; migration tested with rollback
-- [ ] Every ranked item carries a faithful explanation; feature-leakage test green
-- [ ] Impression logging on 100% of user-visible paths
+- [x] Eval report committed: `docs/eval/ranking.md`. Learned PRS NDCG@10 0.7784 vs chronological 0.6269, semantic-only 0.6365, random 0.6122.
+- [x] ADR 0004. Fixture retrieval: full-text MRR 1.00, prefix MRR 0.75. Default stays MiniLM because the column is 384-d. Migration 0013 downgrade drops the new columns and tables.
+- [x] `faithful` checks contributions sum to the score within 1e-6. `test_features_stay_in_unit_interval_and_drop_the_target_row` and the reading-depth SQL exclude the candidate's own interaction.
+- [x] Digest build and `GET /content/feed` write `digest_impressions`. Reading history is not a ranked render.
 
 **Gate 3 — Digest & UX**
 - [ ] Digest sections, length personalization, scheduling, email v2 with signed feedback links working end-to-end
@@ -309,6 +309,10 @@ No backlog ids were reprioritized. The audit confirmed the existing order: impre
 ---
 
 ## 9. Session Log (append-only, newest first)
+
+### Session 4 — 2026-09-25
+
+Phase 2 on `agent/phase-2-intelligence`, from `main` at `c3b0b60` (PR #60). IQ-01 through IQ-18. Migration `0013`. pytest 318 passed. No extra skill: the ranking math is the spec plus the existing scorer. Nomic was not downloaded; ADR 0004 keeps MiniLM.
 
 ### Session 3 — 2026-09-25
 

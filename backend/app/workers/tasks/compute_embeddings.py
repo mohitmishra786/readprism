@@ -23,7 +23,7 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
     from app.models.content import ContentItem
     from app.models.source import Source
     from app.services.summarization.summarizer import SummarizationService
-    from app.utils.embeddings import EmbeddingService, get_embedding_service
+    from app.utils.embeddings import get_embedding_service
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(ContentItem).where(ContentItem.id == content_item_id))
@@ -40,12 +40,32 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
         # Embed
         embedding_svc = get_embedding_service()
-        embed_text = EmbeddingService.build_embedding_text(
-            title=item.title,
-            summary_brief=item.summary_brief,
+        from app.services.embeddings.registry import MINILM_DIM, VERSION
+        from app.services.embeddings.text import embedding_pieces, pool_vectors
+
+        pieces = embedding_pieces(
+            title=item.title or "",
+            lead=item.summary_brief or "",
+            body=item.full_text or "",
         )
-        embedding = await embedding_svc.encode_single(embed_text)
+        if not pieces:
+            await session.commit()
+            return {"status": "empty", "content_item_id": str(content_item_id)}
+        encoded = await embedding_svc.encode_batch_cached(pieces)
+        if any(len(vector) != MINILM_DIM for vector in encoded):
+            logger.error(
+                "Refusing embedding for %s: model %s did not return %s dimensions",
+                content_item_id,
+                embedding_svc.model_name,
+                MINILM_DIM,
+            )
+            await session.commit()
+            return {"status": "dimension_mismatch", "content_item_id": str(content_item_id)}
+        embedding = pool_vectors(encoded)
         item.embedding = embedding
+        item.embedding_model = embedding_svc.model_name
+        item.embedding_dim = len(embedding)
+        item.embedding_version = VERSION
         await session.flush()
 
         # Semantic deduplication: mark item inactive if near-duplicate exists

@@ -58,7 +58,11 @@ def _row_to_dict(obj: Any) -> dict[str, Any]:
 
 async def _all(session: AsyncSession, stmt) -> list[dict[str, Any]]:
     result = await session.execute(stmt)
-    return [_row_to_dict(row) for row in result.scalars().all()]
+    exported: list[dict[str, Any]] = []
+    item: Any
+    for item in result.scalars().all():
+        exported.append(_row_to_dict(item))
+    return exported
 
 
 async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
