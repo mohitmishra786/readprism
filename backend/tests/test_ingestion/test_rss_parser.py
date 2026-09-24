@@ -5,7 +5,7 @@ from unittest.mock import patch
 import httpx
 import pytest
 
-from app.services.ingestion.rss_parser import parse_feed
+from app.services.ingestion.rss_parser import fetch_feed, parse_feed
 
 SAMPLE_RSS = """<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">
@@ -85,6 +85,55 @@ async def test_parse_feed_autodiscovers_an_html_page():
     assert seen[0] == "https://example.com/"
     assert "https://example.com/feed.xml" in seen
     assert len(items) == 2
+
+
+@pytest.mark.asyncio
+async def test_second_fetch_of_unchanged_feed_is_304_and_skips_parse():
+    """A local mock server. The second request sends the stored validators and
+    the parser is not called when the server answers 304."""
+    import feedparser
+
+    calls = {"n": 0}
+
+    async def fake_fetch(url: str, **kwargs):
+        calls["n"] += 1
+        headers = kwargs.get("headers") or {}
+        assert headers.get("User-Agent", "").startswith("ReadPrism/1.0")
+        assert "br" in headers.get("Accept-Encoding", "")
+        if headers.get("If-None-Match") == '"v1"' and headers.get("If-Modified-Since"):
+            return httpx.Response(304, headers={"ETag": '"v1"'})
+        return httpx.Response(
+            200,
+            headers={"ETag": '"v1"', "Last-Modified": "Mon, 01 Jan 2024 00:00:00 GMT"},
+            content=SAMPLE_RSS.encode(),
+        )
+
+    real_parse = feedparser.parse
+    parsed = {"n": 0}
+
+    def counting_parse(body):
+        parsed["n"] += 1
+        return real_parse(body)
+
+    with (
+        patch("app.services.ingestion.rss_parser.validate_public_url", lambda url, **k: None),
+        patch("app.services.ingestion.rss_parser.safe_fetch", fake_fetch),
+        patch("app.services.ingestion.rss_parser.feedparser.parse", counting_parse),
+    ):
+        first = await fetch_feed("https://example.com/feed")
+        second = await fetch_feed(
+            "https://example.com/feed",
+            etag=first.etag,
+            last_modified=first.last_modified,
+        )
+
+    assert len(first.items) == 2
+    assert first.not_modified is False
+    assert first.etag == '"v1"'
+    assert second.not_modified is True
+    assert second.items == []
+    assert parsed["n"] == 1
+    assert calls["n"] == 2
 
 
 @pytest.mark.asyncio

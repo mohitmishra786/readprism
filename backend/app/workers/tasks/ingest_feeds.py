@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import random
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -23,13 +24,14 @@ async def _ingest_all_feeds_async() -> dict:
     from app.models.source import Source
     from app.services.ingestion.dispatcher import dispatch_source
 
-    cutoff = datetime.now(UTC) - timedelta(minutes=30)
+    now = datetime.now(UTC)
+    rng = random.Random()
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
             select(Source).where(
                 Source.is_active == True,
-                or_(Source.last_fetched_at < cutoff, Source.last_fetched_at.is_(None)),
+                or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now),
             )
         )
         sources = list(result.scalars().all())
@@ -56,8 +58,21 @@ async def _ingest_all_feeds_async() -> dict:
                     session.add(item)
                     total_new += 1
 
+                from app.services.ingestion.schedule import apply_poll_result
+
+                status = getattr(source, "last_http_status", None)
+                moment = datetime.now(UTC)
+                apply_poll_result(
+                    source,
+                    now=moment,
+                    rng=rng,
+                    new_items=bool(raw_items) and status not in {410, 429},
+                    error=status == 429 or (isinstance(status, int) and status >= 500),
+                    gone=status == 410,
+                    retry_after=getattr(source, "retry_after", None),
+                    gap_seconds=_seconds_since(source.last_fetched_at, moment),
+                )
                 source.last_fetched_at = datetime.now(UTC)
-                source.fetch_error_count = 0
                 await session.flush()
 
                 # Enqueue embedding computation for each new item
@@ -74,12 +89,22 @@ async def _ingest_all_feeds_async() -> dict:
 
             except Exception as e:
                 logger.error(f"Failed to ingest source {source.id}: {e}")
-                source.fetch_error_count = (source.fetch_error_count or 0) + 1
+                from app.services.ingestion.schedule import apply_poll_result
+
+                apply_poll_result(source, now=datetime.now(UTC), rng=rng, error=True)
                 await session.flush()
 
         await session.commit()
         logger.info(f"Ingested {total_new} new items")
         return {"new_items": total_new, "sources_processed": len(sources)}
+
+
+def _seconds_since(then: datetime | None, now: datetime) -> int:
+    if then is None:
+        return 0
+    if then.tzinfo is None:
+        then = then.replace(tzinfo=UTC)
+    return max(0, int((now - then).total_seconds()))
 
 
 @celery_app.task(name="app.workers.tasks.ingest_feeds.ingest_creator_feeds", bind=True)

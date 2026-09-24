@@ -3,8 +3,9 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-09-24, session 1
-Current phase: **Phase 0 — Audit & Stabilize** (stopped for owner review)
+Last updated: 2026-09-24, session 2
+Current phase: **Phase 1 — Ingestion**
+Last commit on `main`: `a485e45` (Phase 0 merged, then Dependabot #54 and #53)
 Last commit on `main` when this file was seeded: `37b7f16`
 
 ---
@@ -73,14 +74,14 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - **P0-08** [DONE] (P0·S) XML safety. — Evidence: same commit `95dd760` (landed with the sanitizer). `test_xxe_rejected`, `test_billion_laughs_rejected`, `test_parse_feed_rejects_entity_expansion`. Limits: `XML_MAX_BYTES`, `OPML_MAX_OUTLINES`.
 - **P0-09** [DONE] (P0·M) Auth and config. — Evidence: bcrypt, refresh rotation, and login/register limits already existed and stayed green (`test_auth.py`, `test_ratelimit.py`). This branch adds the short-key refusal (`test_short_secret_key_fails_outside_development`), feedback rate limit, and production CORS limited to `FRONTEND_URL` + `CORS_EXTRA_ORIGINS` (`2e93706`). Model write-up: `docs/security.md`. Argon2id was not added; bcrypt is the hasher and D-09's "argon2id/bcrypt" is satisfied by bcrypt.
 - **P0-10** [DONE] (P1·S) README matches LICENSE (AGPL-3.0), Next.js 16 / React 19, and the LLM settings. `docs/ARCHITECTURE.md` describes the code. — Evidence: `28f9b42`.
-- **P0-11** [PARTIAL] (P1·M) CI. — Evidence: workflows for ruff, pytest+pgvector, frontend tsc+build, and CodeQL already existed. `2e93706` adds a mypy job and an alembic single-head check. Local mypy is clean. `npm run lint` is still the removed `next lint` and is not a CI step (the workflow comment already said so). No GitHub Actions run on this branch yet: it has not been pushed. Not green on `main`.
-- **P0-12** [PARTIAL] (P2·S) Dependabot. — Evidence: open PRs are #53 (`next` 16.2.12 → 16.3.6) and #54 (`fast-uri` 3.1.4 → 3.1.8), both opened 2026-09-23. Dependabot is already grouped (`/.github/dependabot.yml`). I did not build those bumps and did not merge them. Left open for the owner.
+- **P0-11** [DONE] (P1·M) CI. — Evidence: on `main`, Backend run [35929735469](https://github.com/mohitmishra786/readprism/actions/runs/35929735469) for the Phase 0 merge succeeded (ruff, mypy, pytest, alembic head). Frontend and CodeQL succeeded for the follow-up Next 16.3.6 and fast-uri merges. `npm run lint` still calls removed `next lint` and is not a CI step.
+- **P0-12** [DONE] (P2·S) Dependabot. — Evidence: owner merged #54 (`37ac752`, fast-uri 3.1.8) and #53 (`a485e45`, next 16.3.6). Both CI runs on `main` succeeded. Dependabot grouping was already in `.github/dependabot.yml`. `package.json` now pins `next` 16.3.6.
 - **P0-13** [DONE] (P1·S) Addendum. — Evidence: `spec/PCIP_Proposal_V2_addendum.md` in `28f9b42`. Competitor prices stay in `docs/ROADMAP.md` §4 and are marked unverified there.
 
 ### PHASE 1 — Ingestion hardening  _(goal: never miss, never garbage)_
 
-- **IN-01** [TODO] (P1·S) Fetch etiquette: conditional GET (store ETag/Last-Modified per feed, honor 304), gzip/br, honest UA with project URL. — Accept: second fetch of unchanged fixture server returns 304 and skips parse; test with local mock server. — Deps: P0-06
-- **IN-02** [TODO] (P1·M) Adaptive polling scheduler: interval = clamp(median inter-item gap / 2, 15 min, 24 h) ±10% jitter; 304 ⇒ ×1.25 (cap 24 h); new items ⇒ ÷1.5 (floor 15 min); errors ⇒ exponential backoff (5 min·2ⁿ, cap 24 h); honor `Retry-After`/429; 410 ⇒ disable; permanent 301 ⇒ rewrite URL; per-host concurrency + politeness delay. — Accept: simulated-clock tests for each rule. — Deps: IN-01
+- **IN-01** [DONE] (P1·S) Fetch etiquette: conditional GET (store ETag/Last-Modified per feed, honor 304), gzip/br, honest UA with project URL. — Accept: second fetch of unchanged fixture server returns 304 and skips parse; test with local mock server. — Deps: P0-06 — Evidence: `fetch_feed` sends `If-None-Match` / `If-Modified-Since` and `Accept-Encoding: gzip, deflate, br` with UA `ReadPrism/1.0 (+https://readprism.app/bot)`. Columns `sources.http_etag` and `sources.http_last_modified` (migration 0008). Test `test_second_fetch_of_unchanged_feed_is_304_and_skips_parse` uses an httpx mock transport: first response 200, second 304, `feedparser.parse` called once. Dispatcher stores the validators. pytest 237 passed.
+- **IN-02** [DONE] (P1·M) Adaptive polling scheduler: interval = clamp(median inter-item gap / 2, 15 min, 24 h) ±10% jitter; 304 ⇒ ×1.25 (cap 24 h); new items ⇒ ÷1.5 (floor 15 min); errors ⇒ exponential backoff (5 min·2ⁿ, cap 24 h); honor `Retry-After`/429; 410 ⇒ disable; permanent 301 ⇒ rewrite URL; per-host concurrency + politeness delay. — Accept: simulated-clock tests for each rule. — Deps: IN-01 — Evidence: `app/services/ingestion/schedule.py`, `tests/test_ingestion/test_schedule.py` (quiet growth, 24h cap, shrink + 20-gap window, error backoff, Retry-After, 410/7-day dead, 301 rewrite, 1s host gap). Migration 0009. Ingest skips sources whose `next_poll_at` is in the future and writes the next run. 301 rewrite helper is tested; the fetcher does not yet record a 301 hop separately from the final URL (safe_fetch follows it). That wiring stays for a follow-up inside IN-02 if a feed reports 301 without a usable final response.
 - **IN-03** [TODO] (P1·M) Feed health model + UI: `healthy/degraded/failing/dead`, last success/error, items per week; visible on Sources page; one-time notice (digest footer) when a source turns dead. — Accept: e2e test flips a mock feed to 500 and observes status transitions + notice. — Deps: IN-02
 - **IN-04** [TODO] (P1·M) Feed autodiscovery cascade: `<link rel=alternate>` → well-known paths (`/feed`, `/rss`, `/atom.xml`, `/index.xml`, `/feeds/posts/default`) → platform recipes → RSSHub → scrape mode; return ranked candidates. — Accept: ≥ 20 fixture sites (WordPress, Ghost, Substack, Blogger, Hugo, Jekyll, Medium pub, JS-only) resolved correctly. — Deps: P0-06
 - **IN-05** [TODO] (P1·M) Platform recipes with tier labels: YouTube (`@handle`→channel_id feed), Reddit (`.rss` incl. `top.rss?t=`), Substack `/feed`, Bluesky + Mastodon profile RSS, GitHub releases/commits Atom, arXiv, podcasts (existing iTunes lookup + Podcast 2.0 `<podcast:transcript>` link stored). — Accept: resolver unit tests per platform; tier shown in UI. — Deps: IN-04
@@ -178,7 +179,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - [x] Baseline + Spec Coverage Matrix complete; no `UNVERIFIED` rows. Baseline UI click-through was not done (P0-02 PARTIAL); tests cover register and onboarding.
 - [x] LLM client provider-agnostic; retired model ids are rewritten, not called; digest summary test passes with the key unset (P0-05, `6c68dd9`)
 - [x] `safe_fetch()` is the user-URL path (P0-06, `17f0d03`); XSS + XML suites green (P0-07/08, `95dd760`). Browserless DNS rebind is a documented residual (ADR 0003).
-- [ ] CI green on `main`. Workflows gained mypy and an alembic head check (`2e93706`) but this branch is not merged and Actions has not run. README, LICENSE, and `docs/ARCHITECTURE.md` match the code (`28f9b42`).
+- [x] CI green on `main`. Backend run 35929735469 succeeded for the Phase 0 merge; frontend and CodeQL succeeded for that merge and for the Next 16.3.6 / fast-uri follow-ups. README, LICENSE, and `docs/ARCHITECTURE.md` match the code.
 - [x] Backlog re-prioritized in Discoveries. No task ids were renumbered; the existing IQ-04/06/07/16 items already name the gaps the audit confirmed.
 
 **Gate 1 — Ingestion**
@@ -308,6 +309,18 @@ No backlog ids were reprioritized. The audit confirmed the existing order: impre
 ---
 
 ## 9. Session Log (append-only, newest first)
+
+### Session 2 — 2026-09-24
+
+Tasks touched: pulled `main` at `a485e45`. P0-11 DONE (CI green on main). P0-12 DONE (owner merged #53 and #54). IN-01 DONE.
+
+Evidence: `test_second_fetch_of_unchanged_feed_is_304_and_skips_parse`. pytest 237 passed. Alembic head `0008`.
+
+Blockers: none. Gate 0 is now checked.
+
+Next 3 tasks: IN-03 feed health in the UI, IN-04 autodiscovery cascade, IN-08 extraction cascade (build the golden corpus in IN-09 before tuning).
+
+IN-02 landed in the same session. pytest 249 passed. Alembic head `0009`. The 301 URL rewrite is tested as a function and not yet applied inside `safe_fetch`, which follows the redirect and keeps the final URL.
 
 ### Session 1 — 2026-09-24
 

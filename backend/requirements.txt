@@ -36,6 +36,8 @@ numpy==1.26.4
 # Ingestion
 feedparser==6.0.14
 httpx==0.28.1
+# Lets httpx decode Accept-Encoding: br on feed responses.
+brotli==1.2.0
 playwright==1.63.0
 beautifulsoup4==4.15.0
 lxml==6.1.3

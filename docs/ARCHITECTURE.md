@@ -24,8 +24,11 @@ provider.
 ## Ingestion
 
 `app/workers/tasks/ingest_feeds.py` polls sources. RSS goes through
-`rss_parser.parse_feed`, which downloads with `safe_fetch` and parses the
-bytes with feedparser. Pages that are not feeds go through `scraper.scrape_page`:
+`rss_parser.fetch_feed`, which downloads with `safe_fetch` and parses the
+bytes with feedparser. Each source stores `http_etag` and `http_last_modified`.
+The next poll sends `If-None-Match` and `If-Modified-Since`. A 304 skips parsing.
+Requests send `Accept-Encoding: gzip, deflate, br` and identify as
+`ReadPrism/1.0 (+https://readprism.app/bot)`. Pages that are not feeds go through `scraper.scrape_page`:
 robots.txt, then `safe_fetch`, then trafilatura, then Browserless if the bot
 was not explicitly blocked. Newsletters arrive at `/api/v1/newsletter/inbound`
 with a Mailgun signature (`app/api/newsletter.py`).
