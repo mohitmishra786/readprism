@@ -118,6 +118,20 @@ CASES = [
         "platform",
     ),
     (
+        "reddit-named-top",
+        "https://www.reddit.com/r/top",
+        "",
+        "https://www.reddit.com/r/top/.rss",
+        "platform",
+    ),
+    (
+        "mastodon-fosstodon",
+        "https://fosstodon.org/@alice",
+        "",
+        "https://fosstodon.org/@alice.rss",
+        "platform",
+    ),
+    (
         "github",
         "https://github.com/owner/repo",
         "",

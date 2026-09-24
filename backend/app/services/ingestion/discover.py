@@ -118,13 +118,18 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
         if parts[0] in {"r", "user", "u"} and len(parts) >= 2:
             name = parts[1]
             kind = parts[0]
-            if "top" in parts:
+            if parts[2:3] == ["top"]:
                 add(f"https://www.reddit.com/{kind}/{name}/top/.rss?t=week")
             else:
                 add(f"https://www.reddit.com/{kind}/{name}/.rss")
     if _is_host(page_url, "bsky.app") and len(parts) >= 2 and parts[0] == "profile":
         add(f"https://bsky.app/profile/{parts[1]}/rss")
-    if parts and parts[0].startswith("@") and _is_host(page_url, "mastodon.social"):
+    mastodon_hosts = ("mastodon.social", "fosstodon.org", "hachyderm.io")
+    if (
+        parts
+        and parts[0].startswith("@")
+        and any(_is_host(page_url, name) for name in mastodon_hosts)
+    ):
         add(f"https://{parsed.hostname}/@{parts[0].lstrip('@')}.rss")
     if host in {"youtube.com", "youtu.be", "m.youtube.com"}:
         match = re.search(
@@ -167,8 +172,22 @@ def rsshub_candidates(page_url: str) -> list[FeedCandidate]:
 
 
 def _looks_like_feed(text: str) -> bool:
-    head = text[:800].lower()
-    return "<rss" in head or "<feed" in head
+    """True only when the XML root is rss, atom feed, or rss 1.0 rdf.
+
+    A substring check treats an HTML page that contains `<feedback>` as a feed.
+    """
+    if not text or not text.strip():
+        return False
+    from defusedxml import ElementTree as DefusedElementTree
+
+    try:
+        root = DefusedElementTree.fromstring(text.encode("utf-8", errors="replace"))
+    except Exception:
+        return False
+    tag = root.tag.lower()
+    if tag.startswith("{"):
+        tag = tag.split("}", 1)[1]
+    return tag in {"rss", "feed", "rdf"}
 
 
 async def _confirmed(candidates: list[FeedCandidate], getter: FetchText) -> list[FeedCandidate]:
@@ -193,10 +212,13 @@ async def _first_well_known(origin: str, getter: FetchText) -> FeedCandidate | N
         async with gate:
             return index, target, await getter(target)
 
-    checked = await asyncio.gather(*(_one(index, target) for index, target in enumerate(targets)))
-    for _index, target, body in sorted(checked):
-        if body and _looks_like_feed(body):
-            return FeedCandidate(target, "well_known", _RANK["well_known"])
+    for start in range(0, len(targets), 2):
+        batch = await asyncio.gather(
+            *(_one(index, target) for index, target in enumerate(targets[start : start + 2], start))
+        )
+        for _index, target, body in sorted(batch):
+            if body and _looks_like_feed(body):
+                return FeedCandidate(target, "well_known", _RANK["well_known"])
     return None
 
 
@@ -244,6 +266,14 @@ async def discover_feed_candidates(
         seen.add(item.url)
         unique.append(item)
     return unique
+
+
+async def confirmed_platform_feed(
+    page_url: str, html: str, *, fetch: FetchText | None = None
+) -> str | None:
+    """First platform recipe whose URL actually returns a feed."""
+    confirmed = await _confirmed(platform_candidates(page_url, html), fetch or _fetch_text)
+    return confirmed[0].url if confirmed else None
 
 
 async def best_feed_url(

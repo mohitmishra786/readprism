@@ -13,3 +13,21 @@ def test_does_not_merge_different_paths():
 
 def test_keeps_a_non_default_port():
     assert canonicalize_url("https://example.com:8443/a") == "https://example.com:8443/a"
+
+
+def test_http_443_is_not_treated_as_the_default():
+    assert canonicalize_url("http://example.com:443/a") == "http://example.com:443/a"
+
+
+def test_strips_any_utm_prefix():
+    assert (
+        canonicalize_url("https://example.com/a?utm_reader=1&id=2") == "https://example.com/a?id=2"
+    )
+
+
+def test_bad_port_returns_none():
+    assert canonicalize_url("https://example.com:bad/a") is None
+
+
+def test_ipv6_keeps_brackets():
+    assert canonicalize_url("https://[2001:db8::1]/a") == "https://[2001:db8::1]/a"

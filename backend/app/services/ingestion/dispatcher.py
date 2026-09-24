@@ -66,16 +66,21 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
     collapsed: list[RawContentItem] = []
     seen_urls: set[str] = set()
     for item in raw_items:
-        item.url = canonicalize_url(item.url)
-        if item.url in seen_urls:
+        canonical = canonicalize_url(item.url)
+        if canonical is None or canonical in seen_urls:
             continue
-        seen_urls.add(item.url)
+        item.url = canonical
+        seen_urls.add(canonical)
         collapsed.append(item)
     raw_items = collapsed
-    existing_urls_result = await session.execute(
-        select(ContentItem.url).where(ContentItem.url.in_([item.url for item in raw_items]))
+    stored = await session.execute(
+        select(ContentItem.url).where(ContentItem.source_id == source.id)
     )
-    existing_urls = {row[0] for row in existing_urls_result.fetchall()}
+    existing_urls: set[str] = set()
+    for row in stored.fetchall():
+        canonical = canonicalize_url(row[0])
+        if canonical:
+            existing_urls.add(canonical)
     new_items = [item for item in raw_items if item.url not in existing_urls]
 
     logger.info(

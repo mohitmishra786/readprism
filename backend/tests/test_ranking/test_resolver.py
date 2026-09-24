@@ -150,6 +150,19 @@ def test_github_releases_atom():
     assert warning is None
 
 
+@pytest.mark.asyncio
+async def test_github_falls_through_to_commits_when_releases_is_not_a_feed():
+    from app.services.ingestion.discover import confirmed_platform_feed
+
+    async def fetch(url: str) -> str | None:
+        if url.endswith("/commits.atom"):
+            return "<feed><title>commits</title></feed>"
+        return "<html><feedback>nope</feedback></html>"
+
+    feed = await confirmed_platform_feed("https://github.com/owner/repo", "", fetch=fetch)
+    assert feed == "https://github.com/owner/repo/commits.atom"
+
+
 def test_reddit_strips_query_and_fragment():
     feed, _ = _autodiscover_feed_url(
         "reddit", "https://www.reddit.com/r/MachineLearning/?sort=new#main", ""

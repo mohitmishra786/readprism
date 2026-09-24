@@ -55,6 +55,21 @@ async def test_dispatch_filters_already_ingested_urls():
 
 
 @pytest.mark.asyncio
+async def test_dispatch_matches_a_legacy_tracking_url():
+    source = _make_source(feed_url="https://example.com/feed")
+    raw_items = [RawContentItem(url="https://www.example.com/post?utm_source=hn", title="Post")]
+    session = AsyncMock()
+    existing_result = MagicMock()
+    existing_result.fetchall.return_value = [("https://example.com/post?utm_reader=1",)]
+    session.execute = AsyncMock(return_value=existing_result)
+    with patch(
+        "app.services.ingestion.dispatcher.fetch_feed",
+        AsyncMock(return_value=FeedFetchResult(items=raw_items)),
+    ):
+        assert await dispatch_source(source, session) == []
+
+
+@pytest.mark.asyncio
 async def test_dispatch_returns_empty_when_parse_returns_nothing():
     """If parse_feed returns no items, dispatch returns an empty list without DB work."""
     source = _make_source(feed_url="https://example.com/feed")

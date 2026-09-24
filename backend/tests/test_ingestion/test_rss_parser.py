@@ -149,8 +149,26 @@ def test_podcast_transcript_url_is_kept():
         <podcast:transcript url="https://example.com/ep.vtt" type="text/vtt"/>
       </item></channel>
     </rss>"""
-    items = _items_from_feed(feedparser.parse(xml), "https://example.com/feed")
+    items = _items_from_feed(feedparser.parse(xml), "https://example.com/feed", xml)
     assert items[0].transcript_url == "https://example.com/ep.vtt"
+
+
+def test_first_transcript_wins_and_prefix_is_not_assumed():
+    import feedparser
+
+    from app.services.ingestion.rss_parser import _items_from_feed
+
+    xml = """<?xml version="1.0"?>
+    <rss version="2.0" xmlns:p="https://podcastindex.org/namespace/1.0">
+      <channel><item>
+        <title>Episode</title>
+        <link>https://example.com/ep</link>
+        <p:transcript url="https://example.com/first.vtt" type="text/vtt"/>
+        <p:transcript url="https://example.com/second.json" type="application/json"/>
+      </item></channel>
+    </rss>"""
+    items = _items_from_feed(feedparser.parse(xml), "https://example.com/feed", xml)
+    assert items[0].transcript_url == "https://example.com/first.vtt"
 
 
 @pytest.mark.asyncio

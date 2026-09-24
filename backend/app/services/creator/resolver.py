@@ -263,7 +263,15 @@ async def resolve_creator(
         else:
             fetch_failed = True
 
-        feed_url, feed_warning = _autodiscover_feed_url(primary_platform, name_or_url, html or "")
+        if primary_platform == "github":
+            from app.services.ingestion.discover import confirmed_platform_feed
+
+            feed_url = await confirmed_platform_feed(name_or_url, html or "")
+            feed_warning = None if feed_url else "Could not confirm a GitHub feed."
+        else:
+            feed_url, feed_warning = _autodiscover_feed_url(
+                primary_platform, name_or_url, html or ""
+            )
 
         # Best-effort podcast lookup via iTunes Search API.
         if primary_platform == "podcast" and not feed_url:
