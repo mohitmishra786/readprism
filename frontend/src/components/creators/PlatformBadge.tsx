@@ -9,6 +9,9 @@ const PLATFORM_ICONS: Record<string, string> = {
   linkedin: "in",
   podcast: "🎙",
   reddit: "🔴",
+  bluesky: "🦋",
+  mastodon: "🐘",
+  github: "⌥",
   blog: "✍",
 };
 

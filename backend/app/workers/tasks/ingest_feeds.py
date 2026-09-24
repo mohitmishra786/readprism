@@ -54,6 +54,7 @@ async def _ingest_all_feeds_async() -> dict:
                         published_at=raw.published_at,
                         full_text=raw.full_text,
                         word_count=raw.word_count,
+                        transcript_url=raw.transcript_url,
                     )
                     session.add(item)
                     total_new += 1

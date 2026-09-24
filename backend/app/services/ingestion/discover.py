@@ -7,6 +7,7 @@ a well-known path that actually looks like a feed, an RSSHub route when
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
@@ -80,21 +81,31 @@ def link_candidates(page_url: str, html: str) -> list[FeedCandidate]:
     return found
 
 
+def _hostname(url: str) -> str:
+    """Parsed hostname, without a leading www. CodeQL treats this as a real host."""
+    return (urlparse(url).hostname or "").lower().removeprefix("www.")
+
+
+def _is_host(url: str, domain: str) -> bool:
+    host = _hostname(url)
+    return host == domain or host.endswith("." + domain)
+
+
 def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
     parsed = urlparse(page_url)
-    host = parsed.netloc.lower().removeprefix("www.")
+    host = _hostname(page_url)
     parts = _segments(page_url)
     found: list[FeedCandidate] = []
 
     def add(url: str) -> None:
         found.append(FeedCandidate(url, "platform", _RANK["platform"]))
 
-    if host.endswith(".substack.com") or host == "substack.com":
+    if _is_host(page_url, "substack.com"):
         add(f"https://{parsed.netloc}/feed")
-    if host.endswith(".blogspot.com") or host.endswith(".blogger.com"):
+    if _is_host(page_url, "blogspot.com") or _is_host(page_url, "blogger.com"):
         add(urljoin(_origin(page_url) + "/", "feeds/posts/default"))
-    if host == "medium.com" or host.endswith(".medium.com"):
-        if host.endswith(".medium.com") and host not in {"medium.com", "www.medium.com"}:
+    if _is_host(page_url, "medium.com"):
+        if host not in {"medium.com"} and host.endswith(".medium.com"):
             add(f"https://{parsed.netloc}/feed")
         else:
             username = next((part for part in parts if part.startswith("@")), "")
@@ -103,10 +114,23 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
                 add(f"https://medium.com/feed/{username}")
             elif publication and publication not in {"feed", "tag"}:
                 add(f"https://medium.com/feed/{publication}")
-    if (host == "reddit.com" or host.endswith(".reddit.com")) and parts:
-        base = page_url.split("?")[0].split("#")[0].rstrip("/")
+    if _is_host(page_url, "reddit.com") and parts:
         if parts[0] in {"r", "user", "u"} and len(parts) >= 2:
-            add(f"{base}/.rss")
+            name = parts[1]
+            kind = parts[0]
+            if parts[2:3] == ["top"]:
+                add(f"https://www.reddit.com/{kind}/{name}/top/.rss?t=week")
+            else:
+                add(f"https://www.reddit.com/{kind}/{name}/.rss")
+    if _is_host(page_url, "bsky.app") and len(parts) >= 2 and parts[0] == "profile":
+        add(f"https://bsky.app/profile/{parts[1]}/rss")
+    mastodon_hosts = ("mastodon.social", "fosstodon.org", "hachyderm.io")
+    if (
+        parts
+        and parts[0].startswith("@")
+        and any(_is_host(page_url, name) for name in mastodon_hosts)
+    ):
+        add(f"https://{parsed.hostname}/@{parts[0].lstrip('@')}.rss")
     if host in {"youtube.com", "youtu.be", "m.youtube.com"}:
         match = re.search(
             r"(?:channel_id|channelId)[\"'\s]*[:=][\"'\s]*([UC][\w-]{8,})", html or ""
@@ -122,6 +146,7 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
     if host == "github.com" and len(parts) >= 2:
         owner, repo = parts[0], parts[1]
         add(f"https://github.com/{owner}/{repo}/releases.atom")
+        add(f"https://github.com/{owner}/{repo}/commits.atom")
     if host == "arxiv.org":
         category = ""
         if parts[:1] in (["list"], ["rss"]) and len(parts) >= 2:
@@ -147,8 +172,54 @@ def rsshub_candidates(page_url: str) -> list[FeedCandidate]:
 
 
 def _looks_like_feed(text: str) -> bool:
-    head = text[:800].lower()
-    return "<rss" in head or "<feed" in head or "atom" in head and "<feed" in head
+    """True only when the XML root is rss, atom feed, or rss 1.0 rdf.
+
+    A substring check treats an HTML page that contains `<feedback>` as a feed.
+    """
+    if not text or not text.strip():
+        return False
+    from defusedxml import ElementTree as DefusedElementTree
+
+    try:
+        root = DefusedElementTree.fromstring(text.encode("utf-8", errors="replace"))
+    except Exception:
+        return False
+    tag = root.tag.lower()
+    if tag.startswith("{"):
+        tag = tag.split("}", 1)[1]
+    return tag in {"rss", "feed", "rdf"}
+
+
+async def _confirmed(candidates: list[FeedCandidate], getter: FetchText) -> list[FeedCandidate]:
+    """Keep a recipe only after its URL returns feed XML. At most two probes at once."""
+    if not candidates:
+        return []
+    gate = asyncio.Semaphore(2)
+
+    async def _one(candidate: FeedCandidate) -> tuple[FeedCandidate, str | None]:
+        async with gate:
+            return candidate, await getter(candidate.url)
+
+    checked = await asyncio.gather(*(_one(candidate) for candidate in candidates))
+    return [candidate for candidate, body in checked if body and _looks_like_feed(body)]
+
+
+async def _first_well_known(origin: str, getter: FetchText) -> FeedCandidate | None:
+    targets = [urljoin(origin + "/", path.lstrip("/")) for path in _WELL_KNOWN]
+    gate = asyncio.Semaphore(2)
+
+    async def _one(index: int, target: str) -> tuple[int, str, str | None]:
+        async with gate:
+            return index, target, await getter(target)
+
+    for start in range(0, len(targets), 2):
+        batch = await asyncio.gather(
+            *(_one(index, target) for index, target in enumerate(targets[start : start + 2], start))
+        )
+        for _index, target, body in sorted(batch):
+            if body and _looks_like_feed(body):
+                return FeedCandidate(target, "well_known", _RANK["well_known"])
+    return None
 
 
 async def _fetch_text(url: str) -> str | None:
@@ -175,18 +246,14 @@ async def discover_feed_candidates(
         html = await getter(page_url) or ""
 
     found: list[FeedCandidate] = []
-    found.extend(link_candidates(page_url, html))
-    found.extend(platform_candidates(page_url, html))
+    proposed = [*link_candidates(page_url, html), *platform_candidates(page_url, html)]
+    found.extend(await _confirmed(proposed, getter))
 
     if not found:
-        origin = _origin(page_url)
-        for path in _WELL_KNOWN:
-            target = urljoin(origin + "/", path.lstrip("/"))
-            body = await getter(target)
-            if body and _looks_like_feed(body):
-                found.append(FeedCandidate(target, "well_known", _RANK["well_known"]))
-                break
-        found.extend(rsshub_candidates(page_url))
+        hit = await _first_well_known(_origin(page_url), getter)
+        if hit is not None:
+            found.append(hit)
+        found.extend(await _confirmed(rsshub_candidates(page_url), getter))
 
     if not any(item.method != "scrape" for item in found):
         found.append(FeedCandidate(page_url, "scrape", _RANK["scrape"]))
@@ -199,6 +266,14 @@ async def discover_feed_candidates(
         seen.add(item.url)
         unique.append(item)
     return unique
+
+
+async def confirmed_platform_feed(
+    page_url: str, html: str, *, fetch: FetchText | None = None
+) -> str | None:
+    """First platform recipe whose URL actually returns a feed."""
+    confirmed = await _confirmed(platform_candidates(page_url, html), fetch or _fetch_text)
+    return confirmed[0].url if confirmed else None
 
 
 async def best_feed_url(

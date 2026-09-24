@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
 from app.models.source import Source
+from app.services.ingestion.canonicalize import canonicalize_url
 from app.services.ingestion.rss_parser import FeedFetchResult, RawContentItem, fetch_feed
 from app.services.ingestion.scraper import scrape_page
 from app.utils.cache import get_redis
@@ -62,10 +63,24 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
     if not raw_items:
         return []
 
-    existing_urls_result = await session.execute(
-        select(ContentItem.url).where(ContentItem.url.in_([item.url for item in raw_items]))
+    collapsed: list[RawContentItem] = []
+    seen_urls: set[str] = set()
+    for item in raw_items:
+        canonical = canonicalize_url(item.url)
+        if canonical is None or canonical in seen_urls:
+            continue
+        item.url = canonical
+        seen_urls.add(canonical)
+        collapsed.append(item)
+    raw_items = collapsed
+    stored = await session.execute(
+        select(ContentItem.url).where(ContentItem.source_id == source.id)
     )
-    existing_urls = {row[0] for row in existing_urls_result.fetchall()}
+    existing_urls: set[str] = set()
+    for row in stored.fetchall():
+        canonical = canonicalize_url(row[0])
+        if canonical:
+            existing_urls.add(canonical)
     new_items = [item for item in raw_items if item.url not in existing_urls]
 
     logger.info(

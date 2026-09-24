@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -61,6 +62,7 @@ class RawContentItem:
     word_count: int | None = None
     source_feed_url: str | None = None
     creator_platform_id: str | None = None
+    transcript_url: str | None = None
 
 
 def _count_words(text: str) -> int:
@@ -106,7 +108,7 @@ async def _autodiscover_feed(page_url: str) -> str | None:
     async def _fetch(url: str) -> str | None:
         try:
             resp = await safe_fetch(
-                url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
+                url, headers=_FEED_HEADERS, timeout=3, max_bytes=_FEED_MAX_BYTES
             )
         except Exception as e:
             logger.debug("Feed probe failed for %s: %s", sanitize_log(url), e)
@@ -166,9 +168,51 @@ async def _load_feed_bytes(
     return _HttpFeed(resp.status_code, body, response_etag, response_modified)
 
 
-def _items_from_feed(feed, source_url: str) -> list[RawContentItem]:
+_PODCAST_NS = "https://podcastindex.org/namespace/1.0"
+_TRANSCRIPT_TAG = re.compile(
+    r"<(?:(?P<prefix>[\w.-]+):)?transcript\b[^>]*\burl=[\"'](?P<url>[^\"']+)[\"']",
+    re.IGNORECASE,
+)
+
+
+def _transcript_urls_from_xml(xml: str) -> list[str | None]:
+    """First transcript URL in each `<item>`, before feedparser keeps only the last tag."""
+    parts = re.split(r"<item\b", xml, flags=re.IGNORECASE)
+    found: list[str | None] = []
+    for part in parts[1:]:
+        urls = [match.group("url") for match in _TRANSCRIPT_TAG.finditer(part)]
+        found.append(urls[0] if urls else None)
+    return found
+
+
+def _transcript_url(entry, feed=None) -> str | None:
+    """Fallback when the raw XML was not available. Honors any prefix of the podcast namespace."""
+    prefixes = ["podcast"]
+    namespaces = getattr(feed, "namespaces", None) or {}
+    if hasattr(namespaces, "items"):
+        for prefix, uri in namespaces.items():
+            if uri == _PODCAST_NS and prefix not in prefixes:
+                prefixes.append(prefix)
+    for prefix in prefixes:
+        value = None
+        key = f"{prefix}_transcript"
+        if hasattr(entry, "get"):
+            value = entry.get(key)
+        if value is None:
+            value = getattr(entry, key, None)
+        items = value if isinstance(value, list) else [value]
+        for item in items:
+            if isinstance(item, dict):
+                url = item.get("url") or item.get("href")
+                if url:
+                    return str(url)
+    return None
+
+
+def _items_from_feed(feed, source_url: str, raw_xml: str | None = None) -> list[RawContentItem]:
+    from_xml = _transcript_urls_from_xml(raw_xml) if raw_xml else []
     items: list[RawContentItem] = []
-    for entry in feed.entries:
+    for index, entry in enumerate(feed.entries):
         link = getattr(entry, "link", None)
         title = getattr(entry, "title", "Untitled")
         if not link:
@@ -184,6 +228,9 @@ def _items_from_feed(feed, source_url: str) -> list[RawContentItem]:
                 full_text=text or None,
                 word_count=word_count,
                 source_feed_url=source_url,
+                transcript_url=from_xml[index]
+                if index < len(from_xml)
+                else _transcript_url(entry, feed),
             )
         )
     return items
@@ -234,14 +281,22 @@ async def fetch_feed(
                     feed = feedparser.parse(secondary.body)
                     if feed is not None:
                         return FeedFetchResult(
-                            items=_items_from_feed(feed, discovered),
+                            items=_items_from_feed(
+                                feed, discovered, secondary.body.decode("utf-8", errors="replace")
+                            ),
                             etag=secondary.etag,
                             last_modified=secondary.last_modified,
                         )
         if feed is None:
             return FeedFetchResult(items=[], etag=primary.etag if primary else None)
         return FeedFetchResult(
-            items=_items_from_feed(feed, url),
+            items=_items_from_feed(
+                feed,
+                url,
+                primary.body.decode("utf-8", errors="replace")
+                if primary and primary.body
+                else None,
+            ),
             etag=primary.etag if primary else None,
             last_modified=primary.last_modified if primary else None,
         )

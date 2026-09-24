@@ -122,6 +122,47 @@ def test_reddit_user_feed_url():
     assert warning is None
 
 
+def test_reddit_top_feed_includes_time_window():
+    feed, warning = _autodiscover_feed_url(
+        "reddit", "https://www.reddit.com/r/MachineLearning/top", ""
+    )
+    assert feed == "https://www.reddit.com/r/MachineLearning/top/.rss?t=week"
+    assert warning is None
+
+
+def test_bluesky_profile_rss():
+    feed, warning = _autodiscover_feed_url(
+        "bluesky", "https://bsky.app/profile/alice.bsky.social", ""
+    )
+    assert feed == "https://bsky.app/profile/alice.bsky.social/rss"
+    assert warning is None
+
+
+def test_mastodon_profile_rss():
+    feed, warning = _autodiscover_feed_url("mastodon", "https://mastodon.social/@alice", "")
+    assert feed == "https://mastodon.social/@alice.rss"
+    assert warning is None
+
+
+def test_github_releases_atom():
+    feed, warning = _autodiscover_feed_url("github", "https://github.com/owner/repo", "")
+    assert feed == "https://github.com/owner/repo/releases.atom"
+    assert warning is None
+
+
+@pytest.mark.asyncio
+async def test_github_falls_through_to_commits_when_releases_is_not_a_feed():
+    from app.services.ingestion.discover import confirmed_platform_feed
+
+    async def fetch(url: str) -> str | None:
+        if url.endswith("/commits.atom"):
+            return "<feed><title>commits</title></feed>"
+        return "<html><feedback>nope</feedback></html>"
+
+    feed = await confirmed_platform_feed("https://github.com/owner/repo", "", fetch=fetch)
+    assert feed == "https://github.com/owner/repo/commits.atom"
+
+
 def test_reddit_strips_query_and_fragment():
     feed, _ = _autodiscover_feed_url(
         "reddit", "https://www.reddit.com/r/MachineLearning/?sort=new#main", ""
