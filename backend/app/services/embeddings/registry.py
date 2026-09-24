@@ -45,11 +45,22 @@ def spec_for(name: str) -> EmbeddingSpec:
         raise KeyError(f"unknown embedding model {name}") from exc
 
 
+def resolve_stored_model(requested: str) -> EmbeddingSpec:
+    """Return a 384-d spec. Nomic stays registered until a 768-d column exists."""
+    spec = SPECS.get(requested)
+    if spec is None:
+        if not requested:
+            return SPECS[MINILM]
+        return EmbeddingSpec(requested, MINILM_DIM, VERSION)
+    if spec.dim != MINILM_DIM:
+        return SPECS[MINILM]
+    return spec
+
+
 def active_spec(*, model: str, cutover: bool) -> EmbeddingSpec:
-    """Cutover selects Nomic only when the operator has turned the flag on."""
-    if cutover and model == NOMIC:
-        return spec_for(NOMIC)
-    return spec_for(MINILM)
+    """`cutover` cannot select Nomic while `content_items.embedding` is Vector(384)."""
+    del cutover
+    return resolve_stored_model(model)
 
 
 def hash_embed(text: str, dim: int) -> list[float]:

@@ -17,9 +17,9 @@
 
 Option 2. The active model is `all-MiniLM-L6-v2` (384-d). `EMBEDDING_CUTOVER_ENABLED` defaults to false, which is also the lite profile. The registry knows Nomic's name, dimension, and prefixes, and rows store `embedding_model`, `embedding_dim`, and `embedding_version` so two models can coexist. Queries that compare vectors must filter to the active model.
 
-The check in `app/services/embeddings/retrieval.py` scores 200 fixture pairs. A truncated encoder against a full-text encoder shows whether seeing the later topic token improves MRR. Nomic's weights were not downloaded in this run: the image already pulls a large torch wheel for MiniLM, and a second model download is an operator step (`EMBEDDING_CUTOVER_ENABLED` stays false until that comparison is recorded here).
+The check in `app/services/embeddings/retrieval.py` scores 200 fixture pairs. A truncated encoder against a full-text encoder shows whether seeing the later topic token improves MRR. A two-way tie uses expected reciprocal rank 0.75. Nomic's weights were not downloaded. `content_items.embedding` is `Vector(384)`, so `resolve_stored_model` keeps MiniLM even if `EMBEDDING_MODEL` or the cutover flag names Nomic. A 768-d column has to exist before that model can be selected.
 
-Fixture result from the harness (not Nomic weights): the full-text encoder beats the 8-token prefix encoder on those 200 pairs. That justifies the windowed input in IQ-03. It does not justify a dimension change.
+Fixture result (not Nomic weights): the full-text encoder beats the 8-token prefix encoder on those 200 pairs. That justifies encoding body windows separately. It does not justify a dimension change. `stamp_stored_embeddings` writes model identity onto existing vectors in committed id-ordered batches.
 
 The HNSW cosine index on `content_items.embedding` already exists from migration 0001. Rollback of 0013 drops the identity columns and the new tables and leaves the vectors and that index in place.
 

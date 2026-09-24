@@ -80,8 +80,18 @@ class EmbeddingService:
 def get_embedding_service() -> EmbeddingService:
     global _embedding_service
     if _embedding_service is None:
+        from app.services.embeddings.registry import resolve_stored_model
+
+        spec = resolve_stored_model(settings.embedding_model)
+        if spec.name != settings.embedding_model:
+            logger.warning(
+                "Embedding model %s cannot be stored in the 384-d column; using %s",
+                settings.embedding_model,
+                spec.name,
+            )
         _embedding_service = EmbeddingService(
-            model_name=settings.embedding_model,
+            model_name=spec.name,
             device=settings.embedding_device,
         )
+        _embedding_service.dimension = spec.dim
     return _embedding_service

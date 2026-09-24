@@ -201,19 +201,29 @@ def diversify(
         if cluster:
             used[cluster] += 1
 
-    # Swap in novelty from the tail when the share is short.
-    novelty_indexes = [index for index in chosen if scores[index] < 0.45]
-    novelty_used = len(novelty_indexes)
+    # Fill missing novelty by replacing distinct non-novelty slots from the end.
+    novelty_used = sum(1 for index in chosen if scores[index] < 0.45)
     if novelty_used < novelty_target:
         tail = [
             index for index in range(len(items)) if index not in chosen and scores[index] < 0.45
         ]
+        slots = [pos for pos in range(len(chosen) - 1, -1, -1) if scores[chosen[pos]] >= 0.45]
         for index in tail:
-            if novelty_used >= novelty_target:
+            if novelty_used >= novelty_target or not slots:
                 break
-            if not chosen:
-                break
-            chosen[-1] = index
+            cluster = clusters[index] or ""
+            if cluster and used[cluster] >= cap:
+                continue
+            if too_close(index):
+                continue
+            pos = slots.pop(0)
+            previous = chosen[pos]
+            previous_cluster = clusters[previous] or ""
+            if previous_cluster:
+                used[previous_cluster] -= 1
+            chosen[pos] = index
+            if cluster:
+                used[cluster] += 1
             novelty_used += 1
     return [items[index] for index in chosen]
 

@@ -195,6 +195,10 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
 
     # Create digest items
+    from app.services.ranking.meta_weights import get_meta_weights
+    from app.services.ranking.phase2.contract import SIGNALS
+
+    meta = await get_meta_weights(user.id, session)
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
@@ -205,19 +209,13 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             from app.services.ranking.phase2.learning import RANKER_VERSION
             from app.services.ranking.phase2.learning import explain as explain_score
 
-            if clean_breakdown:
-                text, contributions = explain_score(
-                    {
-                        key: float(value)
-                        for key, value in clean_breakdown.items()
-                        if isinstance(value, int | float)
-                    },
-                    {
-                        key: 1.0
-                        for key in clean_breakdown
-                        if isinstance(clean_breakdown.get(key), int | float)
-                    },
-                )
+            numeric = {
+                key: float(value)
+                for key, value in clean_breakdown.items()
+                if key in SIGNALS and isinstance(value, int | float)
+            }
+            if numeric:
+                text, contributions = explain_score(numeric, meta.weights)
                 clean_breakdown["explanation"] = text
                 clean_breakdown["contributions"] = contributions
             di = DigestItem(
@@ -239,7 +237,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                     section=section_name,
                     position=position,
                     score=float(prs),
-                    features_json=clean_breakdown,
+                    features_json=numeric,
                     weights_version=RANKER_VERSION,
                     exploration=bool(clean_breakdown.get("exploration")),
                     propensity=1.0,

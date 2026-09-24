@@ -109,7 +109,8 @@ def exploration_plan(
     chosen: list[dict] = []
     available = list(range(len(pool)))
     for _ in range(min(count, len(available))):
-        draw = rng.random()
+        mass = float(sum(weights[option] for option in available)) or 1.0
+        draw = rng.random() * mass
         cursor = 0.0
         pick = available[-1]
         for option in available:
@@ -117,7 +118,7 @@ def exploration_plan(
             if draw <= cursor:
                 pick = option
                 break
-        propensity = float(weights[pick])
+        propensity = float(weights[pick]) / mass
         chosen.append(
             {
                 "rank": pool[pick] + 1,
@@ -176,25 +177,46 @@ class EvalReport:
 
 
 def synthetic_eval(*, users: int = 12, items: int = 40, seed: int = 7) -> EvalReport:
-    """Personas with one strong signal. PRS uses that signal. Baselines do not."""
+    """Learn weights on a training split, then score a held-out split.
+
+    Relevance is the persona's dominant feature. PRS is `score_matrix` after
+    `update_weights`. It is not an oracle sort of the labels.
+    """
     rng = np.random.default_rng(seed)
+    py_rng = random.Random(seed)
     prs_scores: list[float] = []
     chrono_scores: list[float] = []
     semantic_scores: list[float] = []
     random_scores: list[float] = []
-    signal_index = 0
-    for _ in range(users):
+    split = items // 2
+    for persona in range(users):
+        dominant = persona % len(SIGNALS)
         features = rng.random((items, len(SIGNALS)))
-        relevance = features[:, signal_index]
-        signal_index = (signal_index + 1) % len(SIGNALS)
-        prs_order = list(np.argsort(-relevance))
-        chrono_order = list(range(items))
-        semantic_order = list(np.argsort(-features[:, 0]))
-        random_order = list(rng.permutation(items))
-        prs_scores.append(ndcg_at_k([float(relevance[index]) for index in prs_order]))
-        chrono_scores.append(ndcg_at_k([float(relevance[index]) for index in chrono_order]))
-        semantic_scores.append(ndcg_at_k([float(relevance[index]) for index in semantic_order]))
-        random_scores.append(ndcg_at_k([float(relevance[index]) for index in random_order]))
+        relevance = features[:, dominant]
+        train = features[:split]
+        train_rel = relevance[:split]
+        hold = features[split:]
+        hold_rel = relevance[split:]
+        state = WeightState(prior_weights(), RANKER_VERSION, 0, 0)
+        for _ in range(90):
+            left = py_rng.randrange(split)
+            right = py_rng.randrange(split)
+            if train_rel[left] == train_rel[right]:
+                continue
+            if train_rel[left] > train_rel[right]:
+                positive, negative = train[left], train[right]
+            else:
+                positive, negative = train[right], train[left]
+            state = update_weights(state, positive, negative, lr=0.4, l2=0.01)
+        scored = score_matrix(state.weights, hold).reshape(-1)
+        prs_order = list(np.argsort(-scored))
+        chrono_order = list(range(split))
+        semantic_order = list(np.argsort(-hold[:, 0]))
+        random_order = list(rng.permutation(split))
+        prs_scores.append(ndcg_at_k([float(hold_rel[index]) for index in prs_order]))
+        chrono_scores.append(ndcg_at_k([float(hold_rel[index]) for index in chrono_order]))
+        semantic_scores.append(ndcg_at_k([float(hold_rel[index]) for index in semantic_order]))
+        random_scores.append(ndcg_at_k([float(hold_rel[index]) for index in random_order]))
     prs = float(np.mean(prs_scores))
     chrono = float(np.mean(chrono_scores))
     semantic = float(np.mean(semantic_scores))

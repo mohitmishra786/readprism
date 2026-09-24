@@ -44,6 +44,9 @@ def _mrr(encoder) -> float:
         if relevant > irrelevant + 1e-9:
             reciprocal += 1.0
         elif abs(relevant - irrelevant) <= 1e-9:
+            # Two tied ranks, 1 and 2. Expected reciprocal rank is (1 + 1/2) / 2.
+            reciprocal += 0.75
+        else:
             reciprocal += 0.5
     return reciprocal / len(rows)
 
@@ -77,3 +80,40 @@ def backfill_batch(
         row["embedding_version"] = version
     nxt = cursor + len(chosen)
     return {"stamped": len(chosen), "next_cursor": nxt, "done": nxt >= len(rows)}
+
+
+async def stamp_stored_embeddings(
+    session,
+    *,
+    cursor: str | None,
+    size: int,
+    model: str,
+    dim: int,
+    version: str,
+) -> dict:
+    """Stamp identity on stored vectors, one committed batch at a time."""
+    from sqlalchemy import select, update
+
+    from app.models.content import ContentItem
+
+    query = (
+        select(ContentItem.id)
+        .where(ContentItem.embedding.is_not(None), ContentItem.embedding_model.is_(None))
+        .order_by(ContentItem.id)
+        .limit(size)
+    )
+    if cursor:
+        query = query.where(ContentItem.id > cursor)
+    ids = list((await session.execute(query)).scalars())
+    if ids:
+        await session.execute(
+            update(ContentItem)
+            .where(ContentItem.id.in_(ids))
+            .values(embedding_model=model, embedding_dim=dim, embedding_version=version)
+        )
+        await session.commit()
+    return {
+        "stamped": len(ids),
+        "next_cursor": str(ids[-1]) if ids else cursor,
+        "done": len(ids) < size,
+    }

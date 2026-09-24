@@ -13,4 +13,4 @@ Each value is in [0, 1] and is computed before the user sees the item.
 | temporal_context | Long, medium, and short recency, with a saturation penalty for a repeated event |
 | novelty | Distance from what the user already reads |
 
-Contributions are weight times signal. They sum to the linear score.
+Contributions are the user's ranker weight times the signal. They sum to the linear score before that score is clamped to [0, 1]. The clamp can make the stored PRS differ from the sum.

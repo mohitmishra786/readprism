@@ -13,11 +13,12 @@ from app.services.embeddings.registry import (
     NOMIC,
     active_spec,
     encode_with_spec,
+    hash_embed,
     same_model,
     spec_for,
 )
 from app.services.embeddings.retrieval import backfill_batch, compare
-from app.services.embeddings.text import build_embedding_input, prefix_only
+from app.services.embeddings.text import embedding_pieces, pool_vectors, prefix_only
 from app.services.ranking.phase2.contract import (
     beta_trust,
     content_quality_score,
@@ -210,7 +211,8 @@ def test_exploration_ipw_and_eval_gate():
 
 def test_embedding_registry_retrieval_and_windows():
     assert active_spec(model=NOMIC, cutover=False).name == MINILM
-    assert active_spec(model=NOMIC, cutover=True).dim == 768
+    assert active_spec(model=NOMIC, cutover=True).name == MINILM
+    assert spec_for(NOMIC).dim == 768
     assert spec_for(NOMIC).prefix_document.startswith("search_document")
     encoded = encode_with_spec("search_document topic", spec_for(NOMIC), query=False)
     assert len(encoded) == 768
@@ -221,10 +223,18 @@ def test_embedding_registry_retrieval_and_windows():
         + " latetopic "
         + " ".join(f"tail{i}" for i in range(20))
     )
-    pooled = build_embedding_input(title="Note", lead="Lead", body=body)
-    assert pooled.count("Note") == 2
-    assert "latetopic" in pooled
+    pieces = embedding_pieces(title="Note", lead="Lead", body=body)
+    assert any("latetopic" in piece for piece in pieces)
     assert "latetopic" not in prefix_only(title="Note", body=body)
+    prefix_body = " ".join(body.split()[:180])
+    full = pool_vectors([hash_embed(piece, 16) for piece in pieces])
+    prefix = pool_vectors(
+        [
+            hash_embed(piece, 16)
+            for piece in embedding_pieces(title="Note", lead="Lead", body=prefix_body)
+        ]
+    )
+    assert full != prefix
     report = compare()
     assert report["pairs"] == 200
     assert report["full_wins"]
@@ -236,3 +246,21 @@ def test_embedding_registry_retrieval_and_windows():
     assert second["done"]
     assert rows[0]["embedding_model"] == MINILM
     assert rows[-1]["embedding_dim"] == 384
+
+
+@pytest.mark.asyncio
+async def test_stamp_stored_embeddings_commits(db_session):
+    from app.models.content import ContentItem
+    from app.services.embeddings.retrieval import stamp_stored_embeddings
+
+    item = ContentItem(url="https://1.1.1.1/a", title="A", embedding=[0.0] * 384)
+    db_session.add(item)
+    await db_session.commit()
+    result = await stamp_stored_embeddings(
+        db_session, cursor=None, size=10, model=MINILM, dim=384, version="1"
+    )
+    assert result["stamped"] == 1
+    assert result["done"]
+    await db_session.refresh(item)
+    assert item.embedding_model == MINILM
+    assert item.embedding_dim == 384
