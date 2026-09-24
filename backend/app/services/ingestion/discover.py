@@ -103,7 +103,7 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
                 add(f"https://medium.com/feed/{username}")
             elif publication and publication not in {"feed", "tag"}:
                 add(f"https://medium.com/feed/{publication}")
-    if host.endswith("reddit.com") and parts:
+    if (host == "reddit.com" or host.endswith(".reddit.com")) and parts:
         base = page_url.split("?")[0].split("#")[0].rstrip("/")
         if parts[0] in {"r", "user", "u"} and len(parts) >= 2:
             add(f"{base}/.rss")
