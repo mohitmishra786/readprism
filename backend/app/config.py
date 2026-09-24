@@ -111,6 +111,8 @@ class Settings(BaseSettings):
 
     # Scraping
     browserless_url: str = "http://browserless:3000"
+    # Optional RSSHub instance. Empty disables the discovery route (IN-06).
+    rsshub_base_url: str = ""
     scraper_max_concurrency: int = 5
     # When robots.txt can't be fetched (network error / 5xx), fail closed (deny)
     # by default — an honest good-faith posture (audit 08-6). A clean 404/410
