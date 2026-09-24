@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -94,50 +93,29 @@ def _parse_date(entry: feedparser.FeedParserDict) -> datetime | None:
 
 
 async def _autodiscover_feed(page_url: str) -> str | None:
-    common_paths = ["/feed", "/rss", "/atom.xml", "/feed.xml", "/rss.xml", "/feed/rss"]
+    """Best feed URL for a site, or None when the only option is to scrape it."""
     try:
         validate_public_url(page_url)
     except UnsafeURLError as e:
-        logger.warning(f"Blocked feed autodiscovery for unsafe URL {sanitize_log(page_url)}: {e}")
+        logger.warning(
+            "Blocked feed autodiscovery for unsafe URL %s: %s", sanitize_log(page_url), e
+        )
         return None
-    try:
-        resp = await safe_fetch(
-            page_url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
-        )
-        html = resp.text
-        pattern = (
-            r'<link[^>]+type=["\']application/(?:rss|atom)\+xml["\'][^>]*href=["\']([^"\']+)["\']'
-        )
-        matches = re.findall(pattern, html, re.IGNORECASE)
-        if matches:
-            href = matches[0]
-            if href.startswith("http"):
-                return href
-            from urllib.parse import urljoin
+    from app.services.ingestion.discover import best_feed_url
 
-            return urljoin(page_url, href)
-    except Exception as e:
-        logger.debug(f"Autodiscover HTML parse failed for {sanitize_log(page_url)}: {e}")
-
-    from urllib.parse import urljoin, urlparse
-
-    parsed = urlparse(page_url)
-    base = f"{parsed.scheme}://{parsed.netloc}"
-    for path in common_paths:
-        url = urljoin(base, path)
+    async def _fetch(url: str) -> str | None:
         try:
             resp = await safe_fetch(
                 url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
             )
-            if resp.status_code == 200 and (
-                "rss" in resp.text[:500].lower()
-                or "atom" in resp.text[:500].lower()
-                or "<feed" in resp.text[:500].lower()
-            ):
-                return url
         except Exception as e:
-            logger.debug(f"Feed probe failed for {sanitize_log(url)}: {e}")
-    return None
+            logger.debug("Feed probe failed for %s: %s", sanitize_log(url), e)
+            return None
+        if resp.status_code != 200:
+            return None
+        return resp.text
+
+    return await best_feed_url(page_url, fetch=_fetch)
 
 
 def _validators_from(resp) -> tuple[str | None, str | None]:
