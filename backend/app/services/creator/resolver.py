@@ -33,6 +33,11 @@ PLATFORM_DOMAINS = {
     "reddit.com": "reddit",
     "old.reddit.com": "reddit",
     "new.reddit.com": "reddit",
+    "bsky.app": "bluesky",
+    "github.com": "github",
+    "mastodon.social": "mastodon",
+    "fosstodon.org": "mastodon",
+    "hachyderm.io": "mastodon",
 }
 
 # ---------------------------------------------------------------------------
@@ -51,6 +56,9 @@ PLATFORM_CAPABILITIES: dict[str, dict[str, str]] = {
     "medium": {"tracking_tier": "fully_tracked", "display_label": "Medium"},
     "youtube": {"tracking_tier": "fully_tracked", "display_label": "YouTube"},
     "reddit": {"tracking_tier": "fully_tracked", "display_label": "Reddit"},
+    "bluesky": {"tracking_tier": "fully_tracked", "display_label": "Bluesky"},
+    "mastodon": {"tracking_tier": "fully_tracked", "display_label": "Mastodon"},
+    "github": {"tracking_tier": "fully_tracked", "display_label": "GitHub"},
     "blog": {"tracking_tier": "best_effort", "display_label": "Blog / Site"},
     "podcast": {"tracking_tier": "best_effort", "display_label": "Podcast"},
     "twitter": {"tracking_tier": "unsupported", "display_label": "Twitter / X"},
@@ -199,11 +207,19 @@ def _autodiscover_feed_url(
             return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", None
         return None, "Could not extract the YouTube channel id; feed not discovered."
     if platform == "reddit":
-        # Append .rss to the profile/subreddit URL. Works for both
-        # /r/{subreddit} and /user/{name}. Strip query/fragment first, then the
-        # trailing slash, to avoid producing a double slash.
-        base = profile_url.split("?")[0].split("#")[0].rstrip("/")
-        return f"{base}/.rss", None
+        from app.services.ingestion.discover import platform_candidates
+
+        matches = platform_candidates(profile_url, html)
+        if matches:
+            return matches[0].url, None
+        return None, "Could not build a Reddit feed URL."
+    if platform in {"bluesky", "mastodon", "github"}:
+        from app.services.ingestion.discover import platform_candidates
+
+        matches = platform_candidates(profile_url, html)
+        if matches:
+            return matches[0].url, None
+        return None, f"Could not build a {platform} feed URL."
     if platform == "podcast":
         # Podcast feed discovery is deferred to the async caller (it needs an
         # HTTP lookup); here we only signal that none was found synchronously.

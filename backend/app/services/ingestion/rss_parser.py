@@ -61,6 +61,7 @@ class RawContentItem:
     word_count: int | None = None
     source_feed_url: str | None = None
     creator_platform_id: str | None = None
+    transcript_url: str | None = None
 
 
 def _count_words(text: str) -> int:
@@ -106,7 +107,7 @@ async def _autodiscover_feed(page_url: str) -> str | None:
     async def _fetch(url: str) -> str | None:
         try:
             resp = await safe_fetch(
-                url, headers=_FEED_HEADERS, timeout=10, max_bytes=_FEED_MAX_BYTES
+                url, headers=_FEED_HEADERS, timeout=3, max_bytes=_FEED_MAX_BYTES
             )
         except Exception as e:
             logger.debug("Feed probe failed for %s: %s", sanitize_log(url), e)
@@ -166,6 +167,20 @@ async def _load_feed_bytes(
     return _HttpFeed(resp.status_code, body, response_etag, response_modified)
 
 
+def _transcript_url(entry) -> str | None:
+    """Podcast 2.0 `<podcast:transcript url=...>` once feedparser has parsed it."""
+    value = getattr(entry, "podcast_transcript", None)
+    if value is None and hasattr(entry, "get"):
+        value = entry.get("podcast_transcript")
+    items = value if isinstance(value, list) else [value]
+    for item in items:
+        if isinstance(item, dict):
+            url = item.get("url") or item.get("href")
+            if url:
+                return str(url)
+    return None
+
+
 def _items_from_feed(feed, source_url: str) -> list[RawContentItem]:
     items: list[RawContentItem] = []
     for entry in feed.entries:
@@ -184,6 +199,7 @@ def _items_from_feed(feed, source_url: str) -> list[RawContentItem]:
                 full_text=text or None,
                 word_count=word_count,
                 source_feed_url=source_url,
+                transcript_url=_transcript_url(entry),
             )
         )
     return items

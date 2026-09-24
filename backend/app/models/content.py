@@ -68,6 +68,7 @@ class ContentItem(Base):
     summarization_cached: Mapped[bool] = mapped_column(Boolean, default=False)
     # "llm" or "extractive". Null on rows written before the column existed.
     summary_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    transcript_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

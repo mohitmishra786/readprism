@@ -122,6 +122,34 @@ def test_reddit_user_feed_url():
     assert warning is None
 
 
+def test_reddit_top_feed_includes_time_window():
+    feed, warning = _autodiscover_feed_url(
+        "reddit", "https://www.reddit.com/r/MachineLearning/top", ""
+    )
+    assert feed == "https://www.reddit.com/r/MachineLearning/top/.rss?t=week"
+    assert warning is None
+
+
+def test_bluesky_profile_rss():
+    feed, warning = _autodiscover_feed_url(
+        "bluesky", "https://bsky.app/profile/alice.bsky.social", ""
+    )
+    assert feed == "https://bsky.app/profile/alice.bsky.social/rss"
+    assert warning is None
+
+
+def test_mastodon_profile_rss():
+    feed, warning = _autodiscover_feed_url("mastodon", "https://mastodon.social/@alice", "")
+    assert feed == "https://mastodon.social/@alice.rss"
+    assert warning is None
+
+
+def test_github_releases_atom():
+    feed, warning = _autodiscover_feed_url("github", "https://github.com/owner/repo", "")
+    assert feed == "https://github.com/owner/repo/releases.atom"
+    assert warning is None
+
+
 def test_reddit_strips_query_and_fragment():
     feed, _ = _autodiscover_feed_url(
         "reddit", "https://www.reddit.com/r/MachineLearning/?sort=new#main", ""

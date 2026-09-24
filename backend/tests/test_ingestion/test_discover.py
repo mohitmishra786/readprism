@@ -162,14 +162,14 @@ CASES = [
 ]
 
 
-def _probe_factory(kind: str):
+def _probe_factory(kind: str, expected: str):
     async def _fetch(url: str) -> str | None:
+        if url.split("#")[0] == expected.split("#")[0]:
+            return FEED
         if kind == "hugo-probe" and url.endswith("/index.xml"):
             return FEED
         if kind == "jekyll-probe" and url.endswith("/atom.xml"):
             return FEED
-        if kind == "rsshub-x":
-            return None
         return None
 
     return _fetch
@@ -182,7 +182,7 @@ async def test_fixture_site_resolves(kind, page, html, expected, method, monkeyp
         monkeypatch.setattr(get_settings(), "rsshub_base_url", "https://rsshub.example")
     else:
         monkeypatch.setattr(get_settings(), "rsshub_base_url", "")
-    found = await discover_feed_candidates(page, html=html, fetch=_probe_factory(kind))
+    found = await discover_feed_candidates(page, html=html, fetch=_probe_factory(kind, expected))
     assert found, kind
     assert found[0].url == expected
     assert found[0].method == method

@@ -136,6 +136,23 @@ async def test_second_fetch_of_unchanged_feed_is_304_and_skips_parse():
     assert calls["n"] == 2
 
 
+def test_podcast_transcript_url_is_kept():
+    import feedparser
+
+    from app.services.ingestion.rss_parser import _items_from_feed
+
+    xml = """<?xml version="1.0"?>
+    <rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+      <channel><item>
+        <title>Episode</title>
+        <link>https://example.com/ep</link>
+        <podcast:transcript url="https://example.com/ep.vtt" type="text/vtt"/>
+      </item></channel>
+    </rss>"""
+    items = _items_from_feed(feedparser.parse(xml), "https://example.com/feed")
+    assert items[0].transcript_url == "https://example.com/ep.vtt"
+
+
 @pytest.mark.asyncio
 async def test_parse_feed_rejects_entity_expansion():
     bomb = b"""<?xml version="1.0"?>
