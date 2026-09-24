@@ -73,6 +73,8 @@ async def compute(
             np.dot(content_vec, emb) / (np.linalg.norm(content_vec) * np.linalg.norm(emb) + 1e-8)
         )
         sim = cosine_to_unit_score(sim)
+        if not isinstance(completion, int | float):
+            continue
         similarities.append(sim)
         completions.append(float(completion))
 

@@ -9,6 +9,7 @@ keep in sync (audit 17-1/17-2/17-3, 16-1/16-2/16-4).
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -187,7 +188,7 @@ async def meta_weight_divergence(session: AsyncSession) -> dict:
     from app.models.meta_weights import UserMetaWeights as MW
     from app.services.ranking.meta_weights import DEFAULT_WEIGHTS
 
-    rows = list((await session.execute(select(MW.weights))).scalars())
+    rows: list[Any] = list((await session.execute(select(MW.weights))).scalars())
     if not rows:
         return {"users_with_learned_weights": 0, "mean_abs_divergence": None}
     divs = []
