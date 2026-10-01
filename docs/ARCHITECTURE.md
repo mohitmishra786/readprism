@@ -76,6 +76,12 @@ placed item also writes a `digest_impressions` row (section, position, score,
 features, weights version, exploration flag, propensity). Email rendering is
 `digest/delivery.py`.
 
+Digest length is personalized: `N = clamp(1.25 · EMA(items opened per digest),
+5, 30)` recomputed from the last 10 digests at each build (`digest/length.py`).
+An explicit `digest_max_items` from `PUT /preferences` sets
+`users.digest_length_locked` and the learner never clobbers it;
+`digest_length_auto: true` hands control back.
+
 ## Summaries
 
 `SummarizationService` calls `LLMClient` (`app/services/llm/client.py`). The

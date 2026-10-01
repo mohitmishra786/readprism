@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.digest import Digest, DigestFeedbackPrompt, DigestItem
+from app.models.digest import Digest, DigestFeedbackPrompt, DigestImpression, DigestItem
 from app.models.source import Source
 from app.models.user import User
 from app.services.digest.sections import SectionBuilder
@@ -261,8 +261,6 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 signal_breakdown=clean_breakdown,
             )
             session.add(di)
-            from app.models.digest import DigestImpression
-
             session.add(
                 DigestImpression(
                     user_id=user.id,
@@ -504,39 +502,8 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
     Auto-learn digest length from engagement history and serendipity level
     from topical diversity. Writes back to user row if adjustments are made.
     """
-    # Measure typical items-opened-per-digest over last 30 days
-    cutoff = datetime.now(UTC) - timedelta(days=30)
     try:
-        result = await session.execute(
-            select(func.count(UserContentInteraction.id)).where(
-                UserContentInteraction.user_id == user.id,
-                UserContentInteraction.opened_at >= cutoff,
-                UserContentInteraction.surfaced_in_digest == True,
-            )
-        )
-        opens = result.scalar() or 0
-
-        digests_result = await session.execute(
-            select(func.count()).select_from(
-                select(UserContentInteraction.content_item_id)
-                .where(
-                    UserContentInteraction.user_id == user.id,
-                    UserContentInteraction.surfaced_in_digest == True,
-                    UserContentInteraction.created_at >= cutoff,
-                )
-                .subquery()
-            )
-        )
-        # Approximate number of digests from the period
-        total_surfaced = digests_result.scalar() or 0
-        if total_surfaced > 0:
-            avg_opens = opens / max(1, total_surfaced / max(1, user.digest_max_items))
-            # Target: digest length = 1.3x the average items the user opens
-            target_length = max(5, min(30, round(avg_opens * 1.3)))
-            # Only adjust if meaningfully different (>2 items off)
-            if abs(target_length - user.digest_max_items) > 2:
-                user.digest_max_items = target_length
-                logger.info(f"Auto-adjusted digest length to {target_length} for user {user.id}")
+        await _learn_digest_length(user, session)
 
         # Measure topical diversity over last 14 days for serendipity adjustment
         diversity_cutoff = datetime.now(UTC) - timedelta(days=14)
@@ -573,3 +540,52 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
         await session.flush()
     except Exception as e:
         logger.warning(f"digest preference adjustment failed (non-fatal): {e}")
+
+
+async def _learn_digest_length(user: User, session: AsyncSession) -> None:
+    """UX-02: N = clamp(1.25 · EMA(opened per digest), 5, 30) unless locked.
+
+    Runs before the current digest row is created, so the window only covers
+    past digests. The learned length applies to the next build.
+    """
+    from app.services.digest.length import EMA_WINDOW, ema_opened_per_digest, target_digest_length
+
+    if user.digest_length_locked:
+        return
+
+    digests_result = await session.execute(
+        select(Digest.id)
+        .where(Digest.user_id == user.id)
+        .order_by(Digest.generated_at.desc())
+        .limit(EMA_WINDOW)
+    )
+    digest_ids = [row[0] for row in digests_result.all()]
+    if not digest_ids:
+        return
+
+    from sqlalchemy import and_
+
+    opened_result = await session.execute(
+        select(DigestImpression.digest_id, func.count(func.distinct(UserContentInteraction.id)))
+        .join(
+            UserContentInteraction,
+            and_(
+                UserContentInteraction.user_id == user.id,
+                UserContentInteraction.content_item_id == DigestImpression.content_item_id,
+                UserContentInteraction.opened_at.isnot(None),
+            ),
+        )
+        .where(DigestImpression.digest_id.in_(digest_ids))
+        .group_by(DigestImpression.digest_id)
+    )
+    opened_by_digest = {row[0]: int(row[1]) for row in opened_result.all()}
+
+    # oldest → newest, matching the EMA's direction
+    ordered_counts = [
+        float(opened_by_digest.get(digest_id, 0)) for digest_id in reversed(digest_ids)
+    ]
+    ema = ema_opened_per_digest(ordered_counts)
+    target = target_digest_length(ema, current=user.digest_max_items, locked=False)
+    if target != user.digest_max_items:
+        user.digest_max_items = target
+        logger.info(f"Auto-adjusted digest length to {target} for user {user.id}")

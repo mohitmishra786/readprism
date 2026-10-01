@@ -6,6 +6,7 @@ export interface User {
   digest_frequency: string;
   digest_time_morning: string;
   digest_max_items: number;
+  digest_length_locked: boolean;
   serendipity_percentage: number;
   tier: string;
   timezone: string;

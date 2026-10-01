@@ -37,6 +37,11 @@ async def update_preferences(
         current_user.digest_time_morning = body.digest_time_morning
     if body.digest_max_items is not None:
         current_user.digest_max_items = body.digest_max_items
+        # An explicit length choice overrides the learner until the user turns
+        # auto length back on (UX-02).
+        current_user.digest_length_locked = True
+    if body.digest_length_auto is not None:
+        current_user.digest_length_locked = not body.digest_length_auto
     if body.serendipity_percentage is not None:
         current_user.serendipity_percentage = max(0, min(50, body.serendipity_percentage))
     if body.timezone is not None:
