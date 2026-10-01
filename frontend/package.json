@@ -10,10 +10,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@sentry/nextjs": "^10.67.0",
-    "dompurify": "^3.4.13",
+    "@sentry/nextjs": "^11.1.0",
+    "dompurify": "^3.4.16",
     "js-cookie": "3.0.8",
-    "lucide-react": "^1.25.0",
+    "lucide-react": "^1.48.0",
     "next": "16.3.6",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -21,16 +21,16 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
     "@types/js-cookie": "3.0.6",
-    "@types/node": "26.1.1",
+    "@types/node": "26.6.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "postcss": "8.5.23",
+    "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3"
   },
   "overrides": {
     "brace-expansion": "5.0.8",
-    "postcss": "8.5.23",
+    "postcss": "8.5.28",
     "sharp": "0.35.3"
   }
 }
