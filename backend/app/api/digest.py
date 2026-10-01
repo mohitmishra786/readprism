@@ -18,7 +18,7 @@ from app.models.user import User
 from app.schemas.content import ContentItemRead
 from app.schemas.digest import DigestItemRead, DigestRead
 from app.utils.logging import get_logger
-from app.utils.signed_links import verify_action
+from app.utils.signed_links import ACTIONS, verify_action
 from app.utils.unsubscribe import verify_unsubscribe_token
 
 router = APIRouter(prefix="/digest", tags=["digest"])
@@ -125,6 +125,12 @@ async def email_action_link(
     Records the feedback, then redirects into the in-app reader so the normal
     telemetry (depth, dwell) can follow (UX-04).
     """
+    # Allowlist the path parameter before anything else: every later use of
+    # `action` (branching, logging) is then structurally bounded (CodeQL
+    # py/log-injection).
+    if action not in ACTIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
+
     try:
         user_uuid = uuid.UUID(uid)
     except (ValueError, TypeError):
@@ -141,13 +147,17 @@ async def email_action_link(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
 
     content_result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
-    if content_result.scalar_one_or_none() is None:
+    content = content_result.scalar_one_or_none()
+    if content is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
 
-    await _record_email_action(user, item_id, action, session)
-    logger.info(f"Email action {action} recorded for user {user_uuid} item {item_id}")
+    await _record_email_action(user, content.id, action, session)
+    logger.info(f"Email action {action} recorded for user {user_uuid} item {content.id}")
 
-    reader_url = f"{get_settings().frontend_url.rstrip('/')}/read/{item_id}"
+    # The redirect target is built from the operator-configured frontend URL
+    # and the database row's canonical id — never from a raw request string
+    # (CodeQL py/url-redirect).
+    reader_url = f"{get_settings().frontend_url.rstrip('/')}/read/{content.id}"
     return RedirectResponse(url=reader_url, status_code=303)
 
 

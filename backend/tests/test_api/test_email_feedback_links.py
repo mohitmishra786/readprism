@@ -173,3 +173,15 @@ async def test_bad_signature_is_rejected(client: AsyncClient, test_user_data: di
         )
     ).scalar_one_or_none()
     assert rows is None  # nothing recorded
+
+
+@pytest.mark.asyncio
+async def test_unknown_action_is_rejected_before_verification(
+    client: AsyncClient, test_user_data: dict, db_session
+):
+    """A bogus action in the path is a 400 even with otherwise-valid params."""
+    user, content = await _seed(client, db_session, test_user_data)
+    url = action_url(user.id, content.id, "up").replace("/e/up/", "/e/bogus/")
+
+    resp = await client.get(url)
+    assert resp.status_code == 400
