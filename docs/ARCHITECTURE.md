@@ -53,18 +53,28 @@ of cluster medoids. Embeddings are `all-MiniLM-L6-v2`, 384 dimensions,
 `Vector(384)` in `content_items.embedding`. The input is title plus brief,
 truncated to 2048 characters (`EmbeddingService.build_embedding_text`).
 
-There is no `digest_impressions` table. A row in `user_content_interactions`
-is created when an item is placed in a digest or when the client posts
-telemetry.
+Every item placed in a digest or rendered in `GET /content/feed` writes a
+`digest_impressions` row (section, position, score, features, weights
+version, exploration flag, propensity). Telemetry from the reader updates
+`user_content_interactions`.
 
 ## Digest
 
 `build_digest` takes recent items from the user's sources, plus a serendipity
 query for public items whose `source_id` is not one of those sources, inside
 the same time window. On a one-user database that second set is empty unless
-some other writer inserted public items. Sections (lead, creator, deep reads,
-discovery) are assigned in `digest/sections.py` with a per-topic cap of 30%
-and a serendipity share. Email rendering is `digest/delivery.py`.
+some other writer inserted public items or discovery-pool items
+(`origin=discovery`) exist. Sections (lead, creator, deep reads, discovery)
+are assigned in `digest/sections.py`: lead holds the top 3–5 non-exploration
+items, the creator section groups items per person (≤ 2 each, contiguous,
+creators ordered by best score), deep reads are `reading_time_minutes >= 8`,
+and discovery holds only serendipity picks / `origin=discovery` items — never
+low-scoring followed items. A per-topic cap of 30% and the serendipity share
+still apply. When `RANKING_EXPLORATION_ENABLED` is on, `exploration_plan`
+flags a few placed items (digest positions 6–40, softmax propensity). Every
+placed item also writes a `digest_impressions` row (section, position, score,
+features, weights version, exploration flag, propensity). Email rendering is
+`digest/delivery.py`.
 
 ## Summaries
 

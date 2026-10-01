@@ -153,12 +153,46 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     limit = max(user.digest_max_items * 3, 60)
     ranked = await rank_content_for_user(user, all_items, session, limit=limit)
 
+    # The serendipity picks ARE the discovery section candidates (A6):
+    # label them explicitly and make sure they survived the rank cutoff.
+    serendipity_ids = {item.id for item in serendipity_items}
+    ranked_ids = {item.id for item, _, _ in ranked}
+    for item, _prs, breakdown in ranked:
+        if item.id in serendipity_ids:
+            breakdown["_serendipity_candidate"] = True
+    for item in serendipity_items:
+        if item.id not in ranked_ids:
+            ranked.append((item, 0.0, {"_serendipity_candidate": True}))
+
     # Build sections
     builder = SectionBuilder(
         total_items=user.digest_max_items,
         serendipity_pct=user.serendipity_percentage,
     )
     sections = builder.build(ranked)
+
+    # Exploration slots (A6): sampled from digest positions 6-40 with softmax
+    # propensity, behind RANKING_EXPLORATION_ENABLED. Applied after layout so
+    # every exploration pick is a placed item; positions < 6 never lead anyway.
+    # Deterministic per user + build.
+    from random import Random
+
+    from app.services.ranking.phase2.learning import exploration_plan
+
+    placed: list[tuple] = []
+    for section in sections.values():
+        for row in section.items:
+            placed.append(row)
+    if get_settings().ranking_exploration_enabled and len(placed) >= 6:
+        rng = Random(f"explore:{user.id}")
+        plan_by_index = {
+            row["index"]: row for row in exploration_plan([row[1] for row in placed], rng=rng)
+        }
+        for index, plan_row in plan_by_index.items():
+            if index < len(placed):
+                breakdown = placed[index][2]
+                breakdown["exploration"] = True
+                breakdown["_propensity"] = plan_row["propensity"]
 
     # Auto-learn digest length and serendipity from engagement history
     await _adjust_digest_preferences(user, session)
@@ -240,7 +274,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                     features_json=numeric,
                     weights_version=RANKER_VERSION,
                     exploration=bool(clean_breakdown.get("exploration")),
-                    propensity=1.0,
+                    propensity=float(breakdown.get("_propensity", 1.0)),
                 )
             )
             position += 1

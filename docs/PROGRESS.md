@@ -122,7 +122,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 
 ### PHASE 3 — Digest & reader experience  _(goal: the product feels smart in daily use)_
 
-- **UX-01** [TODO] (P1·M) Digest builder per spec: Lead (3–5), Creators (grouped by person), Deep reads (≥ 8 min), Discovery (labeled); saturation cap; dedupe. — Accept: unit tests on synthetic candidate sets. — Deps: IQ-12
+- **UX-01** [DOING] (P1·M) Digest builder per spec: Lead (3–5), Creators (grouped by person), Deep reads (≥ 8 min), Discovery (labeled); saturation cap; dedupe. — Accept: unit tests on synthetic candidate sets. — Deps: IQ-12
 - **UX-02** [TODO] (P2·S) Digest length personalization: target = clamp(1.25 × EMA(items opened per digest), 5, 30); explicit override. — Accept: test. — Deps: IQ-07
 - **UX-03** [TODO] (P2·M) Scheduling: per-user timezone + preferred time (learned from open-time histogram), 1–4/day, idempotent send, "nothing worth reading" skip threshold. — Accept: no duplicate sends under retry; DST test. — Deps: IQ-11
 - **UX-04** [TODO] (P1·L) Email v2: responsive HTML + plain text; 2–3 sentence summary; "why" line; **one-click 👍/👎/save signed links** (HMAC, expiring, no login); tracking pixel OFF by default; click-through via app redirect into the in-app reader (needed for telemetry, disclosed); `List-Unsubscribe`; SPF/DKIM docs. — Accept: rendered snapshot tests; signed-link tamper/expiry tests; feedback recorded. — Deps: P0-07, IQ-13
@@ -309,6 +309,12 @@ No backlog ids were reprioritized. The audit confirmed the existing order: impre
 ---
 
 ## 9. Session Log (append-only, newest first)
+
+### Session 5 — 2026-10-02
+
+Branch `agent/phase-3-digest-ux` from `origin/main` at `5040900` (PR #61 merged, CI green). Phase 3 starts.
+
+UX-01 plan: (1) `sections.py`: lead count clamped to 3–5 (currently `floor(0.4·N)` gives 2 for N=5), deep-reads eligibility `≥ 8 min` (currently `> 10`), discovery eligibility from `origin == "discovery"` (plus the internal selection flag), creator section grouped per person (creators ordered by best PRS, ≤ 2 items each, contiguous). (2) `engine.py`: delete the bottom-15%-PRS `_serendipity_candidate` marking — it mislabels low-scoring *followed* items as discovery, contradicting A6. (3) `builder.py`: flag the actual serendipity picks, guarantee they survive the rank limit, wire `exploration_plan` behind `RANKING_EXPLORATION_ENABLED` with propensity recorded on the impression. (4) Tests on synthetic candidate sets in `test_digest_sections.py` + a wiring test. (5) Full suite + ruff + mypy.
 
 ### Session 4 — 2026-09-25
 
