@@ -106,7 +106,9 @@ async def _record_email_action(
     return interaction
 
 
-def _confirmation_page(action: str, target_url: str) -> HTMLResponse:
+def _confirmation_page(
+    action: str, user_id: uuid.UUID, item_id: uuid.UUID, exp: int, sig: str
+) -> HTMLResponse:
     """A one-tap confirmation page for mutating email actions.
 
     Corporate mail scanners (Safe Links, Mimecast) prefetch every link in an
@@ -114,9 +116,18 @@ def _confirmation_page(action: str, target_url: str) -> HTMLResponse:
     page on GET instead of writing state: a scanner sees inert HTML, a real
     browser auto-submits the form (and a no-JS user can press the button),
     which POSTs back to the same signed URL and records the action.
+
+    Every interpolated value is a server-validated type (allowlisted action,
+    parsed UUIDs, int expiry, HMAC-matched hex signature) and is additionally
+    HTML-escaped at the sink (CodeQL py/reflective-xss).
     """
+    import html
+
     labels = {"up": "👍 Useful", "down": "👎 Not for me", "save": "💾 Save"}
-    label = labels.get(action, action)
+    label = html.escape(labels.get(action, "Confirm"))
+    target = html.escape(
+        f"/api/v1/digest/e/{action}/{item_id}?uid={user_id}&exp={exp}&sig={sig}", quote=True
+    )
     return HTMLResponse(
         f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
@@ -132,7 +143,7 @@ def _confirmation_page(action: str, target_url: str) -> HTMLResponse:
 </style></head>
 <body><div class="card">
 <p>Confirm your feedback for this article:</p>
-<form method="post" action="{target_url}" id="confirm">
+<form method="post" action="{target}" id="confirm">
   <button type="submit">{label}</button>
 </form>
 </div>
@@ -189,8 +200,18 @@ def _reader_redirect(content: ContentItem) -> RedirectResponse:
     return RedirectResponse(url=reader_url, status_code=303)
 
 
-def _current_url(action: str, item_id: uuid.UUID, uid: str, exp: int, sig: str) -> str:
-    return f"/api/v1/digest/e/{action}/{item_id}?uid={uid}&exp={exp}&sig={sig}"
+# Constant map for logging: the value printed comes from this table, never
+# from the request string (CodeQL py/log-injection).
+_LOG_ACTIONS = {name: name for name in ACTIONS}
+
+
+def _log_email_action(action: str, user_id: uuid.UUID, item_id: uuid.UUID) -> None:
+    logger.info(
+        "Email action %s recorded for user %s item %s",
+        _LOG_ACTIONS[action],
+        user_id,
+        item_id,
+    )
 
 
 @router.get("/e/{action}/{item_id}")
@@ -214,10 +235,10 @@ async def email_action_link(
     user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
 
     if action in MUTATING_ACTIONS:
-        return _confirmation_page(action, _current_url(action, content.id, uid, exp, sig))
+        return _confirmation_page(action, user.id, content.id, exp, sig)
 
     await _record_email_action(user, content.id, action, session)
-    logger.info(f"Email action {action} recorded for user {user.id} item {content.id}")
+    _log_email_action(action, user.id, content.id)
     return _reader_redirect(content)
 
 
@@ -243,7 +264,7 @@ async def email_action_submit(
     from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
 
     update_interest_graph_for_interaction.delay(str(interaction.id))
-    logger.info(f"Email action {action} recorded for user {user.id} item {content.id}")
+    _log_email_action(action, user.id, content.id)
     return _reader_redirect(content)
 
 
