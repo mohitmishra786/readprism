@@ -8,6 +8,7 @@ if (dsn) {
     dsn,
     environment: process.env.NEXT_PUBLIC_APP_ENV || "development",
     tracesSampleRate: 0,
-    sendDefaultPii: false,
+    // sendDefaultPii stays false — the SDK default; the key was removed from
+    // the options type in @sentry/nextjs 11 and false was already the value.
   });
 }

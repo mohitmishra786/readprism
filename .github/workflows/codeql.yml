@@ -1,16 +1,18 @@
-# CodeQL semantic code analysis — runs on every PR and weekly on main.
+# CodeQL semantic code analysis — weekly scan of the default branch.
 # Catches security vulnerabilities (SQL injection, XSS, path traversal, etc.)
 # that dependency scanning misses.
+#
+# Deliberately NOT run per-PR/per-push: it is a scanner, not a build gate, and
+# per-PR analysis was the single largest CI consumer. Results land in the
+# Security tab weekly; vulnerable dependencies are covered separately by the
+# daily Dependabot security alerts (which are free).
 name: "CodeQL"
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   schedule:
     # Weekly scan of the default branch — Mondays 02:00 UTC.
     - cron: "0 2 * * 1"
+  workflow_dispatch: {}
 
 permissions:
   contents: read

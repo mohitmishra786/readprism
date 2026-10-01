@@ -8,6 +8,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs (new push to the same branch/PR) so iterating on a
+# PR does not stack queued runs.
+concurrency:
+  group: frontend-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

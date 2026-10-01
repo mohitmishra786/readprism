@@ -37,7 +37,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+asyncpg://readprism:readprism@db:5432/readprism"
-    database_sync_url: str = "postgresql://readprism:readprism@db:5432/readprism"
+    database_sync_url: str = "postgresql+psycopg2://readprism:readprism@db:5432/readprism"
 
     # Redis
     redis_url: str = "redis://redis:6379/0"

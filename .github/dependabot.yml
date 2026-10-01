@@ -2,7 +2,7 @@
 #
 # Strategy:
 # - Security alerts are scanned DAILY so critical vulns surface fast.
-# - Version update PRs open on a WEEKLY cadence (Monday) to avoid noise.
+# - Version update PRs open on a MONTHLY cadence to limit Actions usage.
 # - All ecosystem updates are grouped into ONE PR per ecosystem (not one per
 #   dependency) so reviews are batched and the PR queue stays manageable.
 # - Major-version updates are allowed for npm (frontend) but held for pip
@@ -18,10 +18,9 @@ updates:
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "07:00"
-      timezone: "Asia/Kolkata"
+      # Monthly: version-update runs consume Actions minutes; security alerts
+      # are a separate (daily, free) scan, so freshness of vuln data is kept.
+      interval: "monthly"
     open-pull-requests-limit: 5
     # Group ALL pip updates into a single PR.
     groups:
@@ -45,10 +44,8 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "07:00"
-      timezone: "Asia/Kolkata"
+      # Monthly, matching pip (see the note there on security alerts).
+      interval: "monthly"
     open-pull-requests-limit: 5
     # Group production + dev deps separately so Next/React majors are reviewable
     # apart from tooling bumps. Both still batch many deps into few PRs.
