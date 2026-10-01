@@ -174,7 +174,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Exploration slots (A6): sampled from digest positions 6-40 with softmax
     # propensity, behind RANKING_EXPLORATION_ENABLED. Applied after layout so
     # every exploration pick is a placed item; positions < 6 never lead anyway.
-    # Deterministic per user + build.
+    # Freshly seeded per build so successive builds explore different slots;
+    # the drawn propensity is logged on each impression for later IPW.
     from random import Random
 
     from app.services.ranking.phase2.learning import exploration_plan
@@ -184,7 +185,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         for row in section.items:
             placed.append(row)
     if get_settings().ranking_exploration_enabled and len(placed) >= 6:
-        rng = Random(f"explore:{user.id}")
+        rng = Random(f"explore:{user.id}:{uuid.uuid4()}")
         plan_by_index = {
             row["index"]: row for row in exploration_plan([row[1] for row in placed], rng=rng)
         }

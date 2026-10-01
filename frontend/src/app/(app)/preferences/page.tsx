@@ -143,8 +143,13 @@ export default function PreferencesPage() {
     }
   };
 
+  const [initial, setInitial] = useState<User | null>(null);
+
   useEffect(() => {
-    api.preferences.get().then(setUser).catch(() => {});
+    api.preferences.get().then((u) => {
+      setUser(u);
+      setInitial(u);
+    }).catch(() => {});
     api.preferences.interestGraph().then(setGraph).catch(() => {});
   }, []);
 
@@ -152,13 +157,20 @@ export default function PreferencesPage() {
     if (!user) return;
     setSaving(true);
     try {
-      const updated = await api.preferences.update({
+      // Only send digest_max_items when the user actually moved the slider:
+      // an explicit value locks the length learner (UX-02), so echoing the
+      // current value on every save would lock it by accident.
+      const payload: Partial<User> = {
         digest_frequency: user.digest_frequency,
-        digest_max_items: user.digest_max_items,
         serendipity_percentage: user.serendipity_percentage,
         timezone: user.timezone,
-      });
+      };
+      if (initial && user.digest_max_items !== initial.digest_max_items) {
+        payload.digest_max_items = user.digest_max_items;
+      }
+      const updated = await api.preferences.update(payload);
       setUser(updated);
+      setInitial(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {}
@@ -203,6 +215,11 @@ export default function PreferencesPage() {
               onChange={(e) => setUser({ ...user, digest_max_items: Number(e.target.value) })}
               style={{ width: "100%" }}
             />
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
+              {user.digest_length_locked
+                ? "Locked to your explicit choice."
+                : "Auto: adapts to how much you actually open. Moving the slider locks it."}
+            </p>
           </div>
           <div>
             <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>

@@ -41,12 +41,15 @@ def test_tampered_signature_is_rejected():
 
 def test_expired_link_is_rejected():
     uid, item = uuid.uuid4(), uuid.uuid4()
-    exp = int(time.time()) - 10
-    url = action_url(uid, item, "save", ttl_seconds=-10)
+    # One shared clock value for signing and verification, so the assertion
+    # cannot flake when the wall clock crosses a second boundary in between.
+    now = time.time()
+    exp = int(now) - 10
+    url = action_url(uid, item, "save", ttl_seconds=-10, now=now)
     query = url.split("?", 1)[1]
     params = dict(part.split("=", 1) for part in query.split("&"))
     assert int(params["exp"]) == exp
-    assert verify_action(params["uid"], item, "save", exp, params["sig"]) is False
+    assert verify_action(params["uid"], item, "save", exp, params["sig"], now=now) is False
 
 
 def test_action_cannot_be_replayed_as_another_action():
@@ -80,7 +83,7 @@ async def test_up_link_records_rating_and_redirects(
     with patch(
         "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"
     ) as mock_delay:
-        resp = await client.get(url)
+        resp = await client.post(url)
     assert resp.status_code == 303
     assert f"/read/{content.id}" in resp.headers["location"]
     mock_delay.assert_called_once()
@@ -98,6 +101,30 @@ async def test_up_link_records_rating_and_redirects(
 
 
 @pytest.mark.asyncio
+async def test_get_on_mutating_action_shows_confirmation_and_records_nothing(
+    client: AsyncClient, test_user_data: dict, db_session
+):
+    """A mail-scanner GET must not record a rating (CodeRabbit: prefetch)."""
+    user, content = await _seed(client, db_session, test_user_data)
+    url = action_url(user.id, content.id, "up")
+
+    resp = await client.get(url)
+    assert resp.status_code == 200
+    assert 'method="post"' in resp.text  # confirmation form, not a mutation
+    assert "👍" in resp.text
+
+    rows = (
+        await db_session.execute(
+            select(UserContentInteraction).where(
+                UserContentInteraction.user_id == user.id,
+                UserContentInteraction.content_item_id == content.id,
+            )
+        )
+    ).scalar_one_or_none()
+    assert rows is None
+
+
+@pytest.mark.asyncio
 async def test_save_link_records_saved(client: AsyncClient, test_user_data: dict, db_session):
     user, content = await _seed(client, db_session, test_user_data)
     url = action_url(user.id, content.id, "save")
@@ -105,19 +132,9 @@ async def test_save_link_records_saved(client: AsyncClient, test_user_data: dict
     with patch(
         "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"
     ):
-        resp = await client.get(url)
+        resp = await client.post(url)
     assert resp.status_code == 303
 
-    await db_session.refresh(
-        (
-            await db_session.execute(
-                select(UserContentInteraction).where(
-                    UserContentInteraction.user_id == user.id,
-                    UserContentInteraction.content_item_id == content.id,
-                )
-            )
-        ).scalar_one()
-    )
     interaction = (
         await db_session.execute(
             select(UserContentInteraction).where(

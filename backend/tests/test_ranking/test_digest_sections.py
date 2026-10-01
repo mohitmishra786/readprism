@@ -195,3 +195,31 @@ def test_no_double_use_across_sections():
         for it, _, _ in section.items:
             assert it.id not in used, f"Item {it.id} reused across sections"
             used.add(it.id)
+
+
+def test_creator_section_rechecks_topic_saturation():
+    """Creator rows cannot overflow the topic cap at emit time (CodeRabbit).
+
+    Lead already holds one "ai" item; three more "ai" creator rows all pass
+    the preselection check individually, so the emit loop must recheck.
+    """
+    builder = SectionBuilder(total_items=12, max_topic_pct=0.30)  # cap = 3
+    a, b = uuid.uuid4(), uuid.uuid4()
+    rows = [
+        _make_item(topics=["ai"], prs=0.95),  # lead -> ai count is 1
+        *_fillers(3, prs=0.90),
+        _make_item(topics=["ai"], creator_id=a, prs=0.80),
+        _make_item(topics=["ai"], creator_id=a, prs=0.75),
+        _make_item(topics=["ai"], creator_id=b, prs=0.70),
+        _make_item(topics=["ai"], creator_id=b, prs=0.65),
+    ]
+    sections = builder.build(rows)
+
+    ai_total = sum(
+        1
+        for section in sections.values()
+        for it, _, _ in section.items
+        if "ai" in (it.topic_clusters or [])
+    )
+    assert ai_total <= 3
+    assert len(sections["creator"].items) == 2  # third "ai" row was skipped

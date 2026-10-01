@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -78,7 +78,7 @@ async def unsubscribe_post(
 
 async def _record_email_action(
     user: User, item_id: uuid.UUID, action: str, session: AsyncSession
-) -> None:
+) -> UserContentInteraction:
     """Upsert the interaction row for a one-click email action (UX-04)."""
     result = await session.execute(
         select(UserContentInteraction).where(
@@ -103,28 +103,56 @@ async def _record_email_action(
         interaction.saved = True
 
     await session.flush()
-
-    if action in {"up", "down", "save"} and interaction.id is not None:
-        from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
-
-        update_interest_graph_for_interaction.delay(str(interaction.id))
+    return interaction
 
 
-@router.get("/e/{action}/{item_id}")
-async def email_action_link(
+def _confirmation_page(action: str, target_url: str) -> HTMLResponse:
+    """A one-tap confirmation page for mutating email actions.
+
+    Corporate mail scanners (Safe Links, Mimecast) prefetch every link in an
+    email with plain GETs and no JS. Mutating actions therefore render this
+    page on GET instead of writing state: a scanner sees inert HTML, a real
+    browser auto-submits the form (and a no-JS user can press the button),
+    which POSTs back to the same signed URL and records the action.
+    """
+    labels = {"up": "👍 Useful", "down": "👎 Not for me", "save": "💾 Save"}
+    label = labels.get(action, action)
+    return HTMLResponse(
+        f"""<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReadPrism — {label}</title>
+<style>
+ body {{ font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
+        align-items: center; justify-content: center; background: #f8fafc; margin: 0; }}
+ .card {{ background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+         padding: 32px 40px; text-align: center; }}
+ button {{ font-size: 16px; padding: 10px 24px; border-radius: 8px; border: 1px solid #1d4ed8;
+          background: #1d4ed8; color: #fff; cursor: pointer; }}
+</style></head>
+<body><div class="card">
+<p>Confirm your feedback for this article:</p>
+<form method="post" action="{target_url}" id="confirm">
+  <button type="submit">{label}</button>
+</form>
+</div>
+<script>document.getElementById("confirm").submit();</script>
+</body></html>"""
+    )
+
+
+MUTATING_ACTIONS = {"up", "down", "save"}
+
+
+async def _verify_email_action(
     action: str,
     item_id: uuid.UUID,
-    uid: str = Query(...),
-    exp: int = Query(...),
-    sig: str = Query(...),
-    session: AsyncSession = Depends(get_db),
-) -> RedirectResponse:
-    """Signed one-click email actions: open / thumbs up / thumbs down / save.
-
-    No login: the HMAC over (user, item, action, expiry) is the authority.
-    Records the feedback, then redirects into the in-app reader so the normal
-    telemetry (depth, dwell) can follow (UX-04).
-    """
+    uid: str,
+    exp: int,
+    sig: str,
+    session: AsyncSession,
+) -> tuple[User, ContentItem]:
+    """Shared validation for the GET and POST email-action handlers."""
     # Allowlist the path parameter before anything else: every later use of
     # `action` (branching, logging) is then structurally bounded (CodeQL
     # py/log-injection).
@@ -150,15 +178,73 @@ async def email_action_link(
     content = content_result.scalar_one_or_none()
     if content is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
+    return user, content
 
-    await _record_email_action(user, content.id, action, session)
-    logger.info(f"Email action {action} recorded for user {user_uuid} item {content.id}")
 
+def _reader_redirect(content: ContentItem) -> RedirectResponse:
     # The redirect target is built from the operator-configured frontend URL
     # and the database row's canonical id — never from a raw request string
     # (CodeQL py/url-redirect).
     reader_url = f"{get_settings().frontend_url.rstrip('/')}/read/{content.id}"
     return RedirectResponse(url=reader_url, status_code=303)
+
+
+def _current_url(action: str, item_id: uuid.UUID, uid: str, exp: int, sig: str) -> str:
+    return f"/api/v1/digest/e/{action}/{item_id}?uid={uid}&exp={exp}&sig={sig}"
+
+
+@router.get("/e/{action}/{item_id}")
+async def email_action_link(
+    action: str,
+    item_id: uuid.UUID,
+    uid: str = Query(...),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """Signed one-click email actions: open / thumbs up / thumbs down / save.
+
+    No login: the HMAC over (user, item, action, expiry) is the authority.
+
+    GET is non-mutating for up/down/save (it renders a confirmation page) so
+    mail-scanner prefetch cannot forge ratings or saves. 'open' is a passive
+    click-through: it records opened_at and redirects to the in-app reader so
+    depth/dwell telemetry can follow (UX-04).
+    """
+    user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
+
+    if action in MUTATING_ACTIONS:
+        return _confirmation_page(action, _current_url(action, content.id, uid, exp, sig))
+
+    await _record_email_action(user, content.id, action, session)
+    logger.info(f"Email action {action} recorded for user {user.id} item {content.id}")
+    return _reader_redirect(content)
+
+
+@router.post("/e/{action}/{item_id}")
+async def email_action_submit(
+    action: str,
+    item_id: uuid.UUID,
+    uid: str = Query(...),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Record a mutating email action (form POST from the confirmation page)."""
+    if action not in MUTATING_ACTIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
+    user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
+
+    interaction = await _record_email_action(user, content.id, action, session)
+    # Commit before dispatching so the worker's own session can see the row
+    # (get_db commits only after the response is returned — the task could
+    # otherwise run first and find nothing).
+    await session.commit()
+    from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
+
+    update_interest_graph_for_interaction.delay(str(interaction.id))
+    logger.info(f"Email action {action} recorded for user {user.id} item {content.id}")
+    return _reader_redirect(content)
 
 
 @router.get("/latest", response_model=DigestRead)

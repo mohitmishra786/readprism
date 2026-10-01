@@ -121,6 +121,11 @@ class SectionBuilder:
 
         for cid in sorted(creator_rows, key=lambda c: creator_best[c], reverse=True):
             for row in creator_rows[cid]:
+                # Recheck saturation at emit time: the preselection pass ran
+                # before any creator row was counted, so same-topic rows can
+                # each have passed individually and then overflow the cap.
+                if not _check_saturation(row[0]):
+                    continue
                 if sections["creator"].add(*row):
                     used_ids.add(row[0].id)
                     _update_topics(row[0])
