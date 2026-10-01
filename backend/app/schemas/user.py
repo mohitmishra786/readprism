@@ -27,6 +27,7 @@ class UserRead(BaseModel):
     digest_frequency: str
     digest_time_morning: time
     digest_max_items: int
+    digest_length_locked: bool
     serendipity_percentage: int
     tier: str
     timezone: str
@@ -38,6 +39,9 @@ class UserUpdate(BaseModel):
     digest_frequency: str | None = None
     digest_time_morning: time | None = None
     digest_max_items: int | None = None
+    # False locks digest_max_items to the explicit value above; True hands the
+    # length back to the learner (UX-02).
+    digest_length_auto: bool | None = None
     serendipity_percentage: int | None = None
     timezone: str | None = None
 

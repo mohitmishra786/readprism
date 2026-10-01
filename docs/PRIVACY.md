@@ -81,6 +81,14 @@ terms apply to the operator.
   also set digest frequency to in-app-only in preferences.
 - **Topic controls:** you can suppress topics and adjust interests in the app.
 
+## Digest emails
+
+Digest emails contain **no tracking pixel** and no per-recipient beacons.
+Links in the email (titles, 👍/👎/save) are signed with an expiring HMAC and
+route through your own ReadPrism instance, which records that you opened or
+rated an item so the ranking can learn — this is disclosed in the email
+footer. Signed links expire after 30 days.
+
 EU/California residents additionally have the rights to rectification,
 restriction, objection, and to lodge a complaint with a supervisory authority.
 

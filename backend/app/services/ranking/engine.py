@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import math
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -72,12 +71,5 @@ async def rank_content_for_user(
 
     # Sort by PRS descending
     all_results.sort(key=lambda x: x[1], reverse=True)
-
-    # Mark bottom 15% as serendipity candidates
-    if all_results:
-        threshold_idx = math.ceil(len(all_results) * 0.85)
-        for idx, (_item, _prs, breakdown) in enumerate(all_results):
-            if idx >= threshold_idx:
-                breakdown["_serendipity_candidate"] = True
 
     return all_results[:limit]

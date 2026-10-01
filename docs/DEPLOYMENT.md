@@ -101,6 +101,23 @@ hosted service is involved. Tier limits (`FREE_MAX_SOURCES`,
 `FREE_MAX_CREATORS`) are yours to configure or disable (set to 0) on your own
 instance.
 
+## Email deliverability (SPF / DKIM)
+
+Digest emails carry one-click feedback links and an RFC 8058 unsubscribe
+header, which only help if the mail actually arrives. For the domain that
+sends (the SMTP `from` address):
+
+1. **SPF:** a TXT record on the domain authorizing your SMTP provider's
+   outbound servers (for Zoho: `v=spf1 include:zoho.com ~all`).
+2. **DKIM:** enable it in the provider console and publish the provided
+   CNAME/TXT keys, so signed headers survive forwarding.
+3. **DMARC** (recommended): start with
+   `v=DMARC1; p=none; rua=mailto:postmaster@yourdomain` and tighten once
+   reports look clean.
+4. Keep `EMAIL_PHYSICAL_ADDRESS` set — it is rendered in the footer
+   (CAN-SPAM) — and leave the tracking pixel off (it is off by default and
+   there is no switch to enable one).
+
 ## Minimum host sizing
 
 The sentence-transformer model loads into memory in the API and each worker.

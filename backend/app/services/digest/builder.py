@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.digest import Digest, DigestFeedbackPrompt, DigestItem
+from app.models.digest import Digest, DigestFeedbackPrompt, DigestImpression, DigestItem
 from app.models.source import Source
 from app.models.user import User
 from app.services.digest.sections import SectionBuilder
@@ -153,12 +153,47 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     limit = max(user.digest_max_items * 3, 60)
     ranked = await rank_content_for_user(user, all_items, session, limit=limit)
 
+    # The serendipity picks ARE the discovery section candidates (A6):
+    # label them explicitly and make sure they survived the rank cutoff.
+    serendipity_ids = {item.id for item in serendipity_items}
+    ranked_ids = {item.id for item, _, _ in ranked}
+    for item, _prs, breakdown in ranked:
+        if item.id in serendipity_ids:
+            breakdown["_serendipity_candidate"] = True
+    for item in serendipity_items:
+        if item.id not in ranked_ids:
+            ranked.append((item, 0.0, {"_serendipity_candidate": True}))
+
     # Build sections
     builder = SectionBuilder(
         total_items=user.digest_max_items,
         serendipity_pct=user.serendipity_percentage,
     )
     sections = builder.build(ranked)
+
+    # Exploration slots (A6): sampled from digest positions 6-40 with softmax
+    # propensity, behind RANKING_EXPLORATION_ENABLED. Applied after layout so
+    # every exploration pick is a placed item; positions < 6 never lead anyway.
+    # Freshly seeded per build so successive builds explore different slots;
+    # the drawn propensity is logged on each impression for later IPW.
+    from random import Random
+
+    from app.services.ranking.phase2.learning import exploration_plan
+
+    placed: list[tuple] = []
+    for section in sections.values():
+        for row in section.items:
+            placed.append(row)
+    if get_settings().ranking_exploration_enabled and len(placed) >= 6:
+        rng = Random(f"explore:{user.id}:{uuid.uuid4()}")
+        plan_by_index = {
+            row["index"]: row for row in exploration_plan([row[1] for row in placed], rng=rng)
+        }
+        for index, plan_row in plan_by_index.items():
+            if index < len(placed):
+                breakdown = placed[index][2]
+                breakdown["exploration"] = True
+                breakdown["_propensity"] = plan_row["propensity"]
 
     # Auto-learn digest length and serendipity from engagement history
     await _adjust_digest_preferences(user, session)
@@ -227,8 +262,6 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 signal_breakdown=clean_breakdown,
             )
             session.add(di)
-            from app.models.digest import DigestImpression
-
             session.add(
                 DigestImpression(
                     user_id=user.id,
@@ -240,7 +273,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                     features_json=numeric,
                     weights_version=RANKER_VERSION,
                     exploration=bool(clean_breakdown.get("exploration")),
-                    propensity=1.0,
+                    propensity=float(breakdown.get("_propensity", 1.0)),
                 )
             )
             position += 1
@@ -470,39 +503,8 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
     Auto-learn digest length from engagement history and serendipity level
     from topical diversity. Writes back to user row if adjustments are made.
     """
-    # Measure typical items-opened-per-digest over last 30 days
-    cutoff = datetime.now(UTC) - timedelta(days=30)
     try:
-        result = await session.execute(
-            select(func.count(UserContentInteraction.id)).where(
-                UserContentInteraction.user_id == user.id,
-                UserContentInteraction.opened_at >= cutoff,
-                UserContentInteraction.surfaced_in_digest == True,
-            )
-        )
-        opens = result.scalar() or 0
-
-        digests_result = await session.execute(
-            select(func.count()).select_from(
-                select(UserContentInteraction.content_item_id)
-                .where(
-                    UserContentInteraction.user_id == user.id,
-                    UserContentInteraction.surfaced_in_digest == True,
-                    UserContentInteraction.created_at >= cutoff,
-                )
-                .subquery()
-            )
-        )
-        # Approximate number of digests from the period
-        total_surfaced = digests_result.scalar() or 0
-        if total_surfaced > 0:
-            avg_opens = opens / max(1, total_surfaced / max(1, user.digest_max_items))
-            # Target: digest length = 1.3x the average items the user opens
-            target_length = max(5, min(30, round(avg_opens * 1.3)))
-            # Only adjust if meaningfully different (>2 items off)
-            if abs(target_length - user.digest_max_items) > 2:
-                user.digest_max_items = target_length
-                logger.info(f"Auto-adjusted digest length to {target_length} for user {user.id}")
+        await _learn_digest_length(user, session)
 
         # Measure topical diversity over last 14 days for serendipity adjustment
         diversity_cutoff = datetime.now(UTC) - timedelta(days=14)
@@ -539,3 +541,52 @@ async def _adjust_digest_preferences(user: User, session: AsyncSession) -> None:
         await session.flush()
     except Exception as e:
         logger.warning(f"digest preference adjustment failed (non-fatal): {e}")
+
+
+async def _learn_digest_length(user: User, session: AsyncSession) -> None:
+    """UX-02: N = clamp(1.25 · EMA(opened per digest), 5, 30) unless locked.
+
+    Runs before the current digest row is created, so the window only covers
+    past digests. The learned length applies to the next build.
+    """
+    from app.services.digest.length import EMA_WINDOW, ema_opened_per_digest, target_digest_length
+
+    if user.digest_length_locked:
+        return
+
+    digests_result = await session.execute(
+        select(Digest.id)
+        .where(Digest.user_id == user.id)
+        .order_by(Digest.generated_at.desc())
+        .limit(EMA_WINDOW)
+    )
+    digest_ids = [row[0] for row in digests_result.all()]
+    if not digest_ids:
+        return
+
+    from sqlalchemy import and_
+
+    opened_result = await session.execute(
+        select(DigestImpression.digest_id, func.count(func.distinct(UserContentInteraction.id)))
+        .join(
+            UserContentInteraction,
+            and_(
+                UserContentInteraction.user_id == user.id,
+                UserContentInteraction.content_item_id == DigestImpression.content_item_id,
+                UserContentInteraction.opened_at.isnot(None),
+            ),
+        )
+        .where(DigestImpression.digest_id.in_(digest_ids))
+        .group_by(DigestImpression.digest_id)
+    )
+    opened_by_digest = {row[0]: int(row[1]) for row in opened_result.all()}
+
+    # oldest → newest, matching the EMA's direction
+    ordered_counts = [
+        float(opened_by_digest.get(digest_id, 0)) for digest_id in reversed(digest_ids)
+    ]
+    ema = ema_opened_per_digest(ordered_counts)
+    target = target_digest_length(ema, current=user.digest_max_items, locked=False)
+    if target != user.digest_max_items:
+        user.digest_max_items = target
+        logger.info(f"Auto-adjusted digest length to {target} for user {user.id}")

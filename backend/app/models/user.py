@@ -22,6 +22,11 @@ class User(Base):
     digest_frequency: Mapped[str] = mapped_column(String, default="daily")
     digest_time_morning: Mapped[time] = mapped_column(Time, default=time(7, 0))
     digest_max_items: Mapped[int] = mapped_column(Integer, default=12)
+    # True once the user set digest_max_items explicitly: the length learner
+    # must not clobber an explicit choice (UX-02).
+    digest_length_locked: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     serendipity_percentage: Mapped[int] = mapped_column(Integer, default=15)
     tier: Mapped[str] = mapped_column(String, default="free")
     timezone: Mapped[str] = mapped_column(String, default="UTC")
