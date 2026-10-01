@@ -15,6 +15,7 @@ from app.models.source import Source
 from app.models.user import User
 from app.utils.email import send_email
 from app.utils.logging import get_logger
+from app.utils.signed_links import action_url
 from app.utils.unsubscribe import unsubscribe_url
 
 logger = get_logger(__name__)
@@ -116,6 +117,12 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
                 "why_ranked": _top_signals(di.signal_breakdown or {}),
                 "is_discovery": section == "discovery",
                 "position": di.position,
+                # Signed one-click actions (UX-04): title click-through goes
+                # through the instance so reading telemetry can follow.
+                "open_url": action_url(user.id, content.id, "open"),
+                "up_url": action_url(user.id, content.id, "up"),
+                "down_url": action_url(user.id, content.id, "down"),
+                "save_url": action_url(user.id, content.id, "save"),
             }
         )
 
@@ -200,7 +207,11 @@ def _build_text_body(
             lines.append(f"\n{content.title}")
             if content.summary_brief:
                 lines.append(content.summary_brief)
-            lines.append(f"Read: {content.url}")
+            lines.append(f"Read: {item_data['open_url']}")
+            lines.append(
+                f"Rate: 👍 {item_data['up_url']}  ·  👎 {item_data['down_url']}  ·  "
+                f"Save: {item_data['save_url']}"
+            )
     lines.append("\n" + "-" * 40)
     if preferences_url:
         lines.append(f"Manage preferences: {preferences_url}")

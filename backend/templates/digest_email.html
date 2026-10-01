@@ -14,9 +14,17 @@
   .item-meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
   .item-brief { font-size: 14px; color: #374151; line-height: 1.6; }
   .why { font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic; }
+  .actions { margin-top: 10px; }
+  .actions a { display: inline-block; font-size: 12px; color: #374151; text-decoration: none;
+               border: 1px solid #e5e7eb; border-radius: 14px; padding: 4px 12px; margin-right: 6px; }
   .discovery { background: #f0f9ff; }
   .discovery-badge { display: inline-block; font-size: 11px; background: #bfdbfe; color: #1e40af; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px; }
   .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .item { padding: 12px; }
+    .actions a { margin-top: 4px; }
+  }
 </style>
 </head>
 <body>
@@ -40,7 +48,7 @@
           <span class="discovery-badge">Outside your usual sources</span><br>
         {% endif %}
         <div class="item-title">
-          <a href="{{ content.url }}">{{ content.title }}</a>
+          <a href="{{ item_data.open_url }}">{{ content.title }}</a>
         </div>
         <div class="item-meta">
           {% if content.author %}{{ content.author }} · {% endif %}
@@ -49,9 +57,14 @@
         {% if content.summary_brief %}
           <div class="item-brief">{{ content.summary_brief }}</div>
         {% endif %}
-        {% if section_name == "lead" and item_data.why_ranked %}
+        {% if item_data.why_ranked %}
           <div class="why">Ranked because: {{ item_data.why_ranked | join(", ") }}</div>
         {% endif %}
+        <div class="actions">
+          <a href="{{ item_data.up_url }}">👍 Useful</a>
+          <a href="{{ item_data.down_url }}">👎 Not for me</a>
+          <a href="{{ item_data.save_url }}">💾 Save</a>
+        </div>
       </div>
     {% endfor %}
   {% endif %}
@@ -65,6 +78,8 @@
      <a href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
      <a href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a>
   </p>
+  <p>Links open in ReadPrism first so it can learn from what you read and rate.
+     This email contains no tracking pixel.</p>
   {% if physical_address %}<p>{{ physical_address }}</p>{% endif %}
 </div>
 </body>

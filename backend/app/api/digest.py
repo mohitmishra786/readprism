@@ -4,19 +4,21 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.config import get_settings
 from app.database import get_db
-from app.models.content import ContentItem
+from app.models.content import ContentItem, UserContentInteraction
 from app.models.digest import Digest, DigestFeedbackPrompt, DigestItem
 from app.models.user import User
 from app.schemas.content import ContentItemRead
 from app.schemas.digest import DigestItemRead, DigestRead
 from app.utils.logging import get_logger
+from app.utils.signed_links import verify_action
 from app.utils.unsubscribe import verify_unsubscribe_token
 
 router = APIRouter(prefix="/digest", tags=["digest"])
@@ -72,6 +74,81 @@ async def unsubscribe_post(
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
     return {"status": "unsubscribed"}
+
+
+async def _record_email_action(
+    user: User, item_id: uuid.UUID, action: str, session: AsyncSession
+) -> None:
+    """Upsert the interaction row for a one-click email action (UX-04)."""
+    result = await session.execute(
+        select(UserContentInteraction).where(
+            UserContentInteraction.user_id == user.id,
+            UserContentInteraction.content_item_id == item_id,
+        )
+    )
+    interaction = result.scalar_one_or_none()
+    if interaction is None:
+        interaction = UserContentInteraction(user_id=user.id, content_item_id=item_id)
+        session.add(interaction)
+
+    if action == "open":
+        if not interaction.opened_at:
+            interaction.opened_at = datetime.now(UTC)
+    elif action == "up":
+        interaction.explicit_rating = 1
+        interaction.opened_at = interaction.opened_at or datetime.now(UTC)
+    elif action == "down":
+        interaction.explicit_rating = -1
+    elif action == "save":
+        interaction.saved = True
+
+    await session.flush()
+
+    if action in {"up", "down", "save"} and interaction.id is not None:
+        from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
+
+        update_interest_graph_for_interaction.delay(str(interaction.id))
+
+
+@router.get("/e/{action}/{item_id}")
+async def email_action_link(
+    action: str,
+    item_id: uuid.UUID,
+    uid: str = Query(...),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Signed one-click email actions: open / thumbs up / thumbs down / save.
+
+    No login: the HMAC over (user, item, action, expiry) is the authority.
+    Records the feedback, then redirects into the in-app reader so the normal
+    telemetry (depth, dwell) can follow (UX-04).
+    """
+    try:
+        user_uuid = uuid.UUID(uid)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Bad uid")
+
+    if not verify_action(uid, item_id, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+
+    user_result = await session.execute(select(User).where(User.id == user_uuid))
+    user = user_result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+
+    content_result = await session.execute(select(ContentItem).where(ContentItem.id == item_id))
+    if content_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
+
+    await _record_email_action(user, item_id, action, session)
+    logger.info(f"Email action {action} recorded for user {user_uuid} item {item_id}")
+
+    reader_url = f"{get_settings().frontend_url.rstrip('/')}/read/{item_id}"
+    return RedirectResponse(url=reader_url, status_code=303)
 
 
 @router.get("/latest", response_model=DigestRead)

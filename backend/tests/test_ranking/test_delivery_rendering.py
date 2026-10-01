@@ -14,7 +14,18 @@ from app.services.digest.delivery import (
 
 def _sections_with(title: str, summary: str) -> dict:
     content = ContentItem(url="https://example.com/a", title=title, summary_brief=summary)
-    return {"lead": [{"content": content, "why_ranked": ["matches your interests"]}]}
+    return {
+        "lead": [
+            {
+                "content": content,
+                "why_ranked": ["matches your interests"],
+                "open_url": "https://api.example.com/api/v1/digest/e/open/x?uid=u&exp=1&sig=s",
+                "up_url": "https://api.example.com/api/v1/digest/e/up/x?uid=u&exp=1&sig=s",
+                "down_url": "https://api.example.com/api/v1/digest/e/down/x?uid=u&exp=1&sig=s",
+                "save_url": "https://api.example.com/api/v1/digest/e/save/x?uid=u&exp=1&sig=s",
+            }
+        ]
+    }
 
 
 def test_fallback_html_escapes_content():
@@ -44,6 +55,15 @@ def test_template_renders_with_unsubscribe_and_escapes():
     assert "https://app.example.com/preferences" in html
     assert "123 Main St" in html
     assert "&lt;b&gt;Title&lt;/b&gt;" in html  # title autoescaped
+    # One-click action buttons and the click-through title link (UX-04).
+    assert "/api/v1/digest/e/up/" in html
+    assert "/api/v1/digest/e/down/" in html
+    assert "/api/v1/digest/e/save/" in html
+    assert 'href="https://api.example.com/api/v1/digest/e/open/' in html
+    # No tracking pixel, ever (default off, and it stays off).
+    assert "<img" not in html
+    # The disclosure line for click-through telemetry.
+    assert "no tracking pixel" in html
 
 
 def test_text_body_includes_links():
