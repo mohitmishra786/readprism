@@ -3,7 +3,7 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-09-25, session 4
+Last updated: 2026-10-02, session 5
 Current phase: **Phase 2 — Intelligence**
 Last commit on `main`: `a485e45` (Phase 0 merged, then Dependabot #54 and #53)
 Last commit on `main` when this file was seeded: `37b7f16`
@@ -319,6 +319,27 @@ UX-01 plan: (1) `sections.py`: lead count clamped to 3–5 (currently `floor(0.4
 UX-02 (same session): EMA formula in `digest/length.py`, `_learn_digest_length` off the last 10 digests' impressions, `users.digest_length_locked` (migration 0014) so an explicit `PUT /preferences` value is never clobbered; `digest_length_auto` unlocks.
 
 UX-04 plan: (1) `utils/signed_links.py`: expiring HMAC links for actions open/up/down/save over (user, item, action, exp). (2) `GET /api/v1/digest/e/{action}/{item_id}` unauthenticated endpoints: verify signature, upsert the interaction (opened_at / explicit_rating ±1 / saved), enqueue the interest-graph task, 303-redirect to the frontend reader — click-through telemetry with disclosure, no login needed. (3) `delivery.py` + template: per-item one-click buttons, titles route through the app redirect, footer disclosure line; text body gains the action links; no tracking pixel (stays off). (4) Docs: SPF/DKIM in DEPLOYMENT, email-link privacy note in PRIVACY. (5) Tests: tamper/expiry, feedback recorded + redirect, rendered snapshot contains buttons and no pixel.
+
+### Session 5 — 2026-10-02
+
+Branch `agent/phase-3-digest-ux` from `origin/main` at `5040900` (PR #61 merged, CI green). Phase 3 starts.
+
+Environment notes: Docker Desktop had lost the `readprism-backend` image (daemon reset); `docker compose build backend` rebuilt it. Tests run via `docker compose run --rm --no-deps -e TEST_DATABASE_URL=postgresql+asyncpg://readprism:readprism@db:5432/readprism_test backend python -m pytest tests/ -q` (db+redis up; `docker compose run` without the build hang is fine now that the image exists). ruff 0.6.9 / mypy 1.13.0 run from a host venv at `/var/folders/.../opencode/lintvenv` matching CI versions. Host `ruff` (0.1.9) and `mypy` (1.8.0) are stale — do not use.
+
+UX-01 plan: (1) `sections.py`: lead count clamped to 3–5 (currently `floor(0.4·N)` gives 2 for N=5), deep-reads eligibility `≥ 8 min` (currently `> 10`), discovery eligibility from `origin == "discovery"` (plus the internal selection flag), creator section grouped per person (creators ordered by best PRS, ≤ 2 items each, contiguous). (2) `engine.py`: delete the bottom-15%-PRS `_serendipity_candidate` marking — it mislabels low-scoring *followed* items as discovery, contradicting A6. (3) `builder.py`: flag the actual serendipity picks, guarantee they survive the rank limit, wire `exploration_plan` behind `RANKING_EXPLORATION_ENABLED` with propensity recorded on the impression. (4) Tests on synthetic candidate sets in `test_digest_sections.py` + a wiring test. (5) Full suite + ruff + mypy.
+
+UX-02 (same session): EMA formula in `digest/length.py`, `_learn_digest_length` off the last 10 digests' impressions, `users.digest_length_locked` (migration 0014) so an explicit `PUT /preferences` value is never clobbered; `digest_length_auto` unlocks.
+
+UX-04 plan: (1) `utils/signed_links.py`: expiring HMAC links for actions open/up/down/save over (user, item, action, exp). (2) `GET /api/v1/digest/e/{action}/{item_id}` unauthenticated endpoints: verify signature, upsert the interaction (opened_at / explicit_rating ±1 / saved), enqueue the interest-graph task, 303-redirect to the frontend reader — click-through telemetry with disclosure, no login needed. (3) `delivery.py` + template: per-item one-click buttons, titles route through the app redirect, footer disclosure line; text body gains the action links; no tracking pixel (stays off). (4) Docs: SPF/DKIM in DEPLOYMENT, email-link privacy note in PRIVACY. (5) Tests: tamper/expiry, feedback recorded + redirect, rendered snapshot contains buttons and no pixel.
+
+Session 5 report — 2026-10-02
+
+Done:        UX-01 DONE (`7b667e7`). UX-02 DONE. UX-04 DONE (+ PROGRESS evidence commit).
+Evidence:    pytest 344 passed (318 at branch point + 26 new); ruff 0.6.9 check/format clean; mypy 1.13.0 clean (139 files); `tsc --noEmit` exit 0 (types.ts gained `digest_length_locked`); `alembic upgrade head` applies 0014, single head. Key files: `digest/sections.py`, `digest/builder.py`, `ranking/engine.py`, `digest/length.py`, `utils/signed_links.py`, `api/digest.py`, `templates/digest_email.html`, migrations `0014`.
+Findings:    (1) `rank_content_for_user` marked the bottom 15% by PRS as `_serendipity_candidate`, so the Discovery section was filled with the user's own low-scoring followed items — removed; discovery is now origin/selection-based (UX-01). (2) Exploration over pre-layout ranks could flag items that land in no section (wasted slot); applied after layout over placed positions instead. (3) `docs/ARCHITECTURE.md` claimed "There is no digest_impressions table" — stale since IQ-07; fixed. (4) Docker Desktop lost the built images; rebuild before running anything.
+Decisions:   No new ADRs; all changes follow D-04/A6 and the UX-04 spec text. Migration 0014 is reversible (drop column).
+Blocked/Asks: OQ-01 (AGPL confirm) still open. Four Dependabot PRs (#62–#65) await the owner. Nothing blocks Phase 3.
+Next:        UX-03 (scheduling: learned preferred hour from IQ-11's histogram, idempotent build under Celery retry, 1–4/day, DST test, min-items skip), then UX-06 (feedback tags → signal mapping table), then UX-05 (reader telemetry hardening).
 
 ### Session 4 — 2026-09-25
 
