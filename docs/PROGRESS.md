@@ -3,10 +3,9 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-10-02, session 5
-Current phase: **Phase 2 — Intelligence**
-Last commit on `main`: `a485e45` (Phase 0 merged, then Dependabot #54 and #53)
-Last commit on `main` when this file was seeded: `37b7f16`
+Last updated: 2026-10-02, session 6 (mid-session)
+Current phase: **Phase 3 — Digest & UX** (continuation on `agent/phase-3-digest-ux-2`)
+Last commit on `main`: `4430c87` (PRs #65, #62, #66, #69, #67, #68 merged)
 
 ---
 
@@ -124,7 +123,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 
 - **UX-01** [DONE] (P1·M) Digest builder per spec: Lead (3–5), Creators (grouped by person), Deep reads (≥ 8 min), Discovery (labeled); saturation cap; dedupe. — Accept: unit tests on synthetic candidate sets. — Deps: IQ-12 — Evidence: `7b667e7`. `sections.py`: lead = `max(1, min(5, N, max(3, round(0.35·N))))`, excludes exploration; deep reads `>= 8 min`; discovery = `origin=discovery` or the builder-flagged serendipity picks; creators grouped (≤ 2/person contiguous, ordered by best PRS). `engine.py` bottom-15% serendipity mislabel removed. `builder.py` flags the real picks (appends any cut off by the rank limit) and applies `exploration_plan` to placed digest positions behind `RANKING_EXPLORATION_ENABLED`, recording propensity on `digest_impressions`. Tests: `test_digest_sections.py` (11) + `test_digest_builder_wiring.py` (2, DB integration: discovery-only labeling, impression propensity/exploration). pytest 326 passed; ruff 0.6.9 check/format clean; mypy 1.13.0 clean (137 files). `docs/ARCHITECTURE.md` digest section updated.
 - **UX-02** [DONE] (P2·S) Digest length personalization: target = clamp(1.25 × EMA(items opened per digest), 5, 30); explicit override. — Accept: test. — Deps: IQ-07 — Evidence: `digest/length.py` (`ema_opened_per_digest` α=0.3, `target_digest_length`); `_learn_digest_length` in `builder.py` recomputes from the last 10 digests' impressions joined to opened interactions. Migration `0014` adds `users.digest_length_locked`; `PUT /preferences` locks on an explicit `digest_max_items` and `digest_length_auto: true` unlocks. Frontend `User` type carries the field. Tests: `test_digest_length.py` (7: EMA math, clamp, lock, no-history) + `test_preferences.py` (3: lock/unlock/default). pytest 336 passed; ruff + mypy clean; `tsc --noEmit` exit 0; `alembic upgrade head` applies 0014, single head.
-- **UX-03** [TODO] (P2·M) Scheduling: per-user timezone + preferred time (learned from open-time histogram), 1–4/day, idempotent send, "nothing worth reading" skip threshold. — Accept: no duplicate sends under retry; DST test. — Deps: IQ-11
+- **UX-03** [DONE] (P2·M) Scheduling: per-user timezone + preferred time (learned from open-time histogram), 1–4/day, idempotent send, "nothing worth reading" skip threshold. — Accept: no duplicate sends under retry; DST test. — Deps: IQ-11 — Evidence: `_is_digest_time_for_user` takes an injectable clock, DST tests on both 2026 transition days + midnight wrap; `twice_daily` adds an evening slot (12 h after morning). Dedupe window per frequency (daily 12 h / twice 6 h / weekly 84 h) blocks a duplicate build — `test_duplicate_build_inside_window_is_skipped` proves the builder is not called again. Weekly beat task `learn_send_times` (IQ-11 `preferred_hour`, ≥30 opens in 90 d) moves unlocked users; `users.send_time_locked` (migration 0015, reversible) + `send_time_auto` unlock mirror UX-02. `DIGEST_MIN_ITEMS` (default 3) skips email for near-empty digests; `.env.example` documented. Tests: `test_digest_scheduling.py` (7) + preferences lock tests (now 5). pytest 355 passed; ruff/mypy clean; `tsc --noEmit` clean; alembic single head 0015.
 - **UX-04** [DONE] (P1·L) Email v2: responsive HTML + plain text; 2–3 sentence summary; "why" line; **one-click 👍/👎/save signed links** (HMAC, expiring, no login); tracking pixel OFF by default; click-through via app redirect into the in-app reader (needed for telemetry, disclosed); `List-Unsubscribe`; SPF/DKIM docs. — Accept: rendered snapshot tests; signed-link tamper/expiry tests; feedback recorded. — Deps: P0-07, IQ-13 — Evidence: `app/utils/signed_links.py` (expiring HMAC, action-bound, constant-time); `GET /api/v1/digest/e/{action}/{item_id}` records the interaction and 303s into `/read/{id}`; template gained per-item action buttons, click-through titles, why-line on all sections, responsive media query, and the disclosure + no-pixel footer; text body carries the links. SPF/DKIM/DMARC in `docs/DEPLOYMENT.md`, digest-email section in `docs/PRIVACY.md`. Tests: `test_email_feedback_links.py` (9: round trip, tamper, expiry, cross-action, endpoint up/save/open, bad-signature no-write) + extended rendering tests (buttons present, `<img` absent). pytest 344 passed; ruff/mypy clean.
 - **UX-05** [TODO] (P1·M) In-app reader v2: sanitized content, typography/theme controls, keyboard shortcuts (j/k/o/s/u/d), telemetry hardening (throttled batching, `sendBeacon` on unload, idle + visibility handling, minimum-time thresholds against false depth). — Accept: Playwright e2e for telemetry; unit tests for depth calc. — Deps: P0-07
 - **UX-06** [TODO] (P1·M) Feedback UI + signal mapping: thumbs, reason tags (too basic / already knew / off-topic / wrong depth / clickbait), snooze topic, mute source, more/less-like-this ⇒ documented mapping table to signals and interest clusters. — Accept: table in docs + tests per mapping. — Deps: IQ-08
@@ -309,6 +308,12 @@ No backlog ids were reprioritized. The audit confirmed the existing order: impre
 ---
 
 ## 9. Session Log (append-only, newest first)
+
+### Session 6 — 2026-10-02
+
+Branch `agent/phase-3-digest-ux-2` from `origin/main` at `4430c87` after the owner merged PRs #65, #62, **#66 (Phase 3 part 1)**, #69 (CI fixes), #67, #68. Dependabot recreated the frontend dev-deps PR as #70; #64 was asked to rebase via comment.
+
+UX-03 plan: (1) idempotent digest build — skip when a digest already exists inside a per-frequency dedupe window (daily 12h, twice-daily 6h, weekly 3.5d) so a Celery retry never double-sends; (2) teach `_is_digest_time_for_user` the `twice_daily` frequency the preferences UI already offers (morning + evening slot) and take an injectable clock for DST tests; (3) learned preferred send hour from the opened-at histogram using IQ-11's `preferred_hour`, weekly beat task, behind a `users.send_time_locked` flag (migration 0015) so an explicit choice is never clobbered; (4) "nothing worth reading" skip: no email when the digest has fewer than `DIGEST_MIN_ITEMS` (default 3) items; (5) tests: DST both sides of the boundary, dedupe window, learned hour, skip threshold; docs + `.env.example`.
 
 ### Session 5 — 2026-10-02
 

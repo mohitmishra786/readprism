@@ -26,6 +26,7 @@ class UserRead(BaseModel):
     onboarding_complete: bool
     digest_frequency: str
     digest_time_morning: time
+    send_time_locked: bool
     digest_max_items: int
     digest_length_locked: bool
     serendipity_percentage: int
@@ -38,6 +39,9 @@ class UserUpdate(BaseModel):
     display_name: str | None = None
     digest_frequency: str | None = None
     digest_time_morning: time | None = None
+    # False locks digest_time_morning to the explicit value above; True hands
+    # the send time back to the learned-histogram job (UX-03).
+    send_time_auto: bool | None = None
     digest_max_items: int | None = None
     # False locks digest_max_items to the explicit value above; True hands the
     # length back to the learner (UX-02).

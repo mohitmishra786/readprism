@@ -35,6 +35,11 @@ async def update_preferences(
         current_user.digest_frequency = body.digest_frequency
     if body.digest_time_morning is not None:
         current_user.digest_time_morning = body.digest_time_morning
+        # An explicit send-time choice overrides the learned hour until the
+        # user turns auto back on (UX-03).
+        current_user.send_time_locked = True
+    if body.send_time_auto is not None:
+        current_user.send_time_locked = not body.send_time_auto
     if body.digest_max_items is not None:
         current_user.digest_max_items = body.digest_max_items
         # An explicit length choice overrides the learner until the user turns

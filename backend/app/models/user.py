@@ -27,6 +27,9 @@ class User(Base):
     digest_length_locked: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    # True once the user set digest_time_morning explicitly: the learned
+    # send-time job must not clobber it (UX-03).
+    send_time_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     serendipity_percentage: Mapped[int] = mapped_column(Integer, default=15)
     tier: Mapped[str] = mapped_column(String, default="free")
     timezone: Mapped[str] = mapped_column(String, default="UTC")

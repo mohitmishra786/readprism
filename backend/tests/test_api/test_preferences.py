@@ -45,3 +45,19 @@ async def test_default_is_unlocked(client: AsyncClient, test_user_data: dict):
     resp = await client.get("/api/v1/preferences", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["digest_length_locked"] is False
+    assert resp.json()["send_time_locked"] is False
+
+
+@pytest.mark.asyncio
+async def test_setting_time_explicitly_locks_it(client: AsyncClient, test_user_data: dict):
+    headers = await _auth_header(client, test_user_data)
+
+    resp = await client.put(
+        "/api/v1/preferences", json={"digest_time_morning": "08:30:00"}, headers=headers
+    )
+    assert resp.status_code == 200
+    assert resp.json()["send_time_locked"] is True
+
+    # The learned-histogram job never moves an explicit time after that.
+    resp = await client.put("/api/v1/preferences", json={"send_time_auto": True}, headers=headers)
+    assert resp.json()["send_time_locked"] is False

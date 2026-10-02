@@ -5,6 +5,7 @@ export interface User {
   onboarding_complete: boolean;
   digest_frequency: string;
   digest_time_morning: string;
+  send_time_locked: boolean;
   digest_max_items: number;
   digest_length_locked: boolean;
   serendipity_percentage: number;
