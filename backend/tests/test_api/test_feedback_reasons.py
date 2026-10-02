@@ -147,3 +147,100 @@ async def test_wrong_depth_changes_nothing_but_the_label(
     ).scalar_one()
     assert interaction.explicit_rating == -1
     assert interaction.explicit_rating_reason == "wrong_depth"
+
+
+@pytest.mark.asyncio
+async def test_reason_effects_apply_once_per_stored_reason(
+    client: AsyncClient, test_user_data: dict, db_session
+):
+    """A retried POST with the same reason must not compound the delta."""
+    user, _source, content, headers = await _seed(client, db_session, test_user_data)
+    await _post_reason(client, content, "off_topic", headers)
+    await _post_reason(client, content, "off_topic", headers)  # retry
+
+    node = (
+        await db_session.execute(
+            select(InterestNode).where(
+                InterestNode.user_id == user.id, InterestNode.topic_label == "ai"
+            )
+        )
+    ).scalar_one()
+    assert node.weight == pytest.approx(0.8 - 0.20)  # applied once
+
+    # A changed reason applies its own effect once.
+    await _post_reason(client, content, "too_basic", headers)
+    await db_session.refresh(node)
+    assert node.weight == pytest.approx(0.8 - 0.20 - 0.10)
+
+
+@pytest.mark.asyncio
+async def test_cluster_delta_hits_only_the_top_cluster(
+    client: AsyncClient, test_user_data: dict, db_session
+):
+    """topic_clusters[0] is the top cluster; other labels stay untouched."""
+    resp = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+    source = Source(user_id=user.id, url="https://fb.example/f2", trust_weight=0.6)
+    db_session.add(source)
+    await db_session.flush()
+    content = ContentItem(
+        source_id=source.id,
+        url="https://fb.example/top",
+        title="Top",
+        topic_clusters=["ai", "ml"],
+        fetched_at=datetime.now(UTC),
+    )
+    db_session.add(content)
+    db_session.add(InterestNode(user_id=user.id, topic_label="ai", weight=0.8))
+    db_session.add(InterestNode(user_id=user.id, topic_label="ml", weight=0.7))
+    await db_session.commit()
+
+    await _post_reason(client, content, "off_topic", headers)
+
+    ai = (
+        await db_session.execute(
+            select(InterestNode).where(
+                InterestNode.user_id == user.id, InterestNode.topic_label == "ai"
+            )
+        )
+    ).scalar_one()
+    ml = (
+        await db_session.execute(
+            select(InterestNode).where(
+                InterestNode.user_id == user.id, InterestNode.topic_label == "ml"
+            )
+        )
+    ).scalar_one()
+    assert ai.weight == pytest.approx(0.6)
+    assert ml.weight == pytest.approx(0.7)
+
+
+@pytest.mark.asyncio
+async def test_delivery_skips_already_delivered_digest(db_session):
+    """A delivery retry must not send a second email."""
+    from unittest.mock import patch as mock_patch
+
+    from app.models.digest import Digest
+    from app.services.digest.delivery import deliver_digest
+
+    user = User(email="delivered@example.com", hashed_password="x")
+    db_session.add(user)
+    await db_session.flush()
+    digest = Digest(
+        user_id=user.id,
+        generated_at=datetime.now(UTC),
+        delivered_at=datetime.now(UTC),
+        delivery_method="in_app",
+        section_counts={},
+        total_items=5,
+    )
+    db_session.add(digest)
+    await db_session.commit()
+
+    with mock_patch("app.services.digest.delivery.send_email") as mock_send:
+        ok = await deliver_digest(digest, user, db_session)
+    assert ok is True
+    mock_send.assert_not_called()

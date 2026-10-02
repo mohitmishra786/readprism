@@ -18,7 +18,11 @@ of truth is `backend/app/services/ranking/feedback_map.py`
 
 Behavior labels feed pairwise weight learning (A5); the cluster/source
 effects are applied immediately when the tag is recorded
-(`POST /api/v1/feedback/interaction`).
+(`POST /api/v1/feedback/interaction`). Effects fire **once per stored
+reason**: retries repeating the same reason do not compound, and a changed
+reason applies its own effect (no inverse-delta of the old one). The
+cluster delta targets the item's **top cluster**, defined as
+`topic_clusters[0]` (the summarizer emits the primary label first).
 
 ## Direct controls
 

@@ -53,49 +53,69 @@ async def _build_digest_async(user_id: uuid.UUID) -> dict:
     from app.models.digest import Digest
     from app.models.user import User
     from app.services.digest.builder import build_digest
+    from app.utils.cache import cache_delete, cache_set_nx
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if not user:
-            return {"status": "user_not_found"}
+    # Serialize builds per user: two overlapping tasks could both pass the
+    # dedupe lookup before either commits and send two digests (CodeRabbit).
+    # NX + TTL means a crashed holder cannot deadlock the user forever.
+    lock_key = f"digest-build-lock:{user_id}"
+    if not await cache_set_nx(lock_key, "1", ttl_seconds=600):
+        logger.info(f"Digest build for user {user_id} skipped: another build holds the lock")
+        return {"status": "build_in_progress"}
 
-        # Idempotency: a retry (or double-scheduled run) inside the window
-        # returns the existing digest instead of building a second one.
-        window = _dedupe_window(user.digest_frequency)
-        recent = await session.execute(
-            select(Digest)
-            .where(
-                Digest.user_id == user.id,
-                Digest.generated_at >= datetime.now(UTC) - window,
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(User).where(User.id == user_id))
+            user = result.scalar_one_or_none()
+            if not user:
+                return {"status": "user_not_found"}
+
+            # Idempotency: a retry (or double-scheduled run) inside the window
+            # returns the existing digest instead of building a second one.
+            window = _dedupe_window(user.digest_frequency)
+            recent = await session.execute(
+                select(Digest)
+                .where(
+                    Digest.user_id == user.id,
+                    Digest.generated_at >= datetime.now(UTC) - window,
+                )
+                .order_by(Digest.generated_at.desc())
+                .limit(1)
             )
-            .order_by(Digest.generated_at.desc())
-            .limit(1)
-        )
-        existing = recent.scalar_one_or_none()
-        if existing is not None:
-            logger.info(
-                f"Duplicate digest build skipped for user {user.id}: "
-                f"digest {existing.id} is inside the {window} window"
-            )
-            return {"status": "duplicate_skipped", "digest_id": str(existing.id)}
+            existing = recent.scalar_one_or_none()
+            if existing is not None:
+                logger.info(
+                    f"Duplicate digest build skipped for user {user.id}: "
+                    f"digest {existing.id} is inside the {window} window"
+                )
+                # Delivery recovery: if the previous build committed but died
+                # before enqueuing delivery, this retry re-enqueues it. The
+                # delivery task itself is idempotent (delivered_at check), so
+                # a duplicate enqueue cannot double-send.
+                if existing.delivered_at is None and _should_deliver_email(user, existing):
+                    from app.workers.tasks.deliver_digest import deliver_digest_task
 
-        digest = await build_digest(user, session)
-        await session.commit()
+                    deliver_digest_task.delay(str(existing.id))
+                return {"status": "duplicate_skipped", "digest_id": str(existing.id)}
 
-        if _should_deliver_email(user, digest):
-            from app.workers.tasks.deliver_digest import deliver_digest_task
+            digest = await build_digest(user, session)
+            await session.commit()
 
-            deliver_digest_task.delay(str(digest.id))
-        else:
-            logger.info(
-                f"Email skipped for digest {digest.id} of user {user.id}: "
-                f"{digest.total_items} items (min "
-                f"{get_settings().digest_min_items}) or frequency "
-                f"{user.digest_frequency}"
-            )
+            if _should_deliver_email(user, digest):
+                from app.workers.tasks.deliver_digest import deliver_digest_task
 
-        return {"status": "ok", "digest_id": str(digest.id)}
+                deliver_digest_task.delay(str(digest.id))
+            else:
+                logger.info(
+                    f"Email skipped for digest {digest.id} of user {user.id}: "
+                    f"{digest.total_items} items (min "
+                    f"{get_settings().digest_min_items}) or frequency "
+                    f"{user.digest_frequency}"
+                )
+
+            return {"status": "ok", "digest_id": str(digest.id)}
+    finally:
+        await cache_delete(lock_key)
 
 
 def _preferred_slots(user) -> list[time]:

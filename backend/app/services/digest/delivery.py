@@ -88,6 +88,12 @@ async def _clear_dead_notices(user_id, session: AsyncSession) -> None:
 
 
 async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> bool:
+    # Delivery is idempotent: a task retry (or a duplicate enqueue from the
+    # build-recovery path) must not send a second email (CodeRabbit).
+    if digest.delivered_at is not None:
+        logger.info(f"Digest {digest.id} already delivered at {digest.delivered_at}; skipping")
+        return True
+
     # Load digest items with content
     items_result = await session.execute(
         select(DigestItem).where(DigestItem.digest_id == digest.id).order_by(DigestItem.position)

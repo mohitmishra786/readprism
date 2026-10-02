@@ -56,6 +56,10 @@ async def record_interaction(
         )
     )
     interaction = existing_result.scalar_one_or_none()
+    # Reason effects must fire once per *stored* reason: a client retry (or a
+    # later telemetry post repeating the reason) re-enters this upsert, and
+    # blindly re-applying the mapped deltas would compound them (CodeRabbit).
+    previous_reason = interaction.explicit_rating_reason if interaction else None
 
     if interaction:
         if body.read_completion_pct is not None:
@@ -129,7 +133,10 @@ async def record_interaction(
 
     # Reason tags carry documented side effects (UX-06 mapping): a cluster
     # weight change on the item's top topic and/or a source-trust nudge.
-    if body.explicit_rating_reason is not None:
+    # Applied only when the stored reason changes, so retries are free; a
+    # *changed* reason applies its own effect (no inverse-delta of the old
+    # one — clamping may have discarded part of it).
+    if body.explicit_rating_reason is not None and body.explicit_rating_reason != previous_reason:
         await _apply_reason_effects(content, body.explicit_rating_reason, current_user.id, session)
         await session.flush()
 
@@ -154,10 +161,13 @@ async def _apply_reason_effects(
         return
 
     if effect.cluster_weight_delta and content.topic_clusters:
+        # The mapping contract applies the delta to the item's TOP cluster,
+        # defined as topic_clusters[0] (the summarizer emits the primary
+        # label first) — not to every matching node (CodeRabbit).
         result = await session.execute(
             select(InterestNode).where(
                 InterestNode.user_id == user_id,
-                InterestNode.topic_label.in_(content.topic_clusters),
+                InterestNode.topic_label == content.topic_clusters[0],
             )
         )
         for node in result.scalars().all():

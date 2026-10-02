@@ -198,3 +198,63 @@ async def test_learn_send_time_moves_to_open_peak(db_session):
     assert user.digest_time_morning == time(21, 0)
     assert locked.digest_time_morning == time(7, 0)  # explicit choice kept
     assert result["send_times_updated"] == 1
+
+
+@pytest.mark.asyncio
+async def test_concurrent_build_skipped_when_lock_held(db_session, monkeypatch):
+    """A second build while the per-user lock is held returns without building."""
+    from app.workers.tasks import build_digest as mod
+
+    user = User(email="locked-build@example.com", hashed_password="x")
+    db_session.add(user)
+    await db_session.commit()
+
+    async def _no_lock(*args, **kwargs):
+        return False
+
+    monkeypatch.setattr("app.utils.cache.cache_set_nx", _no_lock)
+    with patch("app.services.digest.builder.build_digest") as mock_build:
+        result = await mod._build_digest_async(user.id)
+    assert result["status"] == "build_in_progress"
+    mock_build.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_duplicate_path_recovers_lost_delivery(db_session, monkeypatch):
+    """An undelivered digest inside the window gets its delivery re-enqueued."""
+    from app.workers.tasks import build_digest as mod
+
+    user = User(email="recover@example.com", hashed_password="x", digest_frequency="daily")
+    db_session.add(user)
+    await db_session.flush()
+    digest = Digest(
+        user_id=user.id,
+        generated_at=datetime.now(UTC) - timedelta(hours=1),
+        delivery_method="in_app",
+        section_counts={},
+        total_items=5,
+    )  # delivered_at is None: the build died before enqueueing
+    db_session.add(digest)
+    await db_session.commit()
+
+    holds = {"n": 0}
+
+    async def _lock(*args, **kwargs):
+        holds["n"] += 1
+        return True
+
+    monkeypatch.setattr("app.utils.cache.cache_set_nx", _lock)
+
+    async def _unlock(*args, **kwargs):
+        return True
+
+    monkeypatch.setattr("app.utils.cache.cache_delete", _unlock)
+
+    with (
+        patch("app.database.AsyncSessionLocal", _session_factory(db_session)),
+        patch("app.workers.tasks.deliver_digest.deliver_digest_task") as mock_delay,
+    ):
+        result = await mod._build_digest_async(user.id)
+
+    assert result["status"] == "duplicate_skipped"
+    mock_delay.delay.assert_called_once_with(str(digest.id))
