@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import numpy as np
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -109,6 +109,16 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     else:
         content_items = []
 
+    # Per-user language filter (UX-15): empty prefs = no filter; items with
+    # unknown language are never dropped (the filter is for what you DO want).
+    wanted_langs = [str(lang).lower() for lang in (user.preferred_languages or [])]
+    if wanted_langs:
+        content_items = [
+            item
+            for item in content_items
+            if item.language is None or str(item.language).lower() in wanted_langs
+        ]
+
     from app.config import get_settings
     from app.services.ingestion.backfill import cap_per_source
 
@@ -147,7 +157,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         await _ensure_interaction(user.id, item.id, was_suggested=True, session=session)
 
     # Cross-source topic synthesis: detect near-duplicate stories, synthesize
-    all_items = await _synthesize_topic_clusters(all_items, session)
+    all_items, story_payloads = await _synthesize_topic_clusters(all_items, session)
 
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
@@ -253,6 +263,11 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 text, contributions = explain_score(numeric, meta.weights)
                 clean_breakdown["explanation"] = text
                 clean_breakdown["contributions"] = contributions
+            story = story_payloads.get(item.id)
+            if story:
+                clean_breakdown["perspectives"] = story["perspectives"]
+                if story.get("story_briefing"):
+                    clean_breakdown["story_briefing"] = story["story_briefing"]
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,
@@ -295,96 +310,87 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 async def _synthesize_topic_clusters(
     items: list[ContentItem],
     session: AsyncSession,
-) -> list[ContentItem]:
+) -> tuple[list[ContentItem], dict[uuid.UUID, dict]]:
     """
-    Detect groups of items covering the same story via embedding similarity.
-    For each cluster of 2+ items, synthesize a combined summary via Groq and
-    annotate the highest-PRS item with it; remove the duplicates from the list.
+    UX-09: cluster same-story items (embedding cosine, title-token overlap for
+    no-embedding pairs), keep one primary card per story and attach the other
+    sources as `perspectives`. LLM briefing is cached; without one the
+    perspectives list is the fallback rendering.
+
+    Returns (kept_items, {primary_id: {"perspectives": [...], "story_briefing": str|None}}).
+    The stored `summary_brief` on the (shared) content row is never touched:
+    a cluster briefing would otherwise leak into other users' digests and
+    poison the synthesis cache key on later builds (CodeRabbit).
     """
     if len(items) < 2:
-        return items
+        return items, {}
 
-    # Only cluster items that have embeddings and summaries
-    embeddable = [i for i in items if i.embedding is not None and i.summary_brief]
-    non_embeddable = [i for i in items if i.embedding is None or not i.summary_brief]
+    from app.services.digest.synthesis import cluster_stories
 
-    if len(embeddable) < 2:
-        return items
+    clusters = cluster_stories(items)
 
-    SYNTHESIS_THRESHOLD = 0.88
-    vecs = np.array([i.embedding for i in embeddable], dtype=np.float32)
-    norms = np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-8
-    vecs = vecs / norms
-
-    assigned: set[int] = set()
-    clusters: list[list[int]] = []
-
-    for i in range(len(embeddable)):
-        if i in assigned:
-            continue
-        cluster = [i]
-        for j in range(i + 1, len(embeddable)):
-            if j in assigned:
-                continue
-            sim = float(np.dot(vecs[i], vecs[j]))
-            if sim >= SYNTHESIS_THRESHOLD:
-                cluster.append(j)
-                assigned.add(j)
-        assigned.add(i)
-        clusters.append(cluster)
-
-    # For clusters with multiple items, synthesize
-    kept_indices: set[int] = set()
-    try:
-        from app.services.summarization.groq_client import GroqSummarizer
-
-        groq = GroqSummarizer()
-    except Exception:
-        groq = None
+    kept_items: list[ContentItem] = []
+    story_payloads: dict[uuid.UUID, dict] = {}
+    dropped = 0
 
     for cluster in clusters:
-        if len(cluster) == 1:
-            kept_indices.add(cluster[0])
+        primary = items[cluster[0]]
+        kept_items.append(primary)
+        if len(cluster) < 2:
             continue
 
-        # Keep the first (highest-fetched) item, synthesize summary from all
-        primary_idx = cluster[0]
-        kept_indices.add(primary_idx)
-        primary = embeddable[primary_idx]
+        story_payloads[primary.id] = {
+            "perspectives": [
+                {
+                    "title": items[idx].title,
+                    "url": items[idx].url,
+                    "source_id": str(items[idx].source_id) if items[idx].source_id else None,
+                }
+                for idx in cluster[1:]
+            ],
+            "story_briefing": None,
+        }
+        dropped += len(cluster) - 1
 
-        if groq is not None:
-            try:
+        # Cached LLM briefing (optional polish — the card ships either way).
+        briefs = "\n\n".join(
+            f"- {items[idx].summary_brief or items[idx].title}" for idx in cluster[:5]
+        )
+        cache_key = f"synth:{hashlib.sha256(briefs.encode()).hexdigest()[:32]}"
+        try:
+            from app.utils.cache import cache_get, cache_set
+
+            synthesized = await cache_get(cache_key)
+            if synthesized is None:
+                from app.services.summarization.groq_client import GroqSummarizer
                 from app.services.summarization.groq_client import SummarizationResult as SR
 
-                pseudo_results = []
-                for idx in cluster:
-                    item = embeddable[idx]
-                    pseudo_results.append(
-                        SR(
-                            headline=item.summary_headline or item.title,
-                            brief=item.summary_brief or "",
-                            detailed=item.summary_detailed or "",
-                            depth_score=item.content_depth_score or 0.5,
-                            is_original_reporting=item.is_original_reporting or False,
-                            has_citations=item.has_citations,
-                            topic_clusters=item.topic_clusters or [],
-                            reading_time_minutes=item.reading_time_minutes or 5,
-                        )
+                groq = GroqSummarizer()
+                pseudo_results = [
+                    SR(
+                        headline=items[idx].summary_headline or items[idx].title,
+                        brief=items[idx].summary_brief or "",
+                        detailed=items[idx].summary_detailed or "",
+                        depth_score=items[idx].content_depth_score or 0.5,
+                        is_original_reporting=items[idx].is_original_reporting or False,
+                        has_citations=items[idx].has_citations,
+                        topic_clusters=items[idx].topic_clusters or [],
+                        reading_time_minutes=items[idx].reading_time_minutes or 5,
                     )
+                    for idx in cluster[:5]
+                ]
                 topic_label = (primary.topic_clusters or [primary.title])[0]
                 synthesized = await groq.synthesize_topic(pseudo_results, topic_label)
                 if synthesized:
-                    primary.summary_brief = synthesized
-                    await session.flush()
-            except Exception as e:
-                logger.debug(f"Synthesis failed (non-fatal): {e}")
+                    await cache_set(cache_key, synthesized, ttl_seconds=7 * 24 * 3600)
+            story_payloads[primary.id]["story_briefing"] = synthesized or None
+        except Exception as e:
+            logger.debug(f"Synthesis failed (non-fatal): {e}")
 
-    # Build final list: kept items from embeddable + all non-embeddable
-    result = [embeddable[i] for i in sorted(kept_indices)] + non_embeddable
-    removed = len(embeddable) - len(kept_indices)
-    if removed > 0:
-        logger.info(f"Topic synthesis removed {removed} near-duplicate items")
-    return result
+    if dropped > 0:
+        logger.info(f"Story synthesis folded {dropped} same-story items into cards")
+    await session.flush()
+    return kept_items, story_payloads
 
 
 async def _ensure_interaction(
@@ -479,6 +485,18 @@ async def _generate_feedback_prompts(
     )
     existing_count = prompt_count_result.scalar() or 0
 
+    # Dismissal must stick across digests (UX-07): a prompt type the user
+    # dismissed once never rotates back in (CodeRabbit).
+    dismissed_result = await session.execute(
+        select(DigestFeedbackPrompt.prompt_type)
+        .join(Digest, DigestFeedbackPrompt.digest_id == Digest.id)
+        .where(Digest.user_id == digest.user_id, DigestFeedbackPrompt.dismissed.is_(True))
+    )
+    dismissed_types = {row[0] for row in dismissed_result.all()}
+    pool = [p for p in _EARLY_PROMPTS if p["type"] not in dismissed_types]
+    if not pool:
+        return  # everything dismissed — stop prompting entirely
+
     num_prompts = 3 if user_age_days < 7 else 2
     # Pick a content item from the first section to anchor one of the prompts
     anchor_item_id = None
@@ -488,7 +506,7 @@ async def _generate_feedback_prompts(
             break
 
     for i in range(num_prompts):
-        prompt_def = _EARLY_PROMPTS[(existing_count + i) % len(_EARLY_PROMPTS)]
+        prompt_def = pool[(existing_count + i) % len(pool)]
         prompt = DigestFeedbackPrompt(
             digest_id=digest.id,
             content_item_id=anchor_item_id if i == 0 else None,

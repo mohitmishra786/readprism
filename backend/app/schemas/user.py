@@ -30,6 +30,7 @@ class UserRead(BaseModel):
     digest_max_items: int
     digest_length_locked: bool
     serendipity_percentage: int
+    preferred_languages: list[str]
     tier: str
     timezone: str
     created_at: datetime
@@ -47,6 +48,7 @@ class UserUpdate(BaseModel):
     # length back to the learner (UX-02).
     digest_length_auto: bool | None = None
     serendipity_percentage: int | None = None
+    preferred_languages: list[str] | None = None
     timezone: str | None = None
 
 

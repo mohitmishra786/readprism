@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, time
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Time, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -31,6 +31,8 @@ class User(Base):
     # send-time job must not clobber it (UX-03).
     send_time_locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     serendipity_percentage: Mapped[int] = mapped_column(Integer, default=15)
+    # ISO-639 codes the user wants to read (UX-15). Empty = no filter.
+    preferred_languages: Mapped[list] = mapped_column(JSONB, default=list)
     tier: Mapped[str] = mapped_column(String, default="free")
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     # Local part of the inbound newsletter address: u.{token}@the configured domain.

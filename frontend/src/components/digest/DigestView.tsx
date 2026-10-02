@@ -11,6 +11,7 @@ interface Prompt {
   prompt_text: string;
   prompt_type: string;
   answered: boolean;
+  dismissed: boolean;
   answer: string | null;
 }
 
@@ -33,7 +34,16 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
     } catch {}
   };
 
-  const unanswered = prompts.filter((p) => !p.answered);
+  const dismiss = async (promptId: string) => {
+    try {
+      await api.digest.dismissPrompt(digestId, promptId);
+      // Only hide after the server confirms — a failed POST must not swallow
+      // the prompt silently (CodeRabbit).
+      setPrompts((prev) => prev.map((p) => (p.id === promptId ? { ...p, dismissed: true } : p)));
+    } catch {}
+  };
+
+  const unanswered = prompts.filter((p) => !p.answered && !p.dismissed);
   if (unanswered.length === 0) return null;
 
   return (
@@ -55,6 +65,13 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
             />
             <button onClick={() => submit(p.id)} className="btn-primary">
               Send
+            </button>
+            <button
+              onClick={() => dismiss(p.id)}
+              aria-label={`Dismiss prompt: ${p.prompt_text}`}
+              className="text-stone-400 transition-colors hover:text-stone-700"
+            >
+              ✕
             </button>
           </div>
         </div>

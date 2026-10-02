@@ -90,11 +90,14 @@ def label_event(
     reread: int = 0,
     viewed: bool = False,
     reason: str | None = None,
+    saved_unopened_days: float | None = None,
 ) -> tuple[float, float] | None:
     """Return (label, confidence) or None when the event must not train.
 
     A skip counts only after the digest was actually viewed. Reason tags
-    carry their own A4 label via the UX-06 mapping table.
+    carry their own A4 label via the UX-06 mapping table. Saved-queue
+    intent semantics (A4/UX-12): saved then fully read -> 1.0/1.2; saved
+    and unopened for 14+ days -> 0.4/0.3.
     """
     if reason:
         from app.services.ranking.feedback_map import reason_effect
@@ -112,6 +115,10 @@ def label_event(
         return 0.0, 0.5
     if reread > 0:
         return 0.95, 0.9
+    if saved and completion is not None and completion >= 0.9:
+        return 1.0, 1.2
+    if saved and saved_unopened_days is not None and saved_unopened_days >= 14:
+        return 0.4, 0.3
     if saved:
         return 0.9, 0.8
     if completion is None:

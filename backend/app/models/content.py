@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
+import sqlalchemy as sa
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -14,7 +15,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -80,6 +81,17 @@ class ContentItem(Base):
     paywalled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     rankable: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     origin: Mapped[str] = mapped_column(String(32), default="followed", server_default="followed")
+    # Weighted lexical index for hybrid search (UX-11): title weight A,
+    # summaries weight B. Generated on write; GIN-indexed (migration 0018).
+    search_tsv: Mapped[str | None] = mapped_column(
+        TSVECTOR,
+        sa.Computed(
+            "setweight(to_tsvector('english', coalesce(title, '')), 'A') || "
+            "setweight(to_tsvector('english', coalesce(summary_headline, '') || ' ' || coalesce(summary_brief, '')), 'B')",
+            persisted=True,
+        ),
+        nullable=True,
+    )
     scored_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
     embedding_dim: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -127,6 +139,9 @@ class UserContentInteraction(Base):
     explicit_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     explicit_rating_reason: Mapped[str | None] = mapped_column(String, nullable=True)
     saved: Mapped[bool] = mapped_column(Boolean, default=False)
+    # When the item was saved (UX-12 intent semantics: save->read is a strong
+    # positive; saved and unopened for 14+ days is a slight negative).
+    saved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     saved_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     shared: Mapped[bool] = mapped_column(Boolean, default=False)
     skipped: Mapped[bool] = mapped_column(Boolean, default=False)

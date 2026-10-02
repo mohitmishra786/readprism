@@ -107,6 +107,46 @@ async def get_reading_history(
     ]
 
 
+@router.get("/saved", response_model=list[FeedItem])
+async def get_saved_queue(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[FeedItem]:
+    """The user's saved queue, newest save first (UX-12).
+
+    Items saved and then fully read leave the queue; unread saves stay until
+    read (a 14-day unopened save becomes a slight negative label).
+    """
+    offset = (page - 1) * limit
+
+    result = await session.execute(
+        select(ContentItem, UserContentInteraction)
+        .join(
+            UserContentInteraction,
+            (UserContentInteraction.content_item_id == ContentItem.id)
+            & (UserContentInteraction.user_id == current_user.id),
+        )
+        .where(
+            UserContentInteraction.saved.is_(True), UserContentInteraction.saved_read_at.is_(None)
+        )
+        .order_by(UserContentInteraction.saved_at.desc().nullslast())
+        .offset(offset)
+        .limit(limit)
+    )
+    rows = result.fetchall()
+
+    return [
+        FeedItem(
+            content=ContentItemRead.model_validate(content_item),
+            prs_score=interaction.prs_score,
+            signal_breakdown={},
+        )
+        for content_item, interaction in rows
+    ]
+
+
 @router.get("/{content_id}", response_model=ContentItemFullRead)
 async def get_content(
     content_id: uuid.UUID,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -101,6 +102,8 @@ async def _record_email_action(
         interaction.explicit_rating = -1
     elif action == "save":
         interaction.saved = True
+        if interaction.saved_at is None:
+            interaction.saved_at = datetime.now(UTC)
 
     await session.flush()
     return interaction
@@ -304,6 +307,72 @@ async def get_digest_history(
     return [await _build_digest_read(d, session) for d in digests]
 
 
+@router.get("/emerging", response_model=list[dict])
+async def get_emerging_topics(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """Topics with a burst of distinct-source coverage in the last 72 h vs
+    the trailing 28-day baseline (UX-10). Powers the "Emerging" card.
+
+    Public items only; per topic: distinct sources in the recent window
+    compared with the four trailing 7-day windows (z >= 2).
+    """
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from app.services.digest.emerging import detect_emerging
+
+    now = datetime.now(UTC)
+
+    def distinct_sources_per_topic(start, end):
+        topic = func.jsonb_array_elements_text(ContentItem.topic_clusters).label("topic")
+        return (
+            select(topic, func.count(func.distinct(ContentItem.source_id)).label("n"))
+            .select_from(ContentItem)
+            .where(
+                ContentItem.fetched_at >= start,
+                ContentItem.fetched_at < end,
+                ContentItem.source_id.isnot(None),
+                ContentItem.owner_user_id.is_(None),
+            )
+            .group_by(topic)
+        )
+
+    recent_result = await session.execute(
+        distinct_sources_per_topic(now - timedelta(hours=72), now)
+    )
+    recent = {row[0]: int(row[1]) for row in recent_result.all()}
+
+    # Four trailing 7-day windows that END where the recent window begins —
+    # overlapping the recent window would absorb the burst into the baseline
+    # and mute the z-score.
+    base = now - timedelta(hours=72)
+    history: dict[str, list[float]] = {}
+    for week in range(4):
+        end = base - timedelta(days=week * 7)
+        start = end - timedelta(days=7)
+        rows = await session.execute(distinct_sources_per_topic(start, end))
+        for row in rows.fetchall():
+            history.setdefault(str(row[0]), []).append(float(cast(int, row[1])))
+    # Oldest-first, one slot per 7-day window even when a week had none.
+    for topic in history:
+        while len(history[topic]) < 4:
+            history[topic].insert(0, 0.0)
+
+    found = detect_emerging(recent, history)
+    return [
+        {
+            "topic": e.topic,
+            "recent_sources": e.recent_sources,
+            "baseline_mean": round(e.baseline_mean, 2),
+            "z": round(min(e.z, 99.0), 2),
+        }
+        for e in found[:5]
+    ]
+
+
 @router.post("/generate", response_model=dict)
 async def generate_digest(
     session: AsyncSession = Depends(get_db),
@@ -352,6 +421,7 @@ class FeedbackPromptRead(BaseModel):
     prompt_text: str
     prompt_type: str
     answered: bool
+    dismissed: bool
     answer: str | None
 
     model_config = {"from_attributes": True}
@@ -410,6 +480,35 @@ async def answer_digest_prompt(
 
     prompt.answer = answer
     prompt.answered = True
+    await session.flush()
+    return FeedbackPromptRead.model_validate(prompt)
+
+
+@router.post("/{digest_id}/prompts/{prompt_id}/dismiss", response_model=FeedbackPromptRead)
+async def dismiss_digest_prompt(
+    digest_id: uuid.UUID,
+    prompt_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> FeedbackPromptRead:
+    """Dismiss an early-feedback prompt without answering (UX-07)."""
+    digest_result = await session.execute(
+        select(Digest).where(Digest.id == digest_id, Digest.user_id == current_user.id)
+    )
+    if not digest_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+
+    prompt_result = await session.execute(
+        select(DigestFeedbackPrompt).where(
+            DigestFeedbackPrompt.id == prompt_id,
+            DigestFeedbackPrompt.digest_id == digest_id,
+        )
+    )
+    prompt = prompt_result.scalar_one_or_none()
+    if not prompt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prompt not found")
+
+    prompt.dismissed = True
     await session.flush()
     return FeedbackPromptRead.model_validate(prompt)
 
