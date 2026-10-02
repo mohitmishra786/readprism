@@ -94,6 +94,29 @@ function InterestGraphSVG({
   );
 }
 
+function LlmStatus() {
+  const [status, setStatus] = useState<{
+    llm_configured: boolean;
+    model_primary: string;
+    model_fast: string;
+    openai_fallback_enabled: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    api.metrics.llmStatus().then(setStatus).catch(() => {});
+  }, []);
+
+  if (!status) return null;
+  return (
+    <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }} role="status">
+      {status.llm_configured ? "✅" : "⚠️"} Summaries:{" "}
+      {status.llm_configured ? "LLM active" : "extractive fallback (no key)"} ·{" "}
+      {status.model_primary} · fast: {status.model_fast}
+      {status.openai_fallback_enabled ? " · OpenAI fallback on" : ""}
+    </p>
+  );
+}
+
 export default function PreferencesPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -121,6 +144,34 @@ export default function PreferencesPage() {
     if (!confirm(`Mute "${label}" for 30 days? It will gradually resurface after.`)) return;
     try {
       await api.feedback.adjustInterests(label, "suppress", 30);
+      const g = await api.preferences.interestGraph();
+      setGraph(g);
+    } catch {}
+  };
+
+  const boostTopic = async (label: string) => {
+    try {
+      await api.feedback.adjustInterests(label, "boost");
+      const g = await api.preferences.interestGraph();
+      setGraph(g);
+    } catch {}
+  };
+
+  const renameInterest = async (label: string) => {
+    const next = prompt(`Rename "${label}" to:`, label);
+    if (!next || next.trim() === label) return;
+    try {
+      await api.feedback.renameInterest(label, next.trim());
+      const g = await api.preferences.interestGraph();
+      setGraph(g);
+    } catch {}
+  };
+
+  const mergeInterest = async (label: string) => {
+    const into = prompt(`Merge "${label}" into which topic?`, "");
+    if (!into || !into.trim()) return;
+    try {
+      await api.feedback.mergeInterests(label, into.trim());
       const g = await api.preferences.interestGraph();
       setGraph(g);
     } catch {}
@@ -237,7 +288,45 @@ export default function PreferencesPage() {
               Percentage of digest items from outside your usual sources.
             </p>
           </div>
+          <div>
+            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
+              Send time (your timezone): {user.digest_time_morning.slice(0, 5)}
+              {user.send_time_locked ? " · locked" : " · auto-learned"}
+            </label>
+            <input
+              type="time"
+              value={user.digest_time_morning.slice(0, 5)}
+              onChange={(e) => setUser({ ...user, digest_time_morning: `${e.target.value}:00` })}
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+            />
+            <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
+              {user.send_time_locked
+                ? "Locked to your explicit time."
+                : "Auto: follows when you actually open digests. Changing it locks it."}
+            </p>
+          </div>
+          <div>
+            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
+              Languages (comma-separated, empty = all)
+            </label>
+            <input
+              type="text"
+              value={(user.preferred_languages || []).join(", ")}
+              onChange={(e) =>
+                setUser({
+                  ...user,
+                  preferred_languages: e.target.value
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
+              }
+              placeholder="en, de, fr"
+              style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+            />
+          </div>
         </div>
+        <LlmStatus />
         <button
           onClick={save}
           disabled={saving}
@@ -267,17 +356,19 @@ export default function PreferencesPage() {
           {/* SVG graph visualization */}
           <InterestGraphSVG nodes={graph.nodes} edges={graph.edges} />
 
-          {/* Tag cloud — click a topic to suppress it for a while (audit 10-4). */}
+          {/* Tag cloud — mute 30d / boost / rename / merge (UX-08). */}
           <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginTop: 16 }}>
-            Seeing too much of a topic? Click it to mute it for 30 days.
+            Click a topic to mute it for 30 days; use the arrows to boost or
+            the ✎/⇄ controls to rename or merge.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {graph.nodes.slice(0, 30).map((node) => (
-              <button
+              <span
                 key={node.label}
-                onClick={() => suppressTopic(node.label)}
-                title={`Mute "${node.label}" for 30 days`}
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
                   padding: "4px 12px",
                   borderRadius: 20,
                   background: `rgba(37,99,235,${0.1 + node.weight * 0.5})`,
@@ -285,11 +376,19 @@ export default function PreferencesPage() {
                   fontSize: `${0.75 + node.weight * 0.5}rem`,
                   fontWeight: node.is_core ? 700 : 400,
                   border: node.is_core ? "2px solid #93c5fd" : "1px solid #dbeafe",
-                  cursor: "pointer",
                 }}
               >
-                {node.label}
-              </button>
+                <button
+                  onClick={() => suppressTopic(node.label)}
+                  title={`Mute "${node.label}" for 30 days`}
+                  style={{ cursor: "pointer", background: "none", border: "none", color: "inherit", font: "inherit", padding: 0 }}
+                >
+                  {node.label}
+                </button>
+                <button onClick={() => boostTopic(node.label)} title={`More of "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#166534", padding: 0, fontSize: "0.8em" }}>▲</button>
+                <button onClick={() => renameInterest(node.label)} title={`Rename "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#1e40af", padding: 0, fontSize: "0.8em" }}>✎</button>
+                <button onClick={() => mergeInterest(node.label)} title={`Merge "${node.label}" into another topic`} style={{ cursor: "pointer", background: "none", border: "none", color: "#6b21a8", padding: 0, fontSize: "0.8em" }}>⇄</button>
+              </span>
             ))}
           </div>
         </section>

@@ -9,6 +9,7 @@ export interface User {
   digest_max_items: number;
   digest_length_locked: boolean;
   serendipity_percentage: number;
+  preferred_languages: string[];
   tier: string;
   timezone: string;
   created_at: string;

@@ -206,6 +206,83 @@ async def get_interaction(
     return UserContentInteractionRead.model_validate(interaction)
 
 
+@router.post("/rename-interest")
+async def rename_interest(
+    body: dict,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Relabel one of the user's interest nodes (UX-08 interest management)."""
+    from_label = str(body.get("from_label", "")).strip()
+    to_label = str(body.get("to_label", "")).strip()
+    if not from_label or not to_label:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="from_label and to_label are required")
+
+    result = await session.execute(
+        select(InterestNode).where(
+            InterestNode.user_id == current_user.id, InterestNode.topic_label == from_label
+        )
+    )
+    node = result.scalar_one_or_none()
+    if node is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interest not found")
+
+    # Collision with an existing label merges the weights instead of failing.
+    clash_result = await session.execute(
+        select(InterestNode).where(
+            InterestNode.user_id == current_user.id, InterestNode.topic_label == to_label
+        )
+    )
+    clash = clash_result.scalar_one_or_none()
+    if clash is not None and clash.id != node.id:
+        clash.weight = max(0.0, min(1.0, clash.weight + node.weight))
+        await session.delete(node)
+    else:
+        node.topic_label = to_label
+    await session.flush()
+    return {"status": "ok", "label": to_label}
+
+
+@router.post("/merge-interests")
+async def merge_interests(
+    body: dict,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Fold one interest node into another, summing weights (UX-08)."""
+    from_label = str(body.get("from_label", "")).strip()
+    into_label = str(body.get("into_label", "")).strip()
+    if not from_label or not into_label:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="from_label and into_label are required")
+    if from_label == into_label:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="cannot merge an interest into itself")
+
+    src_result = await session.execute(
+        select(InterestNode).where(
+            InterestNode.user_id == current_user.id, InterestNode.topic_label == from_label
+        )
+    )
+    src = src_result.scalar_one_or_none()
+    if src is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Interest not found")
+
+    dst_result = await session.execute(
+        select(InterestNode).where(
+            InterestNode.user_id == current_user.id, InterestNode.topic_label == into_label
+        )
+    )
+    dst = dst_result.scalar_one_or_none()
+    if dst is None:
+        # Rename-with-merge semantics: folding into a label that does not
+        # exist yet is just a relabel.
+        src.topic_label = into_label
+    else:
+        dst.weight = max(0.0, min(1.0, dst.weight + src.weight))
+        await session.delete(src)
+    await session.flush()
+    return {"status": "ok", "into": into_label}
+
+
 @router.post("/adjust-interests")
 async def adjust_interests(
     body: InterestAdjustment,

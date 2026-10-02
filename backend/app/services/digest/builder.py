@@ -109,6 +109,16 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     else:
         content_items = []
 
+    # Per-user language filter (UX-15): empty prefs = no filter; items with
+    # unknown language are never dropped (the filter is for what you DO want).
+    wanted_langs = [str(lang).lower() for lang in (user.preferred_languages or [])]
+    if wanted_langs:
+        content_items = [
+            item
+            for item in content_items
+            if item.language is None or str(item.language).lower() in wanted_langs
+        ]
+
     from app.config import get_settings
     from app.services.ingestion.backfill import cap_per_source
 

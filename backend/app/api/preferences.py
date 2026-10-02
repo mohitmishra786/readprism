@@ -49,6 +49,14 @@ async def update_preferences(
         current_user.digest_length_locked = not body.digest_length_auto
     if body.serendipity_percentage is not None:
         current_user.serendipity_percentage = max(0, min(50, body.serendipity_percentage))
+    if body.preferred_languages is not None:
+        # Light validation: 2-3 char ISO-639 codes, lowercase, deduped.
+        codes = []
+        for raw in body.preferred_languages[:10]:
+            code = str(raw).strip().lower()
+            if 2 <= len(code) <= 3 and code.isalpha() and code not in codes:
+                codes.append(code)
+        current_user.preferred_languages = codes
     if body.timezone is not None:
         current_user.timezone = body.timezone
     await session.flush()

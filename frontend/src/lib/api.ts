@@ -207,7 +207,7 @@ export const api = {
       request<{ status: string; message: string }>('/digest/generate', { method: 'POST' }),
     get: (id: string) => request<Digest>(`/digest/${id}`),
     prompts: (digestId: string) =>
-      request<Array<{ id: string; prompt_text: string; prompt_type: string; answered: boolean; answer: string | null }>>(
+      request<Array<{ id: string; prompt_text: string; prompt_type: string; answered: boolean; dismissed: boolean; answer: string | null }>>(
         `/digest/${digestId}/prompts`
       ),
     answerPrompt: (digestId: string, promptId: string, answer: string) =>
@@ -256,6 +256,16 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ topic, action, duration_days }),
       }),
+    renameInterest: (from_label: string, to_label: string) =>
+      request<{ status: string }>('/feedback/rename-interest', {
+        method: 'POST',
+        body: JSON.stringify({ from_label, to_label }),
+      }),
+    mergeInterests: (from_label: string, into_label: string) =>
+      request<{ status: string }>('/feedback/merge-interests', {
+        method: 'POST',
+        body: JSON.stringify({ from_label, into_label }),
+      }),
   },
 
   preferences: {
@@ -266,6 +276,16 @@ export const api = {
         body: JSON.stringify(data),
       }),
     interestGraph: () => request<InterestGraph>('/preferences/interest-graph'),
+  },
+
+  metrics: {
+    llmStatus: () =>
+      request<{
+        llm_configured: boolean;
+        model_primary: string;
+        model_fast: string;
+        openai_fallback_enabled: boolean;
+      }>('/metrics/llm-status'),
   },
 
   search: {

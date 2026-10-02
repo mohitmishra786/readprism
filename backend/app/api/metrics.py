@@ -42,6 +42,25 @@ class RankingEvalRead(BaseModel):
     positives: int
 
 
+@router.get("/llm-status")
+async def llm_status(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Signed-in LLM configuration status for the settings page (UX-13).
+
+    Never exposes the key: only which model ids are configured and whether a
+    key exists at all.
+    """
+    s = get_settings()
+    has_primary_key = bool(s.groq_api_key or s.openai_api_key)
+    return {
+        "llm_configured": has_primary_key,
+        "model_primary": s.llm_model_primary,
+        "model_fast": s.llm_model_fast,
+        "openai_fallback_enabled": s.openai_fallback_enabled and bool(s.openai_api_key),
+    }
+
+
 @router.get("/ranking-eval", response_model=RankingEvalRead)
 async def ranking_eval(
     days: int = Query(30, ge=1, le=365),
