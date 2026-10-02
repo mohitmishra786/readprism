@@ -3,9 +3,9 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-10-02, session 6 (mid-session)
-Current phase: **Phase 3 — Digest & UX** (continuation on `agent/phase-3-digest-ux-2`)
-Last commit on `main`: `4430c87` (PRs #65, #62, #66, #69, #67, #68 merged)
+Last updated: 2026-10-02, session 9 (Phase 4)
+Current phase: **Phase 4 — Cold start**
+Last commit on `main`: `2908981` (PR #74: Phase 3 completion)
 
 ---
 

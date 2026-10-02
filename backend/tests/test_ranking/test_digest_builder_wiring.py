@@ -187,3 +187,61 @@ async def test_exploration_slots_flag_and_record_propensity(db_session, monkeypa
         assert 0.0 < imp.propensity <= 1.0
         # Exploration items never lead (A6).
         assert imp.section != "lead"
+
+
+@pytest.mark.asyncio
+async def test_new_users_explore_even_with_the_flag_off(
+    db_session, monkeypatch, test_user_data
+):
+    """CS-04: the first 14 days force exploration slots on."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.config import get_settings
+    from app.models.digest import DigestImpression
+    from app.services.digest.builder import build_digest
+
+    monkeypatch.setattr(get_settings(), "ranking_exploration_enabled", False)
+    user, _src_a = await _seed(db_session, followed_per_source=3)
+    other_src = Source(user_id=user.id, url="https://c9.example/feed", name="C")
+    db_session.add(other_src)
+    await db_session.flush()
+    for i in range(3):
+        db_session.add(
+            _item(
+                other_src.id,
+                f"https://c9.example/{i}",
+                f"followed-c{i}",
+                topics=[f"c{i}"],
+                reading_time=10,
+            )
+        )
+    await db_session.commit()
+
+    digest = await build_digest(user, db_session)
+    await db_session.commit()
+
+    impressions = list(
+        (
+            await db_session.execute(
+                select(DigestImpression).where(DigestImpression.digest_id == digest.id)
+            )
+        ).scalars()
+    )
+    exploration = [imp for imp in impressions if imp.exploration]
+    # User created moments ago (< 14 days): slots fire despite the flag.
+    assert exploration, "new user should get exploration slots with the flag off"
+    for imp in exploration:
+        assert 0.0 < imp.propensity <= 1.0
+
+
+@pytest.mark.asyncio
+async def test_single_user_never_touches_collaborative_paths(db_session):
+    """CS-04: with one active user the collaborative warmup is a safe no-op."""
+    from app.services.cold_start.collaborative import get_collaborative_warmup_items
+
+    user = User(email="solo-cs4@example.com", hashed_password="x", onboarding_complete=True)
+    db_session.add(user)
+    await db_session.commit()
+
+    items = await get_collaborative_warmup_items(user, limit=10, session=db_session)
+    assert items == []
