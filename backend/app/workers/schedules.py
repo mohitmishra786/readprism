@@ -23,6 +23,10 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.update_interest_graph.apply_decay_all_users",
             "schedule": crontab(hour=2, minute=0),  # daily at 2:00 AM UTC
         },
+        "learn-send-times": {
+            "task": "app.workers.tasks.build_digest.learn_send_times",
+            "schedule": crontab(hour=3, minute=15, day_of_week=0),  # weekly, Sun 03:15 UTC
+        },
         "prune-old-full-text": {
             "task": "app.workers.tasks.prune_content.prune_old_full_text",
             "schedule": crontab(hour=3, minute=30),  # daily at 3:30 AM UTC

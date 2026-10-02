@@ -82,6 +82,16 @@ An explicit `digest_max_items` from `PUT /preferences` sets
 `users.digest_length_locked` and the learner never clobbers it;
 `digest_length_auto: true` hands control back.
 
+Delivery is scheduled per user: `schedule_daily_digests` (every 30 min) fires
+inside a ±15-minute window around each preferred local slot (`twice_daily`
+adds an evening slot 12 h after the morning one; zoneinfo handles DST).
+A build inside the per-frequency dedupe window (12 h daily / 6 h twice /
+84 h weekly) is skipped, so a Celery retry never double-sends. A weekly
+`learn_send_times` job moves unlocked users' send time to their peak
+open hour (`users.send_time_locked` protects an explicit choice). Digests
+with fewer than `DIGEST_MIN_ITEMS` items are built for in-app but no email
+is sent.
+
 ## Summaries
 
 `SummarizationService` calls `LLMClient` (`app/services/llm/client.py`). The
