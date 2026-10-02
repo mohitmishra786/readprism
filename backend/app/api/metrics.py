@@ -114,6 +114,60 @@ async def email_deliverability() -> dict:
     return await analytics.email_deliverability()
 
 
+@router.get("/time-to-value", dependencies=[Depends(require_metrics_token)])
+async def time_to_value(session: AsyncSession = Depends(get_db)) -> dict:
+    """CS-06: local-only signup -> first digest -> first read timing.
+
+    No external telemetry (D-07): computed from this instance's own rows.
+    """
+    from datetime import UTC, datetime
+
+    from sqlalchemy import text
+
+    now = datetime.now(UTC)
+    rows = await session.execute(
+        text(
+            """
+            SELECT
+              u.id,
+              u.created_at,
+              MIN(d.generated_at) AS first_digest_at,
+              MIN(uci.opened_at) AS first_read_at
+            FROM users u
+            LEFT JOIN digests d ON d.user_id = u.id
+            LEFT JOIN user_content_interactions uci ON uci.user_id = u.id
+              AND uci.opened_at IS NOT NULL
+            WHERE u.onboarding_complete = true
+            GROUP BY u.id, u.created_at
+            """
+        )
+    )
+    signup_to_digest: list[float] = []
+    digest_to_read: list[float] = []
+    for row in rows.fetchall():
+        created, first_digest, first_read = row[1], row[2], row[3]
+        if first_digest is not None:
+            signup_to_digest.append((first_digest - created).total_seconds() / 3600)
+        if first_digest is not None and first_read is not None:
+            digest_to_read.append((first_read - first_digest).total_seconds() / 3600)
+        del now
+
+    def _median(values: list[float]) -> float | None:
+        if not values:
+            return None
+        ordered = sorted(values)
+        mid = len(ordered) // 2
+        if len(ordered) % 2:
+            return round(ordered[mid], 2)
+        return round((ordered[mid - 1] + ordered[mid]) / 2, 2)
+
+    return {
+        "users_measured": len(signup_to_digest) or len(digest_to_read),
+        "median_hours_signup_to_first_digest": _median(signup_to_digest),
+        "median_hours_first_digest_to_first_read": _median(digest_to_read),
+    }
+
+
 @router.post("/recompute-scores", dependencies=[Depends(require_metrics_token)])
 async def recompute_scores(session: AsyncSession = Depends(get_db)) -> dict:
     """List items the ranker version should rescore. The Celery task does the write."""

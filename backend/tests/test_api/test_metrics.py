@@ -78,3 +78,46 @@ async def test_cohort_retention_and_funnel(client: AsyncClient, db_session, monk
 
     cohorts = (await client.get("/api/v1/metrics/cohort-retention")).json()
     assert isinstance(cohorts, list) and cohorts
+
+
+@pytest.mark.asyncio
+async def test_time_to_value(client: AsyncClient, db_session, monkeypatch):
+    """CS-06: local-only signup->digest->read medians."""
+    monkeypatch.setattr(metrics_api.settings, "metrics_token", "")
+    monkeypatch.setattr(metrics_api.settings, "app_env", "development")
+
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.content import ContentItem
+    from app.models.digest import Digest
+    from app.models.user import User
+
+    t0 = datetime(2026, 10, 1, tzinfo=UTC)
+    user = User(
+        email="ttv@example.com",
+        hashed_password="x",
+        onboarding_complete=True,
+        created_at=t0,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    item = ContentItem(url="https://ttv.example/a", title="a", fetched_at=t0)
+    db_session.add(item)
+    await db_session.flush()
+    from app.models.content import UserContentInteraction
+
+    db_session.add(
+        Digest(user_id=user.id, generated_at=t0 + timedelta(hours=2), delivery_method="in_app")
+    )
+    db_session.add(
+        UserContentInteraction(
+            user_id=user.id, content_item_id=item.id, opened_at=t0 + timedelta(hours=5)
+        )
+    )
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/metrics/time-to-value")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["median_hours_signup_to_first_digest"] == 2.0
+    assert body["median_hours_first_digest_to_first_read"] == 3.0
