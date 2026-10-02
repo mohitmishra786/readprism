@@ -34,9 +34,7 @@ async def test_rename_interest(client: AsyncClient, test_user_data: dict, db_ses
     labels = {
         n.topic_label
         for n in (
-            await db_session.execute(
-                select(InterestNode).where(InterestNode.user_id == user.id)
-            )
+            await db_session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
         ).scalars()
     }
     assert labels == {"machine learning"}
@@ -62,9 +60,7 @@ async def test_merge_interests_sums_weights(client: AsyncClient, test_user_data:
     nodes = {
         n.topic_label: n.weight
         for n in (
-            await db_session.execute(
-                select(InterestNode).where(InterestNode.user_id == user.id)
-            )
+            await db_session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
         ).scalars()
     }
     assert nodes == {"ml": pytest.approx(0.9)}
@@ -93,16 +89,28 @@ async def test_language_preference_round_trip_and_filter(
     db_session.add(src)
     await db_session.flush()
     en_item = ContentItem(
-        source_id=src.id, url="https://lang.example/en", title="English",
-        language="en", fetched_at=datetime.now(UTC), word_count=500,
+        source_id=src.id,
+        url="https://lang.example/en",
+        title="English",
+        language="en",
+        fetched_at=datetime.now(UTC),
+        word_count=500,
     )
     fr_item = ContentItem(
-        source_id=src.id, url="https://lang.example/fr", title="Français",
-        language="fr", fetched_at=datetime.now(UTC), word_count=500,
+        source_id=src.id,
+        url="https://lang.example/fr",
+        title="Français",
+        language="fr",
+        fetched_at=datetime.now(UTC),
+        word_count=500,
     )
     unknown = ContentItem(
-        source_id=src.id, url="https://lang.example/unk", title="Unknown",
-        language=None, fetched_at=datetime.now(UTC), word_count=500,
+        source_id=src.id,
+        url="https://lang.example/unk",
+        title="Unknown",
+        language=None,
+        fetched_at=datetime.now(UTC),
+        word_count=500,
     )
     db_session.add_all([en_item, fr_item, unknown])
     await db_session.commit()
@@ -110,8 +118,12 @@ async def test_language_preference_round_trip_and_filter(
     from app.services.digest.builder import build_digest
 
     with (
-        patch("app.services.summarization.groq_client.GroqSummarizer", side_effect=Exception("no llm")),
-        patch("app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"),
+        patch(
+            "app.services.summarization.groq_client.GroqSummarizer", side_effect=Exception("no llm")
+        ),
+        patch(
+            "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"
+        ),
         patch("app.workers.tasks.compute_embeddings.compute_embedding_for_item.delay"),
         patch("app.services.digest.builder.rank_content_for_user") as mock_rank,
     ):
@@ -122,9 +134,7 @@ async def test_language_preference_round_trip_and_filter(
     # build_digest returns the Digest, items were added to the session — query them.
     from app.models.digest import DigestItem as DI
 
-    rows = (
-        await db_session.execute(select(DI).where(DI.digest_id == digest.id))
-    ).scalars().all()
+    rows = (await db_session.execute(select(DI).where(DI.digest_id == digest.id))).scalars().all()
     placed = {str(r.content_item_id) for r in rows}
     assert str(en_item.id) in placed
     assert str(unknown.id) in placed

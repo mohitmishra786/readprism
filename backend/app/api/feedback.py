@@ -216,7 +216,10 @@ async def rename_interest(
     from_label = str(body.get("from_label", "")).strip()
     to_label = str(body.get("to_label", "")).strip()
     if not from_label or not to_label:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="from_label and to_label are required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="from_label and to_label are required",
+        )
 
     result = await session.execute(
         select(InterestNode).where(
@@ -253,9 +256,15 @@ async def merge_interests(
     from_label = str(body.get("from_label", "")).strip()
     into_label = str(body.get("into_label", "")).strip()
     if not from_label or not into_label:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="from_label and into_label are required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="from_label and into_label are required",
+        )
     if from_label == into_label:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="cannot merge an interest into itself")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="cannot merge an interest into itself",
+        )
 
     src_result = await session.execute(
         select(InterestNode).where(
