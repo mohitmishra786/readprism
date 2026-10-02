@@ -38,10 +38,17 @@ def test_flat_baseline_burst_is_an_outlier():
 
 
 def test_needs_two_baseline_windows_and_min_sources():
-    # Single baseline window: not enough history.
+    # Explicitly incomplete history (one window) is not enough.
     assert detect_emerging({"ai": 5}, {"ai": [1.0]}) == []
     # One source in 72h: below min_sources even with flat baseline.
     assert detect_emerging({"ai": 1}, {"ai": [0.0, 0.0, 0.0, 0.0]}) == []
+
+
+def test_topic_absent_from_history_uses_zero_windows():
+    """A topic appearing only in the recent window IS emerging (CodeRabbit)."""
+    found = detect_emerging({"ai": 5}, {})  # no history rows at all
+    assert [e.topic for e in found] == ["ai"]
+    assert found[0].z == float("inf")
 
 
 @pytest.mark.asyncio
@@ -88,3 +95,36 @@ async def test_emerging_endpoint_finds_a_burst(
     assert result.status_code == 200
     topics = [row["topic"] for row in result.json()]
     assert "ai" in topics
+
+
+@pytest.mark.asyncio
+async def test_emerging_endpoint_with_no_baseline_rows(
+    client: AsyncClient, test_user_data: dict, db_session
+):
+    """A brand-new instance (no 28-day history) still detects a burst."""
+    resp = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+
+    now = datetime.now(UTC)
+    for i in range(3):
+        src = Source(user_id=user.id, url=f"https://fresh-{i}.example/feed")
+        db_session.add(src)
+        await db_session.flush()
+        db_session.add(
+            ContentItem(
+                source_id=src.id,
+                url=f"https://fresh-{i}.example/{i}",
+                title=f"fresh-{i}",
+                topic_clusters=["wasm"],
+                fetched_at=now - timedelta(hours=i + 1),
+            )
+        )
+    await db_session.commit()
+
+    result = await client.get("/api/v1/digest/emerging", headers=headers)
+    assert result.status_code == 200
+    topics = [row["topic"] for row in result.json()]
+    assert "wasm" in topics

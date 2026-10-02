@@ -195,11 +195,15 @@ export default function PreferencesPage() {
   };
 
   const [initial, setInitial] = useState<User | null>(null);
+  // Languages kept as raw comma text while editing; parsed on save so a
+  // trailing comma survives typing (CodeRabbit).
+  const [languagesText, setLanguagesText] = useState("");
 
   useEffect(() => {
     api.preferences.get().then((u) => {
       setUser(u);
       setInitial(u);
+      setLanguagesText((u.preferred_languages || []).join(", "));
     }).catch(() => {});
     api.preferences.interestGraph().then(setGraph).catch(() => {});
   }, []);
@@ -208,10 +212,10 @@ export default function PreferencesPage() {
     if (!user) return;
     setSaving(true);
     try {
-      // Only send digest_max_items when the user actually moved the slider:
-      // an explicit value locks the length learner (UX-02), so echoing the
-      // current value on every save would lock it by accident.
-      const payload: Partial<User> = {
+      // Only send fields the user actually changed: an explicit digest_max_items
+      // or digest_time_morning LOCKS the respective learner server-side (UX-02/
+      // UX-03), so echoing unchanged values on every save would lock by accident.
+      const payload: Partial<User> & { preferred_languages?: string[] } = {
         digest_frequency: user.digest_frequency,
         serendipity_percentage: user.serendipity_percentage,
         timezone: user.timezone,
@@ -219,9 +223,19 @@ export default function PreferencesPage() {
       if (initial && user.digest_max_items !== initial.digest_max_items) {
         payload.digest_max_items = user.digest_max_items;
       }
+      if (initial && user.digest_time_morning !== initial.digest_time_morning) {
+        payload.digest_time_morning = user.digest_time_morning;
+      }
+      if (initial && languagesText !== (initial.preferred_languages || []).join(", ")) {
+        payload.preferred_languages = languagesText
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
       const updated = await api.preferences.update(payload);
       setUser(updated);
       setInitial(updated);
+      setLanguagesText((updated.preferred_languages || []).join(", "));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {}
@@ -289,11 +303,15 @@ export default function PreferencesPage() {
             </p>
           </div>
           <div>
-            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
+            <label
+              htmlFor="send-time-input"
+              style={{ display: "block", fontWeight: 500, marginBottom: 4 }}
+            >
               Send time (your timezone): {user.digest_time_morning.slice(0, 5)}
               {user.send_time_locked ? " · locked" : " · auto-learned"}
             </label>
             <input
+              id="send-time-input"
               type="time"
               value={user.digest_time_morning.slice(0, 5)}
               onChange={(e) => setUser({ ...user, digest_time_morning: `${e.target.value}:00` })}
@@ -306,21 +324,19 @@ export default function PreferencesPage() {
             </p>
           </div>
           <div>
-            <label style={{ display: "block", fontWeight: 500, marginBottom: 4 }}>
+            <label
+              htmlFor="languages-input"
+              style={{ display: "block", fontWeight: 500, marginBottom: 4 }}
+            >
               Languages (comma-separated, empty = all)
             </label>
+            {/* Raw text while editing: splitting/filtering per keystroke would
+                eat the trailing comma and block typing the next language. */}
             <input
+              id="languages-input"
               type="text"
-              value={(user.preferred_languages || []).join(", ")}
-              onChange={(e) =>
-                setUser({
-                  ...user,
-                  preferred_languages: e.target.value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean),
-                })
-              }
+              value={languagesText}
+              onChange={(e) => setLanguagesText(e.target.value)}
               placeholder="en, de, fr"
               style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
             />

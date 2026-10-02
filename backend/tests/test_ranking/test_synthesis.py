@@ -33,6 +33,24 @@ def test_title_overlap_thresholds():
     assert title_overlap("Rust async runtime rewrite", "Sourdough starter guide") == 0.0
 
 
+def test_title_path_requires_both_vectors_missing():
+    """One vector present means no comparison happened — never cluster."""
+    items = [
+        type("I", (), {"title": "Rust async runtime rewrite", "embedding": [1.0, 0.0, 0.0, 0.0]}),
+        type("I", (), {"title": "Rust async runtime rewrite", "embedding": None}),
+    ]
+    assert cluster_stories(items) == [[0], [1]]
+
+
+def test_title_path_requires_enough_tokens():
+    """Short titles ("Apple earnings") cannot claim a story match."""
+    items = [
+        type("I", (), {"title": "Apple earnings", "embedding": None}),
+        type("I", (), {"title": "Apple earnings call", "embedding": None}),
+    ]
+    assert cluster_stories(items) == [[0], [1]]
+
+
 def _db_item(source_id, url, title, *, embedding=None):
     return ContentItem(
         source_id=source_id,
@@ -46,6 +64,8 @@ def _db_item(source_id, url, title, *, embedding=None):
 @pytest.mark.asyncio
 async def test_builder_attaches_perspectives(db_session):
     """A same-story pair becomes one card carrying the other source."""
+    from unittest.mock import patch
+
     from app.services.digest.builder import _synthesize_topic_clusters
 
     user = User(email="synth@example.com", hashed_password="x")
@@ -63,21 +83,25 @@ async def test_builder_attaches_perspectives(db_session):
     db_session.add_all([a, b])
     await db_session.commit()
 
-    kept, perspectives = await _synthesize_topic_clusters([a, b], db_session)
-    assert len(kept) == 1
-    assert len(perspectives[kept[0].id]) == 1
-    payload = perspectives[kept[0].id][0]
-    assert payload["source_id"] == str(src_b.id)
-    assert payload["title"] == "Story B"
+    async def _no_cache(*args, **kwargs):
+        return None
 
-    # DigestItem breakdown carries perspectives end-to-end (unit-level check
-    # of the wiring contract): the field lives on signal_breakdown JSONB.
-    di = DigestItem(
-        digest_id=uuid.uuid4(),
-        content_item_id=a.id,
-        position=0,
-        section="lead",
-        prs_score=0.5,
-        signal_breakdown={"perspectives": perspectives[a.id]},
-    )
-    assert di.signal_breakdown["perspectives"][0]["url"] == "https://sb.example/story"
+    with (
+        patch("app.utils.cache.cache_get", _no_cache),
+        patch(
+            "app.services.summarization.groq_client.GroqSummarizer.synthesize_topic",
+            return_value="",
+        ),
+    ):
+        kept, story_payloads = await _synthesize_topic_clusters([a, b], db_session)
+    assert len(kept) == 1
+    payload = story_payloads[kept[0].id]
+    assert len(payload["perspectives"]) == 1
+    perspective = payload["perspectives"][0]
+    assert perspective["source_id"] == str(src_b.id)
+    assert perspective["title"] == "Story B"
+
+    # The shared content row's own summary is never overwritten (CodeRabbit):
+    # the briefing lives in the per-digest payload, not on the item.
+    assert payload["story_briefing"] is None
+    assert a.summary_brief is None

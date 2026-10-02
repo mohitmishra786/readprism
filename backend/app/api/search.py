@@ -125,7 +125,11 @@ async def search(
         params["uid"] = str(current_user.id)
     filters_sql = " AND " + " AND ".join(filters)
 
-    fts_list = await _fts_ids(session, q, filters_sql, params, FUSION_CANDIDATES)
+    # Per-leg candidate depth must cover the requested page: an offset beyond
+    # a fixed candidate window would return an empty page even when scoped
+    # matches exist (CodeRabbit).
+    depth = max(FUSION_CANDIDATES, offset + limit)
+    fts_list = await _fts_ids(session, q, filters_sql, params, depth)
 
     vector_list: list[str] = []
     if source_ids:
@@ -140,16 +144,15 @@ async def search(
                 cutover=get_settings().embedding_cutover_enabled,
             )
             query_vec = encode_with_spec(q, spec, query=True)
-            vector_list = await _vector_ids(
-                session, query_vec, filters_sql, params, FUSION_CANDIDATES
-            )
+            vector_list = await _vector_ids(session, query_vec, filters_sql, params, depth)
         except Exception as e:
             logger.warning(f"Vector leg skipped (non-fatal): {e}")
 
     fused = rrf_fuse(fts_list, vector_list)
     page = fused[offset : offset + limit]
+    has_more = offset + limit < len(fused)
     if not page:
-        return {"query": q, "hits": [], "limit": limit, "offset": offset}
+        return {"query": q, "hits": [], "limit": limit, "offset": offset, "has_more": has_more}
 
     rows = await session.execute(
         select(ContentItem).where(ContentItem.id.in_([uuid.UUID(p) for p in page]))
@@ -177,4 +180,5 @@ async def search(
         ],
         "limit": limit,
         "offset": offset,
+        "has_more": offset + limit < len(fused),
     }

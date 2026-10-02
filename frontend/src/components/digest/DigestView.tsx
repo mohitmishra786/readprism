@@ -35,8 +35,12 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
   };
 
   const dismiss = async (promptId: string) => {
-    setPrompts((prev) => prev.map((p) => (p.id === promptId ? { ...p, dismissed: true } : p)));
-    await api.digest.dismissPrompt(digestId, promptId).catch(() => {});
+    try {
+      await api.digest.dismissPrompt(digestId, promptId);
+      // Only hide after the server confirms — a failed POST must not swallow
+      // the prompt silently (CodeRabbit).
+      setPrompts((prev) => prev.map((p) => (p.id === promptId ? { ...p, dismissed: true } : p)));
+    } catch {}
   };
 
   const unanswered = prompts.filter((p) => !p.answered && !p.dismissed);
@@ -64,9 +68,8 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
             </button>
             <button
               onClick={() => dismiss(p.id)}
-              title="Dismiss — we won't ask again"
+              aria-label={`Dismiss prompt: ${p.prompt_text}`}
               className="text-stone-400 transition-colors hover:text-stone-700"
-              aria-label="Dismiss prompt"
             >
               ✕
             </button>

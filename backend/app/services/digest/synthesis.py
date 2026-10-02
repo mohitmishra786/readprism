@@ -16,6 +16,9 @@ from dataclasses import dataclass
 
 EMBED_THRESHOLD = 0.88
 TITLE_THRESHOLD = 0.6
+# Titles with fewer significant tokens than this cannot claim a story match:
+# "Apple earnings" vs "Apple earnings call" is not the same story.
+MIN_TITLE_TOKENS = 3
 
 
 @dataclass(frozen=True)
@@ -92,8 +95,16 @@ def cluster_stories(
             similar = False
             if seed_vec is not None and item_vec is not None:
                 similar = cosine(list(seed_vec), list(item_vec)) >= embed_threshold
-            else:
-                similar = title_overlap(seed.title, item.title) >= title_threshold
+            elif seed_vec is None and item_vec is None:
+                # Title overlap is ONLY the both-without-vectors path: with
+                # one vector present the comparison never happened, and a
+                # false-positive cluster silently drops a distinct article
+                # (CodeRabbit).
+                similar = (
+                    title_overlap(seed.title, item.title) >= title_threshold
+                    and len(title_tokens(seed.title)) >= MIN_TITLE_TOKENS
+                    and len(title_tokens(item.title)) >= MIN_TITLE_TOKENS
+                )
             if similar:
                 cluster.append(index)
                 placed = True

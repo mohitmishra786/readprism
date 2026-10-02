@@ -117,7 +117,7 @@ def label_event(
         return 0.95, 0.9
     if saved and completion is not None and completion >= 0.9:
         return 1.0, 1.2
-    if saved_unopened_days is not None and saved_unopened_days >= 14:
+    if saved and saved_unopened_days is not None and saved_unopened_days >= 14:
         return 0.4, 0.3
     if saved:
         return 0.9, 0.8

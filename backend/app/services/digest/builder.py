@@ -157,7 +157,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         await _ensure_interaction(user.id, item.id, was_suggested=True, session=session)
 
     # Cross-source topic synthesis: detect near-duplicate stories, synthesize
-    all_items, story_perspectives = await _synthesize_topic_clusters(all_items, session)
+    all_items, story_payloads = await _synthesize_topic_clusters(all_items, session)
 
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
@@ -263,9 +263,11 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 text, contributions = explain_score(numeric, meta.weights)
                 clean_breakdown["explanation"] = text
                 clean_breakdown["contributions"] = contributions
-            perspectives = story_perspectives.get(item.id)
-            if perspectives:
-                clean_breakdown["perspectives"] = perspectives
+            story = story_payloads.get(item.id)
+            if story:
+                clean_breakdown["perspectives"] = story["perspectives"]
+                if story.get("story_briefing"):
+                    clean_breakdown["story_briefing"] = story["story_briefing"]
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,
@@ -308,14 +310,17 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 async def _synthesize_topic_clusters(
     items: list[ContentItem],
     session: AsyncSession,
-) -> tuple[list[ContentItem], dict[uuid.UUID, list[dict]]]:
+) -> tuple[list[ContentItem], dict[uuid.UUID, dict]]:
     """
     UX-09: cluster same-story items (embedding cosine, title-token overlap for
     no-embedding pairs), keep one primary card per story and attach the other
     sources as `perspectives`. LLM briefing is cached; without one the
     perspectives list is the fallback rendering.
 
-    Returns (kept_items, {primary_id: [ {title, url, source_id}, ... ]}).
+    Returns (kept_items, {primary_id: {"perspectives": [...], "story_briefing": str|None}}).
+    The stored `summary_brief` on the (shared) content row is never touched:
+    a cluster briefing would otherwise leak into other users' digests and
+    poison the synthesis cache key on later builds (CodeRabbit).
     """
     if len(items) < 2:
         return items, {}
@@ -325,7 +330,7 @@ async def _synthesize_topic_clusters(
     clusters = cluster_stories(items)
 
     kept_items: list[ContentItem] = []
-    perspectives_by_id: dict[uuid.UUID, list[dict]] = {}
+    story_payloads: dict[uuid.UUID, dict] = {}
     dropped = 0
 
     for cluster in clusters:
@@ -334,14 +339,17 @@ async def _synthesize_topic_clusters(
         if len(cluster) < 2:
             continue
 
-        perspectives_by_id[primary.id] = [
-            {
-                "title": items[idx].title,
-                "url": items[idx].url,
-                "source_id": str(items[idx].source_id) if items[idx].source_id else None,
-            }
-            for idx in cluster[1:]
-        ]
+        story_payloads[primary.id] = {
+            "perspectives": [
+                {
+                    "title": items[idx].title,
+                    "url": items[idx].url,
+                    "source_id": str(items[idx].source_id) if items[idx].source_id else None,
+                }
+                for idx in cluster[1:]
+            ],
+            "story_briefing": None,
+        }
         dropped += len(cluster) - 1
 
         # Cached LLM briefing (optional polish — the card ships either way).
@@ -375,15 +383,14 @@ async def _synthesize_topic_clusters(
                 synthesized = await groq.synthesize_topic(pseudo_results, topic_label)
                 if synthesized:
                     await cache_set(cache_key, synthesized, ttl_seconds=7 * 24 * 3600)
-            if synthesized:
-                primary.summary_brief = synthesized
+            story_payloads[primary.id]["story_briefing"] = synthesized or None
         except Exception as e:
             logger.debug(f"Synthesis failed (non-fatal): {e}")
 
     if dropped > 0:
         logger.info(f"Story synthesis folded {dropped} same-story items into cards")
     await session.flush()
-    return kept_items, perspectives_by_id
+    return kept_items, story_payloads
 
 
 async def _ensure_interaction(
@@ -478,6 +485,18 @@ async def _generate_feedback_prompts(
     )
     existing_count = prompt_count_result.scalar() or 0
 
+    # Dismissal must stick across digests (UX-07): a prompt type the user
+    # dismissed once never rotates back in (CodeRabbit).
+    dismissed_result = await session.execute(
+        select(DigestFeedbackPrompt.prompt_type)
+        .join(Digest, DigestFeedbackPrompt.digest_id == Digest.id)
+        .where(Digest.user_id == digest.user_id, DigestFeedbackPrompt.dismissed.is_(True))
+    )
+    dismissed_types = {row[0] for row in dismissed_result.all()}
+    pool = [p for p in _EARLY_PROMPTS if p["type"] not in dismissed_types]
+    if not pool:
+        return  # everything dismissed — stop prompting entirely
+
     num_prompts = 3 if user_age_days < 7 else 2
     # Pick a content item from the first section to anchor one of the prompts
     anchor_item_id = None
@@ -487,7 +506,7 @@ async def _generate_feedback_prompts(
             break
 
     for i in range(num_prompts):
-        prompt_def = _EARLY_PROMPTS[(existing_count + i) % len(_EARLY_PROMPTS)]
+        prompt_def = pool[(existing_count + i) % len(pool)]
         prompt = DigestFeedbackPrompt(
             digest_id=digest.id,
             content_item_id=anchor_item_id if i == 0 else None,

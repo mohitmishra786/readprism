@@ -46,9 +46,14 @@ def detect_emerging(
     for topic, count in recent_sources.items():
         if count < min_sources:
             continue
-        windows = history_counts.get(topic, [])
-        if len(windows) < 2:
-            continue  # not enough baseline to claim an outlier
+        windows = history_counts.get(topic)
+        if windows is None:
+            # Topic first appears in the recent window: no baseline rows at
+            # all means four zero-count windows (CodeRabbit) — a burst into a
+            # previously silent topic is exactly the emerging case.
+            windows = [0.0, 0.0, 0.0, 0.0]
+        elif len(windows) < 2:
+            continue  # explicitly incomplete history: not enough baseline
         mean, std = baseline_stats(windows)
         if std == 0.0:
             # Flat baseline (steady state) — a burst is still an outlier.

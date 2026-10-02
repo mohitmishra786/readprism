@@ -84,6 +84,9 @@ async def test_language_preference_round_trip_and_filter(
     assert result.status_code == 200
     # "x" is dropped, codes lowercased.
     assert result.json()["preferred_languages"] == ["en", "de"]
+    # Refresh: the PUT went through the endpoint's session; build_digest must
+    # see the committed preference, not the stale object.
+    await db_session.refresh(user)
 
     src = Source(user_id=user.id, url="https://lang.example/feed")
     db_session.add(src)
@@ -129,13 +132,11 @@ async def test_language_preference_round_trip_and_filter(
     ):
         mock_rank.return_value = [(en_item, 0.8, {}), (unknown, 0.7, {})]
         digest = await build_digest(user, db_session)
-    # The French item was filtered out before ranking; unknown stays.
-    item_ids = {str(di.content_item_id) for di in digest.__dict__.get("_items", [])}
-    # build_digest returns the Digest, items were added to the session — query them.
-    from app.models.digest import DigestItem as DI
 
-    rows = (await db_session.execute(select(DI).where(DI.digest_id == digest.id))).scalars().all()
-    placed = {str(r.content_item_id) for r in rows}
-    assert str(en_item.id) in placed
-    assert str(unknown.id) in placed
-    assert str(fr_item.id) not in placed
+    # The filter is proven by what ranking RECEIVED, not just what got placed
+    # (CodeRabbit): en + unknown present, fr absent.
+    ranked_items = mock_rank.await_args.args[1]
+    ranked_ids = {str(i.id) for i in ranked_items}
+    assert str(en_item.id) in ranked_ids
+    assert str(unknown.id) in ranked_ids
+    assert str(fr_item.id) not in ranked_ids
