@@ -9,6 +9,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel superseded runs (new push to the same branch/PR) so iterating on a
+# PR does not stack queued runs.
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -100,7 +106,7 @@ jobs:
 
       - name: Alembic has a single head
         run: |
-          HEADS=$(docker compose exec -T -e DATABASE_SYNC_URL="postgresql://readprism:readprism@db:5432/readprism_test" backend alembic heads | grep -c '(head)' || true)
+          HEADS=$(docker compose exec -T -e DATABASE_SYNC_URL="postgresql+psycopg2://readprism:readprism@db:5432/readprism_test" backend alembic heads | grep -c '(head)' || true)
           echo "alembic heads: $HEADS"
           test "$HEADS" = "1"
 
@@ -108,7 +114,7 @@ jobs:
         # Use `exec` on the already-running backend (which has the volume mount
         # and the compose DATABASE_URL pointing at db:5432), overriding only the
         # target DB name. This avoids spinning up a conflicting container.
-        run: docker compose exec -T -e DATABASE_SYNC_URL="postgresql://readprism:readprism@db:5432/readprism_test" backend alembic upgrade head
+        run: docker compose exec -T -e DATABASE_SYNC_URL="postgresql+psycopg2://readprism:readprism@db:5432/readprism_test" backend alembic upgrade head
 
       - name: Run pytest
         run: |

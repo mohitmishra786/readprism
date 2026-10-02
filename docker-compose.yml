@@ -20,7 +20,7 @@ x-worker-base: &worker-base
     - .env
   environment:
     DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
-    DATABASE_SYNC_URL: postgresql://readprism:readprism@db:5432/readprism
+    DATABASE_SYNC_URL: postgresql+psycopg2://readprism:readprism@db:5432/readprism
     REDIS_URL: redis://redis:6379/0
     CELERY_BROKER_URL: redis://redis:6379/1
     CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -92,7 +92,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
-      DATABASE_SYNC_URL: postgresql://readprism:readprism@db:5432/readprism
+      DATABASE_SYNC_URL: postgresql+psycopg2://readprism:readprism@db:5432/readprism
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
@@ -144,7 +144,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
-      DATABASE_SYNC_URL: postgresql://readprism:readprism@db:5432/readprism
+      DATABASE_SYNC_URL: postgresql+psycopg2://readprism:readprism@db:5432/readprism
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
