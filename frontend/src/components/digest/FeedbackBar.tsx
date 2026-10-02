@@ -4,6 +4,8 @@ import { api } from "../../lib/api";
 
 interface FeedbackBarProps {
   contentItemId: string;
+  /** Item topic labels; enables the More/Less like-this quick actions (UX-06). */
+  topics?: string[];
   onFeedback?: () => void;
 }
 
@@ -15,10 +17,19 @@ const REASONS = [
   { value: "clickbait", label: "Clickbait" },
 ];
 
-export function FeedbackBar({ contentItemId, onFeedback }: FeedbackBarProps) {
+export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarProps) {
   const [rated, setRated] = useState<number | null>(null);
   const [showReasons, setShowReasons] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [quickAdjusted, setQuickAdjusted] = useState<string | null>(null);
+
+  const topTopic = topics && topics.length > 0 ? topics[0] : null;
+
+  const quickAdjust = async (action: "boost" | "suppress") => {
+    if (!topTopic) return;
+    setQuickAdjusted(action);
+    await api.feedback.adjustInterests(topTopic, action);
+  };
 
   useEffect(() => {
     api.feedback
@@ -88,6 +99,33 @@ export function FeedbackBar({ contentItemId, onFeedback }: FeedbackBarProps) {
       >
         {saved ? "✓ Saved" : "Save"}
       </button>
+
+      {topTopic && (
+        <>
+          <button
+            onClick={() => quickAdjust("boost")}
+            title={`More like this (${topTopic})`}
+            className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
+              quickAdjusted === "boost"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            More like this
+          </button>
+          <button
+            onClick={() => quickAdjust("suppress")}
+            title={`Less like this (${topTopic})`}
+            className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
+              quickAdjusted === "suppress"
+                ? "border-rose-200 bg-rose-50 text-rose-700"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            }`}
+          >
+            Less like this
+          </button>
+        </>
+      )}
 
       {showReasons && (
         <div className="flex flex-wrap items-center gap-1.5">

@@ -515,3 +515,19 @@
     opacity: 1;
   }
 }
+
+/* Reader theme variants (UX-05) — scoped to the article surface only. */
+.prose-reader.prose-dark a {
+  color: #93c5fd;
+}
+.prose-reader.prose-dark blockquote {
+  color: #d6d3d1;
+  border-color: #57534e;
+}
+.prose-reader.prose-dark code {
+  background: #1c1917;
+  color: #e7e5e4;
+}
+.prose-reader.prose-dark pre {
+  background: #1c1917;
+}

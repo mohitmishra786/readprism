@@ -25,7 +25,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { api } from "./api";
+import { api, keepalivePost } from "./api";
 
 /** Below this much active time, the open is treated as a bounce. */
 const BOUNCE_MS = 5_000;
@@ -66,7 +66,12 @@ interface InternalState {
   lastFlushedProgress: number;
 }
 
-function computeComposite(
+/**
+ * Composite completion: 70% scroll depth + 30% active time (vs the estimated
+ * reading time), floored to 0.95 when the end sentinel was reached. Exported
+ * for unit tests (UX-05).
+ */
+export function computeComposite(
   scrollDepthPct: number,
   activeTimeMs: number,
   reachedEnd: boolean,
@@ -75,13 +80,31 @@ function computeComposite(
   const scroll = Math.min(1, Math.max(0, scrollDepthPct));
   let timeComponent = 0;
   if (readingTimeMs && readingTimeMs > 0) {
-    timeComponent = Math.min(1, activeTimeMs / readingTimeMs);
+    // Clamp both ends: negative active time (clock skew/DST) must not leak
+    // into a negative composite.
+    timeComponent = Math.min(1, Math.max(0, activeTimeMs / readingTimeMs));
   }
   // 70% scroll depth, 30% active time. Scroll is the dominant signal of
   // genuine reading; time guards against fast-scrolling past content.
   let composite = 0.7 * scroll + 0.3 * timeComponent;
   if (reachedEnd) composite = Math.max(composite, 0.95);
   return Math.min(1, composite);
+}
+
+/** Build the interaction POST body from a snapshot (shared by flush paths). */
+export function buildTelemetryPayload(
+  contentItemId: string,
+  snap: ReadingSnapshot,
+): Record<string, unknown> {
+  return {
+    content_item_id: contentItemId,
+    read_completion_pct: Number(snap.readingProgressPct.toFixed(3)),
+    time_on_page_seconds: Math.round(snap.activeTimeMs / 1000),
+    scroll_depth_pct: Number(snap.scrollDepthPct.toFixed(3)),
+    active_time_seconds: Math.round(snap.activeTimeMs / 1000),
+    reached_end: snap.reachedEnd,
+    skipped: snap.bounced,
+  };
 }
 
 export function useReadingTelemetry({
@@ -144,20 +167,24 @@ export function useReadingTelemetry({
     }
     stateRef.current.lastFlushedProgress = snap.readingProgressPct;
     try {
-      await api.feedback.interaction({
-        content_item_id: contentItemId,
-        read_completion_pct: Number(snap.readingProgressPct.toFixed(3)),
-        time_on_page_seconds: Math.round(snap.activeTimeMs / 1000),
-        scroll_depth_pct: Number(snap.scrollDepthPct.toFixed(3)),
-        active_time_seconds: Math.round(snap.activeTimeMs / 1000),
-        reached_end: snap.reachedEnd,
-        skipped: snap.bounced,
-      });
+      await api.feedback.interaction(
+        buildTelemetryPayload(contentItemId, snap) as Parameters<
+          typeof api.feedback.interaction
+        >[0],
+      );
       onFlushed?.(snap);
     } catch {
       // Swallow — telemetry must never break the reading experience.
     }
   }, [buildSnapshot, contentItemId, onFlushed]);
+
+  // Unload-safe flush: a keepalive fetch survives pagehide/navigation, where
+  // the async flush above can be killed mid-flight (UX-05).
+  const flushBeacon = useCallback(() => {
+    const snap = buildSnapshot();
+    if (snap.activeTimeMs === 0 && snap.readingProgressPct === 0) return;
+    keepalivePost("/feedback/interaction", buildTelemetryPayload(contentItemId, snap));
+  }, [buildSnapshot, contentItemId]);
 
   // --- Activity tick: accumulate active time while visible & not idle -------
   const tickActive = useCallback(() => {
@@ -231,7 +258,7 @@ export function useReadingTelemetry({
     document.addEventListener("visibilitychange", tickActive);
 
     const flushOnHidden = () => {
-      if (typeof document !== "undefined" && document.hidden) flush();
+      if (typeof document !== "undefined" && document.hidden) flushBeacon();
     };
     document.addEventListener("visibilitychange", flushOnHidden);
 
@@ -241,7 +268,9 @@ export function useReadingTelemetry({
     }, 5_000);
     const flushInterval = window.setInterval(flush, FLUSH_INTERVAL_MS);
 
-    const onPageHide = () => flush();
+    // pagehide (fires on tab close and navigation) uses the keepalive beacon;
+    // a plain async flush can be torn down with the page.
+    const onPageHide = () => flushBeacon();
     window.addEventListener("pagehide", onPageHide);
 
     return () => {

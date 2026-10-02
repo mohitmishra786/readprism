@@ -14,7 +14,7 @@
  * only article HTML is affected, never the app chrome.
  */
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useReadingTelemetry } from "../../../../lib/useReadingTelemetry";
 import { api } from "../../../../lib/api";
@@ -28,6 +28,13 @@ export default function ReaderPage() {
   const id = params.id;
   const [item, setItem] = useState<ContentItemFull | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Typography/theme controls (UX-05), persisted per browser.
+  const [fontStep, setFontStep] = useState(1); // 0 small · 1 normal · 2 large
+  const [theme, setTheme] = useState<"light" | "sepia" | "dark">("light");
+  const [savedQuick, setSavedQuick] = useState(false);
+  const [ratedQuick, setRatedQuick] = useState<number | null>(null);
+  // j/k navigation order from the latest digest.
+  const digestOrderRef = useRef<string[]>([]);
 
   const { snapshot, sentinelRef } = useReadingTelemetry({
     contentItemId: id,
@@ -40,9 +47,103 @@ export default function ReaderPage() {
       .get(id)
       .then(setItem)
       .catch((e) => setError(e.message || "Failed to load article"));
+    // Best-effort j/k order from the latest digest; failures just disable j/k.
+    api.digest
+      .latest()
+      .then((d) => {
+        digestOrderRef.current = d.items
+          .slice()
+          .sort((a, b) => a.position - b.position)
+          .map((i) => i.content_item_id);
+      })
+      .catch(() => {});
   }, [id]);
 
+  useEffect(() => {
+    const storedFont = Number(window.localStorage.getItem("reader-font-step"));
+    if (storedFont >= 0 && storedFont <= 2) setFontStep(storedFont);
+    const storedTheme = window.localStorage.getItem("reader-theme");
+    if (storedTheme === "sepia" || storedTheme === "dark") setTheme(storedTheme);
+  }, []);
+
+  const adjustFont = (step: number) => {
+    const next = Math.max(0, Math.min(2, step));
+    setFontStep(next);
+    window.localStorage.setItem("reader-font-step", String(next));
+  };
+
+  const cycleTheme = () => {
+    const order = ["light", "sepia", "dark"] as const;
+    const next = order[(order.indexOf(theme) + 1) % order.length];
+    setTheme(next);
+    window.localStorage.setItem("reader-theme", next);
+  };
+
+  const quickSave = async () => {
+    if (!item) return;
+    setSavedQuick(true);
+    await api.feedback.interaction({ content_item_id: item.id, saved: true }).catch(() => {});
+  };
+
+  const quickRate = async (rating: number) => {
+    if (!item) return;
+    setRatedQuick(rating);
+    await api.feedback
+      .interaction({ content_item_id: item.id, explicit_rating: rating })
+      .catch(() => {});
+  };
+
+  const stepItem = (dir: 1 | -1) => {
+    const order = digestOrderRef.current;
+    const idx = order.indexOf(id);
+    if (idx === -1) return;
+    const next = order[idx + dir];
+    if (next) router.push(`/read/${next}`);
+  };
+
+  // Keyboard shortcuts (UX-05): j/k next/prev digest item, o original,
+  // s save, u 👍, d 👎. Skips when typing in a form control.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      switch (e.key) {
+        case "j":
+          stepItem(1);
+          break;
+        case "k":
+          stepItem(-1);
+          break;
+        case "o":
+          if (item) window.open(item.url, "_blank", "noopener,noreferrer");
+          break;
+        case "s":
+          quickSave();
+          break;
+        case "u":
+          quickRate(1);
+          break;
+        case "d":
+          quickRate(-1);
+          break;
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, item]);
+
   const progressPct = Math.round(snapshot.readingProgressPct * 100);
+
+  // Scoped reading-surface styles per theme + font step (UX-05).
+  const surface =
+    theme === "dark"
+      ? "bg-stone-900 text-stone-100"
+      : theme === "sepia"
+        ? "bg-[#f4ecd8] text-stone-800"
+        : "";
+  const fontSizes = ["text-[15px]", "text-[17px]", "text-[19px]"];
 
   // Prepare the article body. full_text may be HTML or plain text; wrap plain
   // text in <p> tags so the prose-reader styles apply consistently.
@@ -122,14 +223,31 @@ export default function ReaderPage() {
 
       <button
         onClick={() => router.back()}
-        className="mb-6 text-sm text-stone-500 transition-colors hover:text-stone-900"
+        className="mb-4 text-sm text-stone-500 transition-colors hover:text-stone-900"
       >
         ← Back
       </button>
 
+      {/* Typography / theme controls (UX-05) */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-stone-400">Reading surface:</span>
+        <button onClick={() => adjustFont(fontStep - 1)} className="btn-secondary px-2 py-1" aria-label="Smaller text">
+          A−
+        </button>
+        <button onClick={() => adjustFont(fontStep + 1)} className="btn-secondary px-2 py-1" aria-label="Larger text">
+          A+
+        </button>
+        <button onClick={cycleTheme} className="btn-secondary px-2.5 py-1 capitalize">
+          {theme}
+        </button>
+        <span className="ml-auto hidden text-stone-400 sm:inline">
+          j/k next·prev · o original · s save · u 👍 · d 👎
+        </span>
+      </div>
+
       {/* Article header */}
       <header className="mb-8 border-b border-stone-200 pb-6">
-        <h1 className="font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl">
+        <h1 className={`font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl ${fontSizes[fontStep] === fontSizes[0] ? "md:text-3xl" : ""}`}>
           {item.title}
         </h1>
 
@@ -161,7 +279,8 @@ export default function ReaderPage() {
 
       {/* Article body — rendered HTML in a scoped, typographically-styled container */}
       <div
-        className="prose-reader"
+        className={`prose-reader ${surface} ${fontSizes[fontStep]} ${theme === "dark" ? "prose-dark" : ""} rounded-lg transition-colors`}
+        style={theme === "sepia" ? { boxShadow: "0 0 0 8px rgba(244,236,216,0.6)" } : undefined}
         dangerouslySetInnerHTML={{ __html: articleHtml }}
       />
 
@@ -179,7 +298,18 @@ export default function ReaderPage() {
           View original at {safeHostname(item.url)} →
         </a>
         <div className="mt-6">
-          <FeedbackBar contentItemId={item.id} />
+          <FeedbackBar
+            contentItemId={item.id}
+            topics={item.topic_clusters}
+          />
+          {(savedQuick || ratedQuick !== null) && (
+            <p className="mt-2 text-xs text-emerald-600" role="status">
+              {savedQuick && ratedQuick === null && "Saved ✓"}
+              {ratedQuick === 1 && "Rated 👍 — more like this"}
+              {ratedQuick === -1 && "Rated 👎 — less like this"}
+              {savedQuick && ratedQuick !== null && " · Saved ✓"}
+            </p>
+          )}
         </div>
       </footer>
     </article>
