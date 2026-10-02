@@ -89,6 +89,28 @@ async function request<T>(
   return res.json() as Promise<T>;
 }
 
+/**
+ * Fire-and-forget POST that survives page unload (`keepalive`).
+ *
+ * `navigator.sendBeacon` cannot carry the Authorization header, so unload-time
+ * telemetry uses a keepalive fetch instead: the browser finishes the request
+ * even after the page goes away (UX-05).
+ */
+export function keepalivePost(path: string, payload: Record<string, unknown>): void {
+  try {
+    void fetch(`${V1}${path}`, {
+      method: 'POST',
+      headers: buildHeaders({}),
+      body: JSON.stringify(payload),
+      keepalive: true,
+    }).catch(() => {
+      // Telemetry must never break navigation.
+    });
+  } catch {
+    // Ignore — e.g. payload larger than the keepalive budget.
+  }
+}
+
 // Auth
 export const api = {
   auth: {

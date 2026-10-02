@@ -203,7 +203,7 @@ export function ContentCard({
         ) : (
           <span />
         )}
-        <FeedbackBar contentItemId={content.id} />
+        <FeedbackBar contentItemId={content.id} topics={content.topic_clusters} />
       </div>
     </article>
   );
