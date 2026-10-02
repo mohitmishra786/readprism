@@ -11,6 +11,7 @@ from app.api.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.models.content import ContentItem, UserContentInteraction
+from app.models.interest_graph import InterestNode
 from app.models.user import User
 from app.schemas.content import UserContentInteractionCreate, UserContentInteractionRead
 from app.schemas.ranking import InterestAdjustment
@@ -126,12 +127,51 @@ async def record_interaction(
 
     await session.flush()
 
+    # Reason tags carry documented side effects (UX-06 mapping): a cluster
+    # weight change on the item's top topic and/or a source-trust nudge.
+    if body.explicit_rating_reason is not None:
+        await _apply_reason_effects(content, body.explicit_rating_reason, current_user.id, session)
+        await session.flush()
+
     # Enqueue interest graph update
     from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
 
     update_interest_graph_for_interaction.delay(str(interaction.id))
 
     return UserContentInteractionRead.model_validate(interaction)
+
+
+async def _apply_reason_effects(
+    content: ContentItem,
+    reason: str,
+    user_id: uuid.UUID,
+    session: AsyncSession,
+) -> None:
+    from app.services.ranking.feedback_map import reason_effect
+
+    effect = reason_effect(reason)
+    if effect is None:
+        return
+
+    if effect.cluster_weight_delta and content.topic_clusters:
+        result = await session.execute(
+            select(InterestNode).where(
+                InterestNode.user_id == user_id,
+                InterestNode.topic_label.in_(content.topic_clusters),
+            )
+        )
+        for node in result.scalars().all():
+            node.weight = max(0.0, min(1.0, node.weight + effect.cluster_weight_delta))
+
+    if effect.source_trust_delta and content.source_id is not None:
+        from app.models.source import Source
+
+        src_result = await session.execute(select(Source).where(Source.id == content.source_id))
+        source = src_result.scalar_one_or_none()
+        if source is not None:
+            source.trust_weight = max(
+                0.0, min(1.0, source.trust_weight + effect.source_trust_delta)
+            )
 
 
 @router.get("/interaction/{content_id}", response_model=UserContentInteractionRead | None)

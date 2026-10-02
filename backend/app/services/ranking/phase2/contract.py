@@ -89,11 +89,19 @@ def label_event(
     skipped: bool = False,
     reread: int = 0,
     viewed: bool = False,
+    reason: str | None = None,
 ) -> tuple[float, float] | None:
     """Return (label, confidence) or None when the event must not train.
 
-    A skip counts only after the digest was actually viewed.
+    A skip counts only after the digest was actually viewed. Reason tags
+    carry their own A4 label via the UX-06 mapping table.
     """
+    if reason:
+        from app.services.ranking.feedback_map import reason_effect
+
+        effect = reason_effect(reason)
+        if effect is not None:
+            return effect.label_y, effect.confidence
     if skipped and not viewed:
         return None
     if rating is not None and rating > 0:

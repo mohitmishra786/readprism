@@ -10,8 +10,9 @@ interface FeedbackBarProps {
 const REASONS = [
   { value: "too_basic", label: "Too basic" },
   { value: "already_knew", label: "Already knew this" },
-  { value: "too_tangential", label: "Not relevant" },
+  { value: "off_topic", label: "Off-topic" },
   { value: "wrong_depth", label: "Wrong depth" },
+  { value: "clickbait", label: "Clickbait" },
 ];
 
 export function FeedbackBar({ contentItemId, onFeedback }: FeedbackBarProps) {
