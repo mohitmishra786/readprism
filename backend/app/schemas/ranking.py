@@ -55,3 +55,6 @@ class OnboardingRequest(BaseModel):
     interest_text: str
     sample_ratings: list[SampleRating] = []
     source_opml: str | None = None
+    # CS-01: the confirmed/edited topics from the expand step. When present
+    # these become the initial interest clusters verbatim.
+    confirmed_topics: list[str] | None = None

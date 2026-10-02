@@ -5,12 +5,15 @@ import { InterestInput } from "./InterestInput";
 import { SampleArticles, type SampleRating } from "./SampleArticles";
 import { api } from "../../lib/api";
 
-const STEPS = ["Interests", "Sample Articles", "Add Sources", "Add Creators", "Digest Preferences"];
+const STEPS = ["Interests", "Confirm Topics", "Sample Articles", "Add Sources", "Add Creators", "Digest Preferences"];
 
 export function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [interestText, setInterestText] = useState("");
+  const [topics, setTopics] = useState<string[]>([]);
+  const [topicInput, setTopicInput] = useState("");
+  const [expanding, setExpanding] = useState(false);
   const [sampleRatings, setSampleRatings] = useState<SampleRating[]>([]);
   const [sourceUrl, setSourceUrl] = useState("");
   const [sources, setSources] = useState<string[]>([]);
@@ -21,6 +24,35 @@ export function OnboardingWizard() {
 
   const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
   const back = () => setStep((s) => Math.max(s - 1, 0));
+
+  // Step 0 -> 1 runs interest expansion (LLM with keyword fallback) so the
+  // user confirms/edits the subtopics that become their initial clusters.
+  const expandAndContinue = async () => {
+    if (!interestText.trim()) {
+      setError("Tell us a little about what you read first.");
+      return;
+    }
+    setError("");
+    setExpanding(true);
+    try {
+      const { topics: found } = await api.onboarding.expandInterests(interestText.trim());
+      setTopics(found);
+      setStep(1);
+    } catch {
+      // Expansion is optional polish: continue with no confirmed topics and
+      // let the backend extract from the raw text.
+      setTopics([]);
+      setStep(1);
+    } finally {
+      setExpanding(false);
+    }
+  };
+
+  const addTopic = () => {
+    const t = topicInput.trim();
+    if (t && !topics.includes(t)) setTopics((prev) => [...prev, t]);
+    setTopicInput("");
+  };
 
   const addSource = () => {
     if (sourceUrl.trim()) {
@@ -42,6 +74,7 @@ export function OnboardingWizard() {
           rating: r.rating,
         })),
         source_opml: null,
+        confirmed_topics: topics.length > 0 ? topics : undefined,
       });
 
       // 2. Add sources and creator via their APIs
@@ -95,10 +128,67 @@ export function OnboardingWizard() {
       )}
 
       {step === 1 && (
-        <SampleArticles ratings={sampleRatings} onRate={setSampleRatings} />
+        <div>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
+            We expanded your interests into these topics. They seed your first
+            digest — remove any that are wrong and add what&apos;s missing.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {topics.map((t) => (
+              <span
+                key={t}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 16,
+                  background: "rgba(37,99,235,0.12)",
+                  color: "#1e40af",
+                  fontSize: 14,
+                }}
+              >
+                {t}
+                <button
+                  onClick={() => setTopics((prev) => prev.filter((x) => x !== t))}
+                  aria-label={`Remove topic ${t}`}
+                  style={{ background: "none", border: "none", color: "#1e40af", cursor: "pointer", padding: 0 }}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+            {topics.length === 0 && (
+              <p style={{ fontSize: 14 }}>
+                No topics extracted — add a few yourself below.
+              </p>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={topicInput}
+              onChange={(e) => setTopicInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addTopic()}
+              placeholder="Add a topic…"
+              aria-label="Add a topic"
+              style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+            />
+            <button
+              onClick={addTopic}
+              style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
       )}
 
       {step === 2 && (
+        <SampleArticles ratings={sampleRatings} onRate={setSampleRatings} />
+      )}
+
+      {step === 3 && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add websites or RSS feeds you follow.{" "}
@@ -129,7 +219,7 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add creators you follow (name or URL). <strong>Optional</strong> —
@@ -145,7 +235,7 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <div>
           <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>Digest frequency</label>
           <select
@@ -179,13 +269,24 @@ export function OnboardingWizard() {
         </button>
         {step < STEPS.length - 1 ? (
           <button
-            onClick={next}
-            style={{ padding: "10px 20px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+            onClick={step === 0 ? expandAndContinue : next}
+            disabled={expanding}
+            style={{
+              padding: "10px 20px",
+              background: "#2563eb",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              cursor: expanding ? "not-allowed" : "pointer",
+              opacity: expanding ? 0.7 : 1,
+            }}
           >
-            {/* Optional steps (sources/creators) read as "Skip" when empty */}
-            {(step === 2 && sources.length === 0) || (step === 3 && !creatorInput)
-              ? "Skip for now"
-              : "Continue"}
+            {expanding
+              ? "Finding your topics…"
+              : /* Optional steps (sources/creators) read as "Skip" when empty */
+                (step === 3 && sources.length === 0) || (step === 4 && !creatorInput)
+                ? "Skip for now"
+                : "Continue"}
           </button>
         ) : (
           <button

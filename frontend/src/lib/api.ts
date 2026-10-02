@@ -296,10 +296,16 @@ export const api = {
   },
 
   onboarding: {
+    expandInterests: (interest_text: string) =>
+      request<{ topics: string[] }>('/onboarding/expand-interests', {
+        method: 'POST',
+        body: JSON.stringify({ interest_text }),
+      }),
     complete: (data: {
       interest_text: string;
       sample_ratings: Array<{ article_url: string; title: string; rating: number }>;
       source_opml: string | null;
+      confirmed_topics?: string[];
     }) =>
       request<{ status: string; message: string }>('/onboarding', {
         method: 'POST',

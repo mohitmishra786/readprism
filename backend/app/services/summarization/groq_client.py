@@ -161,6 +161,31 @@ class GroqSummarizer:
             return []
         return [str(topic) for topic in topics if isinstance(topic, str) and topic.strip()]
 
+    async def expand_interests(self, interest_text: str) -> list[str]:
+        """CS-01: expand a free-text interest description into 8-15 specific
+        subtopics the user can confirm or edit before onboarding continues."""
+        prompt = (
+            "A reader described their interests as:\n\n"
+            f"{interest_text[:2000]}\n\n"
+            "Expand this into 8 to 15 specific subtopics they would want in a "
+            "personalized daily digest (concrete areas, technologies, or "
+            "themes — not generic labels). "
+            'Return a JSON object {"topics": ["..."]}.'
+        )
+        data = await self._llm().complete_json(
+            model=get_settings().llm_model_fast,
+            system="Return only a JSON object with a topics array of strings.",
+            user=prompt,
+            max_tokens=400,
+        )
+        if not data:
+            return []
+        topics = data.get("topics", [])
+        if not isinstance(topics, list):
+            return []
+        cleaned = [str(t).strip() for t in topics if isinstance(t, str) and t.strip()]
+        return cleaned[:15]
+
 
 def _parse_result_data(data: dict) -> SummarizationResult | None:
     try:

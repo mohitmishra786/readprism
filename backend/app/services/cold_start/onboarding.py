@@ -33,14 +33,19 @@ async def process_onboarding(
     sample_ratings: list[SampleRating],
     source_opml: str | None,
     session: AsyncSession,
+    confirmed_topics: list[str] | None = None,
 ) -> None:
     embedding_service = get_embedding_service()
 
-    # 1. Extract topics from interest text using Groq
-    groq = GroqSummarizer()
-    topics = await groq.extract_topics(interest_text)
-    if not topics:
-        topics = _fallback_topic_extract(interest_text)
+    # 1. Topics: the confirmed set from the expand/confirm step (CS-01) wins;
+    #    otherwise extract from the interest text (LLM, then keyword fallback).
+    if confirmed_topics:
+        topics = [t.strip() for t in confirmed_topics if t.strip()][:15]
+    else:
+        groq = GroqSummarizer()
+        topics = await groq.extract_topics(interest_text)
+        if not topics:
+            topics = _fallback_topic_extract(interest_text)
 
     # 2. Embed topics and create initial nodes
     topic_embeddings = await embedding_service.encode_batch_cached(topics)
