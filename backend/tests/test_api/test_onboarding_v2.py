@@ -84,9 +84,7 @@ async def test_confirmed_topics_become_the_initial_clusters(
     nodes = {
         n.topic_label: n.weight
         for n in (
-            await db_session.execute(
-                select(InterestNode).where(InterestNode.user_id == user.id)
-            )
+            await db_session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
         ).scalars()
     }
     assert set(nodes) == {"vector databases", "raft consensus", "ebpf"}

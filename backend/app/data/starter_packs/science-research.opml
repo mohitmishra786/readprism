@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Science &amp; Research — ReadPrism starter pack</title>
+  </head>
+  <body>
+    <outline text="Science &amp; Research" title="Science &amp; Research">
+        <outline text="Nature News" title="Nature News" type="rss" xmlUrl="https://www.nature.com/nature.rss" htmlUrl="https://www.nature.com/nature.rss"/>
+        <outline text="Science Daily" title="Science Daily" type="rss" xmlUrl="https://www.sciencedaily.com/rss/top/science.xml" htmlUrl="https://www.sciencedaily.com/rss/top/science.xml"/>
+        <outline text="Quanta Magazine" title="Quanta Magazine" type="rss" xmlUrl="https://api.quantamagazine.org/feed/" htmlUrl="https://api.quantamagazine.org/feed/"/>
+        <outline text="Ars Technica Science" title="Ars Technica Science" type="rss" xmlUrl="https://feeds.arstechnica.com/arstechnica/science" htmlUrl="https://feeds.arstechnica.com/arstechnica/science"/>
+        <outline text="Phys.org" title="Phys.org" type="rss" xmlUrl="https://phys.org/rss-feed/" htmlUrl="https://phys.org/rss-feed/"/>
+        <outline text="Science (journal) News" title="Science (journal) News" type="rss" xmlUrl="https://www.science.org/rss/news_current.xml" htmlUrl="https://www.science.org/rss/news_current.xml"/>
+        <outline text="NASA News" title="NASA News" type="rss" xmlUrl="https://www.nasa.gov/feed/" htmlUrl="https://www.nasa.gov/feed/"/>
+        <outline text="ESA News" title="ESA News" type="rss" xmlUrl="https://www.esa.int/rssfeed/Our_Activities/Space_Science" htmlUrl="https://www.esa.int/rssfeed/Our_Activities/Space_Science"/>
+        <outline text="Nautilus" title="Nautilus" type="rss" xmlUrl="https://nautil.us/feed/" htmlUrl="https://nautil.us/feed/"/>
+        <outline text="RealClear Science" title="RealClear Science" type="rss" xmlUrl="https://www.realclearscience.com/index.xml" htmlUrl="https://www.realclearscience.com/index.xml"/>
+    </outline>
+  </body>
+</opml>

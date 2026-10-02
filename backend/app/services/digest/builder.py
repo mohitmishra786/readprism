@@ -197,7 +197,9 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # New users (first 14 days) explore even when the global flag is off
     # (CS-04): exploration is how a population-free instance learns what the
     # digest slots the user has never clicked actually mean.
-    exploration_on = get_settings().ranking_exploration_enabled or user_age_days < NEW_USER_THRESHOLD_DAYS
+    exploration_on = (
+        get_settings().ranking_exploration_enabled or user_age_days < NEW_USER_THRESHOLD_DAYS
+    )
     if exploration_on and len(placed) >= 6:
         rng = Random(f"explore:{user.id}:{uuid.uuid4()}")
         plan_by_index = {

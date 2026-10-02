@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Programming Languages — ReadPrism starter pack</title>
+  </head>
+  <body>
+    <outline text="Programming Languages" title="Programming Languages">
+        <outline text="Python Insider" title="Python Insider" type="rss" xmlUrl="https://pythoninsider.blogspot.com/feeds/posts/default" htmlUrl="https://pythoninsider.blogspot.com/feeds/posts/default"/>
+        <outline text="Python Software Foundation News" title="Python Software Foundation News" type="rss" xmlUrl="https://pyfound.blogspot.com/feeds/posts/default" htmlUrl="https://pyfound.blogspot.com/feeds/posts/default"/>
+        <outline text="Python Weekly" title="Python Weekly" type="rss" xmlUrl="https://www.pythonweekly.com/feed/" htmlUrl="https://www.pythonweekly.com/feed/"/>
+        <outline text="Rust Blog" title="Rust Blog" type="rss" xmlUrl="https://blog.rust-lang.org/feed.xml" htmlUrl="https://blog.rust-lang.org/feed.xml"/>
+        <outline text="Go Blog" title="Go Blog" type="rss" xmlUrl="https://go.dev/blog/feed.atom" htmlUrl="https://go.dev/blog/feed.atom"/>
+        <outline text="TypeScript Blog" title="TypeScript Blog" type="rss" xmlUrl="https://devblogs.microsoft.com/typescript/feed/" htmlUrl="https://devblogs.microsoft.com/typescript/feed/"/>
+        <outline text="C++ Team Blog" title="C++ Team Blog" type="rss" xmlUrl="https://devblogs.microsoft.com/cppblog/feed/" htmlUrl="https://devblogs.microsoft.com/cppblog/feed/"/>
+        <outline text="The Pragmatic Engineer" title="The Pragmatic Engineer" type="rss" xmlUrl="https://newsletter.pragmaticengineer.com/feed" htmlUrl="https://newsletter.pragmaticengineer.com/feed"/>
+        <outline text="Fly.io Blog" title="Fly.io Blog" type="rss" xmlUrl="https://fly.io/blog/feed.xml" htmlUrl="https://fly.io/blog/feed.xml"/>
+        <outline text="InfoQ" title="InfoQ" type="rss" xmlUrl="https://feed.infoq.com/" htmlUrl="https://feed.infoq.com/"/>
+    </outline>
+  </body>
+</opml>

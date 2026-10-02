@@ -190,9 +190,7 @@ async def test_exploration_slots_flag_and_record_propensity(db_session, monkeypa
 
 
 @pytest.mark.asyncio
-async def test_new_users_explore_even_with_the_flag_off(
-    db_session, monkeypatch, test_user_data
-):
+async def test_new_users_explore_even_with_the_flag_off(db_session, monkeypatch, test_user_data):
     """CS-04: the first 14 days force exploration slots on."""
     from datetime import UTC, datetime, timedelta
 
