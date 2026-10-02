@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import hashlib
 import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
-import numpy as np
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -147,7 +147,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         await _ensure_interaction(user.id, item.id, was_suggested=True, session=session)
 
     # Cross-source topic synthesis: detect near-duplicate stories, synthesize
-    all_items = await _synthesize_topic_clusters(all_items, session)
+    all_items, story_perspectives = await _synthesize_topic_clusters(all_items, session)
 
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
@@ -253,6 +253,9 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                 text, contributions = explain_score(numeric, meta.weights)
                 clean_breakdown["explanation"] = text
                 clean_breakdown["contributions"] = contributions
+            perspectives = story_perspectives.get(item.id)
+            if perspectives:
+                clean_breakdown["perspectives"] = perspectives
             di = DigestItem(
                 digest_id=digest.id,
                 content_item_id=item.id,
@@ -295,96 +298,82 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 async def _synthesize_topic_clusters(
     items: list[ContentItem],
     session: AsyncSession,
-) -> list[ContentItem]:
+) -> tuple[list[ContentItem], dict[uuid.UUID, list[dict]]]:
     """
-    Detect groups of items covering the same story via embedding similarity.
-    For each cluster of 2+ items, synthesize a combined summary via Groq and
-    annotate the highest-PRS item with it; remove the duplicates from the list.
+    UX-09: cluster same-story items (embedding cosine, title-token overlap for
+    no-embedding pairs), keep one primary card per story and attach the other
+    sources as `perspectives`. LLM briefing is cached; without one the
+    perspectives list is the fallback rendering.
+
+    Returns (kept_items, {primary_id: [ {title, url, source_id}, ... ]}).
     """
     if len(items) < 2:
-        return items
+        return items, {}
 
-    # Only cluster items that have embeddings and summaries
-    embeddable = [i for i in items if i.embedding is not None and i.summary_brief]
-    non_embeddable = [i for i in items if i.embedding is None or not i.summary_brief]
+    from app.services.digest.synthesis import cluster_stories
 
-    if len(embeddable) < 2:
-        return items
+    clusters = cluster_stories(items)
 
-    SYNTHESIS_THRESHOLD = 0.88
-    vecs = np.array([i.embedding for i in embeddable], dtype=np.float32)
-    norms = np.linalg.norm(vecs, axis=1, keepdims=True) + 1e-8
-    vecs = vecs / norms
-
-    assigned: set[int] = set()
-    clusters: list[list[int]] = []
-
-    for i in range(len(embeddable)):
-        if i in assigned:
-            continue
-        cluster = [i]
-        for j in range(i + 1, len(embeddable)):
-            if j in assigned:
-                continue
-            sim = float(np.dot(vecs[i], vecs[j]))
-            if sim >= SYNTHESIS_THRESHOLD:
-                cluster.append(j)
-                assigned.add(j)
-        assigned.add(i)
-        clusters.append(cluster)
-
-    # For clusters with multiple items, synthesize
-    kept_indices: set[int] = set()
-    try:
-        from app.services.summarization.groq_client import GroqSummarizer
-
-        groq = GroqSummarizer()
-    except Exception:
-        groq = None
+    kept_items: list[ContentItem] = []
+    perspectives_by_id: dict[uuid.UUID, list[dict]] = {}
+    dropped = 0
 
     for cluster in clusters:
-        if len(cluster) == 1:
-            kept_indices.add(cluster[0])
+        primary = items[cluster[0]]
+        kept_items.append(primary)
+        if len(cluster) < 2:
             continue
 
-        # Keep the first (highest-fetched) item, synthesize summary from all
-        primary_idx = cluster[0]
-        kept_indices.add(primary_idx)
-        primary = embeddable[primary_idx]
+        perspectives_by_id[primary.id] = [
+            {
+                "title": items[idx].title,
+                "url": items[idx].url,
+                "source_id": str(items[idx].source_id) if items[idx].source_id else None,
+            }
+            for idx in cluster[1:]
+        ]
+        dropped += len(cluster) - 1
 
-        if groq is not None:
-            try:
+        # Cached LLM briefing (optional polish — the card ships either way).
+        briefs = "\n\n".join(
+            f"- {items[idx].summary_brief or items[idx].title}" for idx in cluster[:5]
+        )
+        cache_key = f"synth:{hashlib.sha256(briefs.encode()).hexdigest()[:32]}"
+        try:
+            from app.utils.cache import cache_get, cache_set
+
+            synthesized = await cache_get(cache_key)
+            if synthesized is None:
+                from app.services.summarization.groq_client import GroqSummarizer
                 from app.services.summarization.groq_client import SummarizationResult as SR
 
-                pseudo_results = []
-                for idx in cluster:
-                    item = embeddable[idx]
-                    pseudo_results.append(
-                        SR(
-                            headline=item.summary_headline or item.title,
-                            brief=item.summary_brief or "",
-                            detailed=item.summary_detailed or "",
-                            depth_score=item.content_depth_score or 0.5,
-                            is_original_reporting=item.is_original_reporting or False,
-                            has_citations=item.has_citations,
-                            topic_clusters=item.topic_clusters or [],
-                            reading_time_minutes=item.reading_time_minutes or 5,
-                        )
+                groq = GroqSummarizer()
+                pseudo_results = [
+                    SR(
+                        headline=items[idx].summary_headline or items[idx].title,
+                        brief=items[idx].summary_brief or "",
+                        detailed=items[idx].summary_detailed or "",
+                        depth_score=items[idx].content_depth_score or 0.5,
+                        is_original_reporting=items[idx].is_original_reporting or False,
+                        has_citations=items[idx].has_citations,
+                        topic_clusters=items[idx].topic_clusters or [],
+                        reading_time_minutes=items[idx].reading_time_minutes or 5,
                     )
+                    for idx in cluster[:5]
+                ]
                 topic_label = (primary.topic_clusters or [primary.title])[0]
                 synthesized = await groq.synthesize_topic(pseudo_results, topic_label)
                 if synthesized:
-                    primary.summary_brief = synthesized
-                    await session.flush()
-            except Exception as e:
-                logger.debug(f"Synthesis failed (non-fatal): {e}")
+                    await cache_set(cache_key, synthesized, ttl_seconds=7 * 24 * 3600)
+            if synthesized:
+                primary.summary_brief = synthesized
+        except Exception as e:
+            logger.debug(f"Synthesis failed (non-fatal): {e}")
 
-    # Build final list: kept items from embeddable + all non-embeddable
-    result = [embeddable[i] for i in sorted(kept_indices)] + non_embeddable
-    removed = len(embeddable) - len(kept_indices)
-    if removed > 0:
-        logger.info(f"Topic synthesis removed {removed} near-duplicate items")
-    return result
+    if dropped > 0:
+        logger.info(f"Story synthesis folded {dropped} same-story items into cards")
+    await session.flush()
+    return kept_items, perspectives_by_id
 
 
 async def _ensure_interaction(
