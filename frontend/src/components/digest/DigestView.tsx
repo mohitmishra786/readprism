@@ -11,6 +11,7 @@ interface Prompt {
   prompt_text: string;
   prompt_type: string;
   answered: boolean;
+  dismissed: boolean;
   answer: string | null;
 }
 
@@ -33,7 +34,12 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
     } catch {}
   };
 
-  const unanswered = prompts.filter((p) => !p.answered);
+  const dismiss = async (promptId: string) => {
+    setPrompts((prev) => prev.map((p) => (p.id === promptId ? { ...p, dismissed: true } : p)));
+    await api.digest.dismissPrompt(digestId, promptId).catch(() => {});
+  };
+
+  const unanswered = prompts.filter((p) => !p.answered && !p.dismissed);
   if (unanswered.length === 0) return null;
 
   return (
@@ -55,6 +61,14 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
             />
             <button onClick={() => submit(p.id)} className="btn-primary">
               Send
+            </button>
+            <button
+              onClick={() => dismiss(p.id)}
+              title="Dismiss — we won't ask again"
+              className="text-stone-400 transition-colors hover:text-stone-700"
+              aria-label="Dismiss prompt"
+            >
+              ✕
             </button>
           </div>
         </div>

@@ -215,6 +215,11 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ answer }),
       }),
+    dismissPrompt: (digestId: string, promptId: string) =>
+      request<{ id: string; dismissed: boolean }>(
+        `/digest/${digestId}/prompts/${promptId}/dismiss`,
+        { method: 'POST' },
+      ),
   },
 
   content: {

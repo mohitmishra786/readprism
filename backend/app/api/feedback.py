@@ -78,6 +78,8 @@ async def record_interaction(
             interaction.explicit_rating_reason = body.explicit_rating_reason
         if body.saved:
             interaction.saved = True
+            if interaction.saved_at is None:
+                interaction.saved_at = datetime.now(UTC)
         if body.skipped:
             interaction.skipped = True
         # An open is an open — record opened_at on first non-skipped interaction,
@@ -124,6 +126,7 @@ async def record_interaction(
             explicit_rating=body.explicit_rating,
             explicit_rating_reason=body.explicit_rating_reason,
             saved=body.saved,
+            saved_at=datetime.now(UTC) if body.saved else None,
             skipped=body.skipped,
             opened_at=datetime.now(UTC) if not body.skipped else None,
         )

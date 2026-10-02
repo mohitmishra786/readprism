@@ -27,6 +27,8 @@ class DigestFeedbackPrompt(Base):
         String, nullable=False
     )  # depth_level, source_quality, topic_accuracy
     answered: Mapped[bool] = mapped_column(Boolean, default=False)
+    # User dismissed without answering (UX-07): stop re-showing this prompt.
+    dismissed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     answer: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
