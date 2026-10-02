@@ -1,10 +1,10 @@
 # Web framework
 fastapi==0.141.1
-uvicorn[standard]==0.53.0
+uvicorn[standard]==0.54.0
 python-multipart==0.0.32
 
 # Database
-sqlalchemy[asyncio]==2.0.54
+sqlalchemy[asyncio]==2.1.1
 asyncpg==0.31.0
 psycopg2-binary==2.9.13
 alembic==1.20.0
@@ -12,7 +12,7 @@ pgvector==0.5.0
 
 # Auth
 bcrypt==4.3.0
-pyjwt==2.15.0
+pyjwt==2.15.1
 
 # Settings
 pydantic==2.13.5
@@ -50,7 +50,7 @@ defusedxml==0.7.1
 jinja2==3.1.6
 
 # Observability — error tracking (opt-in via SENTRY_DSN)
-sentry-sdk==2.69.2
+sentry-sdk==2.71.0
 
 # Testing
 # pytest-asyncio==1.4.0 requires pytest>=8.4,<10 (supports pytest 9).
