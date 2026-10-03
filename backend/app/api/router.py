@@ -7,6 +7,7 @@ from app.api.auth import router as auth_router
 from app.api.content import router as content_router
 from app.api.creators import router as creators_router
 from app.api.digest import router as digest_router
+from app.api.extension import router as extension_router
 from app.api.feedback import router as feedback_router
 from app.api.integrations import router as integrations_router
 from app.api.metrics import router as metrics_router
@@ -35,3 +36,4 @@ api_router.include_router(integrations_router)
 api_router.include_router(teams_router)
 api_router.include_router(metrics_router)
 api_router.include_router(tokens_router)
+api_router.include_router(extension_router)

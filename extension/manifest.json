@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "ReadPrism",
-  "version": "0.1.0",
-  "description": "Add the current page to ReadPrism as a source or creator — one click.",
-  "permissions": ["activeTab", "storage", "contextMenus"],
-  "host_permissions": ["http://localhost:8000/*", "https://readprism.app/*"],
+  "version": "0.2.0",
+  "description": "Save & rate pages into ReadPrism, add the current site as a source or creator — one click.",
+  "permissions": ["activeTab", "storage", "contextMenus", "scripting"],
+  "host_permissions": ["http://localhost:8000/*", "https://readprism.app/*", "http://*/*", "https://*/*"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "Add to ReadPrism",
@@ -23,5 +23,18 @@
     "service_worker": "background.js",
     "type": "module"
   },
-  "options_page": "options.html"
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["detect-feed.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "readprism@readprism.app",
+      "strict_min_version": "109.0"
+    }
+  }
 }

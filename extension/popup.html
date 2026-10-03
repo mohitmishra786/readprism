@@ -28,6 +28,7 @@
     #status { font-size: 12px; margin-top: 8px; min-height: 16px; }
     #status.ok { color: #16a34a; }
     #status.err { color: #dc2626; }
+    .divider { border-top: 1px solid #e5e7eb; margin: 10px 0; }
     .muted { color: #6b7280; font-size: 11px; }
     a { color: #1d4ed8; }
   </style>
@@ -35,8 +36,12 @@
 <body>
   <h1>Add to ReadPrism</h1>
   <button id="add-source" class="primary">Add page as source</button>
+  <button id="add-feed" hidden></button>
   <button id="add-creator">Add page as creator</button>
-  <div id="status"></div>
+  <div class="divider"></div>
+  <button id="save-good" title="Save and rate this page up — a strong signal">💾👍 Save &amp; rate up</button>
+  <button id="save-bad" title="Save and rate this page down">💾👎 Save &amp; rate down</button>
+  <div id="status" role="status"></div>
   <p class="muted">
     <a id="options" href="#">Set API token / server</a>
   </p>

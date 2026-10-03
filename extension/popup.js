@@ -49,3 +49,53 @@ document.getElementById("options").addEventListener("click", (e) => {
   e.preventDefault();
   chrome.runtime.openOptionsPage();
 });
+
+// --- Save & rate + detected feed (EC-02) ---
+
+function ask(type, extra = {}) {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type, ...extra }, resolve));
+}
+
+async function currentTab() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  return tab;
+}
+
+async function saveRate(rating) {
+  statusEl.textContent = rating ? "Saving & rating…" : "Saving…";
+  statusEl.className = "";
+  const tab = await currentTab();
+  const result = await ask("save-rate", { tab, rating });
+  showResult(
+    result.ok
+      ? { ok: true, data: { name: rating === 1 ? "Saved 👍" : rating === -1 ? "Saved 👎" : "Saved" } }
+      : result
+  );
+}
+
+document.getElementById("save-good").addEventListener("click", () => saveRate(1));
+document.getElementById("save-bad").addEventListener("click", () => saveRate(-1));
+
+// If the content script detected a feed for this page, offer subscribing to
+// the FEED (not the HTML page).
+(async () => {
+  const tab = await currentTab();
+  if (!tab?.url) return;
+  chrome.storage.session.get([`feed:${tab.url}`], ({}) => {
+    // storage.session callback shape differs between chrome versions; use the
+    // background relay for portability.
+    ask("detect-feed", { tab }).then((feedUrl) => {
+      if (!feedUrl) return;
+      const btn = document.getElementById("add-feed");
+      btn.hidden = false;
+      btn.textContent = "Subscribe to detected feed";
+      btn.title = feedUrl;
+      btn.addEventListener("click", async () => {
+        statusEl.textContent = "Adding feed…";
+        statusEl.className = "";
+        const feedTab = { ...tab, url: feedUrl };
+        chrome.runtime.sendMessage({ type: "add-source", tab: feedTab }, showResult);
+      });
+    });
+  });
+})();
