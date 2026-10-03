@@ -43,6 +43,9 @@ Last commit on `main`: `f16b19b` (PR #75: Phase 4)
 | D-10 | Positioning: **developers who self-host and follow many technical feeds**. Hosted tiers, billing and team features are deferred until there is real pull (RL-09, EC-09 are backlog-only). | Niche-first; Artifact shows mass-market personalized news is a hard standalone business. | 2026-09-24 |
 | D-11 | Platform coverage strategy: native feed recipes first, then an optional RSSHub bridge (`RSSHUB_BASE_URL`), then scraping. X/Twitter and LinkedIn remain honestly "unsupported". | RSSHub is a large maintained route network; avoid rebuilding connectors. | 2026-09-24 |
 | D-12 | License and README drift must be resolved to whatever the `LICENSE` file says; do not change the license without the owner (see OQ-01). | Avoid accidental relicensing. | 2026-09-24 |
+| D-13 | **Relicense AGPL-3.0 → MIT** by explicit owner decision (2026-10-02). LICENSE, README, package metadata and docs switched in one commit. Owner asserts authority over all copyright holders. | Owner call (D-12); maximizes self-hoster/fork adoption. | 2026-10-02 |
+| D-14 | **EC-07 = sidecar mode**: import subscriptions + read state from Miniflux/FreshRSS; no Reader/Fever façade for v0.1.0 (ADR 0007). | Owner call; smallest reversible interop. | 2026-10-02 |
+| D-15 | Phase 6 includes the shared Playwright CI pipeline (axe a11y, offline PWA, telemetry + extension e2e) — closes the last Gate-3 box. | Owner call. | 2026-10-02 |
 
 _(Agent appends new decisions below; ADR file for anything architectural.)_
 
@@ -52,7 +55,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 
 | ID | Question | Assumed default until answered | Status |
 |----|----------|-------------------------------|--------|
-| OQ-01 | README (snapshot) says MIT, repo metadata says AGPL-3.0. Which is intended? | Keep whatever `LICENSE` file contains; fix README to match. | open |
+| OQ-01 | README (snapshot) says MIT, repo metadata says AGPL-3.0. Which is intended? | — | **closed 2026-10-02: owner chose MIT (D-13).** |
 | OQ-02 | Is a hosted offering planned in the next 6 months? | No — self-host only (D-10). | open |
 | OQ-03 | Preferred default LLM provider for out-of-box setup (Groq free tier vs local Ollama vs OpenRouter)? | Groq (existing env vars), with Ollama documented. | open |
 | OQ-04 | Is the existing `extension/` intended to be MV3 Chrome+Firefox? | Audit first (P0-04), then decide at EC-02. | open |

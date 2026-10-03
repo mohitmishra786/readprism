@@ -60,7 +60,7 @@ language-design are adjacent in your reading).
 - Reddit, Substack, YouTube, Medium, podcasts fully supported; Twitter/LinkedIn
   honestly marked unsupported
 - Full ranking engine on the free tier; $4.99/mo Pro for unlimited sources
-- Open source (AGPL-3.0)
+- Open source (MIT)
 
 The interesting trade-off: the ranking needs behavioral signal, which means it's
 weak for light users and strongest for daily readers. Curious how the r/rss

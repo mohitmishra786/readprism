@@ -317,7 +317,7 @@ readprism/
 
 These are baseline templates for the software; a hosted operator should have them
 reviewed by counsel before collecting user data. Licensed under
-[AGPL-3.0](LICENSE) — network-use modifications must be shared back.
+[MIT](LICENSE).
 
 ---
 

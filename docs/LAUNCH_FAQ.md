@@ -40,7 +40,7 @@ resale. See [PRIVACY.md](PRIVACY.md).
 
 ### What's the license / can a competitor just fork it?
 
-AGPL-3.0. You can self-host and modify it freely, but network-use modifications
+MIT. You can self-host and modify it freely, but network-use modifications
 must be shared back — so a competitor can't take the engine, close it, and run a
 hosted product with zero reciprocity. The moat is accumulated behavioral data
 (per-instance, not portable). Contributions take a DCO sign-off
