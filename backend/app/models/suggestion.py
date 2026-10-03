@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,11 @@ from app.database import Base
 
 class SourceSuggestion(Base):
     __tablename__ = "source_suggestions"
+    __table_args__ = (
+        # A URL decided once (accepted OR dismissed) never re-enters the pool;
+        # matches uq_source_suggestions_user_url in migration 0021.
+        UniqueConstraint("user_id", "url", name="uq_source_suggestions_user_url"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

@@ -39,7 +39,8 @@ def _interaction() -> UserContentInteraction:
 
 def test_logseq_golden_file():
     filename, body = _to_logseq(_saved_item(), _interaction())
-    assert filename == "readprism/Postgres-Full-Text-Search.md"
+    assert filename.startswith("readprism/Postgres-Full-Text-Search-")
+    assert filename.endswith(".md")
     assert body.startswith("- ## Postgres Full-Text Search")
     assert "source:: https://golden.example/postgres" in body
     assert "author:: Ada" in body
@@ -75,7 +76,7 @@ async def test_export_zip_and_logseq_endpoint(
     assert zip_resp.headers["content-type"] == "application/zip"
     with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as zf:
         names = zf.namelist()
-        assert names == ["readprism/Postgres-Full-Text-Search.md"]
+        assert len(names) == 1 and names[0].startswith("readprism/Postgres-Full-Text-Search-")
         assert b"- ## Postgres Full-Text Search" in zf.read(names[0])
 
 
@@ -119,12 +120,25 @@ async def test_webhook_export_uses_safe_fetch(
     payload = json.loads(delivered[0])
     assert payload["filename"].startswith("readprism/")
 
-    # The real guard blocks loopback targets outright.
+    # Cleartext webhook URLs are rejected outright (CWE-319, CodeRabbit).
     blocked = await client.post(
         "/api/v1/integrations/export-webhook",
         json={"url": "http://127.0.0.1:9/nowhere", "format": "logseq"},
         headers=headers,
     )
-    assert blocked.status_code == 200  # handled per-file
-    assert blocked.json()["delivered"] == 0
-    assert blocked.json()["errors"]
+    assert blocked.status_code == 422
+    assert "HTTPS" in blocked.json()["detail"]
+
+
+def test_logseq_filenames_are_unique_for_equal_titles():
+    from app.services.integrations.export import _to_logseq
+
+    a = _saved_item()
+    import uuid as _uuid
+
+    b = _saved_item()
+    a.id = _uuid.uuid4()
+    b.id = _uuid.uuid4()
+    name_a, _ = _to_logseq(a, _interaction())
+    name_b, _ = _to_logseq(b, _interaction())
+    assert name_a != name_b

@@ -159,7 +159,12 @@ def _to_logseq(content: ContentItem, interaction: UserContentInteraction) -> tup
     else:
         lines.append(f"- [Read original]({content.url})")
     lines.append(f"- original:: [{content.url}]({content.url})")
-    return f"readprism/{_slugify(content.title)}.md", "\n".join(lines) + "\n"
+    # Short unique suffix keeps page names distinct when titles collide
+    # (CodeRabbit): a duplicate filename would overwrite on import.
+    import hashlib
+
+    uid = str(content.id)[:8] if content.id else hashlib.sha1(content.url.encode()).hexdigest()[:8]
+    return f"readprism/{_slugify(content.title)}-{uid}.md", "\n".join(lines) + "\n"
 
 
 async def export_to_logseq(user_id: uuid.UUID, session: AsyncSession) -> list[dict]:

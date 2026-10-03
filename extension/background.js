@@ -145,3 +145,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   return false;
 });
+
+// Content scripts cannot access storage.session (trusted contexts only) —
+// they relay detected feeds here for storage.
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "feed-found" && msg.pageUrl && msg.feedUrl) {
+    chrome.storage.session.set({ [`feed:${msg.pageUrl}`]: msg.feedUrl }).catch(() => {});
+    sendResponse({ ok: true });
+    return true;
+  }
+  return false;
+});

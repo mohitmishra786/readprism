@@ -84,3 +84,25 @@ async def test_openapi_is_published(client: AsyncClient):
     assert spec["info"]["version"] == "1.0.0"
     assert "/api/v1/tokens" in spec["paths"]
     assert "/api/v1/content/feed" in spec["paths"]
+
+
+@pytest.mark.asyncio
+async def test_api_token_cannot_mint_or_revoke_tokens(client: AsyncClient, test_user_data: dict):
+    """CWE-269 (CodeRabbit): token management is JWT-session-only."""
+    resp = await client.post("/api/v1/auth/register", json=test_user_data)
+    jwt = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+    created = await client.post(
+        "/api/v1/tokens", json={"name": "rw", "scopes": ["read", "write"]}, headers=jwt
+    )
+    tok = {"Authorization": f"Bearer {created.json()['token']}"}
+
+    mint = await client.post("/api/v1/tokens", json={"name": "escape"}, headers=tok)
+    assert mint.status_code == 403
+    assert "session" in mint.json()["detail"]
+
+    revoke = await client.delete(f"/api/v1/tokens/{created.json()['id']}", headers=tok)
+    assert revoke.status_code == 403
+
+    # The JWT session still manages tokens normally.
+    ok = await client.get("/api/v1/tokens", headers=jwt)
+    assert ok.status_code == 200

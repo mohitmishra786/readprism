@@ -15,26 +15,44 @@ from app.utils.ssrf import safe_fetch
 
 logger = get_logger(__name__)
 
-TIMESTAMP = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?([.,]\d{1,3})?$")
-SRT_RANGE = re.compile(r"^\d{1,2}:\d{2}:\d{2}[.,]\d{1,3}\s*-->\s*\d{1,2}:\d{2}:\d{2}")
-VTT_HEADER = re.compile(r"^(WEBVTT|NOTE|STYLE|REGION)\b")
+TIMESTAMP = re.compile(r"^(?:\d{1,2}:)?\d{1,2}:\d{2}(?:[.,]\d{1,3})?$")
+SRT_RANGE = re.compile(
+    r"^(?:\d{1,2}:)?\d{1,2}:\d{2}(?::\d{2})?[.,]\d{1,3}\s*-->\s*(?:\d{1,2}:)?\d{1,2}:\d{2}(?::\d{2})?[.,]\d{1,3}"
+)
+VTT_BLOCK_HEADER = re.compile(r"^(WEBVTT|NOTE|STYLE|REGION)\b")
 TAG = re.compile(r"<[^>]+>")
 
 
 def _is_furniture(line: str) -> bool:
-    return bool(VTT_HEADER.match(line) or TIMESTAMP.match(line) or SRT_RANGE.match(line))
+    return bool(TIMESTAMP.match(line) or SRT_RANGE.match(line))
 
 
 def clean_transcript(raw: str) -> str:
-    """Strip WebVTT/SRT furniture (headers, cue numbers, timestamps, tags)."""
-    lines = [line.strip() for line in raw.splitlines() if line.strip()]
+    """Strip WebVTT/SRT furniture (headers, metadata blocks, cue numbers,
+    timestamps, tags).
+
+    NOTE/STYLE/REGION blocks run until a blank line (W3C WebVTT), so they
+    are skipped as a unit; VTT permits timestamps with and without an
+    hours component, and both are recognized here.
+    """
     kept: list[str] = []
-    for index, line in enumerate(lines):
+    lines = raw.splitlines()
+    index = 0
+    while index < len(lines):
+        line = lines[index].strip()
+        index += 1
+        if not line:
+            continue
+        if VTT_BLOCK_HEADER.match(line):
+            # Skip the whole metadata block (until a blank line).
+            while index < len(lines) and lines[index].strip():
+                index += 1
+            continue
         if _is_furniture(line):
             continue
         # A bare number directly before a timestamp/range is a cue counter.
         if line.isdigit():
-            nxt = lines[index + 1] if index + 1 < len(lines) else ""
+            nxt = lines[index].strip() if index < len(lines) else ""
             if _is_furniture(nxt):
                 continue
         kept.append(TAG.sub("", line))

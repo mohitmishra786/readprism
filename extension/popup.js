@@ -81,21 +81,17 @@ document.getElementById("save-bad").addEventListener("click", () => saveRate(-1)
 (async () => {
   const tab = await currentTab();
   if (!tab?.url) return;
-  chrome.storage.session.get([`feed:${tab.url}`], ({}) => {
-    // storage.session callback shape differs between chrome versions; use the
-    // background relay for portability.
-    ask("detect-feed", { tab }).then((feedUrl) => {
-      if (!feedUrl) return;
-      const btn = document.getElementById("add-feed");
-      btn.hidden = false;
-      btn.textContent = "Subscribe to detected feed";
-      btn.title = feedUrl;
-      btn.addEventListener("click", async () => {
-        statusEl.textContent = "Adding feed…";
-        statusEl.className = "";
-        const feedTab = { ...tab, url: feedUrl };
-        chrome.runtime.sendMessage({ type: "add-source", tab: feedTab }, showResult);
-      });
+  ask("detect-feed", { tab }).then((feedUrl) => {
+    if (!feedUrl) return;
+    const btn = document.getElementById("add-feed");
+    btn.hidden = false;
+    btn.textContent = "Subscribe to detected feed";
+    btn.title = feedUrl;
+    btn.addEventListener("click", () => {
+      statusEl.textContent = "Adding feed…";
+      statusEl.className = "";
+      const feedTab = { ...tab, url: feedUrl };
+      chrome.runtime.sendMessage({ type: "add-source", tab: feedTab }, showResult);
     });
   });
 })();

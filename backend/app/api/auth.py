@@ -126,6 +126,7 @@ async def get_current_user(
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API token"
             )
+        request.state.auth_via = "api_token"
         return user
 
     payload = _decode_token(token, secret=_access_secret())
@@ -145,6 +146,23 @@ async def get_current_user(
 
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+async def get_current_user_jwt(
+    request: Request,
+    user: User = Depends(get_current_user),
+) -> User:
+    """Session-only auth: refuses API tokens (CodeRabbit CWE-269).
+
+    Token management must never accept an rp_ token — a leaked write-scoped
+    token could otherwise mint fresh tokens that outlive its revocation.
+    """
+    if getattr(request.state, "auth_via", None) == "api_token":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Token management requires a signed-in session",
+        )
+    return user
 
 
 async def _user_for_api_token(token: str, request: Request, session: AsyncSession) -> User | None:

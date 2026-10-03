@@ -125,16 +125,18 @@ class ReadPrismMcpServer:
             self.write_scope = True
 
     async def call_tool(self, name: str, arguments: dict) -> Any:
+        from urllib.parse import quote
+
         if name == "get_digest":
             return await self._api("GET", "/api/v1/digest/latest")
         if name == "search_archive":
-            query = arguments.get("query", "")
-            limit = arguments.get("limit", 10)
+            query = quote(arguments.get("query", ""), safe="")
+            limit = int(arguments.get("limit", 10))
             return await self._api("GET", f"/api/v1/search?q={query}&limit={limit}")
         if name == "list_sources":
             return await self._api("GET", "/api/v1/sources")
         if name == "explain_item":
-            item_id = arguments.get("content_item_id", "")
+            item_id = quote(str(arguments.get("content_item_id", "")), safe="")
             return await self._api("GET", f"/api/v1/content/{item_id}")
         if name == "add_source":
             if not self.write_scope:

@@ -43,3 +43,34 @@ def test_srt_cues_are_stripped():
 def test_plain_text_passes_through_with_normalization():
     assert clean_transcript("  hello   world  \n\n next ") == "hello world next"
     assert re.fullmatch(r"\s*", "") is not None
+
+
+def test_vtt_range_without_hours_is_stripped():
+    raw = "\n".join(
+        [
+            "WEBVTT",
+            "",
+            "00:01.000 --> 00:03.000",
+            "Welcome back.",
+        ]
+    )
+    assert clean_transcript(raw) == "Welcome back."
+
+
+def test_note_and_style_blocks_are_skipped_whole():
+    raw = "\n".join(
+        [
+            "WEBVTT",
+            "",
+            "NOTE this is a multi-line",
+            "comment block that must vanish",
+            "",
+            "STYLE",
+            "::cue { color: red; }",
+            "",
+            "1",
+            "00:00:01.000 --> 00:00:03.000",
+            "Actual cue text.",
+        ]
+    )
+    assert clean_transcript(raw) == "Actual cue text."

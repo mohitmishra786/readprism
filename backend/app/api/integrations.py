@@ -97,42 +97,61 @@ class WebhookExport(BaseModel):
     format: str = Field("obsidian", pattern="^(obsidian|logseq)$")
 
 
+MAX_WEBHOOK_FILES = 20
+WEBHOOK_DEADLINE_SECONDS = 60
+
+
 @router.post("/export-webhook")
 async def export_webhook(
     body: WebhookExport,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Push each exported Markdown file to a webhook (EC-05 folder/webhook).
+    """Push exported Markdown files to a webhook (EC-05 folder/webhook).
 
-    The URL is user-supplied: it goes through safe_fetch (SSRF-checked hop
-    by hop), never a bare httpx call.
+    The URL is user-supplied and the payload is private saved-item content:
+    safe_fetch SSRF-checks every hop AND enforces HTTPS on every hop; the
+    synchronous batch is capped (files and wall-clock) so one slow webhook
+    cannot pin the request (CodeRabbit).
     """
+    import asyncio
     import json as _json
 
     from app.utils.ssrf import safe_fetch
+
+    if not body.url.lower().startswith("https://"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Webhook URL must be HTTPS",
+        )
 
     files = (
         await export_to_logseq(current_user.id, session)
         if body.format == "logseq"
         else await export_to_obsidian(current_user.id, session)
-    )
+    )[:MAX_WEBHOOK_FILES]
+
     delivered = 0
     errors: list[str] = []
-    for file in files:
-        try:
-            resp = await safe_fetch(
-                body.url,
-                method="POST",
-                headers={"Content-Type": "application/json"},
-                content=_json.dumps(file).encode(),
-            )
-            if resp.status_code < 300:
-                delivered += 1
-            else:
-                errors.append(f"{file['filename']}: HTTP {resp.status_code}")
-        except Exception as e:
-            errors.append(f"{file['filename']}: {e}")
+    try:
+        async with asyncio.timeout(WEBHOOK_DEADLINE_SECONDS):
+            for file in files:
+                try:
+                    resp = await safe_fetch(
+                        body.url,
+                        method="POST",
+                        headers={"Content-Type": "application/json"},
+                        content=_json.dumps(file).encode(),
+                        require_https=True,
+                    )
+                    if resp.status_code < 300:
+                        delivered += 1
+                    else:
+                        errors.append(f"{file['filename']}: HTTP {resp.status_code}")
+                except Exception as e:
+                    errors.append(f"{file['filename']}: {e}")
+    except TimeoutError:
+        errors.append(f"webhook deadline ({WEBHOOK_DEADLINE_SECONDS}s) exceeded")
     return {"delivered": delivered, "total": len(files), "errors": errors[:5]}
 
 

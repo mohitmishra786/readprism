@@ -48,8 +48,15 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy)).catch(() => {});
+            // waitUntil keeps the worker alive until the cache write lands;
+            // otherwise the worker can stop with the write pending and the
+            // article stays unavailable offline (CodeRabbit).
+            event.waitUntil(
+              caches
+                .open(CACHE_VERSION)
+                .then((cache) => cache.put(request, response.clone()))
+                .catch(() => {})
+            );
           }
           return response;
         })
