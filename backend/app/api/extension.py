@@ -7,8 +7,6 @@ explicit signal for the ranker.
 
 from __future__ import annotations
 
-import uuid
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -45,7 +43,11 @@ async def save_and_rate(
 
     result = await session.execute(select(ContentItem).where(ContentItem.url == body.url))
     item = result.scalar_one_or_none()
-    if item is not None and item.owner_user_id is not None and item.owner_user_id != current_user.id:
+    if (
+        item is not None
+        and item.owner_user_id is not None
+        and item.owner_user_id != current_user.id
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="URL already saved by another user"
         )
