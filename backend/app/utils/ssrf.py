@@ -177,6 +177,7 @@ async def safe_fetch(
     *,
     method: str = "GET",
     headers: dict[str, str] | None = None,
+    content: bytes | None = None,
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
     max_redirects: int = DEFAULT_MAX_REDIRECTS,
     max_bytes: int = DEFAULT_MAX_BYTES,
@@ -201,7 +202,7 @@ async def safe_fetch(
     try:
         for _ in range(max_redirects + 1):
             validate_public_url(current, resolver=resolver)
-            async with client.stream(method, current, headers=headers) as resp:
+            async with client.stream(method, current, headers=headers, content=content) as resp:
                 if resp.is_redirect and resp.headers.get("location"):
                     saw_redirect = True
                     if resp.status_code != 301:

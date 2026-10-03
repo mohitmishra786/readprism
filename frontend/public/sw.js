@@ -38,6 +38,35 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
 
+  // EC-01: digest + reader content GETs are network-first with cache
+  // fallback, so yesterday's digest and opened articles stay readable
+  // offline. Mutations and telemetry are never touched (they are not GETs).
+  const isOfflineReadableApi =
+    url.pathname === "/api/v1/digest/latest" || /^\/api\/v1\/content\/[^/]+$/.test(url.pathname);
+  if (isOfflineReadableApi) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(request, copy)).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then(
+            (r) =>
+              r ||
+              new Response(JSON.stringify({ detail: "offline and not previously loaded" }), {
+                status: 503,
+                headers: { "Content-Type": "application/json" },
+              })
+          )
+        )
+    );
+    return;
+  }
+
   // Navigations: network-first, fall back to cached shell when offline.
   if (request.mode === "navigate") {
     event.respondWith(

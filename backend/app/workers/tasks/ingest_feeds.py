@@ -67,6 +67,16 @@ async def _ingest_all_feeds_async() -> dict:
                         origin=raw.origin or "followed",
                         reading_time_minutes=raw.reading_time_minutes,
                     )
+                    # EC-08: podcast episodes rank on their transcript when
+                    # the feed carries a Podcast 2.0 transcript link.
+                    if raw.transcript_url and not item.full_text:
+                        from app.services.ingestion.transcripts import fetch_transcript_text
+
+                        transcript = await fetch_transcript_text(raw.transcript_url)
+                        if transcript:
+                            item.full_text = transcript[:100_000]
+                            item.word_count = len(transcript.split())
+                            item.reading_time_minutes = max(1, round(item.word_count / 200))
                     session.add(item)
                     total_new += 1
 

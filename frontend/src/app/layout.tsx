@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "../styles/globals.css";
 import { ServiceWorkerRegister } from "../components/ServiceWorkerRegister";
+import { InstallPrompt } from "../components/InstallPrompt";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
 
@@ -90,6 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
         />
         <ServiceWorkerRegister />
+        <InstallPrompt />
         {children}
       </body>
     </html>
