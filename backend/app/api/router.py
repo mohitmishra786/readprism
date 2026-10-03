@@ -16,6 +16,7 @@ from app.api.preferences import router as preferences_router
 from app.api.search import router as search_router
 from app.api.sources import router as sources_router
 from app.api.teams import router as teams_router
+from app.api.tokens import router as tokens_router
 
 api_router = APIRouter()
 
@@ -33,3 +34,4 @@ api_router.include_router(newsletter_router)
 api_router.include_router(integrations_router)
 api_router.include_router(teams_router)
 api_router.include_router(metrics_router)
+api_router.include_router(tokens_router)

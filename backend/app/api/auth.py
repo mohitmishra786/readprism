@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 import bcrypt
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -114,9 +114,20 @@ def _decode_token(token: str, *, secret: str) -> dict:
 
 
 async def get_current_user(
+    request: Request,
     token: str = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_db),
 ) -> User:
+    # API tokens (EC-03): rp_-prefixed bearer tokens, hashed at rest, with
+    # read/write scopes. JWTs remain the primary path.
+    if token.startswith("rp_"):
+        user = await _user_for_api_token(token, request, session)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API token"
+            )
+        return user
+
     payload = _decode_token(token, secret=_access_secret())
     if payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
@@ -130,6 +141,38 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+
+MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+async def _user_for_api_token(token: str, request: Request, session: AsyncSession) -> User | None:
+    from datetime import UTC, datetime
+
+    from app.models.api_token import ApiToken, hash_api_token
+
+    result = await session.execute(
+        select(ApiToken).where(ApiToken.token_hash == hash_api_token(token))
+    )
+    row = result.scalar_one_or_none()
+    if row is None or row.revoked:
+        return None
+
+    scopes = set(row.scopes or ["read"])
+    if request.method in MUTATING_METHODS and "write" not in scopes:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This API token is read-only",
+        )
+
+    result = await session.execute(select(User).where(User.id == row.user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        return None
+    row.last_used_at = datetime.now(UTC)
+    row.use_count = (row.use_count or 0) + 1
+    await session.flush()
     return user
 
 
