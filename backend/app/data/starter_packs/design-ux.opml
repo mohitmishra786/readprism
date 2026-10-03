@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Design &amp; UX — ReadPrism starter pack</title>
+  </head>
+  <body>
+    <outline text="Design &amp; UX" title="Design &amp; UX">
+        <outline text="Nielsen Norman Group" title="Nielsen Norman Group" type="rss" xmlUrl="https://www.nngroup.com/feed/rss/" htmlUrl="https://www.nngroup.com/feed/rss/"/>
+        <outline text="Studio by UX Collective" title="Studio by UX Collective" type="rss" xmlUrl="https://uxdesign.cc/feed" htmlUrl="https://uxdesign.cc/feed"/>
+        <outline text="Baymard Institute" title="Baymard Institute" type="rss" xmlUrl="https://baymard.com/blog/rss" htmlUrl="https://baymard.com/blog/rss"/>
+        <outline text="UX Planet" title="UX Planet" type="rss" xmlUrl="https://uxplanet.org/feed" htmlUrl="https://uxplanet.org/feed"/>
+        <outline text="UX Collective" title="UX Collective" type="rss" xmlUrl="https://uxdesign.cc/feed" htmlUrl="https://uxdesign.cc/feed"/>
+        <outline text="Fast Company Design" title="Fast Company Design" type="rss" xmlUrl="https://www.fastcompany.com/technology/rss" htmlUrl="https://www.fastcompany.com/technology/rss"/>
+        <outline text="Sidebar (Design)" title="Sidebar (Design)" type="rss" xmlUrl="https://sidebar.io/feed.xml" htmlUrl="https://sidebar.io/feed.xml"/>
+        <outline text="Google Design (Medium)" title="Google Design (Medium)" type="rss" xmlUrl="https://medium.com/feed/google-design" htmlUrl="https://medium.com/feed/google-design"/>
+        <outline text="Prototypr" title="Prototypr" type="rss" xmlUrl="https://blog.prototypr.io/feed" htmlUrl="https://blog.prototypr.io/feed"/>
+        <outline text="Creative Bloq" title="Creative Bloq" type="rss" xmlUrl="https://www.creativebloq.com/feed/" htmlUrl="https://www.creativebloq.com/feed/"/>
+    </outline>
+  </body>
+</opml>

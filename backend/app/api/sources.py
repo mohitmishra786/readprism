@@ -23,6 +23,69 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 logger = get_logger(__name__)
 
 
+@router.get("/starter-packs")
+async def list_packs(
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """CS-02: curated topic bundles (10-25 feeds each) for one-click subscribe."""
+    from app.services.cold_start.starter_packs import list_starter_packs
+
+    return [
+        {
+            "id": pack.id,
+            "title": pack.title,
+            "feed_count": len(pack.feeds),
+            "feeds": [{"name": f["name"], "url": f["url"]} for f in pack.feeds],
+        }
+        for pack in list_starter_packs()
+    ]
+
+
+@router.post("/starter-packs/{pack_id}/subscribe", response_model=dict)
+async def subscribe_pack(
+    pack_id: str,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """One-click subscribe to a starter pack. Idempotent per feed URL."""
+    from app.services.cold_start.starter_packs import list_starter_packs
+
+    pack = next((p for p in list_starter_packs() if p.id == pack_id), None)
+    if pack is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown starter pack")
+
+    existing_result = await session.execute(
+        select(Source.url).where(Source.user_id == current_user.id)
+    )
+    existing_urls = {row[0] for row in existing_result.fetchall()}
+
+    created = 0
+    for feed in pack.feeds:
+        if feed["url"] in existing_urls:
+            continue
+        session.add(
+            Source(
+                user_id=current_user.id,
+                url=feed["url"],
+                name=feed["name"],
+                feed_url=feed["feed_url"],
+                source_type="rss",
+                # Seeded pack sources start slightly below default trust so
+                # the ranking engine earns its keep (same rule as onboarding).
+                trust_weight=0.45,
+            )
+        )
+        existing_urls.add(feed["url"])
+        created += 1
+    await session.flush()
+    return {
+        "status": "ok",
+        "pack": pack.id,
+        "subscribed": created,
+        "already_had": len(pack.feeds) - created,
+    }
+
+
 @router.post("", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
 async def add_source(
     body: SourceCreate,

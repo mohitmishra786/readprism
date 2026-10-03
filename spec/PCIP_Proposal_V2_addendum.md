@@ -25,3 +25,15 @@ is still the shape of `compute_prs`. The feature definitions in the roadmap
 (pre-consumption predictions, impression log, MMR, label table) are not what
 the signal modules compute today. See the Spec Coverage Matrix in
 `docs/PROGRESS.md`.
+
+## Cold start implementation (Phase 4, CS-04)
+
+Population-free by construction (D-06): the digest's exploration slots are
+forced on for a user's first 14 days regardless of
+`RANKING_EXPLORATION_ENABLED`, because exploration is the only discovery
+mechanism that does not need other users. Collaborative warmup remains
+threshold-gated (`COLLAB_WARMUP_MIN_USERS`, default 1000) and flag-bound
+(`COLD_START_COLLABORATIVE_ENABLED`); a single-user instance is proven by
+test to receive zero items and raise nothing. Import seeding rides on the
+Phase-1 importers, which set `explicit_rating=1` on imported saves so the
+interest graph treats an import as a positive signal.

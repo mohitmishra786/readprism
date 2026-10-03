@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Quant &amp; Finance — ReadPrism starter pack</title>
+  </head>
+  <body>
+    <outline text="Quant &amp; Finance" title="Quant &amp; Finance">
+        <outline text="CNBC Markets" title="CNBC Markets" type="rss" xmlUrl="https://www.cnbc.com/id/100003114/device/rss/rss.html" htmlUrl="https://www.cnbc.com/id/100003114/device/rss/rss.html"/>
+        <outline text="Matt Levine (Bloomberg)" title="Matt Levine (Bloomberg)" type="rss" xmlUrl="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine.rss" htmlUrl="https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine.rss"/>
+        <outline text="FT Alphaville" title="FT Alphaville" type="rss" xmlUrl="https://www.ft.com/rss/home/uk" htmlUrl="https://www.ft.com/rss/home/uk"/>
+        <outline text="Econbrowser" title="Econbrowser" type="rss" xmlUrl="https://econbrowser.com/feed" htmlUrl="https://econbrowser.com/feed"/>
+        <outline text="FRED Blog" title="FRED Blog" type="rss" xmlUrl="https://fredblog.stlouisfed.org/feed/" htmlUrl="https://fredblog.stlouisfed.org/feed/"/>
+        <outline text="Alpha Architect" title="Alpha Architect" type="rss" xmlUrl="https://alphaarchitect.com/feed/" htmlUrl="https://alphaarchitect.com/feed/"/>
+        <outline text="QuantConnect" title="QuantConnect" type="rss" xmlUrl="https://www.quantconnect.com/blog/feed/" htmlUrl="https://www.quantconnect.com/blog/feed/"/>
+        <outline text="Jane Street Tech Blog" title="Jane Street Tech Blog" type="rss" xmlUrl="https://blog.janestreet.com/feed.xml" htmlUrl="https://blog.janestreet.com/feed.xml"/>
+        <outline text="PensionCraft" title="PensionCraft" type="rss" xmlUrl="https://www.pensioncraft.com/feed/" htmlUrl="https://www.pensioncraft.com/feed/"/>
+        <outline text="Of Dollars And Data" title="Of Dollars And Data" type="rss" xmlUrl="https://ofdollarsanddata.com/feed/" htmlUrl="https://ofdollarsanddata.com/feed/"/>
+    </outline>
+  </body>
+</opml>

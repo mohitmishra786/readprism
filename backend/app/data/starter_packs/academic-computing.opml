@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>Academic Computing — ReadPrism starter pack</title>
+  </head>
+  <body>
+    <outline text="Academic Computing" title="Academic Computing">
+        <outline text="arXiv cs.LG" title="arXiv cs.LG" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.LG" htmlUrl="https://rss.arxiv.org/rss/cs.LG"/>
+        <outline text="arXiv cs.DC" title="arXiv cs.DC" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.DC" htmlUrl="https://rss.arxiv.org/rss/cs.DC"/>
+        <outline text="arXiv cs.CR" title="arXiv cs.CR" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.CR" htmlUrl="https://rss.arxiv.org/rss/cs.CR"/>
+        <outline text="arXiv cs.DB" title="arXiv cs.DB" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.DB" htmlUrl="https://rss.arxiv.org/rss/cs.DB"/>
+        <outline text="arXiv cs.SE" title="arXiv cs.SE" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.SE" htmlUrl="https://rss.arxiv.org/rss/cs.SE"/>
+        <outline text="arXiv cs.PL" title="arXiv cs.PL" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.PL" htmlUrl="https://rss.arxiv.org/rss/cs.PL"/>
+        <outline text="arXiv cs.AI" title="arXiv cs.AI" type="rss" xmlUrl="https://rss.arxiv.org/rss/cs.AI" htmlUrl="https://rss.arxiv.org/rss/cs.AI"/>
+        <outline text="Berkeley AI Research" title="Berkeley AI Research" type="rss" xmlUrl="https://bair.berkeley.edu/blog/feed.xml" htmlUrl="https://bair.berkeley.edu/blog/feed.xml"/>
+        <outline text="Stanford HAI" title="Stanford HAI" type="rss" xmlUrl="https://hai.stanford.edu/news/rss" htmlUrl="https://hai.stanford.edu/news/rss"/>
+        <outline text="MIT Technology Review" title="MIT Technology Review" type="rss" xmlUrl="https://www.technologyreview.com/feed/" htmlUrl="https://www.technologyreview.com/feed/"/>
+    </outline>
+  </body>
+</opml>
