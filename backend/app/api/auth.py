@@ -166,8 +166,8 @@ async def _user_for_api_token(token: str, request: Request, session: AsyncSessio
             detail="This API token is read-only",
         )
 
-    result = await session.execute(select(User).where(User.id == row.user_id))
-    user = result.scalar_one_or_none()
+    user_result = await session.execute(select(User).where(User.id == row.user_id))
+    user = user_result.scalar_one_or_none()
     if user is None:
         return None
     row.last_used_at = datetime.now(UTC)
