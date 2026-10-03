@@ -86,6 +86,88 @@ async def subscribe_pack(
     }
 
 
+@router.get("/discover-suggestions")
+async def get_discover_suggestions(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """EC-06: pending source suggestions with reasons; refreshes lazily."""
+    from app.models.suggestion import SourceSuggestion
+    from app.services.cold_start.discover_sources import refresh_suggestions
+
+    await refresh_suggestions(current_user, session)
+    rows = await session.execute(
+        select(SourceSuggestion)
+        .where(SourceSuggestion.user_id == current_user.id, SourceSuggestion.status == "pending")
+        .order_by(SourceSuggestion.created_at.desc())
+        .limit(5)
+    )
+    return [
+        {"id": str(row.id), "url": row.url, "name": row.name, "reason": row.reason}
+        for row in rows.scalars()
+    ]
+
+
+@router.post(
+    "/discover-suggestions/{suggestion_id}/accept", response_model=SourceRead, status_code=201
+)
+async def accept_discover_suggestion(
+    suggestion_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SourceRead:
+    from datetime import UTC, datetime
+
+    from app.models.suggestion import SourceSuggestion
+
+    result = await session.execute(
+        select(SourceSuggestion).where(
+            SourceSuggestion.id == suggestion_id, SourceSuggestion.user_id == current_user.id
+        )
+    )
+    suggestion = result.scalar_one_or_none()
+    if suggestion is None or suggestion.status != "pending":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
+
+    source = Source(
+        user_id=current_user.id,
+        url=suggestion.url,
+        name=suggestion.name,
+        feed_url=suggestion.url,
+        source_type="rss",
+        trust_weight=0.45,  # suggested sources start low like seeded packs
+    )
+    session.add(source)
+    suggestion.status = "accepted"
+    suggestion.decided_at = datetime.now(UTC)
+    await session.flush()
+    return SourceRead.model_validate(source)
+
+
+@router.post("/discover-suggestions/{suggestion_id}/dismiss", response_model=dict)
+async def dismiss_discover_suggestion(
+    suggestion_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from datetime import UTC, datetime
+
+    from app.models.suggestion import SourceSuggestion
+
+    result = await session.execute(
+        select(SourceSuggestion).where(
+            SourceSuggestion.id == suggestion_id, SourceSuggestion.user_id == current_user.id
+        )
+    )
+    suggestion = result.scalar_one_or_none()
+    if suggestion is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
+    suggestion.status = "dismissed"
+    suggestion.decided_at = datetime.now(UTC)
+    await session.flush()
+    return {"status": "dismissed", "id": str(suggestion_id)}
+
+
 @router.post("", response_model=SourceRead, status_code=status.HTTP_201_CREATED)
 async def add_source(
     body: SourceCreate,

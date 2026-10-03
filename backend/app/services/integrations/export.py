@@ -126,6 +126,58 @@ async def export_to_obsidian(user_id: uuid.UUID, session: AsyncSession) -> list[
     return out
 
 
+def _to_logseq(content: ContentItem, interaction: UserContentInteraction) -> tuple[str, str]:
+    """Render one saved item as a Logseq-flavored Markdown page (EC-05).
+
+    Logseq pages use `key:: value` property lines under a heading and
+    [[wiki-links]]; journals-style bullets keep the body scannable.
+    """
+    saved_at = (
+        interaction.saved_read_at.isoformat()
+        if interaction.saved_read_at
+        else datetime.now(UTC).isoformat()
+    )
+    props = [
+        f"source:: {content.url}",
+        f"author:: {content.author or 'unknown'}",
+        f"saved:: {saved_at}",
+        "type:: readprism",
+    ]
+    if content.topic_clusters:
+        props.append("topics:: " + " ".join(f"[[{t}]]" for t in content.topic_clusters[:5]))
+
+    lines = [f"- ## {content.title}", ""]
+    lines += [f"- {p}" for p in props]
+    lines.append("")
+    if content.summary_brief:
+        lines.append(f"- > {content.summary_brief}")
+    if content.full_text:
+        for paragraph in content.full_text.split("\n\n")[:40]:
+            text = paragraph.strip()
+            if text:
+                lines.append(f"- {text}")
+    else:
+        lines.append(f"- [Read original]({content.url})")
+    lines.append(f"- original:: [{content.url}]({content.url})")
+    # Short unique suffix keeps page names distinct when titles collide
+    # (CodeRabbit): a duplicate filename would overwrite on import.
+    import hashlib
+
+    uid = str(content.id)[:8] if content.id else hashlib.sha1(content.url.encode()).hexdigest()[:8]
+    return f"readprism/{_slugify(content.title)}-{uid}.md", "\n".join(lines) + "\n"
+
+
+async def export_to_logseq(user_id: uuid.UUID, session: AsyncSession) -> list[dict]:
+    """Saved items as Logseq pages under a readprism/ folder (EC-05)."""
+    items = await _get_saved_items(user_id, session)
+    out: list[dict] = []
+    for content, interaction in items:
+        filename, body = _to_logseq(content, interaction)
+        out.append({"filename": filename, "content": body})
+    logger.info(f"Logseq export for user {user_id}: {len(out)} items")
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Notion — push to a database.
 # ---------------------------------------------------------------------------

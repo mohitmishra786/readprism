@@ -103,3 +103,56 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   return false;
 });
+
+// --- Save & rate (EC-02): strong signal into the user's private archive ---
+
+async function saveAndRate(tab, rating) {
+  const apiBase = await getApiBase();
+  const token = await getToken();
+  if (!token) {
+    return { ok: false, error: "No API token set. Open extension options to add your ReadPrism token." };
+  }
+  const res = await fetch(`${apiBase}/api/v1/extension/save`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ url: tab.url, title: tab.title || tab.url, rating }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { ok: false, error: body.detail || `HTTP ${res.status}` };
+  }
+  return { ok: true, data: await res.json() };
+}
+
+// Returns the detected feed URL for a tab, if the content script found one.
+async function detectedFeed(tab) {
+  const key = `feed:${tab.url}`;
+  const found = await chrome.storage.session.get([key]);
+  return found[key] || null;
+}
+
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "save-rate") {
+    saveAndRate(msg.tab, msg.rating ?? null).then(sendResponse);
+    return true;
+  }
+  if (msg?.type === "detect-feed") {
+    detectedFeed(msg.tab).then(sendResponse);
+    return true;
+  }
+  return false;
+});
+
+// Content scripts cannot access storage.session (trusted contexts only) —
+// they relay detected feeds here for storage.
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg?.type === "feed-found" && msg.pageUrl && msg.feedUrl) {
+    chrome.storage.session.set({ [`feed:${msg.pageUrl}`]: msg.feedUrl }).catch(() => {});
+    sendResponse({ ok: true });
+    return true;
+  }
+  return false;
+});
