@@ -1,13 +1,25 @@
-.PHONY: extract-eval starter-pack-check
+.PHONY: extract-eval starter-pack-check up-lite up-full build-lite backup restore demo docs-serve
 
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
 
-extract-eval:
-	cd backend && PYTHONPATH=. python3 scripts/extract_eval.py
+up-lite:
+	docker compose up -d --build
 
-eval:
-	cd backend && PYTHONPATH=. python3 scripts/rank_eval.py
+up-full:
+	docker compose --profile full up -d --build
 
-retrieval-eval:
-	cd backend && PYTHONPATH=. python3 scripts/retrieval_eval.py
+build-lite:
+	docker compose build --build-arg LITE=1 backend
+
+backup:
+	./scripts/backup.sh
+
+restore:
+	./scripts/restore.sh $(FILE)
+
+demo:
+	cd backend && PYTHONPATH=. python3 scripts/seed_demo.py
+
+docs-serve:
+	mkdocs serve

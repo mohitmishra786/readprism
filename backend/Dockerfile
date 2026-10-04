@@ -10,7 +10,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# LITE=1 builds the lite profile image (RL-01): no torch/sentence-transformers
+# (~1.8 GB smaller); the embedding service falls back to the hash embedder.
+ARG LITE=0
+RUN if [ "$LITE" = "1" ]; then \
+      grep -viE '^(sentence-transformers|torch)' requirements.txt > reqs.build.txt; \
+    else \
+      cp requirements.txt reqs.build.txt; \
+    fi \
+    && pip install --no-cache-dir -r reqs.build.txt \
+    && rm -f reqs.build.txt
 
 # Install Playwright browsers
 RUN playwright install chromium --with-deps 2>/dev/null || true

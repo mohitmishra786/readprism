@@ -1,0 +1,60 @@
+# Backup/restore proven in CI (RL-04): boot the stack, seed data, back up,
+# destroy the database, restore, and verify the data survived.
+name: Backup restore
+
+on:
+  push:
+    branches: [main]
+    paths: ["scripts/**", ".github/workflows/backup-restore.yml", "docker-compose.yml", "backend/Dockerfile", "backend/app/**"]
+  pull_request:
+    paths: ["scripts/**", ".github/workflows/backup-restore.yml", "docker-compose.yml", "backend/Dockerfile"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  roundtrip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare .env
+        run: cp .env.example .env
+      - name: Boot db + backend
+        run: docker compose up -d db redis backend
+      - name: Wait for backend
+        run: |
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:8000/health >/dev/null; then echo healthy; exit 0; fi
+            sleep 5
+          done
+          docker compose logs backend; exit 1
+      - name: Migrate + seed a marker row
+        run: |
+          docker compose exec -T backend alembic upgrade head
+          docker compose exec -T db psql -U readprism -d readprism \
+            -c "INSERT INTO users (id, email, hashed_password, onboarding_complete, digest_frequency, digest_time_morning, digest_max_items, serendipity_percentage, tier, timezone, digest_length_locked, send_time_locked, preferred_languages, created_at, updated_at) VALUES (gen_random_uuid(), 'marker@example.com', 'x', true, 'daily', '07:00', 12, 15, 'free', 'UTC', false, false, '[]'::jsonb, now(), now());"
+          COUNT=$(docker compose exec -T db psql -U readprism -d readprism -tAc "SELECT count(*) FROM users;")
+          echo "seeded users: $COUNT"
+      - name: Single-head check (RL-04)
+        run: |
+          HEADS=$(docker compose exec -T backend alembic heads | grep -c '(head)' || true)
+          test "$HEADS" = "1"
+      - name: Backup
+        run: ./scripts/backup.sh
+      - name: Destroy the database
+        run: |
+          docker compose exec -T db psql -U readprism -d postgres \
+            -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='readprism' AND pid <> pg_backend_pid();" \
+            -c "DROP DATABASE readprism;" -c "CREATE DATABASE readprism;"
+      - name: Restore
+        run: ./scripts/restore.sh "$(ls backups/*.tar.gz | head -1)"
+      - name: Verify the marker survived
+        run: |
+          COUNT=$(docker compose exec -T db psql -U readprism -d readprism -tAc "SELECT count(*) FROM users WHERE email='marker@example.com';")
+          echo "restored marker rows: $COUNT"
+          test "$COUNT" = "1"
+          HEAD=$(docker compose exec -T db psql -U readprism -d readprism -tAc "SELECT version_num FROM alembic_version;" | tr -d '[:space:]')
+          echo "alembic head after restore: $HEAD"
+          test -n "$HEAD"

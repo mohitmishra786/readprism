@@ -1,0 +1,6 @@
+# Lite profile (RL-01): everything except sentence-transformers/torch.
+# The embedding service falls back to the deterministic hash embedder.
+# Install on top of requirements.txt minus the heavy deps:
+#   pip install -r requirements.txt && pip uninstall -y sentence-transformers torch
+# This file exists for documentation and image builds that use it as the base
+# list (see Dockerfile LITE=1 build arg).

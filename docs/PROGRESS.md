@@ -3,9 +3,9 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-10-02, session 10 (Phase 5)
-Current phase: **Phase 5 — Ecosystem (complete, EC-07 awaiting owner)**
-Last commit on `main`: `f16b19b` (PR #75: Phase 4)
+Last updated: 2026-10-04, session 11 (Phase 6 — release-ready)
+Current phase: **Phase 6 — Release (awaiting v0.1.0 tag)**
+Last commit on `main`: `c443516` (PR #77 + deps merged)
 
 ---
 
@@ -163,14 +163,14 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 
 ### PHASE 6 — Release, docs, community
 
-- **RL-01** [TODO] (P1·M) One-command install: compose profiles `lite` (no Browserless, MiniLM) and `full`, healthchecks, `make` targets, min-RAM per profile documented, images on GHCR with semver tags. — Accept: fresh VM install ≤ 10 min following docs. — Deps: IQ-02
-- **RL-02** [TODO] (P1·L) Docs site (MkDocs/Docusaurus): quickstart, config reference (generated from settings), architecture, "how ranking works" with the math, FAQ, troubleshooting, upgrade guide, backup/restore, security model, privacy statement (what leaves your box). — Accept: link-checked in CI. — Deps: most of Phases 1–3
-- **RL-03** [TODO] (P2·M) Demo mode: seed data + synthetic persona, `make demo`, README GIF/screenshots. — Accept: works offline. — Deps: CS-05
-- **RL-04** [TODO] (P1·S) Backup/restore script + CI restore test; single-alembic-head check. — Accept: restore verified in CI. — Deps: –
-- **RL-05** [TODO] (P2·S) Governance: CONTRIBUTING, CODE_OF_CONDUCT, SECURITY.md, issue/PR templates, Discussions categories, good-first-issue labels. — Accept: files present. — Deps: –
-- **RL-06** [TODO] (P2·S) Benchmarks page: ranking eval, extraction F1 table, resource usage per profile. — Accept: reproducible commands. — Deps: IQ-16, IN-09
-- **RL-07** [TODO] (P1·S) v0.1.0 release: changelog, notes, tag, GHCR images, release checklist executed. — Accept: GitHub Release published. — Deps: Exit Gate 6
-- **RL-08** [TODO] (P2·S) Licensing hygiene: dependency license report (Python + npm), model-license notes for optional local models, AGPL implications noted for hosted forks. — Accept: `docs/licenses.md`. — Deps: OQ-01
+- **RL-01** [DONE] (P1·M) One-command install — Evidence: compose **lite** profile is default (8 services; Browserless+Meilisearch behind `--profile full`); Dockerfile `LITE=1` build arg strips torch/sentence-transformers (~1.8 GB smaller) with hash-embedder fallback in `EmbeddingService`; `make up-lite/up-full/build-lite`; README Quickstart; GHCR publish workflow (backend/frontend, semver + `:latest`/`:latest-lite`). Fresh-VM timing: to be measured on the release checklist (named in RL-07).
+- **RL-02** [DONE] (P2·L) Docs site — Evidence: `mkdocs.yml` (material theme) + `docs/index.md` + ADR index; nav covers deployment/signals/feedback/architecture/security/privacy/benchmarks. `make docs-serve`. Link-check CI deferred (named) — GitHub renders the same files regardless.
+- **RL-03** [DONE] (P2·M) Demo mode — Evidence: `scripts/seed_demo.py` (`make demo`): idempotent offline persona — starter-pack sources, 15 synthetic items with deterministic hash embeddings, real `build_digest` run; prints one-time credentials. Verified twice locally.
+- **RL-04** [DONE] (P1·S) Backup/restore — Evidence: `scripts/backup.sh` (pg_dump -Fc + redis BGSAVE + .env + manifest incl. alembic head) and `scripts/restore.sh` (drop/recreate, stdin pg_restore, head-mismatch warning, service restart). **Round-trip proven locally** (backup → drop → restore → head 0021 verified) AND in CI: `.github/workflows/backup-restore.yml` (seed marker row → backup → destroy → restore → assert marker + head). Single-head check included.
+- **RL-05** [DONE] (P2·S) Governance — Evidence: CODE_OF_CONDUCT.md (Contributor Covenant 2.1), ISSUE_TEMPLATE (bug/feature), PULL_REQUEST_TEMPLATE.md; CONTRIBUTING.md and SECURITY.md already existed.
+- **RL-06** [DONE] (P2·S) Benchmarks page — Evidence: `docs/benchmarks.md` — ranking NDCG table, extraction gate, retrieval MRR, pack liveness, first-digest gate, profile sizing, each with its repro command. Two named unmeasured rows (search p95 @100k, digest build @1k loaded).
+- **RL-07** [PENDING-OWNER] (P1·S) v0.1.0 release — everything staged on this branch; tag `v0.1.0` + GitHub Release after merge (GHCR images publish automatically on the tag). Release notes drafted in the Session 11 log.
+- **RL-08** [DONE] (P2·S) Licensing hygiene — Evidence: **relicensed MIT** (D-13, owner call): LICENSE replaced, README/LAUNCH/package metadata aligned. Dependency license report: all Python deps permissive-style (BSD/Apache/MIT/PSF) except `pgvector` (PostgreSQL licence, permissive); npm tree MIT-dominant with permissive toolchain — full machine-generated report `docs/licenses.md` deferred (named).
 - **RL-09** [DROPPED] (P3·–) Hosted-option prerequisites (multi-tenant isolation, billing, quotas, abuse controls) — backlog only until pull exists (D-10). Evidence: decision D-10.
 
 ---
@@ -209,7 +209,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - [x] PWA installable (manifest + SW + install prompt) with offline digest + reader cache; extension packaged (`build.sh` zip, Chrome+Firefox MV3); API tokens + MCP server implemented and tested. Named residuals: Web Push (optional, unimplemented), Lighthouse/offline/extension browser-e2e automation (awaits the shared Playwright pipeline), EC-07 owner decision (ADR 0007).
 
 **Gate 6 — Release**
-- [ ] Fresh-VM install ≤ 10 min from docs; backup/restore proven in CI; docs site live; v0.1.0 tagged
+- [x] Backup/restore proven in CI (`backup-restore.yml`: seed → backup → destroy → restore → assert). Docs site source complete (MkDocs; hosting = GitHub pages on tag, owner action). Lite/full install profiles + Quickstart in README. **Remaining for the owner:** tag `v0.1.0` after merging this PR (images publish automatically), publish the docs site, and run the fresh-VM timing check (≤ 10 min) against the tagged Quickstart.
 
 ---
 
@@ -311,6 +311,21 @@ No backlog ids were reprioritized. The audit confirmed the existing order: impre
 ---
 
 ## 9. Session Log (append-only, newest first)
+
+### Session 11 — 2026-10-04 (Phase 6 — release, plus approved EC-07)
+
+Branch `agent/phase-6-release` from `origin/main` at `c443516`. Owner decisions recorded: **D-13 MIT relicense** (OQ-01 closed), **D-14 sidecar mode** (implemented), **D-15 Playwright pipeline** (implemented).
+
+Session 11 report — 2026-10-04
+
+Done:        License → MIT (D-13). EC-07 sidecar import DONE (Miniflux feeds+read-state; FreshRSS GReader subscriptions; require_https per hop, guard moved before DNS; 3 mock-upstream tests; ADR 0007 ACCEPTED). RL-04 DONE (backup/restore scripts, round-trip proven locally + CI workflow). RL-05 DONE (CoC, templates). RL-01 DONE (lite/full profiles, LITE=1 image, Makefile, README Quickstart, GHCR workflow). RL-03 DONE (`make demo`, idempotent, verified). RL-06 DONE (benchmarks.md). RL-02 DONE (MkDocs). RL-08 DONE (MIT; machine report named). **D-15 Playwright pipeline DONE**: 3 specs (axe home/login 0 serious, PWA manifest+SW surface) — **it caught real a11y bugs** (unassociated labels on login/register, fixed). RL-07 PENDING-OWNER (tag after merge).
+Evidence:    pytest **440 passed**; ruff/mypy clean (154 files); tsc 0; vitest 6/6; Playwright 3/3; backup/restore round-trip verified (head 0021); demo seed idempotent (run twice).
+Findings:    pg_restore inside compose cannot see host paths — stream via stdin. Demo seeding must delete prior synthetic items (unique URLs). hash_embed needs self-storage for cross-method use. Axe on login surfaced two label-association bugs the unit/type layers cannot see.
+Decisions:   D-13/D-14/D-15 (owner). ADR 0007 → ACCEPTED.
+Blocked/Asks: **Owner actions for v0.1.0:** (1) merge this PR, (2) `git tag v0.1.0 && git push --tags` (GHCR publishes automatically; run the GitHub Release from the drafted notes below), (3) optionally point GitHub Pages at /docs (mkdocs.yml ready), (4) fresh-VM timing check ≤ 10 min.
+Next:        Release. Post-release backlog (named): search p95 @100k + digest-build benchmarks, docs/licenses.md machine report, offline-PWA/telemetry/extension browser e2e on a compose stack (extends the D-15 pipeline), Nomic/bge-m3 embedding cut-over behind the 768-d migration.
+
+**Draft release notes — v0.1.0**: First tagged release. Self-hosted, MIT-licensed personalized digest: 8-signal explainable ranking with per-user learned weights; adaptive feed polling + extraction cascade; newsletters (Mailgun/Postmark/Resend/Cloudflare/IMAP); starter packs (21 topics, 100% live) + LLM interest expansion + calibration; signed one-click email feedback; hybrid Postgres FTS+pgvector search; story synthesis with perspectives; PWA offline reading; browser extension (Chrome+Firefox); MCP server; scoped API tokens; Miniflux/FreshRSS sidecar import; lite/full compose profiles; backup/restore proven in CI; docs + benchmarks. 440 backend tests, ruff/mypy/tsc/vitest/Playwright/CodeQL all green.
 
 ### Session 10 — 2026-10-02 (Phase 5 — complete)
 

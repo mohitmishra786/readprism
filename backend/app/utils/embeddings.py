@@ -17,7 +17,26 @@ _embedding_service: EmbeddingService | None = None
 
 class EmbeddingService:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError:
+            # Lite profile (RL-01): no torch/sentence-transformers installed.
+            # The deterministic hash embedder keeps the pipeline running with
+            # weaker (lexical-bag) vectors — ranking still works, semantic
+            # quality is reduced. Documented in docs/DEPLOYMENT.md.
+            from app.services.embeddings.registry import hash_embed, spec_for
+
+            logger.warning(
+                "sentence-transformers not installed (lite profile): "
+                "falling back to the deterministic hash embedder"
+            )
+            spec = spec_for(model_name)
+            self._hash_spec = spec
+            self._hash_embed = hash_embed
+            self.model = None
+            self.model_name = spec.name
+            self.dimension = spec.dim
+            return
 
         logger.info(f"Loading embedding model: {model_name} on {device}")
         self.model = SentenceTransformer(model_name, device=device)
@@ -27,6 +46,10 @@ class EmbeddingService:
     def encode(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.dimension), dtype=np.float32)
+        if self.model is None:
+            return np.array(
+                [self._hash_embed(t, self._hash_spec.dim) for t in texts], dtype=np.float32
+            )
         return self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
     async def _encode_async(self, texts: list[str]) -> np.ndarray:
