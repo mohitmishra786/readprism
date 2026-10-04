@@ -151,7 +151,8 @@ async def import_from_freshrss(
         headers={"Authorization": f"GoogleLogin auth={auth_token}"},
     )
     if subs is None or subs.status_code != 200:
-        return SidecarResult(errors=[f"FreshRSS subscription list failed: HTTP {subs.status_code}"])
+        status = subs.status_code if subs is not None else "unreachable"
+        return SidecarResult(errors=[f"FreshRSS subscription list failed: HTTP {status}"])
     feeds = json.loads(subs.content.decode("utf-8", errors="replace")).get("subscriptions", [])
     result = await _add_feeds(user, feeds, session)
     logger.info(f"FreshRSS import for {user.id}: +{result.feeds_added} feeds")
