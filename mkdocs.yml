@@ -1,0 +1,23 @@
+site_name: ReadPrism
+site_description: Personalized content intelligence — self-hosted, explainable, MIT.
+site_url: https://readprism.app
+repo_url: https://github.com/mohitmishra786/readprism
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+nav:
+  - Home: index.md
+  - Quickstart & deployment: DEPLOYMENT.md
+  - How ranking works: signals.md
+  - Feedback mapping: feedback-mapping.md
+  - Architecture: ARCHITECTURE.md
+  - Security model: security.md
+  - Privacy: PRIVACY.md
+  - Benchmarks: benchmarks.md
+  - Roadmap & progress: PROGRESS.md
+  - ADRs: adr/index.md
+markdown_extensions:
+  - tables
+  - admonition

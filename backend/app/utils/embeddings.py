@@ -17,16 +17,41 @@ _embedding_service: EmbeddingService | None = None
 
 class EmbeddingService:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
-        from sentence_transformers import SentenceTransformer
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError:
+            # Lite profile (RL-01): no torch/sentence-transformers installed.
+            # The deterministic hash embedder keeps the pipeline running with
+            # weaker (lexical-bag) vectors — ranking still works, semantic
+            # quality is reduced. Documented in docs/DEPLOYMENT.md.
+            from app.services.embeddings.registry import hash_embed, spec_for
+
+            logger.warning(
+                "sentence-transformers not installed (lite profile): "
+                "falling back to the deterministic hash embedder"
+            )
+            spec = spec_for(model_name)
+            self._hash_spec = spec
+            self._hash_embed = hash_embed
+            self._cache_ns = f"hash:{spec.name}:{spec.dim}"
+            self.model = None
+            self.model_name = spec.name
+            self.dimension = spec.dim
+            return
 
         logger.info(f"Loading embedding model: {model_name} on {device}")
         self.model = SentenceTransformer(model_name, device=device)
         self.model_name = model_name
         self.dimension = 384
+        self._cache_ns = f"st:{model_name}"
 
     def encode(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, self.dimension), dtype=np.float32)
+        if self.model is None:
+            return np.array(
+                [self._hash_embed(t, self._hash_spec.dim) for t in texts], dtype=np.float32
+            )
         return self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
 
     async def _encode_async(self, texts: list[str]) -> np.ndarray:
@@ -36,7 +61,7 @@ class EmbeddingService:
         return await asyncio.to_thread(self.encode, texts)
 
     async def encode_single(self, text: str) -> list[float]:
-        cache_key = f"emb:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+        cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
         cached = await cache_get(cache_key)
         if cached is not None:
             return cached
@@ -50,7 +75,7 @@ class EmbeddingService:
         to_encode: list[tuple[int, str]] = []
 
         for i, text in enumerate(texts):
-            cache_key = f"emb:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+            cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
             cached = await cache_get(cache_key)
             if cached is not None:
                 results.append((i, cached))
@@ -63,7 +88,7 @@ class EmbeddingService:
             for idx, vec in zip(indices, vectors, strict=False):
                 vec_list = vec.tolist()
                 results.append((idx, vec_list))
-                cache_key = f"emb:{hashlib.sha256(raw_texts[list(indices).index(idx)].encode()).hexdigest()[:16]}"
+                cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(raw_texts[list(indices).index(idx)].encode()).hexdigest()[:16]}"
                 await cache_set(cache_key, vec_list, ttl_seconds=7 * 24 * 3600)
 
         results.sort(key=lambda x: x[0])

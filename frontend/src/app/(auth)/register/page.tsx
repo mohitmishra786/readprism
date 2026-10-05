@@ -37,10 +37,11 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="card space-y-4 p-6">
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-stone-700">
+            <label htmlFor="reg-display-name" className="mb-1.5 block text-sm font-medium text-stone-700">
               Display name <span className="text-stone-400">(optional)</span>
             </label>
             <input
+              id="reg-display-name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -49,10 +50,11 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-stone-700">
+            <label htmlFor="reg-email" className="mb-1.5 block text-sm font-medium text-stone-700">
               Email
             </label>
             <input
+              id="reg-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -62,10 +64,11 @@ export default function RegisterPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-stone-700">
+            <label htmlFor="reg-password" className="mb-1.5 block text-sm font-medium text-stone-700">
               Password <span className="text-stone-400">(min 8 chars)</span>
             </label>
             <input
+              id="reg-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

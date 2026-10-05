@@ -1,0 +1,65 @@
+# Web framework
+fastapi==0.141.1
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+
+# Database
+sqlalchemy[asyncio]==2.1.1
+asyncpg==0.31.0
+psycopg2-binary==2.9.13
+alembic==1.20.0
+pgvector==0.5.0
+
+# Auth
+bcrypt==4.3.0
+pyjwt==2.15.1
+
+# Settings
+pydantic==2.13.5
+pydantic-settings==2.15.0
+email-validator==2.3.0
+
+# Cache / Queue
+redis==5.3.1
+celery==5.6.3
+
+# LLM — Primary
+groq==0.37.1
+
+# LLM — Fallback (only loaded when OPENAI_FALLBACK_ENABLED=true)
+openai==1.109.1
+
+# Embeddings
+numpy==1.26.4
+
+# Ingestion
+feedparser==6.0.14
+httpx==0.28.1
+# Lets httpx decode Accept-Encoding: br on feed responses.
+brotli==1.2.0
+playwright==1.63.0
+beautifulsoup4==4.15.0
+lxml==6.1.3
+listparser==0.20
+trafilatura==1.12.2
+nh3==0.3.7
+defusedxml==0.7.1
+
+# Email
+jinja2==3.1.6
+
+# Observability — error tracking (opt-in via SENTRY_DSN)
+sentry-sdk==2.71.0
+
+# Testing
+# pytest-asyncio==1.4.0 requires pytest>=8.4,<10 (supports pytest 9).
+pytest==9.1.1
+pytest-asyncio==1.4.0
+respx==0.23.1
+httpx==0.28.1
+
+# Search — Meilisearch is integrated via raw httpx in app/utils/search.py;
+# the official SDK pin (3.3.3) referenced a nonexistent release and was never imported.
+
+# Utilities
+python-dotenv==1.2.3

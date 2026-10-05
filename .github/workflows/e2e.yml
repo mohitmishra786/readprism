@@ -1,0 +1,42 @@
+# D-15 pipeline: Playwright e2e + axe a11y (0 serious) + PWA surface.
+name: E2E + a11y
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths: ["frontend/**", ".github/workflows/e2e.yml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Build + serve
+        working-directory: frontend
+        run: |
+          npm run build
+          npx next start -p 3000 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000 >/dev/null && break; sleep 2; done
+      - name: Run e2e (axe 0 serious, PWA surface)
+        working-directory: frontend
+        run: npx playwright test

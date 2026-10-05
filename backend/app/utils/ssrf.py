@@ -202,11 +202,12 @@ async def safe_fetch(
     )
     try:
         for _ in range(max_redirects + 1):
-            validate_public_url(current, resolver=resolver)
             # Cleartext guard: when the caller carries private payload (e.g.
             # webhook exports), every hop must be TLS (CodeRabbit CWE-319).
+            # Checked before DNS so cleartext is rejected without lookups.
             if require_https and not current.lower().startswith("https://"):
                 raise UnsafeURLError(f"cleartext hop rejected for secure fetch: {current!r}")
+            validate_public_url(current, resolver=resolver)
             async with client.stream(method, current, headers=headers, content=content) as resp:
                 if resp.is_redirect and resp.headers.get("location"):
                     saw_redirect = True

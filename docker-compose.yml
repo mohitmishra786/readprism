@@ -172,7 +172,10 @@ services:
       start_period: 150s  # allow first heartbeat + worker warm-up
 
   meilisearch:
+    # Optional since ADR 0005 (Postgres FTS+vector search). Kept for operators
+    # who want it; enabled with: docker compose --profile full up
     image: getmeili/meilisearch:v1.6
+    profiles: ["full"]
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
       # production mode enforces the master key (search isn't left open); the dev
@@ -191,7 +194,11 @@ services:
       retries: 5
 
   browserless:
+    # Rendered-page extraction (JS-heavy sites). Enabled with:
+    #   docker compose --profile full up
+    # The lite profile skips it: those pages keep their feed summary.
     image: browserless/chrome:1.61.0-puppeteer-21.3.8
+    profiles: ["full"]
     environment:
       MAX_CONCURRENT_SESSIONS: 5
       PREBOOT_CHROME: "true"

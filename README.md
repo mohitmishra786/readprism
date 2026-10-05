@@ -16,6 +16,29 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 
 ---
 
+## Quickstart
+
+```bash
+cp .env.example .env          # set SECRET_KEY (and optionally GROQ_API_KEY)
+docker compose up -d --build  # lite profile: db, redis, backend, workers, frontend
+docker compose exec backend alembic upgrade head
+open http://localhost:3001    # create your account and onboard
+```
+
+**Profiles** (RL-01):
+- `lite` (default, ~1.5 GB RAM): no Browserless, no Meilisearch. Hash
+  embeddings; JS-heavy pages keep their feed summaries; search is Postgres
+  FTS + pgvector.
+- `full`: `docker compose --profile full up -d --build` — adds Browserless
+  (rendered extraction) and Meilisearch. For MiniLM embeddings build the
+  default backend image (published as `:latest`; torch-free as `:latest-lite`).
+
+**Operations**:
+- `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
+  verified round-trip in CI.
+- `make demo` — seed a synthetic demo persona.
+- `make starter-pack-check` — verify starter-pack feed liveness (>=90%).
+
 ## Screenshots
 
 > Visuals are captured into `docs/media/` — see [`docs/MEDIA.md`](docs/MEDIA.md)
@@ -317,7 +340,7 @@ readprism/
 
 These are baseline templates for the software; a hosted operator should have them
 reviewed by counsel before collecting user data. Licensed under
-[AGPL-3.0](LICENSE) — network-use modifications must be shared back.
+[MIT](LICENSE).
 
 ---
 

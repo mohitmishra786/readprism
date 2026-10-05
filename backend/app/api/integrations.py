@@ -155,6 +155,44 @@ async def export_webhook(
     return {"delivered": delivered, "total": len(files), "errors": errors[:5]}
 
 
+class SidecarImportRequest(BaseModel):
+    provider: str = Field(..., pattern="^(miniflux|freshrss)$")
+    base_url: str  # https://reader.example.tld
+    token: str | None = None  # Miniflux API token
+    username: str | None = None  # FreshRSS
+    app_password: str | None = None
+
+
+@router.post("/import-sidecar")
+async def import_sidecar(
+    body: SidecarImportRequest,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """EC-07 (D-14): import subscriptions (+ Miniflux read state) from an
+    existing Miniflux/FreshRSS instance. Credentials used in-memory only."""
+    from app.services.integrations.sidecar import import_from_freshrss, import_from_miniflux
+
+    if body.provider == "miniflux":
+        if not body.token:
+            raise HTTPException(status_code=422, detail="Miniflux import needs a token")
+        result = await import_from_miniflux(current_user, body.base_url, body.token, session)
+    else:
+        if not body.username or not body.app_password:
+            raise HTTPException(
+                status_code=422, detail="FreshRSS import needs username + app password"
+            )
+        result = await import_from_freshrss(
+            current_user, body.base_url, body.username, body.app_password, session
+        )
+    return {
+        "feeds_added": result.feeds_added,
+        "feeds_existing": result.feeds_existing,
+        "read_marked": result.read_marked,
+        "errors": result.errors,
+    }
+
+
 @router.post("/notion")
 async def notion_export(
     body: NotionExportRequest,
