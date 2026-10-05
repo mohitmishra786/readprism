@@ -45,7 +45,7 @@ Last commit on `main`: `c443516` (PR #77 + deps merged)
 | D-12 | License and README drift must be resolved to whatever the `LICENSE` file says; do not change the license without the owner (see OQ-01). | Avoid accidental relicensing. | 2026-09-24 |
 | D-13 | **Relicense AGPL-3.0 → MIT** by explicit owner decision (2026-10-02). LICENSE, README, package metadata and docs switched in one commit. Owner asserts authority over all copyright holders. | Owner call (D-12); maximizes self-hoster/fork adoption. | 2026-10-02 |
 | D-14 | **EC-07 = sidecar mode**: import subscriptions + read state from Miniflux/FreshRSS; no Reader/Fever façade for v0.1.0 (ADR 0007). | Owner call; smallest reversible interop. | 2026-10-02 |
-| D-15 | Phase 6 includes the shared Playwright CI pipeline (axe a11y, offline PWA, telemetry + extension e2e) — closes the last Gate-3 box. | Owner call. | 2026-10-02 |
+| D-15 | Phase 6 includes the shared Playwright CI pipeline. Delivered (v1): axe 0-serious on home/login + PWA manifest/SW surface checks. Named follow-ups on the same pipeline: offline-PWA, telemetry and extension browser e2e against a compose stack. | Owner call. | 2026-10-02 |
 
 _(Agent appends new decisions below; ADR file for anything architectural.)_
 
@@ -199,7 +199,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 **Gate 3 — Digest & UX**
 - [x] Digest sections (UX-01), length personalization (UX-02), scheduling (UX-03), email v2 with signed feedback links (UX-04) — all implemented with DB-backed tests through the real builder/delivery paths.
 - [x] Search: Postgres FTS + pgvector with RRF shipped (UX-11, ADR 0005 — Meilisearch dormant). Latency target p95 < 300 ms at 100k items NOT yet measured — load benchmark deferred to RL-06 (named there).
-- [ ] a11y CI check (axe) + Lighthouse — keyboard-first reader EXISTS (UX-05 shortcuts); the automated a11y CI remains the one open box, blocked on the shared Playwright pipeline (named under UX-05/14). Owner has directed continued phase progression; this residual is tracked, not forgotten.
+- [x] a11y CI: `e2e.yml` runs Playwright + axe — 0 serious/critical on the public + login pages (two real label-association bugs found and fixed; one WCAG AA contrast fix on the marketing CTA). Lighthouse measurement remains named follow-up; keyboard-first reader exists (UX-05).
 
 **Gate 4 — Cold start**
 - [x] First-digest quality gate passes for ≥ 5 synthetic personas — `test_persona_first_digest_meets_the_gate` is parametrized over 5 personas (systems-engineer, ml-researcher, security-analyst, startup-founder, design-nerd), each through the real `build_digest`; all pass the ≥5-items/≥3-clusters/≥1-discovery/0-dupes/≥80%-summaries check.

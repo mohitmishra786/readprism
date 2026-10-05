@@ -40,10 +40,10 @@ resale. See [PRIVACY.md](PRIVACY.md).
 
 ### What's the license / can a competitor just fork it?
 
-MIT. You can self-host and modify it freely, but network-use modifications
-must be shared back — so a competitor can't take the engine, close it, and run a
-hosted product with zero reciprocity. The moat is accumulated behavioral data
-(per-instance, not portable). Contributions take a DCO sign-off
+MIT (relicensed from AGPL-3.0 on 2026-10-02, decision D-13). Use, modify,
+self-host, and fork freely — keep the license notice. The moat is accumulated
+behavioral data (per-instance, not portable), not license restrictions.
+Contributions take a DCO sign-off
 ([CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ### Pricing?

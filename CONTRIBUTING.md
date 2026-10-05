@@ -15,14 +15,14 @@ See the [README](README.md) for the Docker Compose setup. Before submitting:
 
 ## Contributor License / sign-off
 
-> **Note:** The project is licensed under [AGPL-3.0](LICENSE). Have counsel
+> **Note:** The project is licensed under [MIT](LICENSE). Have counsel
 > review this section before accepting the first external contribution. It is
 > not legal advice.
 
 By submitting a contribution you agree to the **Developer Certificate of Origin**
 ([DCO 1.1](https://developercertificate.org/)): you certify that you wrote the
 contribution (or have the right to submit it) and that it may be distributed
-under the project's AGPL-3.0 license. Sign your commits off:
+under the project's MIT license. Sign your commits off:
 
 ```bash
 git commit -s -m "your message"
@@ -31,7 +31,7 @@ git commit -s -m "your message"
 which appends a `Signed-off-by: Your Name <you@example.com>` line.
 
 **Relicensing grant.** So the project can adopt a different OSI-approved license
-in the future (e.g. AGPL-3.0) without chasing down every past contributor, you
+in the future (e.g. MIT) without chasing down every past contributor, you
 also grant the maintainer a perpetual, irrevocable right to relicense your
 contribution under any [OSI-approved license](https://opensource.org/licenses).
 This is the cheapest to establish now, while the contributor set is small.

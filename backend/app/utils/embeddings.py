@@ -33,6 +33,7 @@ class EmbeddingService:
             spec = spec_for(model_name)
             self._hash_spec = spec
             self._hash_embed = hash_embed
+            self._cache_ns = f"hash:{spec.name}:{spec.dim}"
             self.model = None
             self.model_name = spec.name
             self.dimension = spec.dim
@@ -42,6 +43,7 @@ class EmbeddingService:
         self.model = SentenceTransformer(model_name, device=device)
         self.model_name = model_name
         self.dimension = 384
+        self._cache_ns = f"st:{model_name}"
 
     def encode(self, texts: list[str]) -> np.ndarray:
         if not texts:
@@ -59,7 +61,7 @@ class EmbeddingService:
         return await asyncio.to_thread(self.encode, texts)
 
     async def encode_single(self, text: str) -> list[float]:
-        cache_key = f"emb:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+        cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
         cached = await cache_get(cache_key)
         if cached is not None:
             return cached
@@ -73,7 +75,7 @@ class EmbeddingService:
         to_encode: list[tuple[int, str]] = []
 
         for i, text in enumerate(texts):
-            cache_key = f"emb:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
+            cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(text.encode()).hexdigest()[:16]}"
             cached = await cache_get(cache_key)
             if cached is not None:
                 results.append((i, cached))
@@ -86,7 +88,7 @@ class EmbeddingService:
             for idx, vec in zip(indices, vectors, strict=False):
                 vec_list = vec.tolist()
                 results.append((idx, vec_list))
-                cache_key = f"emb:{hashlib.sha256(raw_texts[list(indices).index(idx)].encode()).hexdigest()[:16]}"
+                cache_key = f"emb:{self._cache_ns}:{hashlib.sha256(raw_texts[list(indices).index(idx)].encode()).hexdigest()[:16]}"
                 await cache_set(cache_key, vec_list, ttl_seconds=7 * 24 * 3600)
 
         results.sort(key=lambda x: x[0])

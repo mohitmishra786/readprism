@@ -13,6 +13,10 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL || "http://localhost:3000",
     trace: "off",
+    // Entrances animate opacity from 0; axe would read mid-animation
+    // contrast. The stylesheet honors prefers-reduced-motion (animations
+    // off, final opacity 1), so scanning is deterministic.
+    reducedMotion: "reduce",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   reporter: [["list"]],

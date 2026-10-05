@@ -7,7 +7,7 @@ on:
     branches: [main]
     paths: ["scripts/**", ".github/workflows/backup-restore.yml", "docker-compose.yml", "backend/Dockerfile", "backend/app/**"]
   pull_request:
-    paths: ["scripts/**", ".github/workflows/backup-restore.yml", "docker-compose.yml", "backend/Dockerfile"]
+    paths: ["scripts/**", ".github/workflows/backup-restore.yml", "docker-compose.yml", "backend/Dockerfile", "backend/app/**"]
   workflow_dispatch: {}
 
 permissions:

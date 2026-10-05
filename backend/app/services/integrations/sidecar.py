@@ -64,11 +64,29 @@ async def _add_feeds(user: User, feeds: list[dict], session: AsyncSession) -> Si
 
 
 async def _safe_get(url: str, **kwargs) -> httpx.Response | None:
-    """safe_fetch wrapper: transport/URL errors become None (graceful)."""
+    """safe_fetch wrapper for sidecar calls: auth headers must never be
+    replayed on a redirect hop, so redirects are disabled outright
+    (CodeRabbit CWE-200); failures become None (graceful)."""
     try:
-        return await safe_fetch(url, method="GET", require_https=True, **kwargs)
+        return await safe_fetch(url, method="GET", require_https=True, max_redirects=0, **kwargs)
     except Exception as e:
         logger.info(f"Sidecar fetch failed for {url}: {e}")
+        return None
+
+
+async def _sidecar_post(url: str, content: bytes) -> httpx.Response | None:
+    """safe_fetch POST wrapper: no redirects, credentials in the body only."""
+    try:
+        return await safe_fetch(
+            url,
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            content=content,
+            require_https=True,
+            max_redirects=0,
+        )
+    except Exception as e:
+        logger.info(f"Sidecar POST failed for {url}: {e}")
         return None
 
 
@@ -79,19 +97,39 @@ async def import_from_miniflux(
     base = base_url.rstrip("/")
     headers = {"X-Auth-Token": token}
 
-    resp = await _safe_get(f"{base}/v1/feeds?limit=200", headers=headers, max_bytes=2_000_000)
-    if resp is None:
-        return SidecarResult(errors=["Miniflux fetch failed: unreachable, blocked, or not HTTPS"])
-    if resp.status_code != 200:
-        return SidecarResult(errors=[f"Miniflux feed list failed: HTTP {resp.status_code}"])
-    data = json.loads(resp.content.decode("utf-8", errors="replace"))
-    result = await _add_feeds(user, data.get("feeds", []), session)
+    feeds: list[dict] = []
+    # Miniflux caps the response; paginate so feed #201 is not silently
+    # dropped with no retry path (CodeRabbit).
+    for offset in range(0, 1000, 200):
+        resp = await _safe_get(
+            f"{base}/v1/feeds?limit=200&offset={offset}",
+            headers=headers,
+            max_bytes=2_000_000,
+        )
+        if resp is None:
+            return SidecarResult(
+                errors=["Miniflux fetch failed: unreachable, blocked, or not HTTPS"]
+            )
+        if resp.status_code != 200:
+            return SidecarResult(errors=[f"Miniflux feed list failed: HTTP {resp.status_code}"])
+        data = json.loads(resp.content.decode("utf-8", errors="replace"))
+        # Miniflux returns a JSON array; tolerate a {"feeds": []} envelope too.
+        page = data if isinstance(data, list) else data.get("feeds", [])
+        if not page:
+            break
+        feeds.extend(page)
+        if len(page) < 200:
+            break
+    result = await _add_feeds(user, feeds, session)
 
     # Read state: mark already-ingested matching items as opened.
     entries_resp = await _safe_get(
         f"{base}/v1/entries?status=read&limit=100", headers=headers, max_bytes=2_000_000
     )
-    if entries_resp is not None and entries_resp.status_code == 200:
+    if entries_resp is None or entries_resp.status_code != 200:
+        status = entries_resp.status_code if entries_resp is not None else "unreachable"
+        result.errors.append(f"Miniflux read-state fetch failed: HTTP {status}")
+    else:
         read_urls = {
             e.get("url")
             for e in json.loads(entries_resp.content.decode("utf-8", errors="replace")).get(
@@ -132,14 +170,14 @@ async def import_from_freshrss(
     user: User, base_url: str, username: str, app_password: str, session: AsyncSession
 ) -> SidecarResult:
     """FreshRSS via its Google-Reader-compatible API (subscriptions only)."""
-    from urllib.parse import quote
-
     base = base_url.rstrip("/")
     endpoint = f"{base}/api/greader.php"
-    login_url = (
-        f"{endpoint}/accounts/ClientLogin" f"?Email={quote(username)}&Passwd={quote(app_password)}"
+    # Credentials travel in the POST body only — never the URL, where they
+    # would land in request logs (CodeRabbit CWE-598).
+    login = await _sidecar_post(
+        f"{endpoint}/accounts/ClientLogin",
+        content=f"Email={username}&Passwd={app_password}".encode(),
     )
-    login = await _safe_get(login_url)
     if login is None:
         return SidecarResult(errors=["FreshRSS login failed: unreachable, blocked, or not HTTPS"])
     if login.status_code != 200 or b"Auth=" not in login.content:

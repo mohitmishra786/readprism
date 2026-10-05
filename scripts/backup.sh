@@ -10,6 +10,7 @@
 #   ./scripts/backup.sh  [output-dir]        (default: ./backups)
 #   ./scripts/restore.sh backups/readprism-<ts>.tar.gz
 set -euo pipefail
+umask 077  # archive contains .env secrets
 cd "$(dirname "$0")/.."
 
 OUT_DIR="${1:-backups}"
@@ -22,8 +23,14 @@ echo "==> dumping postgres (readprism)…"
 docker compose exec -T db pg_dump -U readprism -d readprism -Fc > "$TARGET/db.dump"
 
 echo "==> snapshotting redis…"
+LASTSAVE_BEFORE="$(docker compose exec -T redis redis-cli --raw LASTSAVE | tr -d '[:space:]')"
 docker compose exec -T redis redis-cli BGSAVE >/dev/null
-sleep 1
+# Poll LASTSAVE until it changes: BGSAVE is asynchronous (CodeRabbit).
+for _ in $(seq 1 60); do
+  LASTSAVE_NOW="$(docker compose exec -T redis redis-cli --raw LASTSAVE | tr -d '[:space:]')"
+  [ "$LASTSAVE_NOW" != "$LASTSAVE_BEFORE" ] && break
+  sleep 1
+done
 docker compose cp redis:/data/dump.rdb "$TARGET/redis.rdb" >/dev/null 2>&1 \
   || echo "  (no redis persistence file — skipping)"
 

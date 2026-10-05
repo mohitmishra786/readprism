@@ -312,7 +312,7 @@ export default function RootPage() {
           </p>
           <a
             href="/register"
-            className="bg-[#e8702a] hover:bg-[#d2611f] text-white text-sm font-medium px-7 py-3 rounded-full transition-all hover:scale-[1.03] active:scale-95 hover:shadow-lg hover:shadow-[#e8702a]/30"
+            className="bg-[#b45309] hover:bg-[#9a4207] text-white text-sm font-medium px-7 py-3 rounded-full transition-all hover:scale-[1.03] active:scale-95 hover:shadow-lg hover:shadow-[#b45309]/30"
           >
             Start reading
           </a>

@@ -4,7 +4,8 @@ starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
 
 up-lite:
-	docker compose up -d --build
+	docker compose build --build-arg LITE=1 backend
+	docker compose up -d
 
 up-full:
 	docker compose --profile full up -d --build

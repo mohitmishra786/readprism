@@ -28,6 +28,7 @@ jobs:
         id: meta
         with:
           images: ghcr.io/${{ github.repository }}/readprism-backend
+          flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
@@ -44,6 +45,7 @@ jobs:
         id: meta_lite
         with:
           images: ghcr.io/${{ github.repository }}/readprism-backend
+          flavor: latest=false
           tags: |
             type=semver,pattern={{version}}-lite
             type=raw,value=latest-lite,enable={{is_default_branch}}
@@ -58,6 +60,7 @@ jobs:
         id: meta_front
         with:
           images: ghcr.io/${{ github.repository }}/readprism-frontend
+          flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}

@@ -21,6 +21,7 @@ from sqlalchemy import select
 
 
 async def main() -> None:
+    from app.api.auth import _hash_password
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem
     from app.models.source import Source
@@ -33,13 +34,15 @@ async def main() -> None:
         email = "demo@readprism.local"
         existing = await session.execute(select(User).where(User.email == email))
         user = existing.scalar_one_or_none()
+        # bcrypt hash in BOTH branches — a plaintext password can never log in
+        # (CodeRabbit).
         if user is None:
-            user = User(email=email, hashed_password=password, onboarding_complete=True)
+            user = User(
+                email=email, hashed_password=_hash_password(password), onboarding_complete=True
+            )
             session.add(user)
             await session.flush()
         else:
-            from app.api.auth import _hash_password
-
             user.hashed_password = _hash_password(password)
             await session.flush()
 

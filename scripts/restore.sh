@@ -40,7 +40,7 @@ ACTUAL="$(docker compose exec -T db psql -U readprism -d readprism -tAc \
   "SELECT version_num FROM alembic_version" | tr -d '[:space:]')"
 echo "  manifest=$EXPECTED restored=$ACTUAL"
 [ "$EXPECTED" = "unknown" ] || [ "$EXPECTED" = "$ACTUAL" ] \
-  || { echo "HEAD MISMATCH — run 'docker compose run --rm backend alembic upgrade head' to roll forward."; }
+  || { echo "HEAD MISMATCH — run 'docker compose run --rm backend alembic upgrade head' to roll forward."; exit 1; }
 
 echo "==> restarting services…"
 docker compose up -d backend worker-scrape worker-embed worker-digest beat >/dev/null

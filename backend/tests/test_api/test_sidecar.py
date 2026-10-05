@@ -45,6 +45,10 @@ class _MockTransport(httpx.AsyncBaseTransport):
                 },
             )
         if "ClientLogin" in path:
+            # POST body carries the credentials (CWE-598); URL stays clean.
+            assert "Passwd=" not in str(request.url)
+            body = request.content.decode() if request.content else ""
+            assert "Email=me" in body and "Passwd=app-pass" in body
             return httpx.Response(200, text="SID=x\nAuth=freshtoken\n")
         if "subscription/list" in path:
             assert request.headers.get("Authorization") == "GoogleLogin auth=freshtoken"
