@@ -3,8 +3,8 @@
 > **Copy this file to `docs/PROGRESS.md` in the repo.** The implementing agent reads it at the start of every session and updates it after every task. If this file and your memory disagree, this file wins.
 > Companion docs: `docs/ROADMAP.md` (why/what), `spec/PCIP_Proposal_V2.md` (product spec), `docs/adr/` (decision records).
 
-Last updated: 2026-10-18, reconciliation (all phases done; v0.1.0 pending tag)
-Current phase: **Complete — awaiting v0.1.0 tag + GitHub Release**
+Last updated: 2026-10-18 — **v0.1.0 released** (Gate 6 closed)
+Current phase: **Complete — v0.1.0 released 2026-10-18**
 Last commit on `main`: `c443516` (PR #77 + deps merged)
 
 ---
@@ -169,7 +169,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - **RL-04** [DONE] (P1·S) Backup/restore — Evidence: `scripts/backup.sh` (pg_dump -Fc + redis BGSAVE + .env + manifest incl. alembic head) and `scripts/restore.sh` (drop/recreate, stdin pg_restore, head-mismatch warning, service restart). **Round-trip proven locally** (backup → drop → restore → head 0021 verified) AND in CI: `.github/workflows/backup-restore.yml` (seed marker row → backup → destroy → restore → assert marker + head). Single-head check included.
 - **RL-05** [DONE] (P2·S) Governance — Evidence: CODE_OF_CONDUCT.md (Contributor Covenant 2.1), ISSUE_TEMPLATE (bug/feature), PULL_REQUEST_TEMPLATE.md; CONTRIBUTING.md and SECURITY.md already existed.
 - **RL-06** [DONE] (P2·S) Benchmarks page — Evidence: `docs/benchmarks.md` — ranking NDCG table, extraction gate, retrieval MRR, pack liveness, first-digest gate, profile sizing, each with its repro command. Two named unmeasured rows (search p95 @100k, digest build @1k loaded).
-- **RL-07** [PENDING-OWNER] (P1·S) v0.1.0 release — everything staged on this branch; tag `v0.1.0` + GitHub Release after merge (GHCR images publish automatically on the tag). Release notes drafted in the Session 11 log.
+- **RL-07** [DONE] (P1·S) v0.1.0 release — Evidence: tag `v0.1.0` pushed and [GitHub Release published](https://github.com/mohitmishra786/readprism/releases/tag/v0.1.0) (2026-10-18). GHCR images verified live: `ghcr.io/mohitmishra786/readprism/readprism-backend:{0.1.0, 0.1.0-lite, latest, latest-lite}` and `readprism-frontend:{0.1.0, latest}` (publish workflow green). Fresh-VM ≤10-min timing check remains the owner's optional post-release validation.
 - **RL-08** [DONE] (P2·S) Licensing hygiene — Evidence: **relicensed MIT** (D-13, owner call): LICENSE replaced, README/LAUNCH/package metadata aligned. Dependency license report: all Python deps permissive-style (BSD/Apache/MIT/PSF) except `pgvector` (PostgreSQL licence, permissive); npm tree MIT-dominant with permissive toolchain — full machine-generated report `docs/licenses.md` deferred (named).
 - **RL-09** [DROPPED] (P3·–) Hosted-option prerequisites (multi-tenant isolation, billing, quotas, abuse controls) — backlog only until pull exists (D-10). Evidence: decision D-10.
 
@@ -209,7 +209,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - [x] PWA installable (manifest + SW + install prompt) with offline digest + reader cache; extension packaged (`build.sh` zip, Chrome+Firefox MV3); API tokens + MCP server implemented and tested. Named residuals: Web Push (optional, unimplemented), Lighthouse/offline/extension browser-e2e automation (awaits the shared Playwright pipeline), EC-07 owner decision (ADR 0007).
 
 **Gate 6 — Release**
-- [x] Backup/restore proven in CI (`backup-restore.yml`: seed → backup → destroy → restore → assert). Docs site source complete (MkDocs; hosting = GitHub pages on tag, owner action). Lite/full install profiles + Quickstart in README. **Remaining for the owner:** tag `v0.1.0` after merging this PR (images publish automatically), publish the docs site, and run the fresh-VM timing check (≤ 10 min) against the tagged Quickstart.
+- [x] **v0.1.0 tagged and released 2026-10-18**; GHCR images verified live (backend 0.1.0/0.1.0-lite/latest/latest-lite, frontend 0.1.0/latest). Backup/restore proven in CI. Lite/full profiles + Quickstart shipped. Owner-optional: docs Pages hosting, fresh-VM timing check.
 
 ---
 
