@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.user import User
-from app.services.ranking.meta_weights import get_meta_weights
+from app.services.ranking.meta_weights import UserMetaWeights, get_meta_weights
 from app.services.ranking.signals import (
     UserInterestGraph,
     content_quality,
@@ -34,36 +36,52 @@ SIGNAL_MODULES = {
 }
 
 
-async def compute_prs(
-    content: ContentItem,
-    user: User,
-    session: AsyncSession,
-) -> tuple[float, dict[str, float]]:
-    # Load meta weights
-    meta = await get_meta_weights(user.id, session)
+@dataclass
+class RankingContext:
+    """Per-user state every item's score needs; loaded once per digest build."""
 
-    # Load interaction history (last 200)
+    meta: UserMetaWeights
+    history: list[UserContentInteraction]
+    graph: UserInterestGraph
+
+
+async def load_ranking_context(user: User, session: AsyncSession) -> RankingContext:
+    meta = await get_meta_weights(user.id, session)
     history_result = await session.execute(
         select(UserContentInteraction)
         .where(UserContentInteraction.user_id == user.id)
         .order_by(UserContentInteraction.created_at.desc())
         .limit(200)
     )
-    interaction_history = [
-        row for row in history_result.scalars().all() if row.content_item_id != content.id
-    ]
-
-    # Load interest graph
     nodes_result = await session.execute(
         select(InterestNode).where(InterestNode.user_id == user.id)
     )
     edges_result = await session.execute(
         select(InterestEdge).where(InterestEdge.user_id == user.id)
     )
-    graph = UserInterestGraph(
-        nodes=list(nodes_result.scalars().all()),
-        edges=list(edges_result.scalars().all()),
+    return RankingContext(
+        meta=meta,
+        history=list(history_result.scalars().all()),
+        graph=UserInterestGraph(
+            nodes=list(nodes_result.scalars().all()),
+            edges=list(edges_result.scalars().all()),
+        ),
     )
+
+
+async def compute_prs(
+    content: ContentItem,
+    user: User,
+    session: AsyncSession,
+    ctx: RankingContext | None = None,
+) -> tuple[float, dict[str, float]]:
+    """Score one item. Pass a preloaded `ctx` when scoring many items (#99)."""
+    if ctx is None:
+        ctx = await load_ranking_context(user, session)
+    meta = ctx.meta
+    graph = ctx.graph
+    # Never let the item's own interaction inform its score (leakage).
+    interaction_history = [row for row in ctx.history if row.content_item_id != content.id]
 
     # Compute signals sequentially. They all query through the same AsyncSession,
     # which is NOT safe to use concurrently (SQLAlchemy async sessions aren't
