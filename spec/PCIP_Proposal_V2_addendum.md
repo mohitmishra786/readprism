@@ -6,7 +6,7 @@ line cites a decision id.
 
 | Topic | V2 said | What is true now | Decision |
 |---|---|---|---|
-| License | README once said MIT | `LICENSE` is AGPL-3.0-only. README matches the file. | D-12, OQ-01 (open, default is the LICENSE file) |
+| License | README once said MIT | `LICENSE` is MIT. README matches the file. | D-13 (owner confirmed MIT on 2026-10-02; closes OQ-01) |
 | Summarizer models | Groq Llama 3.3 70B and Llama 3.1 8B | `LLM_MODEL_PRIMARY` / `LLM_MODEL_FAST`. Defaults `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. Retired ids are rewritten. | D-01 |
 | Digest without an LLM | Summaries are part of the pipeline | Extractive summary is stored and the digest still builds. `summary_source` is `llm` or `extractive`. | D-02 |
 | Embeddings | A single vector, model unspecified in places | `all-MiniLM-L6-v2`, 384-d, pgvector. The switch to `nomic-embed-text-v1.5` is not done; it waits on a golden retrieval check. | D-03 |
