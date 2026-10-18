@@ -55,7 +55,7 @@ def test_groq_api_key_fallback_warns_deprecation(monkeypatch):
     monkeypatch.setenv("APP_ENV", "development")
     monkeypatch.setenv("GROQ_API_KEY", "gsk-legacy-key")
     monkeypatch.delenv("LLM_API_KEY", raising=False)
-    with pytest.warns(DeprecationWarning, match="removed in v0.3"):
+    with pytest.warns(FutureWarning, match="removed in v0.3"):
         settings = config.get_settings()
     assert settings.llm_api_key == "gsk-legacy-key"
 
@@ -66,7 +66,7 @@ def test_groq_model_legacy_names_warn_deprecation(monkeypatch):
     monkeypatch.delenv("LLM_MODEL_PRIMARY", raising=False)
     monkeypatch.delenv("LLM_MODEL_FAST", raising=False)
     monkeypatch.setenv("GROQ_SUMMARIZATION_MODEL", "some-live-model")
-    with pytest.warns(DeprecationWarning, match="removed in v0.3"):
+    with pytest.warns(FutureWarning, match="removed in v0.3"):
         settings = config.get_settings()
     assert settings.llm_model_primary == "some-live-model"
 
