@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.source import Source
 from app.services.interest_graph.graph import InterestGraphManager
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
@@ -50,77 +49,104 @@ def _compute_signal_strength(interaction: UserContentInteraction) -> float:
     return 0.0
 
 
+def _normalise(signal: float) -> float:
+    return max(-1.0, min(1.0, signal))
+
+
 async def update_from_interaction(
     interaction: UserContentInteraction,
     content: ContentItem,
     session: AsyncSession,
-) -> None:
-    topic_clusters = content.topic_clusters or []
-    if not topic_clusters:
-        logger.debug(f"No topic clusters for content {content.id}, skipping graph update")
-        return
+) -> bool:
+    """Apply this interaction's signal to the interest graph and trust weights.
 
+    Idempotent per interaction (#105): the reader flushes telemetry every 20 s
+    and every flush re-enqueues this update. Only the change between the
+    signal already applied (`graph_signal_applied`) and the current one is
+    applied, edges are reinforced once per read, and reinforcement counts move
+    only on the first application. Returns True if anything changed.
+    """
     signal_strength = _compute_signal_strength(interaction)
-    embedding_service = get_embedding_service()
+    previous = interaction.graph_signal_applied
+    first_application = previous is None
+    delta = signal_strength - (previous or 0.0)
+    if not first_application and abs(delta) < 1e-9:
+        return False
 
-    # Embed topic labels if needed
-    topic_embeddings = await embedding_service.encode_batch_cached(topic_clusters)
+    topic_clusters = content.topic_clusters or []
+    if topic_clusters:
+        embedding_service = get_embedding_service()
+        topic_embeddings = await embedding_service.encode_batch_cached(topic_clusters)
 
-    # Get or create nodes
-    nodes = []
-    for label, emb in zip(topic_clusters, topic_embeddings, strict=False):
-        node = await graph_manager.get_or_create_node(
-            user_id=interaction.user_id,
-            topic_label=label,
-            topic_embedding=emb,
-            session=session,
-        )
-        await graph_manager.reinforce_node(node, signal_strength, session)
-        nodes.append(node)
+        nodes = []
+        for label, emb in zip(topic_clusters, topic_embeddings, strict=False):
+            node = await graph_manager.get_or_create_node(
+                user_id=interaction.user_id,
+                topic_label=label,
+                topic_embedding=emb,
+                session=session,
+            )
+            if delta:
+                await graph_manager.reinforce_node(node, delta, session, count=first_application)
+            nodes.append(node)
 
-    # Reinforce edges — cap to top-N nodes by weight to bound DB write count.
-    # combinations(5, 2) = 10 writes max vs. potentially hundreds for long topic lists.
-    top_nodes = sorted(nodes, key=lambda n: n.weight, reverse=True)[:MAX_TOPICS_FOR_EDGE_UPDATE]
-    for node_a, node_b in itertools.combinations(top_nodes, 2):
-        await graph_manager.reinforce_edge(
-            user_id=interaction.user_id,
-            node_a_id=node_a.id,
-            node_b_id=node_b.id,
-            session=session,
-        )
+        # Co-reading edges once per read: when the applied signal first turns
+        # positive. Cap to the top-N nodes by weight to bound DB writes
+        # (combinations(5, 2) = 10).
+        became_positive = signal_strength > 0 and (previous is None or previous <= 0)
+        if became_positive:
+            top_nodes = sorted(nodes, key=lambda n: n.weight, reverse=True)[
+                :MAX_TOPICS_FOR_EDGE_UPDATE
+            ]
+            for node_a, node_b in itertools.combinations(top_nodes, 2):
+                await graph_manager.reinforce_edge(
+                    user_id=interaction.user_id,
+                    node_a_id=node_a.id,
+                    node_b_id=node_b.id,
+                    session=session,
+                )
+    else:
+        logger.debug(f"No topic clusters for content {content.id}, skipping graph nodes")
 
-    # Update source trust weight based on behavioral signal
-    await _update_source_trust(interaction, content, signal_strength, session)
+    trust_delta = _normalise(signal_strength) - _normalise(previous or 0.0)
+    await _update_source_trust(interaction, content, trust_delta, first_application, session)
 
+    interaction.graph_signal_applied = signal_strength
+    await session.flush()
     logger.debug(
         f"Updated interest graph for user {interaction.user_id}: "
-        f"{len(nodes)} nodes, signal={signal_strength:.2f}"
+        f"{len(topic_clusters)} topics, signal={signal_strength:.2f} (delta {delta:+.2f})"
     )
+    return True
 
 
 async def _update_source_trust(
     interaction: UserContentInteraction,
     content: ContentItem,
-    signal_strength: float,
+    normalised_delta: float,
+    first_application: bool,
     session: AsyncSession,
 ) -> None:
-    """Nudge source trust_weight up or down based on behavioral signal."""
-    if content.source_id is None:
+    """Nudge the reader's source trust by the change in this interaction's signal."""
+    if not normalised_delta:
         return
-    result = await session.execute(select(Source).where(Source.id == content.source_id))
-    source = result.scalar_one_or_none()
-    if source is None:
-        return
+    from app.services.feed_identity import user_source_for_item
 
-    # Normalise signal to [-1, 1] range
-    normalised = max(-1.0, min(1.0, signal_strength))
-    delta = TRUST_LEARN_RATE * normalised
-    source.trust_weight = float(max(TRUST_MIN, min(TRUST_MAX, source.trust_weight + delta)))
-    await session.flush()
+    # The reader's own source for this feed: the item may be stored under
+    # another subscriber's source row, and writing there changed someone
+    # else's trust (#108). Only the change since the last application is
+    # applied (#105).
+    source = await user_source_for_item(session, interaction.user_id, content.source_id)
+    if source is not None:
+        delta = TRUST_LEARN_RATE * normalised_delta
+        source.trust_weight = float(max(TRUST_MIN, min(TRUST_MAX, source.trust_weight + delta)))
+        await session.flush()
 
     # Update per-creator-per-topic trust if content has a creator
     if content.creator_platform_id is not None:
-        await _update_creator_topic_trust(interaction, content, normalised, session)
+        await _update_creator_topic_trust(
+            interaction, content, normalised_delta, session, count=first_application
+        )
 
 
 async def _update_creator_topic_trust(
@@ -128,6 +154,8 @@ async def _update_creator_topic_trust(
     content: ContentItem,
     normalised_signal: float,
     session: AsyncSession,
+    *,
+    count: bool = True,
 ) -> None:
     """
     Update trust at the creator × topic level.
@@ -169,7 +197,8 @@ async def _update_creator_topic_trust(
         trust_record.trust_weight = float(
             max(TRUST_MIN, min(TRUST_MAX, trust_record.trust_weight + delta))
         )
-        trust_record.interaction_count += 1
+        if count:
+            trust_record.interaction_count += 1
 
     if topic_clusters:
         await session.flush()

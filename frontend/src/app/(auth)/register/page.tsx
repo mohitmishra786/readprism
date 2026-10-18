@@ -1,8 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { setToken } from "../../../lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,14 +10,25 @@ export default function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
+  // What this instance allows (#153): closed instances accept only their owner.
+  const [registration, setRegistration] = useState<{
+    mode: string;
+    open: boolean;
+    invite_required: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    api.auth.registration().then(setRegistration).catch(() => setRegistration(null));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     try {
-      const token = await api.auth.register(email, password, displayName || undefined);
-      setToken(token.access_token, token.refresh_token);
+      // Credentials arrive as httpOnly cookies (#103); nothing to store here.
+      await api.auth.register(email, password, displayName || undefined, inviteCode || undefined);
       router.replace("/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -35,6 +45,18 @@ export default function RegisterPage() {
           <p className="mt-2 text-sm text-stone-500">Create your account</p>
         </div>
 
+        {registration && !registration.open && !registration.invite_required ? (
+          <div className="card space-y-3 p-6 text-sm text-stone-600">
+            <p>Registration is closed on this instance.</p>
+            <p>
+              Ask its owner for an account, or{" "}
+              <a href="/login" className="font-medium text-prism-600 hover:text-prism-700">
+                sign in
+              </a>
+              .
+            </p>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="card space-y-4 p-6">
           <div>
             <label htmlFor="reg-display-name" className="mb-1.5 block text-sm font-medium text-stone-700">
@@ -77,6 +99,21 @@ export default function RegisterPage() {
               className="input"
             />
           </div>
+          {registration?.invite_required && (
+            <div>
+              <label htmlFor="reg-invite" className="mb-1.5 block text-sm font-medium text-stone-700">
+                Invite code
+              </label>
+              <input
+                id="reg-invite"
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                required
+                className="input"
+              />
+            </div>
+          )}
           {error && (
             <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
               {error}
@@ -86,6 +123,7 @@ export default function RegisterPage() {
             {loading ? "Creating account…" : "Create account"}
           </button>
         </form>
+        )}
 
         <p className="mt-6 text-center text-sm text-stone-500">
           Have an account?{" "}

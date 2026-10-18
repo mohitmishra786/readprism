@@ -28,8 +28,20 @@ def get_groq_summarizer() -> GroqSummarizer:
 
 class SummarizationService:
     async def summarize(
-        self, content_item_id: uuid.UUID, title: str, full_text: str, session: AsyncSession
+        self,
+        content_item_id: uuid.UUID,
+        title: str,
+        full_text: str,
+        session: AsyncSession,
+        *,
+        use_llm: bool = True,
     ) -> SummarizationResult | None:
+        """Summarize and store. `use_llm=False` writes the extractive summary
+        without calling the model (lazy mode, #147)."""
+        if not use_llm:
+            result = extractive_summary(title, full_text)
+            await self._store(content_item_id, result, session)
+            return result
         model_tag = settings.llm_model_primary if settings.llm_configured else "extractive"
         cache_key = f"summary:{content_item_id}:{PROMPT_VERSION}:{model_tag}"
         cached = await cache_get(cache_key)
@@ -38,10 +50,12 @@ class SummarizationService:
             return SummarizationResult(**cached)
 
         # LLM when configured. A miss, a 404, or a rate limit must not block the digest.
-        result = await get_groq_summarizer().summarize(title, full_text)
-        if result is None:
+        llm_result = await get_groq_summarizer().summarize(title, full_text)
+        if llm_result is None:
             logger.info("extractive summary for item %s (llm unavailable)", content_item_id)
             result = extractive_summary(title, full_text)
+        else:
+            result = llm_result
 
         if result is not None:
             # An extractive stand-in must not occupy the LLM cache for 30 days,
@@ -67,23 +81,33 @@ class SummarizationService:
                 ttl_seconds=ttl,
             )
 
-            # Update DB
-            stmt = select(ContentItem).where(ContentItem.id == content_item_id)
-            row = await session.execute(stmt)
-            item = row.scalar_one_or_none()
-            if item:
-                item.summary_headline = result.headline
-                item.summary_brief = result.brief
-                item.summary_detailed = result.detailed
-                item.content_depth_score = result.depth_score
-                item.is_original_reporting = result.is_original_reporting
-                item.has_citations = result.has_citations
-                item.topic_clusters = result.topic_clusters
-                item.reading_time_minutes = result.reading_time_minutes
-                item.summary_source = result.summary_source
-                # The embedding worker retries while this is false. Only an LLM
-                # summary should suppress that retry.
-                item.summarization_cached = result.summary_source == "llm"
-                await session.flush()
+            await self._store(content_item_id, result, session)
 
         return result
+
+    async def _store(
+        self, content_item_id: uuid.UUID, result: SummarizationResult, session: AsyncSession
+    ) -> None:
+        item = (
+            await session.execute(select(ContentItem).where(ContentItem.id == content_item_id))
+        ).scalar_one_or_none()
+        if item is not None:
+            apply_summary(item, result)
+            await session.flush()
+
+
+def apply_summary(item: ContentItem, result: SummarizationResult) -> None:
+    item.summary_headline = result.headline
+    item.summary_brief = result.brief
+    item.summary_detailed = result.detailed
+    item.content_depth_score = result.depth_score
+    item.is_original_reporting = result.is_original_reporting
+    item.has_citations = result.has_citations
+    # Keep extractive keyword topics when the model returned none.
+    if result.topic_clusters or not item.topic_clusters:
+        item.topic_clusters = result.topic_clusters
+    item.reading_time_minutes = result.reading_time_minutes
+    item.summary_source = result.summary_source
+    # The embedding worker retries while this is false. Only an LLM summary
+    # should suppress that retry.
+    item.summarization_cached = result.summary_source == "llm"

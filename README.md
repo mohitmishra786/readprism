@@ -19,9 +19,8 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 ## Quickstart
 
 ```bash
-cp .env.example .env          # set SECRET_KEY (and optionally GROQ_API_KEY)
-docker compose up -d --build  # lite profile: db, redis, backend, workers, frontend
-docker compose exec backend alembic upgrade head
+./scripts/init_env.sh        # creates .env with generated secrets (add LLM_API_KEY optionally)
+docker compose up -d --build  # db, redis, backend, workers, frontend; migrations run automatically
 open http://localhost:3001    # create your account and onboard
 ```
 
@@ -76,13 +75,13 @@ open http://localhost:3001    # create your account and onboard
 ```bash
 git clone https://github.com/mohitmishra786/readprism.git
 cd readprism
-cp .env.example .env
+./scripts/init_env.sh   # copies .env.example to .env and generates SECRET_KEY, REFRESH_SECRET_KEY, METRICS_TOKEN
 ```
 
-Edit `.env` and fill in the required values:
+The app runs in production mode by default and refuses to start without a strong
+`SECRET_KEY`. Then fill in the optional values in `.env`:
 
 ```env
-SECRET_KEY=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
 LLM_API_KEY=<your Groq (or other OpenAI-compatible) API key>
 ZOHO_EMAIL=<your SMTP username>
 ZOHO_PASSWORD=<your SMTP app password>
@@ -100,6 +99,10 @@ other values have working defaults for local development.
 docker compose up --build
 ```
 
+For local development (`APP_ENV=development`, `--reload`, source mounts) use
+`make up-dev`, which adds `docker-compose.dev.yml`. Never expose a development
+instance: it relaxes webhook authentication and opens operator metrics.
+
 This starts seven services:
 
 | Service | Port | Description |
@@ -112,11 +115,11 @@ This starts seven services:
 | `browserless` | 3000 | Headless Chrome pool for scraping |
 | `frontend` | 3001 | Next.js web application |
 
-### 3. Run migrations
+### 3. Migrations
 
-```bash
-docker compose exec backend alembic upgrade head
-```
+The backend applies database migrations automatically on start (under a lock,
+so several replicas never race). Set `AUTO_MIGRATE=false` to run them yourself
+with `docker compose exec backend python -m app.migrate`.
 
 ### 4. Open the app
 
@@ -287,7 +290,7 @@ readprism/
 ├── spec/PCIP_Proposal_V2.md          # Product specification (source of truth)
 ├── .env.example                       # All environment variables with descriptions
 ├── docker-compose.yml                 # Production-equivalent local stack
-├── docker-compose.override.yml        # Local dev overrides
+├── docker-compose.dev.yml             # Local dev overrides (opt-in: make up-dev)
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt               # All Python deps pinned

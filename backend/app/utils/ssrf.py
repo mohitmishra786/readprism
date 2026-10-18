@@ -92,15 +92,23 @@ def validate_public_url(
     url: str,
     *,
     resolver: Callable[[str], Iterable[str]] = _default_resolver,
-) -> None:
+    allow_private_hosts: frozenset[str] = frozenset(),
+) -> list[str]:
     """Raise `UnsafeURLError` unless `url` is an http(s) URL whose host resolves
     exclusively to public, globally-routable IP addresses.
 
+    Returns the validated IP addresses, so the caller can connect to exactly
+    those (#165): resolving again at connect time would let a DNS-rebinding
+    answer swap in a private address after validation.
+
+    `allow_private_hosts` exempts exact hostnames from the private-address
+    check (homelab sidecar, #164); everything else still applies.
+
     `resolver` is injectable so tests can exercise host validation without real
-    DNS. When `ssrf_protection_enabled` is False this is a no-op.
+    DNS. When `ssrf_protection_enabled` is False this is a no-op returning [].
     """
     if not settings.ssrf_protection_enabled:
-        return
+        return []
 
     parsed = urlparse(url)
     scheme = parsed.scheme.lower()
@@ -115,16 +123,17 @@ def validate_public_url(
     host = host.rstrip(".")
 
     lowered = host.lower()
-    if lowered in _BLOCKED_HOSTNAMES or lowered.endswith(".localhost"):
+    exempt = lowered in allow_private_hosts
+    if not exempt and (lowered in _BLOCKED_HOSTNAMES or lowered.endswith(".localhost")):
         raise UnsafeURLError(f"host {host!r} is not permitted")
 
     # If the host is already an IP literal, check it directly (no DNS).
     literal_ip = _literal_ip(lowered)
     if literal_ip is not None:
-        reason = _blocked_ip_reason(literal_ip)
+        reason = None if exempt else _blocked_ip_reason(literal_ip)
         if reason:
             raise UnsafeURLError(f"IP {host} is {reason}")
-        return
+        return [str(literal_ip)]
 
     # Hostname: resolve and ensure *every* answer is public (guards round-robin
     # and DNS setups that return one public + one private record).
@@ -134,14 +143,40 @@ def validate_public_url(
         raise UnsafeURLError(f"could not resolve host {host!r}: {e}") from e
     if not addresses:
         raise UnsafeURLError(f"host {host!r} did not resolve")
+    validated: list[str] = []
     for addr in addresses:
         try:
             ip = ipaddress.ip_address(addr)
         except ValueError:
             continue
-        reason = _blocked_ip_reason(ip)
+        reason = None if exempt else _blocked_ip_reason(ip)
         if reason:
             raise UnsafeURLError(f"host {host!r} resolves to {reason} address {addr}")
+        validated.append(str(ip))
+    if not validated:
+        raise UnsafeURLError(f"host {host!r} did not resolve to an IP address")
+    return validated
+
+
+def _pinned_request(
+    url: str, ip: str, headers: dict[str, str] | None
+) -> tuple[str, dict[str, str], dict]:
+    """Rewrite `url` to connect to `ip` while keeping the original identity.
+
+    The Host header carries the original name (virtual hosting) and, for
+    HTTPS, the SNI name is the original host, so the certificate is still
+    verified against it (#165).
+    """
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    ip_host = f"[{ip}]" if ":" in ip else ip
+    netloc = ip_host if parsed.port is None else f"{ip_host}:{parsed.port}"
+    target = parsed._replace(netloc=netloc).geturl()
+    pinned_headers = dict(headers or {})
+    host_header = host if parsed.port is None else f"{host}:{parsed.port}"
+    pinned_headers.setdefault("Host", host_header)
+    extensions = {"sni_hostname": host} if parsed.scheme.lower() == "https" else {}
+    return target, pinned_headers, extensions
 
 
 def is_public_url(url: str) -> bool:
@@ -184,14 +219,20 @@ async def safe_fetch(
     max_bytes: int = DEFAULT_MAX_BYTES,
     resolver: Callable[[str], Iterable[str]] = _default_resolver,
     transport: httpx.AsyncBaseTransport | None = None,
+    allow_private_hosts: frozenset[str] = frozenset(),
+    pin_ip: bool | None = None,
 ) -> httpx.Response:
     """Fetch `url`, validating every hop before connecting.
 
     This is the only function that should open a connection to a user-supplied
     URL. It enforces the scheme allowlist, blocks credentials in the URL,
     re-checks DNS (or IP literals) on every redirect, caps the body, and applies
-    a timeout. `resolver` and `transport` are injectable for tests.
+    a timeout. Each hop connects to the IP that was validated, never to a
+    fresh DNS answer (`pin_ip`; default on for real network transports, #165).
+    `resolver` and `transport` are injectable for tests.
     """
+    if pin_ip is None:
+        pin_ip = transport is None
     current = url
     saw_redirect = False
     all_permanent = True
@@ -207,13 +248,22 @@ async def safe_fetch(
             # Checked before DNS so cleartext is rejected without lookups.
             if require_https and not current.lower().startswith("https://"):
                 raise UnsafeURLError(f"cleartext hop rejected for secure fetch: {current!r}")
-            validate_public_url(current, resolver=resolver)
-            async with client.stream(method, current, headers=headers, content=content) as resp:
+            ips = validate_public_url(
+                current, resolver=resolver, allow_private_hosts=allow_private_hosts
+            )
+            extensions: dict = {}
+            target, hop_headers = current, headers
+            if pin_ip and ips:
+                target, hop_headers, extensions = _pinned_request(current, ips[0], headers)
+            async with client.stream(
+                method, target, headers=hop_headers, content=content, extensions=extensions
+            ) as resp:
                 if resp.is_redirect and resp.headers.get("location"):
                     saw_redirect = True
                     if resp.status_code != 301:
                         all_permanent = False
-                    current = urljoin(str(resp.url), resp.headers["location"])
+                    # Resolve against the logical URL, not the pinned IP URL.
+                    current = urljoin(current, resp.headers["location"])
                     continue
                 body = await _read_capped(resp, max_bytes)
                 # aiter_bytes already decoded Content-Encoding. Copying that

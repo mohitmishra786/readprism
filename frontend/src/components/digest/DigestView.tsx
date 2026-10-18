@@ -4,7 +4,7 @@ import type { Digest, DigestItem } from "../../lib/types";
 import { DigestSection } from "./DigestSection";
 import { api } from "../../lib/api";
 
-const SECTION_ORDER = ["lead", "creator", "deep_reads", "discovery"];
+const SECTION_ORDER = ["lead", "creator", "deep_reads", "more", "discovery"];
 
 interface Prompt {
   id: string;

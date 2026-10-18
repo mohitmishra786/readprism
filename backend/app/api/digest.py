@@ -25,8 +25,6 @@ from app.utils.unsubscribe import verify_unsubscribe_token
 router = APIRouter(prefix="/digest", tags=["digest"])
 logger = get_logger(__name__)
 
-RATE_LIMIT_FREE_MINUTES = 60
-
 
 async def _apply_unsubscribe(uid: str, token: str, session: AsyncSession) -> bool:
     """Verify the signed token and switch the user to in-app-only (no email).
@@ -286,6 +284,7 @@ async def get_latest_digest(
     if not digest:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No digest found")
 
+    await _mark_viewed(digest, session)
     return await _build_digest_read(digest, session)
 
 
@@ -318,7 +317,6 @@ async def get_emerging_topics(
     Public items only; per topic: distinct sources in the recent window
     compared with the four trailing 7-day windows (z >= 2).
     """
-    from datetime import timedelta
 
     from sqlalchemy import func
 
@@ -378,20 +376,24 @@ async def generate_digest(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    # Rate limit: free tier max once per hour
-    if current_user.tier == "free":
-        recent = await session.execute(
-            select(Digest).where(
-                Digest.user_id == current_user.id,
-                Digest.generated_at
-                >= datetime.now(UTC) - timedelta(minutes=RATE_LIMIT_FREE_MINUTES),
-            )
+    from app.services import entitlements
+
+    # Hosted free tier: once per plan window. Self-host and paid plans: only a
+    # short guard against double-clicks (#109).
+    window = entitlements.digest_regeneration_window(current_user)
+    recent = await session.execute(
+        select(Digest.id)
+        .where(
+            Digest.user_id == current_user.id,
+            Digest.generated_at >= datetime.now(UTC) - window,
         )
-        if recent.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Free tier: digest generation limited to once per hour",
-            )
+        .limit(1)
+    )
+    if recent.first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=entitlements.digest_regeneration_message(current_user),
+        )
 
     from app.workers.tasks.build_digest import build_digest_for_user
 
@@ -411,6 +413,7 @@ async def get_digest(
     digest = result.scalar_one_or_none()
     if not digest:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+    await _mark_viewed(digest, session)
     return await _build_digest_read(digest, session)
 
 
@@ -511,6 +514,28 @@ async def dismiss_digest_prompt(
     prompt.dismissed = True
     await session.flush()
     return FeedbackPromptRead.model_validate(prompt)
+
+
+async def _mark_viewed(digest: Digest, session: AsyncSession) -> None:
+    """The owner opened this digest: its items were shown (#154).
+
+    The learner only treats a skipped item as a negative once the digest was
+    actually seen; without this flag every skip looked "unseen".
+    """
+    from sqlalchemy import update
+
+    from app.models.digest import DigestImpression
+
+    await session.execute(
+        update(DigestImpression)
+        .where(
+            DigestImpression.digest_id == digest.id,
+            DigestImpression.user_id == digest.user_id,
+            DigestImpression.viewed.is_(False),
+        )
+        .values(viewed=True)
+        .execution_options(synchronize_session=False)
+    )
 
 
 async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRead:

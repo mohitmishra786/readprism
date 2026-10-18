@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -21,7 +22,6 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem
-    from app.models.source import Source
     from app.services.summarization.summarizer import SummarizationService
     from app.utils.embeddings import get_embedding_service
 
@@ -32,10 +32,17 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             logger.warning(f"ContentItem {content_item_id} not found")
             return {"status": "not_found"}
 
-        # Summarize if not yet cached
-        if not item.summarization_cached and item.full_text:
+        # Summarize if not yet cached. Lazy mode (default, #147) writes the
+        # extractive summary here and leaves the model for items that reach a
+        # digest or the reader.
+        from app.config import get_settings
+
+        lazy = get_settings().llm_summarize != "all"
+        if item.full_text and (
+            item.summary_source is None or (not lazy and not item.summarization_cached)
+        ):
             svc = SummarizationService()
-            await svc.summarize(item.id, item.title, item.full_text, session)
+            await svc.summarize(item.id, item.title, item.full_text, session, use_llm=not lazy)
             await session.refresh(item)
 
         # Embed
@@ -77,20 +84,13 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             await session.commit()
             return {"status": "duplicate", "content_item_id": str(content_item_id)}
 
-        # Enqueue PRS computation for all users following this source
-        if item.source_id:
-            from app.models.user import User
+        # Ready to rank. Scores are computed live at digest time (#160), so
+        # "scored" now means "rankable": the ingest-to-score lag metric
+        # measures how long an item waits for its embedding.
+        if item.scored_at is None:
+            from datetime import UTC, datetime
 
-            users_result = await session.execute(
-                select(User.id)
-                .join(Source, Source.user_id == User.id)
-                .where(Source.id == item.source_id)
-            )
-            user_ids = [row[0] for row in users_result.fetchall()]
-            for uid in user_ids:
-                from app.workers.tasks.compute_prs import compute_prs_for_user_item
-
-                compute_prs_for_user_item.delay(str(uid), str(content_item_id))
+            item.scored_at = datetime.now(UTC)
 
         # Index in Meilisearch for full-text search
         from app.utils.search import index_content_item
@@ -114,3 +114,76 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
         await session.commit()
         return {"status": "ok", "content_item_id": str(content_item_id)}
+
+
+@celery_app.task(name="app.workers.tasks.compute_embeddings.summarize_item_with_llm", bind=True)
+def summarize_item_with_llm(self, content_item_id: str) -> dict:
+    """LLM summary for an item someone opened (#147)."""
+    return asyncio.run(_summarize_item_async(uuid.UUID(content_item_id)))
+
+
+async def _summarize_item_async(content_item_id: uuid.UUID) -> dict:
+    from app.database import AsyncSessionLocal
+    from app.models.content import ContentItem
+    from app.services.summarization.lazy import ensure_llm_summaries
+
+    async with AsyncSessionLocal() as session:
+        item = await session.get(ContentItem, content_item_id)
+        if item is None:
+            return {"status": "not_found"}
+        calls = await ensure_llm_summaries([item])
+        await session.commit()
+        return {"status": "ok", "llm_calls": calls, "summary_source": item.summary_source}
+
+
+# Items committed by ingestion whose embedding task never reached the broker
+# (or was lost) would otherwise stay unembedded forever: later polls skip
+# their URL. Re-enqueue them, at most once per item per REPAIR_RETRY.
+REPAIR_MIN_AGE = timedelta(minutes=15)
+REPAIR_WINDOW = timedelta(days=3)
+REPAIR_RETRY_SECONDS = 6 * 3600
+REPAIR_BATCH = 500
+
+
+@celery_app.task(name="app.workers.tasks.compute_embeddings.repair_missing_embeddings")
+def repair_missing_embeddings() -> dict:
+    return asyncio.run(_repair_missing_embeddings_async())
+
+
+async def _repair_missing_embeddings_async(now: datetime | None = None) -> dict:
+    from sqlalchemy import select
+
+    from app.database import AsyncSessionLocal
+    from app.models.content import ContentItem
+    from app.utils.cache import cache_set_nx
+
+    now = now or datetime.now(UTC)
+    async with AsyncSessionLocal() as session:
+        ids = [
+            row[0]
+            for row in (
+                await session.execute(
+                    select(ContentItem.id)
+                    .where(
+                        ContentItem.embedding.is_(None),
+                        ContentItem.rankable.is_(True),
+                        ContentItem.fetched_at >= now - REPAIR_WINDOW,
+                        ContentItem.fetched_at <= now - REPAIR_MIN_AGE,
+                    )
+                    .order_by(ContentItem.fetched_at.desc())
+                    .limit(REPAIR_BATCH)
+                )
+            ).all()
+        ]
+    queued = 0
+    for item_id in ids:
+        if not await cache_set_nx(f"embed-repair:{item_id}", 1, ttl_seconds=REPAIR_RETRY_SECONDS):
+            continue
+        try:
+            compute_embedding_for_item.delay(str(item_id))
+            queued += 1
+        except Exception as e:
+            logger.warning(f"Embedding repair could not enqueue {item_id}: {e}")
+    if queued:
+        logger.info(f"Embedding repair re-queued {queued} items")
+    return {"missing": len(ids), "queued": queued}

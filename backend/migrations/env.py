@@ -29,7 +29,11 @@ from app.models import (
 settings = get_settings()
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.database_sync_url)
+# app.migrate passes an explicit URL (#126); the CLI uses the app settings.
+config.set_main_option(
+    "sqlalchemy.url",
+    (config.attributes.get("sqlalchemy_url") or settings.database_sync_url).replace("%", "%%"),
+)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
