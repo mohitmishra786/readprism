@@ -92,3 +92,27 @@ def test_sanitize_log_still_shared():
     assert sanitize_log("a\nb") == "a b"
     record = logging.LogRecord("audit", logging.INFO, __file__, 1, "x\ny", (), None)
     assert "x y" in _JSONFormatter().format(record)
+
+
+def test_json_logs_keep_the_traceback_on_one_line():
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        import sys
+
+        record = logging.LogRecord("t", logging.ERROR, __file__, 1, "failed", (), sys.exc_info())
+    line = _JSONFormatter().format(record)
+    assert "\n" not in line.replace("\\n", "")
+    parsed = json.loads(line)
+    assert "ValueError: boom" in parsed["traceback"] and "Traceback" in parsed["traceback"]
+
+
+def test_mask_email_is_keyed_and_case_insensitive(monkeypatch):
+    import hashlib
+
+    first = mask_email("Reader@Example.com")
+    assert first == mask_email("reader@example.com")
+    plain = "email:" + hashlib.sha256(b"reader@example.com").hexdigest()[:12]
+    assert first != plain  # not reversible by hashing candidate addresses
+    monkeypatch.setattr(app_logging.get_settings(), "secret_key", "another-instance-key")
+    assert mask_email("reader@example.com") != first

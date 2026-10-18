@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import logging
 import sys
@@ -24,7 +25,10 @@ def mask_email(value: object) -> str:
     Log lines must not carry email addresses; a short digest still lets an
     operator match repeated sends to the same recipient.
     """
-    return "email:" + hashlib.sha256(str(value).encode()).hexdigest()[:12]
+    # Keyed with the instance secret: a plain hash of an address can be
+    # reversed by hashing a list of candidate addresses.
+    key = (get_settings().secret_key or "readprism-log").encode()
+    return "email:" + hmac.new(key, str(value).lower().encode(), hashlib.sha256).hexdigest()[:12]
 
 
 class _SanitizingFormatter(logging.Formatter):
@@ -61,6 +65,8 @@ class _JSONFormatter(logging.Formatter):
                 payload[key] = sanitize_log(value) if isinstance(value, str) else value
         if record.exc_info and record.exc_info[1] is not None:
             payload["error"] = sanitize_log(str(record.exc_info[1]))
+            # Full traceback; json.dumps escapes its newlines, so it stays one line.
+            payload["traceback"] = self.formatException(record.exc_info)
         return json.dumps(payload, default=str)
 
 
