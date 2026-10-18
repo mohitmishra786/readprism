@@ -11,155 +11,168 @@ every production frontend package.
 
 | Package | License | Flag |
 |---|---|---|
-| tld | MPL-1.1 OR GPL-2.0-only OR LGPL-2.1-or-later | review |
+| psycopg2-binary | LGPL with exceptions | review |
 | tqdm | MPL-2.0 AND MIT | review |
 | certifi | MPL-2.0 | review |
-| pathspec | Mozilla Public License 2.0 (MPL 2.0) | review |
-| psycopg2-binary | LGPL with exceptions | review |
-| @img/sharp-libvips-darwin-arm64 | LGPL-3.0-or-later | review |
+| @img/sharp-libvips-linux-x64 | LGPL-3.0-or-later | review |
 | dompurify | (MPL-2.0 OR Apache-2.0) | review |
 
 ## Backend (Python) — pip
 
 | Package | Version | License |
 |---|---|---|
-| alembic | 1.20.0 | MIT |
+| alembic | 1.20.0 | UNKNOWN (classifier) |
 | amqp | 5.4.1 | BSD |
-| annotated-doc | 0.0.5 | MIT |
-| annotated-types | 0.8.0 | MIT |
-| anyio | 4.15.1 | MIT |
-| ast_serialize | 0.13.1 | MIT |
-| asyncpg | 0.31.0 | Apache-2.0 |
-| attrs | 26.1.0 | MIT |
+| annotated-doc | 0.0.5 | UNKNOWN (classifier) |
+| annotated-types | 0.8.0 | MIT License |
+| anyio | 4.15.1 | UNKNOWN (classifier) |
+| asyncpg | 0.31.0 | UNKNOWN (classifier) |
+| attrs | 26.1.0 | UNKNOWN (classifier) |
 | babel | 2.18.0 | BSD-3-Clause |
 | bcrypt | 4.3.0 | Apache-2.0 |
 | beautifulsoup4 | 4.15.0 | MIT License |
 | billiard | 4.3.1 | BSD |
 | brotli | 1.2.0 | MIT |
 | celery | 5.6.3 | BSD-3-Clause |
-| certifi | 2026.7.22 | MPL-2.0 |
-| cffi | 2.1.1 | MIT-0 |
+| certifi | 2026.2.25 | MPL-2.0 |
+| cffi | 2.1.1 | UNKNOWN (classifier) |
 | charset-normalizer | 3.5.2 | MIT |
-| click | 8.5.0 | BSD-3-Clause |
+| click | 8.5.0 | UNKNOWN (classifier) |
 | click-didyoumean | 0.3.1 | MIT |
 | click-plugins | 1.1.1.2 | New BSD |
 | click-repl | 0.4.1 | MIT |
 | cloudpickle | 3.1.2 | BSD-3-Clause |
-| courlan | 1.4.0 | Apache-2.0 |
-| cryptography | 50.0.2 | Apache-2.0 OR BSD-3-Clause |
-| dateparser | 1.4.3 | BSD-3-Clause |
+| courlan | 1.4.0 | UNKNOWN (classifier) |
+| cryptography | 50.0.2 | UNKNOWN (classifier) |
+| cuda-bindings | 13.4.4 | UNKNOWN (classifier) |
+| cuda-pathfinder | 1.8.3 | UNKNOWN (classifier) |
+| cuda-toolkit | 13.0.3.0 | UNKNOWN (classifier) |
+| dateparser | 1.4.3 | UNKNOWN (classifier) |
 | defusedxml | 0.7.1 | PSFL |
+| distlib | 0.4.0 | PSF-2.0 |
 | distro | 1.9.0 | Apache License, Version 2.0 |
-| dnspython | 2.9.0 | ISC |
+| dnspython | 2.9.0 | UNKNOWN (classifier) |
 | email-validator | 2.3.0 | Unlicense |
-| fastapi | 0.141.1 | MIT |
+| fastapi | 0.141.1 | UNKNOWN (classifier) |
 | feedparser | 6.0.14 | BSD-2-Clause |
-| feedparser-sgmllib | 2.1.0 | PSF-2.0 |
-| filelock | 4.2.2 | MIT |
-| fsspec | 2026.9.0 | BSD-3-Clause |
-| greenlet | 3.5.6 | MIT AND PSF-2.0 |
+| feedparser-sgmllib | 2.1.0 | UNKNOWN (classifier) |
+| filelock | 3.25.2 | MIT License |
+| fsspec | 2026.9.0 | UNKNOWN (classifier) |
+| greenlet | 3.5.6 | UNKNOWN (classifier) |
 | groq | 0.37.1 | Apache-2.0 |
 | h11 | 0.16.0 | MIT |
-| hf-xet | 1.7.0 | Apache-2.0 |
-| htmldate | 1.11.0 | Apache-2.0 |
-| httpcore | 1.0.9 | BSD-3-Clause |
-| httpcore2 | 2.13.1 | BSD-3-Clause |
-| httptools | 0.9.0 | MIT |
+| hf-xet | 1.7.0 | Apache Software License |
+| htmldate | 1.11.0 | UNKNOWN (classifier) |
+| httpcore | 1.0.9 | BSD License |
+| httpcore2 | 2.14.0 | BSD License |
+| httptools | 0.9.0 | UNKNOWN (classifier) |
 | httpx | 0.28.1 | BSD-3-Clause |
-| httpx2 | 2.13.1 | BSD-3-Clause |
+| httpx2 | 2.14.0 | BSD License |
 | huggingface_hub | 2.2.0 | Apache-2.0 |
-| idna | 3.20 | BSD-3-Clause |
-| iniconfig | 2.3.1 | MIT |
+| idna | 3.20 | UNKNOWN (classifier) |
+| iniconfig | 2.3.1 | UNKNOWN (classifier) |
 | Jinja2 | 3.1.6 | BSD License |
-| jiter | 0.17.0 | MIT |
-| joblib | 1.6.0 | BSD-3-Clause |
-| jsonschema | 4.26.0 | MIT |
-| jsonschema-specifications | 2025.9.1 | MIT |
+| jiter | 0.17.0 | UNKNOWN (classifier) |
+| joblib | 1.6.0 | UNKNOWN (classifier) |
+| jsonschema | 4.26.0 | UNKNOWN (classifier) |
+| jsonschema-specifications | 2025.9.1 | UNKNOWN (classifier) |
 | jusText | 3.0.2 | The BSD 2-Clause License |
 | kombu | 5.6.2 | BSD-3-Clause |
-| librt | 0.16.0 | MIT |
 | listparser | 0.20 | MIT |
 | lxml | 6.1.3 | BSD-3-Clause |
 | lxml_html_clean | 0.4.5 | BSD-3-Clause |
-| Mako | 1.4.3 | MIT |
+| Mako | 1.4.3 | UNKNOWN (classifier) |
 | markdown-it-py | 4.2.0 | MIT License |
-| MarkupSafe | 3.0.4 | BSD-3-Clause |
+| MarkupSafe | 3.0.4 | UNKNOWN (classifier) |
 | mcp | 2.3.0 | MIT |
 | mcp-types | 2.3.0 | MIT |
 | mdurl | 0.1.2 | MIT License |
 | mpmath | 1.3.0 | BSD |
-| mypy | 1.13.0 | MIT |
-| mypy_extensions | 1.1.0 | MIT |
-| narwhals | 2.27.1 | MIT |
-| networkx | 3.6.1 | BSD-3-Clause |
+| narwhals | 2.27.1 | UNKNOWN (classifier) |
+| networkx | 3.7 | UNKNOWN (classifier) |
 | nh3 | 0.3.7 | MIT |
 | numpy | 1.26.4 | BSD License |
+| nvidia-cublas | 13.1.1.3 | UNKNOWN (classifier) |
+| nvidia-cuda-cupti | 13.0.85 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cuda-nvrtc | 13.0.88 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cuda-runtime | 13.0.96 | UNKNOWN (classifier) |
+| nvidia-cudnn-cu13 | 9.24.0.43 | UNKNOWN (classifier) |
+| nvidia-cufft | 12.0.0.61 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cufile | 1.15.1.6 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-curand | 10.4.0.35 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cusolver | 12.0.4.66 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cusparse | 12.6.3.3 | LicenseRef-NVIDIA-Proprietary |
+| nvidia-cusparselt-cu13 | 0.8.1 | NVIDIA Proprietary Software |
+| nvidia-nccl-cu13 | 2.30.7 | UNKNOWN (classifier) |
+| nvidia-nvjitlink | 13.4.92 | UNKNOWN (classifier) |
+| nvidia-nvshmem-cu13 | 3.4.5 | UNKNOWN (classifier) |
+| nvidia-nvtx | 13.0.85 | Apache 2.0 |
 | openai | 1.109.1 | Apache-2.0 |
-| opentelemetry-api | 1.45.1 | Apache-2.0 |
-| packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
-| pathspec | 1.1.1 | Mozilla Public License 2.0 (MPL 2.0) |
-| pgvector | 0.5.0 | MIT |
-| playwright | 1.63.0 | Apache-2.0 |
+| opentelemetry-api | 1.45.1 | UNKNOWN (classifier) |
+| packaging | 26.0 | UNKNOWN (classifier) |
+| pgvector | 0.5.0 | UNKNOWN (classifier) |
+| pipenv | 2026.2.2 | MIT License (MIT) |
+| platformdirs | 4.9.4 | MIT License |
+| playwright | 1.63.0 | UNKNOWN (classifier) |
 | pluggy | 1.7.0 | MIT |
 | prompt_toolkit | 3.0.53 | BSD License |
 | psycopg2-binary | 2.9.13 | LGPL with exceptions |
-| pycparser | 3.11 | BSD-3-Clause |
-| pydantic | 2.13.5 | MIT |
-| pydantic-settings | 2.15.0 | MIT |
-| pydantic_core | 2.46.5 | MIT |
+| pycparser | 3.11 | UNKNOWN (classifier) |
+| pydantic | 2.13.5 | UNKNOWN (classifier) |
+| pydantic-settings | 2.15.0 | MIT License |
+| pydantic_core | 2.46.5 | UNKNOWN (classifier) |
 | pyee | 13.0.1 | MIT |
-| Pygments | 2.21.0 | BSD-2-Clause |
-| PyJWT | 2.15.1 | MIT |
-| pytest | 9.1.1 | MIT |
-| pytest-asyncio | 1.4.0 | Apache-2.0 |
+| Pygments | 2.21.0 | UNKNOWN (classifier) |
+| PyJWT | 2.15.1 | UNKNOWN (classifier) |
+| pytest | 9.1.1 | UNKNOWN (classifier) |
+| pytest-asyncio | 1.4.0 | UNKNOWN (classifier) |
 | python-dateutil | 2.9.0.post0 | Dual License |
+| python-discovery | 1.2.0 | MIT License |
 | python-dotenv | 1.2.3 | BSD-3-Clause |
-| python-multipart | 0.0.32 | Apache-2.0 |
+| python-multipart | 0.0.32 | Apache Software License |
 | pytz | 2026.5 | MIT |
 | PyYAML | 6.0.3 | MIT |
 | redis | 5.3.1 | MIT |
-| referencing | 0.37.0 | MIT |
-| regex | 2026.9.29 | Apache-2.0 AND CNRI-Python |
+| referencing | 0.37.0 | UNKNOWN (classifier) |
+| regex | 2026.9.29 | UNKNOWN (classifier) |
 | respx | 0.23.1 | BSD-3-Clause |
 | rich | 15.0.0 | MIT |
-| rpds-py | 2026.9.1 | MIT |
-| ruff | 0.6.9 | MIT |
+| rpds-py | 2026.9.1 | UNKNOWN (classifier) |
 | safetensors | 0.8.0 | Apache Software License |
-| scikit-learn | 1.9.1 | BSD-3-Clause |
+| scikit-learn | 1.9.1 | UNKNOWN (classifier) |
 | scipy | 1.17.1 | BSD License |
-| sentence-transformers | 5.6.0 | Apache-2.0 |
-| sentry-sdk | 2.71.0 | MIT |
+| sentence-transformers | 5.6.0 | UNKNOWN (classifier) |
+| sentry-sdk | 2.71.0 | UNKNOWN (classifier) |
 | shellingham | 1.5.4 | ISC License |
 | six | 1.17.0 | MIT |
 | sniffio | 1.3.1 | MIT OR Apache-2.0 |
-| soupsieve | 3.0.3 | MIT |
-| SQLAlchemy | 2.1.1 | MIT |
-| sse-starlette | 3.5.0 | BSD-3-Clause |
-| starlette | 1.8.0 | BSD-3-Clause |
+| soupsieve | 3.0.3 | MIT License |
+| SQLAlchemy | 2.1.1 | UNKNOWN (classifier) |
+| sse-starlette | 3.5.0 | UNKNOWN (classifier) |
+| starlette | 1.9.0 | UNKNOWN (classifier) |
 | sympy | 1.14.0 | BSD |
-| threadpoolctl | 3.7.0 | BSD-3-Clause |
-| tld | 0.13.2 | MPL-1.1 OR GPL-2.0-only OR LGPL-2.1-or-later |
+| threadpoolctl | 3.7.0 | UNKNOWN (classifier) |
+| tld | 0.13.2 | UNKNOWN (classifier) |
 | tokenizers | 0.23.3 | Apache Software License |
-| torch | 2.14.1 | Apache-2.0 AND Apache-2.0 WITH LLVM-exception AND BSD-2-Clause AND BSD-3-Clause AND BSL-1.0 AND MIT |
+| torch | 2.14.1 | UNKNOWN (classifier) |
 | tqdm | 4.70.1 | MPL-2.0 AND MIT |
 | trafilatura | 1.12.2 | Apache-2.0 |
 | transformers | 5.20.1 | Apache 2.0 License |
-| truststore | 0.10.5 | MIT |
-| typer | 0.27.3 | MIT |
-| types-cffi | 2.1.0.20260827 | Apache-2.0 |
-| types-pyOpenSSL | 24.1.0.20240722 | Apache-2.0 license |
-| types-redis | 4.6.0.20241004 | Apache-2.0 |
-| types-setuptools | 84.0.0.20261006 | Apache-2.0 |
-| typing-inspection | 0.4.4 | MIT |
-| typing_extensions | 4.16.0 | PSF-2.0 |
+| triton | 3.8.0 | MIT |
+| truststore | 0.10.5 | UNKNOWN (classifier) |
+| typer | 0.27.3 | UNKNOWN (classifier) |
+| typing-inspection | 0.4.4 | UNKNOWN (classifier) |
+| typing_extensions | 4.16.0 | UNKNOWN (classifier) |
 | tzdata | 2026.5 | Apache-2.0 |
-| tzlocal | 5.4.4 | MIT |
-| urllib3 | 2.8.0 | MIT |
-| uvicorn | 0.54.0 | BSD-3-Clause |
+| tzlocal | 5.4.4 | UNKNOWN (classifier) |
+| urllib3 | 2.8.0 | UNKNOWN (classifier) |
+| uv | 0.11.1 | UNKNOWN (classifier) |
+| uvicorn | 0.54.0 | UNKNOWN (classifier) |
 | uvloop | 0.23.0 | MIT License |
 | vine | 5.1.0 | BSD |
+| virtualenv | 21.2.0 | MIT License |
 | watchfiles | 1.3.0 | MIT |
-| websockets | 17.2 | BSD-3-Clause |
+| websockets | 17.2 | UNKNOWN (classifier) |
 
 ## Frontend (npm) — production
 
@@ -182,22 +195,22 @@ every production frontend package.
 | @babel/traverse | ? | MIT |
 | @babel/types | ? | MIT |
 | @img/colour | ? | MIT |
-| @img/sharp-darwin-arm64 | ? | Apache-2.0 |
-| @img/sharp-libvips-darwin-arm64 | ? | LGPL-3.0-or-later |
+| @img/sharp-libvips-linux-x64 | ? | LGPL-3.0-or-later |
+| @img/sharp-linux-x64 | ? | Apache-2.0 |
 | @jridgewell/gen-mapping | ? | MIT |
 | @jridgewell/remapping | ? | MIT |
 | @jridgewell/resolve-uri | ? | MIT |
 | @jridgewell/sourcemap-codec | ? | MIT |
 | @jridgewell/trace-mapping | ? | MIT |
 | @next/env | ? | MIT |
-| @next/swc-darwin-arm64 | ? | MIT |
+| @next/swc-linux-x64-gnu | ? | MIT |
 | @opentelemetry/api | ? | Apache-2.0 |
-| @oxc-parser/binding-darwin-arm64 | ? | MIT |
+| @oxc-parser/binding-linux-x64-gnu | ? | MIT |
 | @oxc-project/types | ? | MIT |
 | @playwright/test | ? | Apache-2.0 |
 | @rollup/plugin-commonjs | ? | MIT |
 | @rollup/pluginutils | ? | MIT |
-| @rollup/rollup-darwin-arm64 | ? | MIT |
+| @rollup/rollup-linux-x64-gnu | ? | MIT |
 | @sentry/browser | ? | MIT |
 | @sentry/browser-utils | ? | MIT |
 | @sentry/bundler-plugins | ? | MIT |
@@ -232,7 +245,6 @@ every production frontend package.
 | escalade | ? | MIT |
 | estree-walker | ? | MIT |
 | fdir | ? | MIT |
-| fsevents | ? | MIT |
 | gensync | ? | MIT |
 | glob | ? | BlueOak-1.0.0 |
 | has-flag | ? | MIT |
@@ -278,5 +290,5 @@ every production frontend package.
 ## Notes
 
 - `pip-licenses` reports the licenses as declared in package metadata;
-  counts by family: MIT ×52, BSD-3-Clause ×26, Apache-2.0 ×18, BSD ×5, MIT License ×4, BSD License ×4
+  counts by family: UNKNOWN (classifier) ×68, MIT ×18, MIT License ×11, BSD-3-Clause ×9, BSD License ×7, LicenseRef-NVIDIA-Proprietary ×7
 
