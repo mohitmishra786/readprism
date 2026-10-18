@@ -34,6 +34,8 @@ async def _select_serendipity_candidates(
     cutoff: datetime,
     count: int,
     session: AsyncSession,
+    *,
+    feed_ids: list | None = None,
 ) -> list[ContentItem]:
     """Pick discovery candidates adjacent to the user's interests.
 
@@ -48,8 +50,10 @@ async def _select_serendipity_candidates(
         ContentItem.fetched_at >= cutoff,
         ContentItem.owner_user_id.is_(None),  # never surface others' private content
     ]
-    if source_ids:
-        base_filters.append(ContentItem.source_id.notin_(source_ids))
+    if source_ids or feed_ids:
+        from app.services.feed_identity import outside_user_feeds
+
+        base_filters.append(outside_user_feeds(source_ids, feed_ids or []))
 
     interest_vec = await InterestGraphManager().build_user_interest_vector(user.id, session)
     if interest_vec is not None:
@@ -90,16 +94,22 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Sources sharing a feed with any of the user's active sources (#108): a
     # public item is stored once, under whichever subscriber's source ingested
     # it first, so filtering by the user's own source ids missed it.
-    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
 
     source_ids = await equivalent_source_ids(session, user.id)
+    feed_ids = await user_feed_ids(session, user.id)
 
     # Fetch content items from user's sources
-    if source_ids:
+    if source_ids or feed_ids:
         content_result = await session.execute(
             select(ContentItem)
             .where(
-                ContentItem.source_id.in_(source_ids),
+                from_user_feeds(source_ids, feed_ids),
                 ContentItem.fetched_at >= cutoff,
                 visible_item_filter(user.id),
             )
@@ -127,7 +137,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Serendipity candidates: interest-adjacent discovery, not recent-random.
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
     serendipity_items = await _select_serendipity_candidates(
-        user, source_ids, cutoff, serendipity_count, session
+        user, source_ids, cutoff, serendipity_count, session, feed_ids=feed_ids
     )
 
     # Collaborative warmup for new users
@@ -162,6 +172,13 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
     ranked = await rank_content_for_user(user, all_items, session, limit=limit)
+    ranked = diversify_ranked(ranked)
+    if get_settings().ranking_interleaving:
+        from random import Random
+
+        from app.services.ranking.interleaving import interleave_ranked
+
+        ranked = interleave_ranked(ranked, Random(f"interleave:{user.id}:{uuid.uuid4()}"))
 
     # The serendipity picks ARE the discovery section candidates (A6):
     # label them explicitly and make sure they survived the rank cutoff.
@@ -228,47 +245,29 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
-    # Load the interest graph once to generate graph-based explanations (05-5).
-    from app.models.interest_graph import InterestEdge, InterestNode
-    from app.services.ranking.signals import UserInterestGraph
-    from app.services.ranking.signals.semantic import explain_top_topics
+    # Model summaries only for what the user will actually see (#147).
+    from app.services.summarization.lazy import ensure_llm_summaries
 
-    nodes = list(
-        (
-            await session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
-        ).scalars()
-    )
-    edges = list(
-        (
-            await session.execute(select(InterestEdge).where(InterestEdge.user_id == user.id))
-        ).scalars()
-    )
-    interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
+    placed_items = [row[0] for section in sections.values() for row in section.items]
+    await ensure_llm_summaries(placed_items, limit=get_settings().digest_llm_summary_limit)
 
-    # Create digest items
-    from app.services.ranking.meta_weights import get_meta_weights
+    # The ranker already produced each item's features, faithful contributions,
+    # explanation and topic phrase from the same computation that scored it
+    # (#129, #143); the digest stores them as they are.
     from app.services.ranking.phase2.contract import SIGNALS
+    from app.services.ranking.phase2.learning import RANKER_VERSION
 
-    meta = await get_meta_weights(user.id, session)
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
-            explanation = explain_top_topics(getattr(item, "embedding", None), interest_graph)
-            if explanation:
-                clean_breakdown["why_topics"] = explanation
-            from app.services.ranking.phase2.learning import RANKER_VERSION
-            from app.services.ranking.phase2.learning import explain as explain_score
-
+            if getattr(item, "discovered_via", None):
+                clean_breakdown["discovered_via"] = item.discovered_via
             numeric = {
                 key: float(value)
                 for key, value in clean_breakdown.items()
                 if key in SIGNALS and isinstance(value, int | float)
             }
-            if numeric:
-                text, contributions = explain_score(numeric, meta.weights)
-                clean_breakdown["explanation"] = text
-                clean_breakdown["contributions"] = contributions
             story = story_payloads.get(item.id)
             if story:
                 clean_breakdown["perspectives"] = story["perspectives"]
@@ -295,6 +294,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                     weights_version=RANKER_VERSION,
                     exploration=bool(clean_breakdown.get("exploration")),
                     propensity=float(breakdown.get("_propensity", 1.0)),
+                    team=breakdown.get("_team"),
                 )
             )
             position += 1
@@ -311,6 +311,37 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 
     logger.info(f"Built digest {digest.id} for user {user.id}: {total} items")
     return digest
+
+
+def diversify_ranked(ranked: list[tuple]) -> list[tuple]:
+    """MMR re-rank of the scored candidates before section layout (#148).
+
+    Trades a little score for variety (lambda 0.7), drops near-duplicates
+    (cosine >= 0.92) that story clustering missed, and caps any one topic at
+    30% of the candidates. No "novelty share" swap-ins here: exploration
+    slots already do that, with logged propensities.
+    """
+    import numpy as np
+
+    from app.services.ranking.phase2.interests import diversify
+
+    if len(ranked) < 3:
+        return ranked
+    vectors = []
+    for item, _, _ in ranked:
+        raw = getattr(item, "embedding", None)
+        vec = None if raw is None else np.asarray(raw, dtype=np.float32)
+        vectors.append(vec if vec is not None and float(np.linalg.norm(vec)) > 1e-8 else None)
+    return diversify(
+        ranked,
+        scores=[float(prs) for _, prs, _ in ranked],
+        vectors=vectors,
+        clusters=[(item.topic_clusters or [None])[0] for item, _, _ in ranked],
+        lam=0.7,
+        cluster_cap=0.3,
+        novelty_share=0.0,
+        near_dup=0.92,
+    )
 
 
 async def _synthesize_topic_clusters(

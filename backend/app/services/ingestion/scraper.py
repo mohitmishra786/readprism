@@ -200,6 +200,11 @@ async def _arm_cdp_fetch_guard(page) -> None:  # type: ignore[no-untyped-def]
 async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
     """Use the headless Chrome instance (Browserless) for JS-rendered pages.
     Returns (html_content, page_title)."""
+    if settings.deployment_mode == "hosted" and not settings.browserless_hosted_allowed:
+        # Arbitrary pages in a shared renderer: opt-in only, behind the
+        # egress proxy (#127). Pages keep their feed text instead.
+        logger.info("Rendered extraction is disabled on the hosted service")
+        return None, None
     try:
         # Browserless renders arbitrary user-supplied URLs; validate before we
         # hand the URL to the headless browser (SSRF guard, audit 06-2).

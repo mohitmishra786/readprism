@@ -23,20 +23,55 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 logger = get_logger(__name__)
 
 
-async def _enforce_capacity(session: AsyncSession, user: User, adding: int) -> None:
-    """Plan limit for every user-initiated way of adding sources (#109).
+async def _enforce_capacity(session: AsyncSession, user: User, urls: list[str]) -> None:
+    """Plan and abuse limits for every user-initiated way of adding sources.
 
-    No-op in selfhost mode; in hosted mode a free-tier user gets a 402 that
-    says how many more they can add.
+    No-op in selfhost mode. In hosted mode a free-tier user gets a 402 that
+    says how many more they can add (#109), and no account may pile more
+    than HOSTED_MAX_SOURCES_PER_HOST feeds onto one host (#169).
     """
+    adding = len(urls)
     if adding <= 0:
         return
+    from app.services.abuse import enforce_sources_per_host
+
+    await enforce_sources_per_host(session, user, urls)
     count = (
         await session.execute(
             select(func.count()).select_from(Source).where(Source.user_id == user.id)
         )
     ).scalar() or 0
     enforce_source_limit(user, count, adding=adding)
+
+
+async def _seed_pack_interest(session: AsyncSession, user_id, title: str) -> None:
+    """A subscribed pack is a stated interest: give the ranker an embedded
+    topic for it so day-0 scores aren't flat (#135). Never lowers an
+    existing node."""
+    from app.services.interest_graph.graph import InterestGraphManager
+    from app.utils.embeddings import get_embedding_service
+
+    label = title.strip()
+    if not label:
+        return
+    try:
+        embedding = (await get_embedding_service().encode_batch_cached([label]))[0]
+    except Exception:  # embeddings are optional polish here
+        embedding = None
+    node = await InterestGraphManager().get_or_create_node(
+        user_id=user_id, topic_label=label, topic_embedding=embedding, session=session
+    )
+    node.weight = max(node.weight or 0.0, 0.4)
+    if node.topic_embedding is None and embedding is not None:
+        node.topic_embedding = embedding
+    await session.flush()
+
+
+def _fetch_new_sources_soon(user_id) -> None:
+    """Fetch a user's sources now instead of waiting for the next beat (#102)."""
+    from app.workers.tasks.ingest_feeds import ingest_user_sources
+
+    ingest_user_sources.delay(str(user_id))
 
 
 @router.get("/starter-packs")
@@ -75,8 +110,8 @@ async def subscribe_pack(
     )
     existing_urls = {row[0] for row in existing_result.fetchall()}
 
-    new_count = len({f["url"] for f in pack.feeds} - existing_urls)
-    await _enforce_capacity(session, current_user, new_count)
+    new_urls = sorted({f["url"] for f in pack.feeds} - existing_urls)
+    await _enforce_capacity(session, current_user, new_urls)
 
     created = 0
     for feed in pack.feeds:
@@ -97,6 +132,9 @@ async def subscribe_pack(
         existing_urls.add(feed["url"])
         created += 1
     await session.flush()
+    await _seed_pack_interest(session, current_user.id, pack.title)
+    if created:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "status": "ok",
         "pack": pack.id,
@@ -147,7 +185,7 @@ async def accept_discover_suggestion(
     suggestion = result.scalar_one_or_none()
     if suggestion is None or suggestion.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
-    await _enforce_capacity(session, current_user, 1)
+    await _enforce_capacity(session, current_user, [suggestion.url])
 
     source = Source(
         user_id=current_user.id,
@@ -194,7 +232,10 @@ async def add_source(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SourceRead:
-    await _enforce_capacity(session, current_user, 1)
+    await _enforce_capacity(session, current_user, [body.url])
+    from app.services.abuse import require_fetch_budget
+
+    await require_fetch_budget(session, current_user)  # autodiscovery fetches the page
 
     # Autodiscover feed URL
     feed_url = await _autodiscover_feed(body.url)
@@ -212,10 +253,9 @@ async def add_source(
     session.add(source)
     await session.flush()
 
-    # Enqueue initial ingestion
-    from app.workers.tasks.ingest_feeds import ingest_all_feeds
-
-    ingest_all_feeds.delay()
+    # Fetch this user's sources now. Never the whole instance: on hosted any
+    # user could otherwise trigger a poll of every feed (#169).
+    _fetch_new_sources_soon(current_user.id)
 
     return SourceRead.model_validate(source)
 
@@ -286,7 +326,7 @@ async def import_opml(
 
         result = listparser.parse(opml_text)
         urls = {feed.url or feed.feed or "" for feed in result.feeds} - {""}
-        await _enforce_capacity(session, current_user, len(urls))
+        await _enforce_capacity(session, current_user, sorted(urls))
         created = 0
         for feed in result.feeds:
             url = feed.url or feed.feed or ""
@@ -302,6 +342,8 @@ async def import_opml(
             session.add(source)
             created += 1
         await session.flush()
+        if created:
+            _fetch_new_sources_soon(current_user.id)
         return {"created": created}
     except ImportError:
         raise HTTPException(status_code=500, detail="listparser not installed")
@@ -332,7 +374,7 @@ async def import_opml_tagged(
 
     existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
     plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
-    await _enforce_capacity(session, current_user, len(plan.feeds))
+    await _enforce_capacity(session, current_user, [feed.url for feed in plan.feeds])
     for feed in plan.feeds:
         session.add(
             Source(
@@ -346,6 +388,8 @@ async def import_opml_tagged(
             )
         )
     await session.flush()
+    if plan.feeds:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "created": plan.created,
         "skipped": plan.skipped,

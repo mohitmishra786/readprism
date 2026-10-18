@@ -25,6 +25,10 @@ class UserMetaWeights(Base):
     )
     weights: Mapped[dict] = mapped_column(JSONB, nullable=False)
     update_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Pairwise learner state (#154): training pairs seen so far, and the newest
+    # digest already trained on, so every pair is learned from exactly once.
+    pairs_seen: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    trained_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

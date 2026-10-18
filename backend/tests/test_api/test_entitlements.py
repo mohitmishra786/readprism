@@ -30,7 +30,7 @@ async def _seed_sources(db_session, user: User, n: int) -> None:
 async def _add_source(client: AsyncClient, headers: dict, url: str):
     with (
         patch("app.api.sources._autodiscover_feed", new=AsyncMock(return_value=None)),
-        patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"),
+        patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay"),
     ):
         return await client.post("/api/v1/sources", json={"url": url}, headers=headers)
 
@@ -46,6 +46,8 @@ def _opml(n: int) -> bytes:
 @pytest.fixture
 def hosted(monkeypatch):
     monkeypatch.setattr(entitlements.settings, "deployment_mode", "hosted")
+    # No trial: these tests are about the limits a non-paying account gets (#173).
+    monkeypatch.setattr(entitlements.settings, "billing_trial_days", 0)
 
 
 @pytest.mark.asyncio

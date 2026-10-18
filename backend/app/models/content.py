@@ -55,6 +55,11 @@ class ContentItem(Base):
     source_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Shared feed the item came from (#161). Survives the deletion of any one
+    # subscriber's source row, which `source_id` does not.
+    feed_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feeds.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     creator_platform_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("creator_platforms.id", ondelete="SET NULL"),
@@ -100,6 +105,9 @@ class ContentItem(Base):
     paywalled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     rankable: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     origin: Mapped[str] = mapped_column(String(32), default="followed", server_default="followed")
+    # For origin="discovery": how it was found, shown on the card (#141),
+    # e.g. "a link in Simon Willison's blog" or "the Databases starter pack".
+    discovered_via: Mapped[str | None] = mapped_column(String(200), nullable=True)
     # Weighted lexical index for hybrid search (UX-11): title weight A,
     # summaries weight B. Generated on write; GIN-indexed (migration 0018).
     search_tsv: Mapped[str | None] = mapped_column(

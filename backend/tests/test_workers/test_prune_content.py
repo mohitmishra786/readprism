@@ -61,3 +61,11 @@ async def test_prune_disabled_when_retention_zero(db_session, monkeypatch):
     monkeypatch.setattr(prune_content.get_settings(), "content_full_text_retention_days", 0)
     result = await prune_content._prune_full_text_async()
     assert result["status"] == "disabled"
+
+
+def test_retention_prune_runs_daily_on_beat():
+    """#177: the retention window is only real if the prune job is scheduled."""
+    from app.workers.celery_app import celery_app
+
+    tasks = {entry["task"] for entry in celery_app.conf.beat_schedule.values()}
+    assert "app.workers.tasks.prune_content.prune_old_full_text" in tasks

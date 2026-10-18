@@ -26,13 +26,14 @@ celery_app = Celery(
     include=[
         "app.workers.tasks.ingest_feeds",
         "app.workers.tasks.compute_embeddings",
-        "app.workers.tasks.compute_prs",
         "app.workers.tasks.build_digest",
         "app.workers.tasks.deliver_digest",
         "app.workers.tasks.update_interest_graph",
         "app.workers.tasks.prune_content",
+        "app.workers.tasks.prune_telemetry",
         "app.workers.tasks.heartbeat",
         "app.workers.tasks.reengagement",
+        "app.workers.tasks.discovery",
     ],
 )
 
@@ -42,13 +43,14 @@ celery_app = Celery(
 celery_app.conf.task_routes = {
     "app.workers.tasks.ingest_feeds.*": {"queue": "scrape"},
     "app.workers.tasks.compute_embeddings.*": {"queue": "embed"},
-    "app.workers.tasks.compute_prs.*": {"queue": "digest"},
     "app.workers.tasks.build_digest.*": {"queue": "digest"},
     "app.workers.tasks.deliver_digest.*": {"queue": "digest"},
     "app.workers.tasks.update_interest_graph.*": {"queue": "digest"},
     "app.workers.tasks.prune_content.*": {"queue": "digest"},
+    "app.workers.tasks.prune_telemetry.*": {"queue": "digest"},
     "app.workers.tasks.heartbeat.*": {"queue": "digest"},
     "app.workers.tasks.reengagement.*": {"queue": "digest"},
+    "app.workers.tasks.discovery.*": {"queue": "scrape"},
 }
 
 celery_app.conf.update(
@@ -63,6 +65,7 @@ celery_app.conf.update(
 )
 
 # Import schedules (beat config is set in schedules.py)
+import app.workers.queue_metrics  # noqa: F401  (signal handlers, #239)
 from app.workers.schedules import setup_beat_schedule
 
 setup_beat_schedule(celery_app)

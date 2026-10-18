@@ -1,3 +1,4 @@
+from app.models.billing import BillingEvent
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.creator import Creator, CreatorPlatform
 from app.models.creator_trust import CreatorTopicTrust
@@ -6,8 +7,10 @@ from app.models.digest import (
     DigestFeedbackPrompt,
     DigestImpression,
     DigestItem,
+    ImpressionRollup,
     RankerWeightRevision,
 )
+from app.models.feed import Feed
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.source import Source
@@ -20,6 +23,8 @@ from app.models.user import User
 # imported anywhere on the app import path) are missing from metadata, and
 # drop_all fails on dependent FKs (e.g. creator_topic_trust → creators).
 __all__ = [
+    "BillingEvent",
+    "Feed",
     "User",
     "Source",
     "Creator",
@@ -32,6 +37,7 @@ __all__ = [
     "Digest",
     "DigestItem",
     "DigestImpression",
+    "ImpressionRollup",
     "DigestFeedbackPrompt",
     "RankerWeightRevision",
     "UserMetaWeights",
