@@ -1,4 +1,4 @@
-.PHONY: up-build extract-eval starter-pack-check env up up-lite up-full up-dev build-lite backup restore demo docs-serve test-services test-services-down test-backend test
+.PHONY: up-build extract-eval starter-pack-check env up up-lite up-full up-dev build-lite eval retrieval-eval backup restore demo docs-serve test-services test-services-down test-backend test
 
 test-services:
 	docker compose -f docker-compose.test.yml up -d
@@ -13,6 +13,15 @@ test: test-backend
 
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
+
+# Ranking evals (issue #199). Read-only by default: they print a report and
+# leave the tree clean. rank_eval.py --write is the only mode that writes
+# docs/eval/ranking.md (run it deliberately).
+eval:
+	cd backend && PYTHONPATH=. python3 scripts/rank_eval.py
+
+retrieval-eval:
+	cd backend && PYTHONPATH=. python3 scripts/retrieval_eval.py
 
 env:
 	./scripts/init_env.sh

@@ -123,12 +123,30 @@ def main() -> None:
         action="store_true",
         help="Run synthetic ranking evaluation benchmark (unit test of learner mechanics; NOT real users)",
     )
+    # Read-only by default (#199): without --write the report is only printed
+    # and the tree stays clean.
+    parser.add_argument(
+        "--write",
+        metavar="PATH",
+        default=None,
+        help="Also write the report text to PATH (e.g. docs/eval/ranking-observed.md)",
+    )
     args = parser.parse_args()
     if args.synthetic:
         run_synthetic()
         return
 
-    asyncio.run(_run(args.days))
+    import contextlib
+    import io
+
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        asyncio.run(_run(args.days))
+    report = buffer.getvalue()
+    sys.stdout.write(report)
+    if args.write:
+        Path(args.write).write_text(report, encoding="utf-8")
+        print(f"Wrote report to {args.write}")
 
 
 if __name__ == "__main__":
