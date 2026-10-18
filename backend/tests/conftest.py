@@ -9,7 +9,10 @@ from collections.abc import AsyncGenerator
 # it per test. Must happen before `app` is imported (settings load on import).
 os.environ["APP_ENV"] = os.environ.get("TEST_APP_ENV", "development")
 # Most tests register several users; registration rules are tested explicitly.
-os.environ.setdefault("REGISTRATION_MODE", "open")
+# Override an empty value too: CI's .env (from .env.example) sets
+# REGISTRATION_MODE= and an empty value means "closed" on selfhost.
+if not os.environ.get("REGISTRATION_MODE"):
+    os.environ["REGISTRATION_MODE"] = "open"
 
 import pytest
 import pytest_asyncio

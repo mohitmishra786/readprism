@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import and_, false, func, or_, select
+from sqlalchemy import and_, false, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
@@ -95,8 +95,8 @@ def outside_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
     return and_(
         or_(ContentItem.source_id.is_(None), ContentItem.source_id.notin_(source_ids))
         if source_ids
-        else True,
+        else true(),
         or_(ContentItem.feed_id.is_(None), ContentItem.feed_id.notin_(feed_ids))
         if feed_ids
-        else True,
+        else true(),
     )

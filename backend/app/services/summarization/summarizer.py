@@ -50,10 +50,12 @@ class SummarizationService:
             return SummarizationResult(**cached)
 
         # LLM when configured. A miss, a 404, or a rate limit must not block the digest.
-        result = await get_groq_summarizer().summarize(title, full_text)
-        if result is None:
+        llm_result = await get_groq_summarizer().summarize(title, full_text)
+        if llm_result is None:
             logger.info("extractive summary for item %s (llm unavailable)", content_item_id)
             result = extractive_summary(title, full_text)
+        else:
+            result = llm_result
 
         if result is not None:
             # An extractive stand-in must not occupy the LLM cache for 30 days,

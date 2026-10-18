@@ -251,7 +251,8 @@ async def safe_fetch(
             ips = validate_public_url(
                 current, resolver=resolver, allow_private_hosts=allow_private_hosts
             )
-            target, hop_headers, extensions = current, headers, {}
+            extensions: dict = {}
+            target, hop_headers = current, headers
             if pin_ip and ips:
                 target, hop_headers, extensions = _pinned_request(current, ips[0], headers)
             async with client.stream(

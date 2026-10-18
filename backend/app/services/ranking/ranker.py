@@ -337,7 +337,7 @@ async def load_state(user: User, session: AsyncSession) -> UserRankingState:
         prefers_fresh=prefers_fresh,
         novelty_target=float(get_settings().novelty_target),
         now=now,
-        feed_id_key={s.feed_id: _feed_key(s) for s in own_sources if getattr(s, "feed_id", None)},
+        feed_id_key={s.feed_id: _feed_key(s) for s in own_sources if s.feed_id is not None},
     )
 
 
@@ -457,7 +457,12 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
         sims = (H @ v) if (H is not None and v is not None) else None
 
         # semantic
-        if v is not None and interest_matrix is not None and interest_matrix.shape[1] == v.shape[0]:
+        if (
+            v is not None
+            and interest_matrix is not None
+            and interest_imp is not None
+            and interest_matrix.shape[1] == v.shape[0]
+        ):
             top = min(3, len(state.interests))
             cos = np.clip(interest_matrix[:top] @ v, 0.0, 1.0)
             weighted = cos * (interest_imp[:top] / max(interest_imp[:top].max(), 1e-8))
@@ -520,7 +525,7 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
 
         # source trust (per user, per feed)
         key = state.source_feed_key.get(item.source_id) if item.source_id else None
-        if key is None and getattr(item, "feed_id", None):
+        if key is None and item.feed_id is not None:
             key = state.feed_id_key.get(item.feed_id)
         feed = state.feeds.get(key) if key else None
         if feed is not None:
@@ -624,6 +629,7 @@ def _explain(
     ordered = sorted(have, key=lambda name: contributions[name], reverse=True)
     parts: list[str] = []
     for name in ordered:
+        phrase: str | None
         if name == "semantic" and why_topics:
             phrase = why_topics
         elif name == "reading_depth" and name in notes:
