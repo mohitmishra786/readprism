@@ -36,7 +36,10 @@ config.set_main_option(
 )
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers defaults to True: it would flip `.disabled = True`
+    # on every logger created before this import (all app.* loggers in tests,
+    # and any process that logs before migrating), silently dropping logs (#198).
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 
