@@ -14,7 +14,6 @@ from app.models.feed import Feed
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.source import Source
-from app.models.team import Team, TeamMember
 from app.models.user import User
 
 # Importing every model here registers it on Base.metadata. This is required so
@@ -41,6 +40,4 @@ __all__ = [
     "DigestFeedbackPrompt",
     "RankerWeightRevision",
     "UserMetaWeights",
-    "Team",
-    "TeamMember",
 ]
