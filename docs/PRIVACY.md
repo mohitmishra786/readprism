@@ -32,6 +32,13 @@ controller. This template refers to whoever runs the instance as "we".
 
 We do **not** sell personal data, and we do not use it for advertising.
 
+- **Collaborative warmup (#210):** to give new readers a better first
+  digest, ReadPrism may suggest public articles that at least
+  `COLLABORATIVE_K_ANONYMITY` readers (default 20) recently finished or
+  upvoted, matched to the new reader's own topics. Only per-article counts
+  are used, never one person's history, and private items never qualify.
+  You can leave the counts in Preferences → Your Data.
+
 ## Why we process it (legal bases)
 
 - To provide the service you asked for (ranking, digests) — performance of a

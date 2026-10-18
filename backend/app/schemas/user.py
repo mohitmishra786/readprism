@@ -39,6 +39,7 @@ class UserRead(BaseModel):
     # False only while this instance requires verification and it is pending (#175).
     email_verified: bool = True
     fetch_paused_until: datetime | None = None
+    collaborative_opt_out: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -55,6 +56,7 @@ class UserUpdate(BaseModel):
     serendipity_percentage: int | None = None
     preferred_languages: list[str] | None = None
     timezone: str | None = None
+    collaborative_opt_out: bool | None = None
 
 
 class Token(BaseModel):

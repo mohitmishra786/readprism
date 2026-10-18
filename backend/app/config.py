@@ -251,10 +251,11 @@ class Settings(BaseSettings):
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True
-    # Collaborative warmup is mathematically inert below a critical mass of active
-    # users with warm interest vectors; gate it off until then rather than
-    # pretending it contributes at launch (audit 05-6).
-    collaborative_warmup_min_users: int = 1000
+    # Collaborative warmup (#210): items many readers finished, never one
+    # person's history. Off until the instance has this many active readers.
+    collaborative_warmup_min_users: int = 100
+    # An item is eligible only once this many distinct users engaged with it.
+    collaborative_k_anonymity: int = 20
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
 

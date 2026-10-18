@@ -17,6 +17,8 @@ export interface User {
   email_verified?: boolean;
   /** Hosted fetch budget exhausted until then (#169). */
   fetch_paused_until?: string | null;
+  /** Keep my reading out of other readers' collaborative warmup counts (#210). */
+  collaborative_opt_out?: boolean;
 }
 
 export interface Source {

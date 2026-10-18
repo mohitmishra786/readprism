@@ -46,6 +46,11 @@ class User(Base):
     fetch_paused_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Keep this account's reading out of the crowd counts behind
+    # collaborative warmup for other users (#210).
+    collaborative_opt_out: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
     # Hosted billing (#173). `tier` is what was bought; app.services.billing
     # .effective_plan() combines it with these dates.
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
