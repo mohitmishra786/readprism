@@ -107,7 +107,7 @@ def digest_outcome(teams: dict[uuid.UUID, str], interactions: dict[uuid.UUID, ob
 
 
 async def interleaving_report(session, *, days: int = 7, now: datetime | None = None) -> dict:
-    """Per-user and pooled PRS win rate over interleaved digests in the window."""
+    """Pooled PRS win rate and the spread of per-user rates, in the window."""
     from sqlalchemy import select
 
     from app.models.content import UserContentInteraction
@@ -155,9 +155,15 @@ async def interleaving_report(session, *, days: int = 7, now: datetime | None = 
         }
 
     pooled = sum(per_user.values(), Counter())
+    # No user ids in operator output (#224): the spread of per-user win rates
+    # is what the evaluation needs, not who they belong to.
+    rates = sorted(
+        rate for rate in (summary(c)["prs_win_rate"] for c in per_user.values()) if rate is not None
+    )
     return {
         "window_days": days,
         "digests": len(digests),
         "pooled": summary(pooled),
-        "users": {str(user): summary(counter) for user, counter in per_user.items()},
+        "users": len(per_user),
+        "user_win_rates": rates,
     }

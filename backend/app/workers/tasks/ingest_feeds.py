@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -137,10 +137,34 @@ async def _ingest_feed(feed, session, rng: random.Random) -> list[uuid.UUID]:
     subs = await subscribers(session, feed.id)
     if not subs:
         return []
+    if not await _within_budgets(feed, subs, session):
+        mirror(feed, subs)
+        await session.flush()
+        return []
     new_ids = await _ingest_source(feed, session, rng, source_id=subs[0].id, feed_id=feed.id)
     mirror(feed, subs)
     await session.flush()
     return new_ids
+
+
+async def _within_budgets(feed, subs, session) -> bool:
+    """Hosted abuse controls (#169). A poll is charged to every subscribing
+    account and skipped only when all of them are over their hourly budget,
+    so a popular feed keeps flowing for everyone else. A host polled too often
+    across all accounts waits too. Skipped feeds retry next hour."""
+    from app.services import abuse
+
+    now = datetime.now(UTC)
+    user_ids = list(dict.fromkeys(sub.user_id for sub in subs))
+    within = [uid for uid in user_ids if await abuse.charge_fetch(uid, now=now)]
+    if not within:
+        feed.next_poll_at = await abuse.pause_fetches(session, user_ids, now=now)
+        return False
+    if not await abuse.charge_host_poll(feed.feed_url or feed.url, now=now):
+        feed.next_poll_at = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        logger.warning(f"Host poll cap reached for {feed.feed_url or feed.url}; retry next hour")
+        return False
+    return True
 
 
 async def _ingest_source(

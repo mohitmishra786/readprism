@@ -69,6 +69,17 @@ async def interleaving_metrics(days: int = 7, session: AsyncSession = Depends(ge
     return await interleaving_report(session, days=max(1, min(days, 90)))
 
 
+@router.get("/queues", dependencies=[Depends(require_metrics_token)])
+async def queue_metrics(hours: int = Query(24, ge=1, le=72)) -> dict:
+    """Queue wait, task runtime and digest on-time ratio (#239)."""
+    import asyncio
+
+    from app.services.metrics.queues import queue_report
+    from app.workers.queue_metrics import _redis
+
+    return await asyncio.to_thread(queue_report, _redis(), hours=hours)
+
+
 @router.get("/ranking-eval", response_model=RankingEvalRead)
 async def ranking_eval(
     days: int = Query(30, ge=1, le=365),

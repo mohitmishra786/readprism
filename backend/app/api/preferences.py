@@ -59,6 +59,8 @@ async def update_preferences(
         current_user.preferred_languages = codes
     if body.timezone is not None:
         current_user.timezone = body.timezone
+    if body.collaborative_opt_out is not None:
+        current_user.collaborative_opt_out = body.collaborative_opt_out
     await session.flush()
     return UserRead.model_validate(current_user)
 

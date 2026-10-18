@@ -47,8 +47,11 @@ x-worker-base: &worker-base
     - render_net  # reaches browserless; browserless cannot reach back out
   volumes:
     - ./backend:/app
-  healthcheck:
-    test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+  healthcheck: &worker-health
+    # Each worker overrides `test` to ping its own node name (scrape@, embed@,
+    # digest@ + hostname). Pinging celery@ matched no worker, so every worker
+    # reported unhealthy (#239).
+    test: ["CMD-SHELL", "exit 1"]
     interval: 30s
     timeout: 10s
     retries: 3
@@ -135,18 +138,30 @@ services:
   # One --pool=solo worker per queue (audit 07-2), so a slow Playwright scrape on
   # the scrape queue can't block embeddings or digest delivery. See
   # docs/adr/0001-celery-solo-pool.md for why each worker is single-process.
+  # Scale a queue by running more of its worker (#239), e.g.
+  #   docker compose up -d --scale worker-digest=4 --scale worker-embed=2
+  # Node names use the container hostname (%h), so replicas never collide.
   worker-scrape:
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q scrape -n scrape@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d scrape@$$HOSTNAME || exit 1"]
 
   worker-embed:
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q embed -n embed@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d embed@$$HOSTNAME || exit 1"]
 
   worker-digest:
     # Also drains the default "celery" queue for any unrouted task.
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q digest,celery -n digest@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d digest@$$HOSTNAME || exit 1"]
 
   beat:
     image: readprism-backend

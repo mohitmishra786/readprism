@@ -71,7 +71,9 @@ async def subscribers(
     query = select(Source).where(Source.feed_id == feed_id)
     if active_only:
         query = query.where(Source.is_active == True)
-    return list((await session.execute(query.order_by(Source.created_at.asc()))).scalars())
+    return list(
+        (await session.execute(query.order_by(Source.created_at.asc(), Source.id.asc()))).scalars()
+    )
 
 
 def mirror(feed: Feed, sources: list[Source]) -> None:

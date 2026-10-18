@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time as _time
 import uuid
 from datetime import UTC, datetime, time, timedelta
 
@@ -197,7 +198,10 @@ async def _schedule_digests_async() -> dict:
         for user in users:
             # Only build digest for users whose local time matches their preferred time
             if _is_digest_time_for_user(user):
-                build_digest_for_user.delay(str(user.id))
+                # rp_due_at: start of the on-time clock for this digest (#239).
+                build_digest_for_user.apply_async(
+                    (str(user.id),), headers={"rp_due_at": _time.time()}
+                )
                 queued += 1
 
         logger.info(f"Scheduled {queued} daily digests (timezone-aware)")

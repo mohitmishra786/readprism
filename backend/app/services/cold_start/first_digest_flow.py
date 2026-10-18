@@ -104,5 +104,9 @@ async def start_first_digest(user_id: uuid.UUID) -> bool:
         return False
     deadline = (datetime.now(UTC) + FIRST_DIGEST_DEADLINE).isoformat()
     ingest_user_sources.delay(str(user_id))
+    # Discovery candidates for the next digests (#141); not awaited here.
+    from app.workers.tasks.discovery import refresh_discovery_for_user
+
+    refresh_discovery_for_user.delay(str(user_id))
     prepare_first_digest.apply_async(args=[str(user_id), deadline], countdown=POLL_SECONDS)
     return True

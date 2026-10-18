@@ -93,6 +93,12 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
     if digest.delivered_at is not None:
         logger.info(f"Digest {digest.id} already delivered at {digest.delivered_at}; skipping")
         return True
+    from app.services.email_verification import may_email
+
+    if not may_email(user):
+        # Readable in the app; no email until the address is confirmed (#175).
+        logger.info(f"Digest {digest.id} not emailed: {user.id} has not verified their email")
+        return False
 
     # Load digest items with content
     items_result = await session.execute(
@@ -197,7 +203,12 @@ def _fallback_html(user: User, sections: dict) -> str:
                 f"{escape(content.title)}</a></h3>"
             )
             if content.summary_brief:
-                parts.append(f"<p>{escape(content.summary_brief)}</p>")
+                label = (
+                    "<small>AI summary:</small> "
+                    if getattr(content, "summary_source", None) == "llm"
+                    else ""
+                )
+                parts.append(f"<p>{label}{escape(content.summary_brief)}</p>")
             parts.append("</div>")
     return "".join(parts)
 
@@ -212,7 +223,8 @@ def _build_text_body(
             content = item_data["content"]
             lines.append(f"\n{content.title}")
             if content.summary_brief:
-                lines.append(content.summary_brief)
+                label = "AI summary: " if getattr(content, "summary_source", None) == "llm" else ""
+                lines.append(f"{label}{content.summary_brief}")
             lines.append(f"Read: {item_data['open_url']}")
             lines.append(
                 f"Rate: 👍 {item_data['up_url']}  ·  👎 {item_data['down_url']}  ·  "
