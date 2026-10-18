@@ -190,9 +190,26 @@ async def test_fixture_site_resolves(kind, page, html, expected, method, monkeyp
 
 @pytest.mark.asyncio
 async def test_reddit_recipe_removed_does_not_resolve():
-    """Reddit ended RSS on 2026-11-13; platform_candidates returns no feed for Reddit URLs (#107)."""
+    """Reddit RSS shuts down on 2026-11-13; platform_candidates returns no feed for Reddit URLs (#107)."""
     from app.services.ingestion.discover import platform_candidates
 
     assert platform_candidates("https://www.reddit.com/r/MachineLearning", "") == []
     assert platform_candidates("https://www.reddit.com/r/top", "") == []
     assert platform_candidates("https://www.reddit.com/user/spez", "") == []
+
+
+def test_link_candidates_with_multi_value_and_list_attributes():
+    from app.services.ingestion.discover import link_candidates
+
+    html = """<!DOCTYPE html>
+    <html>
+    <head>
+      <link rel="alternate extra-rel" type="application/rss+xml" href="/rss.xml" />
+      <link rel="alternate" type="application/atom+xml" href="https://example.com/atom.xml" />
+    </head>
+    <body></body>
+    </html>"""
+    candidates = link_candidates("https://example.com/blog", html)
+    urls = [c.url for c in candidates]
+    assert "https://example.com/rss.xml" in urls
+    assert "https://example.com/atom.xml" in urls

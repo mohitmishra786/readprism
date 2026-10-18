@@ -66,10 +66,19 @@ def link_candidates(page_url: str, html: str) -> list[FeedCandidate]:
     found: list[FeedCandidate] = []
     seen: set[str] = set()
     for tag in soup.find_all("link"):
-        rel = " ".join(tag.get("rel") or []).lower()
-        kind = (tag.get("type") or "").lower()
-        href = tag.get("href")
-        if not href or "alternate" not in rel:
+        rel = " ".join(tag.get_attribute_list("rel")).lower()
+        kind = " ".join(tag.get_attribute_list("type")).lower()
+        raw_href = tag.get("href")
+        if not raw_href or "alternate" not in rel:
+            continue
+        href = (
+            raw_href
+            if isinstance(raw_href, str)
+            else str(raw_href[0])
+            if isinstance(raw_href, list) and raw_href
+            else str(raw_href)
+        )
+        if not href:
             continue
         if "rss" not in kind and "atom" not in kind:
             continue
