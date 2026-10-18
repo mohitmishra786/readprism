@@ -245,6 +245,12 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
+    # Model summaries only for what the user will actually see (#147).
+    from app.services.summarization.lazy import ensure_llm_summaries
+
+    placed_items = [row[0] for section in sections.values() for row in section.items]
+    await ensure_llm_summaries(placed_items, limit=get_settings().digest_llm_summary_limit)
+
     # The ranker already produced each item's features, faithful contributions,
     # explanation and topic phrase from the same computation that scored it
     # (#129, #143); the digest stores them as they are.

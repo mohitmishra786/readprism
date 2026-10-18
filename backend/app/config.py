@@ -69,6 +69,11 @@ class Settings(BaseSettings):
     llm_tpm_limit: int = 6000
     llm_rpm_limit: int = 30
     llm_timeout_seconds: float = 30.0
+    # "lazy" (default): extractive at ingest, LLM only for items placed in a
+    # digest or opened in the reader (#147). "all": LLM for every item.
+    llm_summarize: str = "lazy"
+    # Max LLM summaries requested per digest build.
+    digest_llm_summary_limit: int = 20
     # Legacy aliases. A retired model id is rewritten in `_normalize_llm`.
     groq_api_key: str = ""
     groq_summarization_model: str = ""
