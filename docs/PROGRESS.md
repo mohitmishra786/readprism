@@ -287,7 +287,7 @@ Recorded 2026-09-24 on the tree at `37b7f16` before the phase-0 edits, except wh
 
 `extension/` is a Manifest V3 unpacked extension: `manifest.json`, `popup.html`/`popup.js`, `background.js`, `options.html`/`options.js`, `icon.svg`, `README.md`. It stores an instance URL and bearer token and POSTs the current page as a source or a creator. It does not capture reading telemetry.
 
-`docs/` before this session: deployment, privacy, terms, launch notes, competitors, unit economics, media shot list, cold-start contingency, one ADR (Celery solo pool). This session added PROGRESS, ROADMAP, ARCHITECTURE, security, two ADRs, and the spec addendum. `audit/` at the repo root is a separate 00–17 product audit plus an implementation log; it is not the task tracker.
+`docs/` before this session: deployment, privacy, terms, launch notes, competitors, unit economics, media shot list, cold-start contingency, one ADR (Celery solo pool). This session added PROGRESS, ROADMAP, ARCHITECTURE, security, two ADRs, and the spec addendum. The 00–17 product audit plus its implementation log lived at `audit/` in the repo root (it was never the task tracker); since #253 it is archived under `docs/archive/2026-10/audit/`.
 
 ---
 
