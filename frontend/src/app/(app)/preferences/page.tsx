@@ -100,6 +100,8 @@ function LlmStatus() {
     model_primary: string;
     model_fast: string;
     openai_fallback_enabled: boolean;
+    embedding_model?: string;
+    embedding_is_hash?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -108,12 +110,22 @@ function LlmStatus() {
 
   if (!status) return null;
   return (
-    <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }} role="status">
-      {status.llm_configured ? "✅" : "⚠️"} Summaries:{" "}
-      {status.llm_configured ? "LLM active" : "extractive fallback (no key)"} ·{" "}
-      {status.model_primary} · fast: {status.model_fast}
-      {status.openai_fallback_enabled ? " · OpenAI fallback on" : ""}
-    </p>
+    <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }} role="status">
+      <p style={{ margin: "4px 0" }}>
+        {status.llm_configured ? "✅" : "⚠️"} Summaries:{" "}
+        {status.llm_configured ? "LLM active" : "extractive fallback (no key)"} ·{" "}
+        {status.model_primary} · fast: {status.model_fast}
+        {status.openai_fallback_enabled ? " · OpenAI fallback on" : ""}
+      </p>
+      {status.embedding_model && (
+        <p style={{ margin: "4px 0" }}>
+          {status.embedding_is_hash ? "⚠️" : "🧠"} Embeddings: {status.embedding_model}
+          {status.embedding_is_hash
+            ? " (lite profile: lexical hash fallback, lower semantic quality)"
+            : " (dense semantic vectors)"}
+        </p>
+      )}
+    </div>
   );
 }
 

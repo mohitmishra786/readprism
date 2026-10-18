@@ -15,6 +15,16 @@ settings = get_settings()
 _embedding_service: EmbeddingService | None = None
 
 
+def is_hash_embeddings() -> bool:
+    """Return True if running in lite mode without sentence_transformers."""
+    try:
+        import sentence_transformers  # noqa: F401
+
+        return False
+    except ImportError:
+        return True
+
+
 class EmbeddingService:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         try:

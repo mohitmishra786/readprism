@@ -29,15 +29,16 @@ ReadPrism operates in two deployment modes controlled by `DEPLOYMENT_MODE` (`sel
 
 ```bash
 ./scripts/init_env.sh        # creates .env with generated secrets (add LLM_API_KEY optionally)
-docker compose up -d --build  # starts 8 default services; migrations run automatically
+docker compose up -d          # pulls the published images, starts 8 services; migrations run automatically
 open http://localhost:3001    # create your account and onboard
 ```
 
 **Profiles**:
 - **Default (`docker compose up -d`)**: ~2.5 GB RAM. Runs the standard 8 services with local MiniLM embeddings (`sentence-transformers/all-MiniLM-L6-v2`, 384-dimensional), Postgres FTS + pgvector search, and dedicated Celery solo workers.
-- **Lite (`make up-lite`)**: ~1.0 GB RAM. Builds the backend with `LITE=1` (no PyTorch), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
+- **Lite (`make up-lite`)**: ~1.0 GB RAM. Runs the torch-free `:latest-lite` image (built with `LITE=1`), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
 - **Full (`docker compose --profile full up -d`)**: ~4.0 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites), an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services), and Meilisearch (optional; search itself is Postgres FTS + pgvector). SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
 - **Bridge (`docker compose --profile bridge up -d`)**: Adds an RSSHub service to bridge closed platforms lacking RSS feeds.
+- **Build from source (`make up-build`)**: builds the images from your checkout instead of pulling them from GHCR (`docker-compose.build.yml`; no source mounts).
 
 **Operations**:
 - `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
@@ -106,7 +107,7 @@ FRONTEND_URL=http://localhost:3001
 ### 2. Start the stack
 
 ```bash
-docker compose up --build
+docker compose up -d      # or `make up-build` to build from this checkout
 ```
 
 For local development (`APP_ENV=development`, `--reload`, source mounts) use

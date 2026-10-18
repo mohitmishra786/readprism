@@ -19,10 +19,7 @@ volumes:
 # Shared config for the queue-specific Celery workers (audit 07-2). `x-` keys are
 # ignored by Compose; the anchor is merged into each worker service below.
 x-worker-base: &worker-base
-  image: readprism-backend
-  build:
-    context: ./backend
-    dockerfile: Dockerfile
+  image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
   env_file:
     - .env
   environment:
@@ -45,8 +42,6 @@ x-worker-base: &worker-base
   networks:
     - readprism_net
     - render_net  # reaches browserless; browserless cannot reach back out
-  volumes:
-    - ./backend:/app
   healthcheck: &worker-health
     # Each worker overrides `test` to ping its own node name (scrape@, embed@,
     # digest@ + hostname). Pinging celery@ matched no worker, so every worker
@@ -67,7 +62,6 @@ services:
       POSTGRES_DB: readprism
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - readprism_net
     healthcheck:
@@ -99,9 +93,7 @@ services:
       - readprism_net
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
     env_file:
       - .env
     environment:
@@ -126,8 +118,6 @@ services:
     networks:
       - readprism_net
       - render_net  # API-side rendering (creator resolution) reaches browserless
-    volumes:
-      - ./backend:/app
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
       interval: 15s
@@ -164,10 +154,7 @@ services:
       test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d digest@$$HOSTNAME || exit 1"]
 
   beat:
-    image: readprism-backend
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
     env_file:
       - .env
     environment:
@@ -189,8 +176,6 @@ services:
         condition: service_healthy
     networks:
       - readprism_net
-    volumes:
-      - ./backend:/app
     # Liveness: the beat_heartbeat task (scheduled every 60s) writes a short-TTL
     # Redis key. If beat stops scheduling, the key expires and this fails,
     # surfacing an otherwise-silent ingestion/digest stop (audit 07-4).
@@ -258,9 +243,7 @@ services:
       - egress_net
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/mohitmishra786/readprism/readprism-frontend:${READPRISM_VERSION:-latest}
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:

@@ -14,6 +14,17 @@ os.environ["APP_ENV"] = os.environ.get("TEST_APP_ENV", "development")
 if not os.environ.get("REGISTRATION_MODE"):
     os.environ["REGISTRATION_MODE"] = "open"
 
+# Host-side Redis defaults: outside Docker, `redis` host is not resolvable.
+# Fall back to localhost:6379 so tests needing Redis (rate limits, magic links,
+# background queues) pass out of the box when Redis runs on the host or via
+# docker-compose.test.yml. Must happen before `app` is imported.
+if "REDIS_URL" not in os.environ:
+    os.environ["REDIS_URL"] = "redis://127.0.0.1:6379/0"
+if "CELERY_BROKER_URL" not in os.environ:
+    os.environ["CELERY_BROKER_URL"] = "redis://127.0.0.1:6379/0"
+if "CELERY_RESULT_BACKEND" not in os.environ:
+    os.environ["CELERY_RESULT_BACKEND"] = "redis://127.0.0.1:6379/0"
+
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -41,6 +52,14 @@ engine = create_async_engine(TEST_DATABASE_URL, echo=False, poolclass=NullPool)
 TestingSessionLocal = async_sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
 )
+
+
+@pytest.fixture(autouse=True)
+def _cleanup_redis_client():
+    from app.utils import cache
+
+    yield
+    cache._redis_client = None
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -82,9 +101,12 @@ def _disable_rate_limit(monkeypatch):
     IP, so the fixed-window counters would otherwise accumulate across tests and
     spuriously 429. The dedicated rate-limit test re-enables it explicitly.
     """
-    from app.utils import ratelimit
+    from app.utils import cache, ratelimit
 
+    cache._redis_client = None
     monkeypatch.setattr(ratelimit.settings, "rate_limit_enabled", False)
+    yield
+    cache._redis_client = None
 
 
 @pytest.fixture
