@@ -30,11 +30,29 @@ docker compose exec -T db pg_restore -U readprism -d readprism --no-owner --no-p
 if [ -f "$SRC/redis.rdb" ]; then
   echo "==> restoring redis snapshot…"
   docker compose stop redis >/dev/null 2>&1 || true
-  # With AOF enabled (#204) Redis loads the AOF over the RDB if one exists,
-  # which would silently discard the restored snapshot. Clear it first; Redis
-  # falls back to the RDB when the AOF is missing, then AOF takes over.
+  # With AOF on (#204), Redis starts from the AOF and ignores dump.rdb, even
+  # when the AOF directory is missing (it starts empty). So: drop the old AOF,
+  # load the snapshot in a one-off Redis with AOF off, switch AOF on there
+  # (Redis rewrites the AOF from the loaded data), then start the service.
   docker compose run --rm --no-deps --entrypoint sh redis -c "rm -rf /data/appendonlydir" >/dev/null 2>&1 || true
   docker compose cp "$SRC/redis.rdb" redis:/data/dump.rdb >/dev/null
+  docker compose run -d --no-deps --name readprism-redis-restore redis \
+    redis-server --appendonly no >/dev/null
+  for _ in $(seq 1 30); do
+    docker exec readprism-redis-restore redis-cli ping 2>/dev/null | grep -q PONG && break
+    sleep 1
+  done
+  docker exec readprism-redis-restore redis-cli config set appendonly yes >/dev/null
+  for _ in $(seq 1 60); do
+    info=$(docker exec readprism-redis-restore redis-cli info persistence)
+    if echo "$info" | grep -q "aof_enabled:1" && echo "$info" | grep -q "aof_rewrite_in_progress:0" \
+      && ! echo "$info" | grep -q "aof_rewrite_scheduled:1"; then
+      break
+    fi
+    sleep 1
+  done
+  docker exec readprism-redis-restore redis-cli shutdown >/dev/null 2>&1 || true
+  docker rm -f readprism-redis-restore >/dev/null 2>&1 || true
   docker compose start redis >/dev/null
 fi
 
