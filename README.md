@@ -10,9 +10,18 @@ What makes it different:
 - **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
 - **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
-**Who it's for:** built first for developers who self-host and follow 50+ technical feeds — people who enjoy running their own stack, tolerate rough edges, and want to introspect (and improve) the ranking engine. A hosted offering is not part of the current plan.
+**Who it's for:** built for developers and heavy readers who follow 50+ technical feeds — people who want an explainable, behavioral ranking engine that gets better the more they read. ReadPrism supports both single-tenant self-hosting and multi-tenant hosted operations.
 
 The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md). The running system is described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+---
+
+## Hosted or Self-Host
+
+ReadPrism operates in two deployment modes controlled by `DEPLOYMENT_MODE` (`selfhost` or `hosted`):
+
+- **Self-Hosted (`DEPLOYMENT_MODE=selfhost`, default)**: Single-tenant deployment with no quota or plan gates. All ingested content is readable in full text within the in-app reader (`READER_FULL_TEXT=auto`), email verification defaults to off (`EMAIL_VERIFICATION=auto`), and registration is closed after setup by default (`REGISTRATION_MODE=closed`) to protect your instance.
+- **Hosted (`DEPLOYMENT_MODE=hosted`)**: Multi-tenant offering with free-tier source/creator limits (`FREE_MAX_SOURCES`, `FREE_MAX_CREATORS`, `HOSTED_FREE_DIGEST_REGEN_MINUTES`), mandatory email verification (`EMAIL_VERIFICATION=auto`), domain-level signup rate limits (`SIGNUP_PER_DOMAIN_PER_HOUR`), tenant fetch abuse controls (`HOSTED_FETCH_BUDGET_PER_HOUR`), reader full-text syndication safeguards (`READER_FULL_TEXT=auto`), and subscription billing via Lemon Squeezy or Paddle (`BILLING_PROVIDER`).
 
 ---
 
@@ -20,14 +29,16 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 
 ```bash
 ./scripts/init_env.sh        # creates .env with generated secrets (add LLM_API_KEY optionally)
-docker compose up -d --build  # db, redis, backend, workers, frontend; migrations run automatically
+docker compose up -d          # pulls the published images, starts 8 services; migrations run automatically
 open http://localhost:3001    # create your account and onboard
 ```
 
-**Profiles & Resource Options** (RL-01):
-- **Default (`docker compose up -d --build` / `make up`)**: Standard self-host (~2.5 GB RAM). MiniLM dense neural embeddings (`all-MiniLM-L6-v2`), Postgres FTS + pgvector search; leaves heavy browser rendering and Meilisearch off.
-- **`lite` (low-RAM option, `make up-lite`)**: Resource-constrained VPS (~1 GB RAM). Uses `LITE=1` build arg (or `:latest-lite` image) with deterministic lexical hash embeddings instead of PyTorch/SentenceTransformers.
-- **`full` (`docker compose --profile full up -d --build` / `make up-full`)**: Maximum capability (~4 GB RAM). Adds Browserless (isolated headless Chrome for JS-heavy web rendering) and Meilisearch alongside MiniLM embeddings.
+**Profiles**:
+- **Default (`docker compose up -d`)**: ~2.5 GB RAM. Runs the standard 8 services with local MiniLM embeddings (`sentence-transformers/all-MiniLM-L6-v2`, 384-dimensional), Postgres FTS + pgvector search, and dedicated Celery solo workers.
+- **Lite (`make up-lite`)**: ~1.0 GB RAM. Runs the torch-free `:latest-lite` image (built with `LITE=1`), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
+- **Full (`docker compose --profile full up -d`)**: ~4.0 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites), an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services), and Meilisearch (optional; search itself is Postgres FTS + pgvector). SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
+- **Bridge (`docker compose --profile bridge up -d`)**: Adds an RSSHub service to bridge closed platforms lacking RSS feeds.
+- **Build from source (`make up-build`)**: builds the images from your checkout instead of pulling them from GHCR (`docker-compose.build.yml`; no source mounts).
 
 **Operations**:
 - `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
@@ -51,17 +62,22 @@ open http://localhost:3001    # create your account and onboard
 - **Real reading telemetry** — An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end — feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
 - **Daily digest** — Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
 - **Interest graph** — Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
-- **Cold start handling** — Onboarding extracts high-quality signal immediately; collaborative filtering warmup provides personalization before your own behavioral data accumulates.
+- **Cold start handling** — Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) suggests articles at least 20 readers finished (k-anonymous, opt-out in Preferences) once the instance has 100 active readers (inert on single-user and family instances).
 - **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (Twitter/X and LinkedIn have no public feed and are clearly marked).
 
 ---
 
-## Prerequisites
+## Requirements & Prerequisites
 
-- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) (v2)
-- A [Groq](https://console.groq.com/) API key (free tier is sufficient)
-- SMTP credentials for email digest delivery (Zoho SMTP by default; any SMTP host works)
-- 4 GB RAM minimum for the full stack (sentence-transformer model loads into memory)
+- **Docker & Docker Compose (v2)**: Recommended for containerized deployment.
+- **Host Python ≥ 3.11**: Required if running backend tests, CLI tools, or development servers outside Docker (uses PEP 604 union syntax `X | Y` and modern typing features; Python 3.12 recommended).
+- **Node.js ≥ 20.9.0**: Required if running the frontend dev server or tests outside Docker.
+- **RAM**:
+  - ~1.0 GB RAM for the `lite` profile (hash embeddings)
+  - ~2.5 GB RAM for the default self-host profile (MiniLM sentence-transformers)
+  - ~4.0 GB RAM minimum for the `full` profile (MiniLM + Browserless + Meilisearch)
+- **LLM API Key (Optional)**: Groq (default), OpenAI, or any OpenAI-compatible provider. If unset, ReadPrism automatically falls back to extractive summaries (`summary_source=extractive`) with zero API dependencies.
+- **SMTP Credentials (Optional)**: Any standard SMTP provider (Zoho, Postmark, SendGrid, etc.) for daily email digest delivery. If omitted, digests are still compiled and accessible in-app.
 
 ---
 
@@ -86,31 +102,34 @@ FROM_EMAIL=digest@yourdomain.com
 FRONTEND_URL=http://localhost:3001
 ```
 
-Only `LLM_API_KEY` (or the legacy `GROQ_API_KEY`) is required for model summaries. Without a key the digest still builds, using extractive summaries. Without email
-credentials, digests are still readable in-app (email delivery is skipped). All
-other values have working defaults for local development.
+`LLM_API_KEY` (or the legacy `GROQ_API_KEY`) is optional: without a key, the digest still builds using extractive summaries. Without email credentials, digests are still readable in-app (email delivery is skipped). All other values have working defaults for local development.
 
 ### 2. Start the stack
 
 ```bash
-docker compose up --build
+docker compose up -d      # or `make up-build` to build from this checkout
 ```
 
 For local development (`APP_ENV=development`, `--reload`, source mounts) use
 `make up-dev`, which adds `docker-compose.dev.yml`. Never expose a development
 instance: it relaxes webhook authentication and opens operator metrics.
 
-This starts seven services:
+This starts eight services by default:
 
 | Service | Port | Description |
 |---|---|---|
 | `db` | 5432 | PostgreSQL 16 with pgvector extension |
 | `redis` | 6379 | Cache and Celery broker |
 | `backend` | 8000 | FastAPI application server |
-| `worker-scrape` / `worker-embed` / `worker-digest` | — | Celery workers, one `--pool=solo` process per queue (scrape / embed / digest) so a slow scrape can't starve digests |
-| `beat` | — | Celery beat scheduler |
-| `browserless` | 3000 | Headless Chrome pool for scraping |
+| `worker-scrape` | — | Celery solo worker for fetching and scraping feeds (`scrape` queue) |
+| `worker-embed` | — | Celery solo worker for computing semantic embeddings (`embed` queue) |
+| `worker-digest` | — | Celery solo worker for compiling and delivering digests (`digest`, `celery` queues) |
+| `beat` | — | Celery beat scheduler for periodic tasks |
 | `frontend` | 3001 | Next.js web application |
+
+Additional services are enabled with profiles:
+- **`--profile full`**: `browserless` (port 3000, internal headless Chrome pool on an isolated network), `egress-proxy` (Squid forward proxy; Browserless's only way out), and `meilisearch` (port 7700, full-text search).
+- **`--profile bridge`**: `rsshub` (port 1200, RSSHub bridge for closed platforms).
 
 ### 3. Migrations
 
@@ -203,7 +222,7 @@ Your interest model is a directed weighted graph stored in PostgreSQL. Nodes are
 docker compose exec backend pytest tests/ -v
 ```
 
-Or locally with a running database:
+Or locally with a running database and Redis (requires host Python ≥ 3.11):
 
 ```bash
 cd backend
@@ -251,20 +270,83 @@ FastAPI generates interactive docs at:
 
 ## Key Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `SECRET_KEY` | Yes | JWT signing key — generate with `secrets.token_hex(32)` |
-| `GROQ_API_KEY` | Yes | Primary LLM for summarization (Llama 3.3 70B) |
-| `ZOHO_EMAIL` / `ZOHO_PASSWORD` | For email | SMTP credentials for digest delivery (email is skipped if unset) |
-| `FROM_EMAIL` | For email | Sender address for digest emails |
-| `FRONTEND_URL` | Yes | Used for CORS and email links |
-| `PUBLIC_API_URL` | For email | Externally-reachable API URL for unsubscribe links |
-| `OPENAI_API_KEY` | No | Fallback LLM (only used if `OPENAI_FALLBACK_ENABLED=true`) |
-| `OPENAI_FALLBACK_ENABLED` | No | Default `false`. Set `true` to enable OpenAI fallback |
-| `EMBEDDING_MODEL` | No | Default `sentence-transformers/all-MiniLM-L6-v2` |
-| `EMBEDDING_DEVICE` | No | Default `cpu`. Set `cuda` if GPU is available |
+ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` to generate a ready-to-use `.env` file with secure random keys.
 
-All variables are documented in [`.env.example`](.env.example).
+### Core Application & Deployment
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_ENV` | `production` | `production` or `development`. Production enforces secure cookies and disables dev metric leaks. |
+| `DEPLOYMENT_MODE` | `selfhost` | `selfhost` (single-tenant, no quotas, full-text reading) or `hosted` (multi-tenant safety, quotas, billing). |
+| `SECRET_KEY` | *(Required)* | JWT signing secret key (generate with `./scripts/init_env.sh`). |
+| `REFRESH_SECRET_KEY` | Falls back to `SECRET_KEY` | Optional separate secret for JWT refresh tokens. |
+| `METRICS_TOKEN` | *(Required)* | Secret token gating `/metrics/*` endpoints via `X-Metrics-Token`. |
+| `REGISTRATION_MODE` | `closed` (selfhost) / `open` (hosted) | `closed` (only initial user), `invite` (`REGISTRATION_INVITE_CODES`), or `open`. |
+| `EMAIL_VERIFICATION` | `auto` | `auto` (required on hosted, off on selfhost), `required`, or `off`. |
+| `FRONTEND_URL` | `http://localhost:3001` | Origin used for CORS headers and email link generation. |
+| `PUBLIC_API_URL` | `http://localhost:8000` | Externally-reachable API URL used for email unsubscribe links. |
+| `COOKIE_DOMAIN` | Empty (host-only) | Domain for session cookies; set e.g. `.example.com` for cross-subdomain auth. |
+| `COOKIE_SECURE` | `auto` | `auto` enforces HTTPS cookies unless running on localhost/LAN HTTP. |
+
+### Hosted & Abuse Controls
+
+| Variable | Default | Description |
+|---|---|---|
+| `BILLING_PROVIDER` | Empty (disabled) | `lemonsqueezy` or `paddle` for hosted subscriptions. |
+| `BILLING_WEBHOOK_SECRET` | Empty | Webhook signature verification secret for billing provider. |
+| `BILLING_API_KEY` | Empty | API key for billing provider API operations (Paddle portal/checkout). |
+| `READER_FULL_TEXT` | `auto` | `auto` (hosted serves feed text only; selfhost serves full extracted text), `all`, or `feed_only`. |
+| `HOSTED_FETCH_BUDGET_PER_HOUR` | `300` | Per-user hourly feed fetch budget on hosted instances. |
+| `HOSTED_HOST_POLLS_PER_HOUR` | `120` | Max times any single feed host is polled per hour across users. |
+| `HOSTED_MAX_SOURCES_PER_HOST` | `10` | Max sources a single hosted user may subscribe to on the same host. |
+| `SIGNUP_PER_DOMAIN_PER_HOUR` | `10` | Hosted registration rate limit per email domain per hour. |
+| `DIGEST_ON_TIME_SECONDS` | `900` | Digest delivery SLO threshold in seconds (15 minutes). |
+| `TELEMETRY_RAW_RETENTION_DAYS` | `90` | Raw reading telemetry retention in days (`0` keeps indefinitely). |
+
+### Database & Redis
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | `postgresql+asyncpg://readprism:readprism@db:5432/readprism` | Async SQLAlchemy database URL (PostgreSQL + pgvector). |
+| `DATABASE_SYNC_URL` | `postgresql+psycopg2://...` | Sync connection URL for migrations and healthchecks. |
+| `AUTO_MIGRATE` | `true` | Automatically run Alembic migrations on backend startup under an advisory lock. |
+| `REDIS_URL` | `redis://redis:6379/0` | Redis instance used for caching, rate limiting, and sessions. |
+| `CELERY_BROKER_URL` | `redis://redis:6379/1` | Celery broker URL. |
+| `CELERY_RESULT_BACKEND` | `redis://redis:6379/2` | Celery result backend URL. |
+
+### LLM Summarization
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_BASE_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible API base URL (Groq, OpenAI, Ollama, etc.). |
+| `LLM_API_KEY` | Empty (extractive) | Optional API key. When unset, extractive summaries are used without API calls. |
+| `LLM_MODEL_PRIMARY` | `openai/gpt-oss-120b` | Primary model for digest item summaries. |
+| `LLM_MODEL_FAST` | `openai/gpt-oss-20b` | Faster model for brief summaries and categorization. |
+| `LLM_SUMMARIZE` | `lazy` | `lazy` summarizes only items placed in digests or reader; `all` summarizes every ingest. |
+| `OPENAI_FALLBACK_ENABLED` | `false` | Enable secondary OpenAI fallback provider (`OPENAI_API_KEY`, `OPENAI_MODEL`). |
+
+### Embeddings & Ranking
+
+| Variable | Default | Description |
+|---|---|---|
+| `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformers model name or `hash` for torch-free hash embeddings. |
+| `EMBEDDING_DEVICE` | `cpu` | PyTorch device (`cpu` or `cuda`). |
+| `COLD_START_COLLABORATIVE_ENABLED` | `true` | Enable k-anonymous collaborative warmup (active from 100 readers; items need 20 distinct readers). |
+| `SERENDIPITY_DEFAULT_PERCENTAGE` | `15` | Percentage of digest slots reserved for exploration/serendipity. |
+| `RANKER_VERSION` | `2` | Active ranking engine algorithm version. |
+
+### Email Delivery & Scraping
+
+| Variable | Default | Description |
+|---|---|---|
+| `ZOHO_EMAIL` / `ZOHO_PASSWORD` | Empty | SMTP credentials for email digest delivery (email skipped if unset). |
+| `FROM_EMAIL` | Empty | Sender address for outgoing digest emails. |
+| `EMAIL_PHYSICAL_ADDRESS` | Empty | Physical mailing address included in digest email footer (CAN-SPAM). |
+| `SSRF_PROTECTION_ENABLED` | `true` | Pin and validate resolved IPs against loopback/private CIDRs. |
+| `BROWSERLESS_URL` | `http://browserless:3000` | Headless Chrome URL for rendered scraping (`full` profile). |
+| `RSSHUB_BASE_URL` | Empty | Optional RSSHub bridge URL for closed platform feeds (`bridge` profile). |
+
+All variables are documented in detail in [`.env.example`](.env.example).
 
 ---
 
@@ -348,14 +430,14 @@ reviewed by counsel before collecting user data. Licensed under
 
 | Component | Technology |
 |---|---|
-| Backend API | Python 3.12 / FastAPI |
+| Backend API | Python 3.12 / FastAPI (host-side tests/tools require Python ≥ 3.11) |
 | Frontend | Next.js 16 (React 19, TypeScript) |
 | Database | PostgreSQL 16 + pgvector |
 | Cache & Queue | Redis 7 + Celery |
-| Embeddings | sentence-transformers (local, no API cost) |
-| Summarization LLM | OpenAI-compatible HTTP (`LLM_BASE_URL` + `LLM_MODEL_*`). Default host is Groq with `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. No model id is hard-coded. |
+| Embeddings | sentence-transformers (`all-MiniLM-L6-v2`, local, no API cost; or hash embeddings in `lite` profile) |
+| Summarization LLM | OpenAI-compatible HTTP (`LLM_BASE_URL` + `LLM_MODEL_*`). Default host is Groq with `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. Optional; falls back to extractive summarization. |
 | Email delivery | SMTP (Zoho by default) |
-| Scraping | Playwright + Browserless/Chrome |
+| Scraping | trafilatura + Playwright / Browserless (in `full` profile) |
 | ORM | SQLAlchemy 2.0 (async) |
 | Migrations | Alembic |
 | Validation | Pydantic v2 |
