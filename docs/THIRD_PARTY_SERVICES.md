@@ -11,7 +11,6 @@ here.
 | **OpenAI** (optional fallback) | Summarization when `OPENAI_FALLBACK_ENABLED=true` | Article title + text | Same content-policy considerations as Groq. Disabled by default. |
 | **Zoho SMTP / Resend** | Digest email delivery | Recipient email + digest content | Transactional/user-requested email only — no cold or bulk marketing. Include a working unsubscribe (implemented) and, for bulk sending, a physical address and SPF/DKIM/DMARC on a sending subdomain. |
 | **Browserless / Chrome** | Headless rendering of JS-heavy pages | Target URL | Runs in the operator's own container. Fetching respects robots.txt and the honest-bot posture. |
-| **Meilisearch** | Full-text search index | Content titles/summaries | Self-hosted (MIT-licensed). Enforce a master key outside development. |
 
 ## Libraries (licenses)
 

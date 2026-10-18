@@ -92,26 +92,6 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
             item.scored_at = datetime.now(UTC)
 
-        # Index in Meilisearch for full-text search
-        from app.utils.search import index_content_item
-
-        await index_content_item(
-            item.id,
-            {
-                "title": item.title,
-                "summary_headline": item.summary_headline or "",
-                "summary_brief": item.summary_brief or "",
-                "author": item.author or "",
-                "topic_clusters": item.topic_clusters or [],
-                "source_id": str(item.source_id) if item.source_id else None,
-                "creator_platform_id": str(item.creator_platform_id)
-                if item.creator_platform_id
-                else None,
-                "url": item.url,
-                "published_at": item.published_at.isoformat() if item.published_at else None,
-            },
-        )
-
         await session.commit()
         return {"status": "ok", "content_item_id": str(content_item_id)}
 

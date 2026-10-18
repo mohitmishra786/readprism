@@ -30,8 +30,7 @@ The weights are learned per-user via gradient descent on prediction accuracy,
 so the engine gets sharper the more you use it — and that learned model is the
 moat: an 18-month-old interest graph isn't portable to a competitor.
 
-It's open source and self-hostable (Docker Compose: Postgres+pgvector, Redis,
-Celery, Meilisearch, FastAPI, Next.js). Free tier has the full ranking engine;
+Celery, FastAPI, Next.js). Free tier has the full ranking engine;
 Pro is $4.99/mo for unlimited sources. Closed platforms (Twitter/LinkedIn) are
 honestly marked "unsupported" rather than silently failing.
 
@@ -55,7 +54,7 @@ and what you skip. Eight ranking signals with per-user learned weights, stored
 as a directed interest graph (so it knows that compiler-optimization and
 language-design are adjacent in your reading).
 
-- Self-hostable: Docker Compose, Postgres+pgvector, Redis, Celery, Meilisearch
+- Self-hostable: Docker Compose, Postgres+pgvector, Redis, Celery
 - Tracks RSS, scraping (trafilatura + Playwright fallback), newsletters, creators
 - Reddit, Substack, YouTube, Medium, podcasts fully supported; Twitter/LinkedIn
   honestly marked unsupported
