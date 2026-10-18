@@ -33,7 +33,12 @@ WINDOW = timedelta(hours=24)
 
 
 async def first_digest_status(session: AsyncSession, user_id: uuid.UUID) -> dict:
-    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
 
     digest_id = (
         await session.execute(
@@ -55,8 +60,9 @@ async def first_digest_status(session: AsyncSession, user_id: uuid.UUID) -> dict
     sources_total, sources_fetched = int(own[0]), int(own[1])
 
     source_ids = await equivalent_source_ids(session, user_id)
+    feed_ids = await user_feed_ids(session, user_id)
     items = embedded = summarized = 0
-    if source_ids:
+    if source_ids or feed_ids:
         row = (
             await session.execute(
                 select(
@@ -64,7 +70,7 @@ async def first_digest_status(session: AsyncSession, user_id: uuid.UUID) -> dict
                     func.count(ContentItem.embedding),
                     func.count(ContentItem.summary_brief),
                 ).where(
-                    ContentItem.source_id.in_(source_ids),
+                    from_user_feeds(source_ids, feed_ids),
                     ContentItem.fetched_at >= datetime.now(UTC) - WINDOW,
                     ContentItem.rankable.is_(True),
                     visible_item_filter(user_id),

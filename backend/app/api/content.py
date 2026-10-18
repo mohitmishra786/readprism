@@ -27,17 +27,23 @@ async def get_feed(
 ) -> list[FeedItem]:
     offset = (page - 1) * limit
 
-    from sqlalchemy import false, or_
+    from sqlalchemy import or_
 
-    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
 
     # Only this user's world (#167): items from feeds they follow, their own
     # private items, and items they interacted with. The outer join used to
     # list every row in the instance, including other users' private
     # newsletters and saves.
     source_ids = await equivalent_source_ids(session, current_user.id)
+    feed_ids = await user_feed_ids(session, current_user.id)
     in_scope = or_(
-        ContentItem.source_id.in_(source_ids) if source_ids else false(),
+        from_user_feeds(source_ids, feed_ids),
         ContentItem.owner_user_id == current_user.id,
         UserContentInteraction.id.isnot(None),
     )

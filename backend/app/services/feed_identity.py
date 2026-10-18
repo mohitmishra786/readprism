@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
@@ -69,3 +69,34 @@ async def user_source_for_item(
         .limit(1)
     )
     return result.scalar_one_or_none()
+
+
+async def user_feed_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.UUID]:
+    """Shared feeds this user actively subscribes to (#161)."""
+    result = await session.execute(
+        select(Source.feed_id).where(
+            Source.user_id == user_id, Source.is_active == True, Source.feed_id.isnot(None)
+        )
+    )
+    return [row[0] for row in result.all()]
+
+
+def from_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
+    """Items filed under any equivalent source row, or tagged with one of the
+    user's feeds (survives deletion of the subscriber row that stored them)."""
+    return or_(
+        ContentItem.source_id.in_(source_ids) if source_ids else false(),
+        ContentItem.feed_id.in_(feed_ids) if feed_ids else false(),
+    )
+
+
+def outside_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
+    """Negation of from_user_feeds that treats NULLs as 'outside'."""
+    return and_(
+        or_(ContentItem.source_id.is_(None), ContentItem.source_id.notin_(source_ids))
+        if source_ids
+        else True,
+        or_(ContentItem.feed_id.is_(None), ContentItem.feed_id.notin_(feed_ids))
+        if feed_ids
+        else True,
+    )

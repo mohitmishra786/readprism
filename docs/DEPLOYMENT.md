@@ -29,6 +29,21 @@ published placeholder. Before a hosted deployment also set
 `MAILGUN_WEBHOOK_SIGNING_KEY` (or the provider secret you use),
 `MEILISEARCH_MASTER_KEY` and SMTP credentials. See [`.env.example`](../.env.example).
 
+## Upgrading to shared feeds (migration 0025)
+
+Since #161 a feed followed by several users is polled once. Migration 0025
+creates one `feeds` row per distinct feed URL from existing subscriptions and
+tags stored items with it; per-user trust, tags and reading history are not
+touched, and newsletter sources stay private. To preview the merge first:
+
+```bash
+make backup
+docker compose exec backend python -m app.feeds_plan   # read-only
+```
+
+The backend then applies the migration on start (#126). `alembic downgrade
+0024` reverses it; poll state remains mirrored on each source row.
+
 ## Workers & queues
 
 Ingestion, embedding, and digest work run on separate Celery queues, one

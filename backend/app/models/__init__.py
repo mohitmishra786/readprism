@@ -8,6 +8,7 @@ from app.models.digest import (
     DigestItem,
     RankerWeightRevision,
 )
+from app.models.feed import Feed
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.source import Source
@@ -20,6 +21,7 @@ from app.models.user import User
 # imported anywhere on the app import path) are missing from metadata, and
 # drop_all fails on dependent FKs (e.g. creator_topic_trust → creators).
 __all__ = [
+    "Feed",
     "User",
     "Source",
     "Creator",

@@ -115,6 +115,9 @@ class UserRankingState:
     prefers_fresh: bool
     novelty_target: float
     now: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Shared feed id -> the user's own feed key (#161), for items whose
+    # filing source row was deleted.
+    feed_id_key: dict[uuid.UUID, str] = field(default_factory=dict)
 
 
 def _vec(raw) -> np.ndarray | None:
@@ -334,6 +337,7 @@ async def load_state(user: User, session: AsyncSession) -> UserRankingState:
         prefers_fresh=prefers_fresh,
         novelty_target=float(get_settings().novelty_target),
         now=now,
+        feed_id_key={s.feed_id: _feed_key(s) for s in own_sources if getattr(s, "feed_id", None)},
     )
 
 
@@ -516,6 +520,8 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
 
         # source trust (per user, per feed)
         key = state.source_feed_key.get(item.source_id) if item.source_id else None
+        if key is None and getattr(item, "feed_id", None):
+            key = state.feed_id_key.get(item.feed_id)
         feed = state.feeds.get(key) if key else None
         if feed is not None:
             age = (now - feed.last_outcome_at).days if feed.last_outcome_at else 0.0

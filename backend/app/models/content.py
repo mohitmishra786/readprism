@@ -55,6 +55,11 @@ class ContentItem(Base):
     source_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("sources.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    # Shared feed the item came from (#161). Survives the deletion of any one
+    # subscriber's source row, which `source_id` does not.
+    feed_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feeds.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     creator_platform_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("creator_platforms.id", ondelete="SET NULL"),
