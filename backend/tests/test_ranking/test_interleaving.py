@@ -108,7 +108,14 @@ async def test_interleaved_digest_logs_teams_and_reports_win_rate(client, db_ses
             ix.read_completion_pct, ix.opened_at = 0.95, now
     await db_session.commit()
 
-    report = (await client.get("/api/v1/metrics/interleaving")).json()
+    from app.api import metrics
+
+    monkeypatch.setattr(metrics.settings, "metrics_token", "t-interleave")
+    report = (
+        await client.get(
+            "/api/v1/metrics/interleaving", headers={"X-Metrics-Token": "t-interleave"}
+        )
+    ).json()
     assert report["digests"] >= 1
     assert report["pooled"]["prs_wins"] == 1 and report["pooled"]["prs_win_rate"] == 1.0
     assert report["users"] == 1 and report["user_win_rates"] == [1.0]

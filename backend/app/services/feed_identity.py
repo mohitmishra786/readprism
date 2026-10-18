@@ -78,7 +78,7 @@ async def user_feed_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.
             Source.user_id == user_id, Source.is_active == True, Source.feed_id.isnot(None)
         )
     )
-    return [row[0] for row in result.all()]
+    return [row[0] for row in result.all() if row[0] is not None]
 
 
 def from_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
