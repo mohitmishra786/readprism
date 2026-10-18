@@ -39,6 +39,29 @@ async def _enforce_capacity(session: AsyncSession, user: User, adding: int) -> N
     enforce_source_limit(user, count, adding=adding)
 
 
+async def _seed_pack_interest(session: AsyncSession, user_id, title: str) -> None:
+    """A subscribed pack is a stated interest: give the ranker an embedded
+    topic for it so day-0 scores aren't flat (#135). Never lowers an
+    existing node."""
+    from app.services.interest_graph.graph import InterestGraphManager
+    from app.utils.embeddings import get_embedding_service
+
+    label = title.strip()
+    if not label:
+        return
+    try:
+        embedding = (await get_embedding_service().encode_batch_cached([label]))[0]
+    except Exception:  # embeddings are optional polish here
+        embedding = None
+    node = await InterestGraphManager().get_or_create_node(
+        user_id=user_id, topic_label=label, topic_embedding=embedding, session=session
+    )
+    node.weight = max(node.weight or 0.0, 0.4)
+    if node.topic_embedding is None and embedding is not None:
+        node.topic_embedding = embedding
+    await session.flush()
+
+
 def _fetch_new_sources_soon(user_id) -> None:
     """Fetch a user's sources now instead of waiting for the next beat (#102)."""
     from app.workers.tasks.ingest_feeds import ingest_user_sources
@@ -104,6 +127,7 @@ async def subscribe_pack(
         existing_urls.add(feed["url"])
         created += 1
     await session.flush()
+    await _seed_pack_interest(session, current_user.id, pack.title)
     if created:
         _fetch_new_sources_soon(current_user.id)
     return {

@@ -149,7 +149,7 @@ async def test_reading_a_shared_item_moves_only_the_readers_trust(db_session):
 
 @pytest.mark.asyncio
 async def test_trust_signal_reads_the_users_own_source(db_session):
-    from app.services.ranking.signals import UserInterestGraph, source_trust
+    from app.services.ranking.ranker import rank
 
     a, b, src_a, src_b = await _two_subscribers(db_session)
     src_a.trust_weight, src_b.trust_weight = 0.9, 0.2
@@ -158,8 +158,8 @@ async def test_trust_signal_reads_the_users_own_source(db_session):
     await db_session.commit()
 
     user_b = await db_session.get(User, b.id)
-    score = await source_trust.compute(item, user_b, [], UserInterestGraph([], []), db_session)
-    assert score == pytest.approx(0.2)
+    scored = (await rank(user_b, [item], db_session))[0]
+    assert scored.features["source_trust"] == pytest.approx(0.2)
 
 
 @pytest.mark.asyncio

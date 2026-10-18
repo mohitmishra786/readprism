@@ -228,47 +228,21 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
-    # Load the interest graph once to generate graph-based explanations (05-5).
-    from app.models.interest_graph import InterestEdge, InterestNode
-    from app.services.ranking.signals import UserInterestGraph
-    from app.services.ranking.signals.semantic import explain_top_topics
-
-    nodes = list(
-        (
-            await session.execute(select(InterestNode).where(InterestNode.user_id == user.id))
-        ).scalars()
-    )
-    edges = list(
-        (
-            await session.execute(select(InterestEdge).where(InterestEdge.user_id == user.id))
-        ).scalars()
-    )
-    interest_graph = UserInterestGraph(nodes=nodes, edges=edges)
-
-    # Create digest items
-    from app.services.ranking.meta_weights import get_meta_weights
+    # The ranker already produced each item's features, faithful contributions,
+    # explanation and topic phrase from the same computation that scored it
+    # (#129, #143); the digest stores them as they are.
     from app.services.ranking.phase2.contract import SIGNALS
+    from app.services.ranking.phase2.learning import RANKER_VERSION
 
-    meta = await get_meta_weights(user.id, session)
     position = 0
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
-            explanation = explain_top_topics(getattr(item, "embedding", None), interest_graph)
-            if explanation:
-                clean_breakdown["why_topics"] = explanation
-            from app.services.ranking.phase2.learning import RANKER_VERSION
-            from app.services.ranking.phase2.learning import explain as explain_score
-
             numeric = {
                 key: float(value)
                 for key, value in clean_breakdown.items()
                 if key in SIGNALS and isinstance(value, int | float)
             }
-            if numeric:
-                text, contributions = explain_score(numeric, meta.weights)
-                clean_breakdown["explanation"] = text
-                clean_breakdown["contributions"] = contributions
             story = story_payloads.get(item.id)
             if story:
                 clean_breakdown["perspectives"] = story["perspectives"]
