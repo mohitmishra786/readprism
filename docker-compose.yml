@@ -32,6 +32,9 @@ x-worker-base: &worker-base
       condition: service_healthy
     redis:
       condition: service_healthy
+    # The backend applies migrations before it reports healthy (#126).
+    backend:
+      condition: service_healthy
   networks:
     - readprism_net
   volumes:
@@ -100,7 +103,8 @@ services:
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
     # Production-shaped: no --reload here. The dev override adds --reload.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # Migrations run first, under an advisory lock (#126; AUTO_MIGRATE=false to skip).
+    command: sh -c "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     depends_on:
@@ -156,6 +160,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     networks:
       - readprism_net
