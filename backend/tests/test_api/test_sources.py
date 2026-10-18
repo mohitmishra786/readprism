@@ -19,7 +19,7 @@ async def test_add_source(client: AsyncClient, test_user_data: dict):
             "app.api.sources._autodiscover_feed",
             new=AsyncMock(return_value="https://example.com/feed"),
         ),
-        patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"),
+        patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay"),
     ):
         resp = await client.post(
             "/api/v1/sources",
@@ -52,7 +52,7 @@ async def test_delete_source(client: AsyncClient, test_user_data: dict):
 
     with (
         patch("app.api.sources._autodiscover_feed", new=AsyncMock(return_value=None)),
-        patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"),
+        patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay"),
     ):
         add_resp = await client.post(
             "/api/v1/sources",

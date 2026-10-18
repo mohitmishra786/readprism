@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -89,6 +89,20 @@ class DigestImpression(Base):
     shown_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ImpressionRollup(Base):
+    """Daily impression counts with no user attached (#224). Raw impressions
+    older than the telemetry retention window are folded in here, then deleted."""
+
+    __tablename__ = "impression_rollups"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    section: Mapped[str] = mapped_column(String, primary_key=True)
+    team: Mapped[str] = mapped_column(String(16), primary_key=True, default="")
+    exploration: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=False)
+    shown: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    viewed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
 class RankerWeightRevision(Base):

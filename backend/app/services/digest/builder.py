@@ -34,6 +34,8 @@ async def _select_serendipity_candidates(
     cutoff: datetime,
     count: int,
     session: AsyncSession,
+    *,
+    feed_ids: list | None = None,
 ) -> list[ContentItem]:
     """Pick discovery candidates adjacent to the user's interests.
 
@@ -48,8 +50,10 @@ async def _select_serendipity_candidates(
         ContentItem.fetched_at >= cutoff,
         ContentItem.owner_user_id.is_(None),  # never surface others' private content
     ]
-    if source_ids:
-        base_filters.append(ContentItem.source_id.notin_(source_ids))
+    if source_ids or feed_ids:
+        from app.services.feed_identity import outside_user_feeds
+
+        base_filters.append(outside_user_feeds(source_ids, feed_ids or []))
 
     interest_vec = await InterestGraphManager().build_user_interest_vector(user.id, session)
     if interest_vec is not None:
@@ -90,16 +94,22 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Sources sharing a feed with any of the user's active sources (#108): a
     # public item is stored once, under whichever subscriber's source ingested
     # it first, so filtering by the user's own source ids missed it.
-    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
 
     source_ids = await equivalent_source_ids(session, user.id)
+    feed_ids = await user_feed_ids(session, user.id)
 
     # Fetch content items from user's sources
-    if source_ids:
+    if source_ids or feed_ids:
         content_result = await session.execute(
             select(ContentItem)
             .where(
-                ContentItem.source_id.in_(source_ids),
+                from_user_feeds(source_ids, feed_ids),
                 ContentItem.fetched_at >= cutoff,
                 visible_item_filter(user.id),
             )
@@ -127,7 +137,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Serendipity candidates: interest-adjacent discovery, not recent-random.
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
     serendipity_items = await _select_serendipity_candidates(
-        user, source_ids, cutoff, serendipity_count, session
+        user, source_ids, cutoff, serendipity_count, session, feed_ids=feed_ids
     )
 
     # Collaborative warmup for new users
@@ -235,6 +245,12 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     session.add(digest)
     await session.flush()
 
+    # Model summaries only for what the user will actually see (#147).
+    from app.services.summarization.lazy import ensure_llm_summaries
+
+    placed_items = [row[0] for section in sections.values() for row in section.items]
+    await ensure_llm_summaries(placed_items, limit=get_settings().digest_llm_summary_limit)
+
     # The ranker already produced each item's features, faithful contributions,
     # explanation and topic phrase from the same computation that scored it
     # (#129, #143); the digest stores them as they are.
@@ -245,6 +261,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
+            if getattr(item, "discovered_via", None):
+                clean_breakdown["discovered_via"] = item.discovered_via
             numeric = {
                 key: float(value)
                 for key, value in clean_breakdown.items()

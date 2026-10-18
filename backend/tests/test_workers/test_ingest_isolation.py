@@ -123,10 +123,16 @@ async def test_extension_saved_url_later_in_feed_keeps_ingesting(db_session):
     await db_session.commit()
 
     for run in range(3):
-        # Make both sources due again, as successive beat ticks would.
+        # Make everything due again, as successive beat ticks would. Polling
+        # state lives on the shared feeds since #162.
+        from app.models.feed import Feed
+
         async with TestingSessionLocal() as s:
-            for src in (await s.execute(select(Source))).scalars():
-                src.next_poll_at = None
+            for row in [
+                *(await s.execute(select(Source))).scalars(),
+                *(await s.execute(select(Feed))).scalars(),
+            ]:
+                row.next_poll_at = None
             await s.commit()
         dispatch = _fake_dispatch(
             {

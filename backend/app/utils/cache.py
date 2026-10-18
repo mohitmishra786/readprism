@@ -48,6 +48,19 @@ async def cache_set(key: str, value: Any, ttl_seconds: int = 3600) -> bool:
         return False
 
 
+async def cache_incr(key: str, amount: int = 1, ttl_seconds: int = 3600) -> int | None:
+    """INCRBY with a TTL set on first use. None when Redis is unreachable."""
+    client = get_redis()
+    try:
+        value = int(await client.incrby(key, amount))
+        if value == amount:  # first increment in this window
+            await client.expire(key, ttl_seconds)
+        return value
+    except Exception as e:
+        logger.warning(f"Redis INCR failed for key {sanitize_log(key)}: {e}")
+        return None
+
+
 class CacheUnavailable(RuntimeError):
     """Raised by strict cache operations when Redis cannot be reached."""
 

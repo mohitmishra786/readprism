@@ -92,12 +92,14 @@ async def test_signup_with_two_packs_reaches_a_real_first_digest(client: AsyncCl
     with (
         patch("app.utils.cache.cache_set_nx", fake_nx),
         patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay") as ingest_delay,
+        patch("app.workers.tasks.discovery.refresh_discovery_for_user.delay") as discovery_delay,
         patch("app.workers.tasks.build_digest.prepare_first_digest.apply_async") as prepare_async,
     ):
         started = await client.post("/api/v1/onboarding/first-digest", headers=headers)
         again = await client.post("/api/v1/onboarding/first-digest", headers=headers)
     assert started.json()["started"] is True and again.json()["started"] is False
     ingest_delay.assert_called_once_with(str(user_id))
+    discovery_delay.assert_called_once_with(str(user_id))
     prepare_async.assert_called_once()
     assert started.json()["digest_id"] is None
 
