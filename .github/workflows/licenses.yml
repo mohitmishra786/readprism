@@ -1,0 +1,47 @@
+# Dependency license report (RL-08 / #260): keeps docs/licenses.md committed
+# and current, and flags strong-copyleft additions.
+name: Licenses
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/requirements*.txt", "frontend/package*.json", "backend/scripts/license_report.py", "docs/licenses.md", ".github/workflows/licenses.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["backend/requirements*.txt", "frontend/package*.json", "backend/scripts/license_report.py", "docs/licenses.md", ".github/workflows/licenses.yml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: licenses-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install backend deps
+        run: pip install -r backend/requirements.txt
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci
+      - name: Generate + check the report
+        run: |
+          cd backend && PYTHONPATH=. python3 scripts/license_report.py --write --check
+          # The committed docs/licenses.md must match a fresh regeneration.
+          git diff --exit-code -- docs/licenses.md || {
+            echo "::error::docs/licenses.md is stale — run 'make licenses' and commit"; exit 1; }

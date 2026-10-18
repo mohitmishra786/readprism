@@ -1,4 +1,4 @@
-.PHONY: up-build extract-eval starter-pack-check env up up-lite up-full up-dev build-lite eval retrieval-eval backup restore demo docs-serve test-services test-services-down test-backend test
+.PHONY: up-build extract-eval starter-pack-check env up up-lite up-full up-dev build-lite eval retrieval-eval licenses backup restore demo docs-serve test-services test-services-down test-backend test
 
 test-services:
 	docker compose -f docker-compose.test.yml up -d
@@ -54,6 +54,11 @@ restore:
 
 demo:
 	cd backend && PYTHONPATH=. python3 scripts/seed_demo.py
+
+# Regenerate docs/licenses.md (#260). Needs the backend env (pip-licenses) and
+# Node (license-checker via npx) for the full report; backend-only otherwise.
+licenses:
+	cd backend && PYTHONPATH=. python3 scripts/license_report.py --write --check
 
 docs-serve:
 	mkdocs serve
