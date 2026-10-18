@@ -27,7 +27,20 @@ async def get_feed(
 ) -> list[FeedItem]:
     offset = (page - 1) * limit
 
-    # Get interactions with PRS scores for this user
+    from sqlalchemy import false, or_
+
+    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+
+    # Only this user's world (#167): items from feeds they follow, their own
+    # private items, and items they interacted with. The outer join used to
+    # list every row in the instance, including other users' private
+    # newsletters and saves.
+    source_ids = await equivalent_source_ids(session, current_user.id)
+    in_scope = or_(
+        ContentItem.source_id.in_(source_ids) if source_ids else false(),
+        ContentItem.owner_user_id == current_user.id,
+        UserContentInteraction.id.isnot(None),
+    )
     query = (
         select(ContentItem, UserContentInteraction)
         .join(
@@ -36,7 +49,11 @@ async def get_feed(
             & (UserContentInteraction.user_id == current_user.id),
             isouter=True,
         )
-        .order_by(UserContentInteraction.prs_score.desc().nullslast())
+        .where(in_scope, visible_item_filter(current_user.id))
+        .order_by(
+            UserContentInteraction.prs_score.desc().nullslast(),
+            ContentItem.fetched_at.desc(),
+        )
         .offset(offset)
         .limit(limit)
     )

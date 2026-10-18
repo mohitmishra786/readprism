@@ -116,7 +116,14 @@ async def rate_calibration_item(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="rating must be 1 or -1"
         )
 
-    item_result = await session.execute(select(ContentItem).where(ContentItem.id == content_id))
+    from app.services.feed_identity import visible_item_filter
+
+    # Another user's private item is "not found" (#167).
+    item_result = await session.execute(
+        select(ContentItem).where(
+            ContentItem.id == content_id, visible_item_filter(current_user.id)
+        )
+    )
     item = item_result.scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
