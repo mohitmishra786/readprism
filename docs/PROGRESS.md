@@ -254,7 +254,7 @@ Status values: `UNVERIFIED` → `EXISTS` / `PARTIAL` / `MISSING` / `DIVERGES`. E
 | E3 | Browser extension | PARTIAL | MV3 popup/background/options. Adds the current page as source or creator. No `browser_specific_settings` (Firefox is unverified). No "save and rate" signal. Host permission is localhost:8000 and readprism.app. EC-02. |
 | E4 | Obsidian / Notion / Logseq | PARTIAL | `integrations/export.py`: Obsidian markdown, Notion API, Readwise. No Logseq. |
 | E5 | Discover-new-sources | MISSING | No accept/dismiss source suggestions. EC-06. |
-| E6 | Team digests | DIVERGES | Tables and `api/teams.py` exist. D-10 drops the product (EC-09). Code remains. |
+| E6 | Team digests | DROPPED | D-10 drops the product (EC-09); the tables, routes and services were deleted in #140. The `team` billing tier label remains in `services/billing` but is now unused. |
 | E7 | Self-host docs | PARTIAL | `docs/` has deployment, privacy, terms, launch, competitors, this tracker, architecture, security. Not a docs site (RL-02). |
 | E8 | Auth and security | PARTIAL | bcrypt, JWT access+refresh rotation, rate limits, SSRF, nh3, XML limits, secret-key boot check. See `docs/security.md`. IP pinning for HTTPS is not done. |
 | E9 | Tests + CI | PARTIAL | 232 pytest passed on this branch. CI: `.github/workflows/backend.yml` (ruff, mypy, pytest, alembic head), `frontend.yml` (tsc, build), `codeql.yml`. Lint script is broken. Actions not run on this branch. |

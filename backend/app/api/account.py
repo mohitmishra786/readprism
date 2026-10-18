@@ -34,6 +34,6 @@ async def delete_account(
 ) -> None:
     """Permanently delete your account and all associated data (GDPR Art. 17).
 
-    This is irreversible. Teams you created are deleted along with your account.
+    This is irreversible.
     """
     await delete_user_account(session, current_user.id)

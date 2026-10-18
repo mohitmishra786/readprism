@@ -27,7 +27,6 @@ from app.models.digest import Digest, DigestFeedbackPrompt, DigestItem
 from app.models.interest_graph import InterestNode
 from app.models.source import Source
 from app.models.suggestion import SourceSuggestion
-from app.models.team import Team, TeamMember
 from app.models.user import User
 
 MARK = f"ALPHASECRET{uuid.uuid4().hex[:8]}"
@@ -49,13 +48,6 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("POST", "/api/v1/sources/discover-suggestions/{suggestion_id}/dismiss", None),
     ("PUT", "/api/v1/sources/{source_id}", {"name": "pwned"}),
     ("DELETE", "/api/v1/sources/{source_id}", None),
-    ("POST", "/api/v1/teams/{team_id}/digest", None),
-    (
-        "POST",
-        "/api/v1/teams/{team_id}/members",
-        {"user_id": "00000000-0000-0000-0000-000000000001"},
-    ),
-    ("DELETE", "/api/v1/teams/{team_id}/members/{a_user_id}", None),
     ("DELETE", "/api/v1/tokens/{token_id}", None),
 ]
 
@@ -79,7 +71,6 @@ LIST_ROUTES = [
     "/api/v1/sources",
     "/api/v1/sources/discover-suggestions",
     "/api/v1/sources/export-opml",
-    "/api/v1/teams",
     "/api/v1/tokens",
 ]
 
@@ -180,10 +171,7 @@ async def tenants(client: AsyncClient, db_session):
         user_id=a.id, url=f"https://{MARK.lower()}.example.net/feed", name=MARK, reason=MARK
     )
     node = InterestNode(user_id=a.id, topic_label=MARK, weight=0.9)
-    team = Team(name=MARK, created_by=a.id)
-    db_session.add_all([prompt, token, suggestion, node, team])
-    await db_session.flush()
-    db_session.add(TeamMember(team_id=team.id, user_id=a.id, role="owner"))
+    db_session.add_all([prompt, token, suggestion, node])
     await db_session.commit()
 
     ids = {
@@ -193,7 +181,6 @@ async def tenants(client: AsyncClient, db_session):
         "prompt_id": prompt.id,
         "suggestion_id": suggestion.id,
         "source_id": source.id,
-        "team_id": team.id,
         "a_user_id": a.id,
         "token_id": token.id,
     }
