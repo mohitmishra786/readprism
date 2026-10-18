@@ -76,16 +76,13 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             await session.commit()
             return {"status": "duplicate", "content_item_id": str(content_item_id)}
 
-        # Enqueue PRS computation for every user following this feed (#108),
-        # not just the subscriber whose source row stored the item.
-        if item.source_id:
-            from app.services.feed_identity import follower_user_ids
+        # Ready to rank. Scores are computed live at digest time (#160), so
+        # "scored" now means "rankable": the ingest-to-score lag metric
+        # measures how long an item waits for its embedding.
+        if item.scored_at is None:
+            from datetime import UTC, datetime
 
-            user_ids = await follower_user_ids(session, item.source_id)
-            for uid in user_ids:
-                from app.workers.tasks.compute_prs import compute_prs_for_user_item
-
-                compute_prs_for_user_item.delay(str(uid), str(content_item_id))
+            item.scored_at = datetime.now(UTC)
 
         # Index in Meilisearch for full-text search
         from app.utils.search import index_content_item

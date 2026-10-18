@@ -26,7 +26,6 @@ celery_app = Celery(
     include=[
         "app.workers.tasks.ingest_feeds",
         "app.workers.tasks.compute_embeddings",
-        "app.workers.tasks.compute_prs",
         "app.workers.tasks.build_digest",
         "app.workers.tasks.deliver_digest",
         "app.workers.tasks.update_interest_graph",
@@ -42,7 +41,6 @@ celery_app = Celery(
 celery_app.conf.task_routes = {
     "app.workers.tasks.ingest_feeds.*": {"queue": "scrape"},
     "app.workers.tasks.compute_embeddings.*": {"queue": "embed"},
-    "app.workers.tasks.compute_prs.*": {"queue": "digest"},
     "app.workers.tasks.build_digest.*": {"queue": "digest"},
     "app.workers.tasks.deliver_digest.*": {"queue": "digest"},
     "app.workers.tasks.update_interest_graph.*": {"queue": "digest"},

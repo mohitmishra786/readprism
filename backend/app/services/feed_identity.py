@@ -69,15 +69,3 @@ async def user_source_for_item(
         .limit(1)
     )
     return result.scalar_one_or_none()
-
-
-async def follower_user_ids(session: AsyncSession, source_id: uuid.UUID) -> list[uuid.UUID]:
-    """Users following the same feed as `source_id` (including its owner)."""
-    origin = await session.get(Source, source_id)
-    if origin is None:
-        return []
-    key = origin.feed_url or origin.url
-    result = await session.execute(
-        select(Source.user_id).where(feed_key() == key, Source.is_active == True).distinct()
-    )
-    return [row[0] for row in result.all()]
