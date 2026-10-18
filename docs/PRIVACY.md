@@ -81,7 +81,7 @@ ReadPrism can send data to the third-party services below when configured. See
   summaries. Summaries are cached.
 - **Email provider (Zoho SMTP / Resend):** your email address and digest content
   to deliver digests.
-- **Meilisearch, Postgres, Redis, Browserless:** run within the operator's own
+- **Postgres, Redis, Browserless:** run within the operator's own
   infrastructure.
 
 Self-hosters may supply their own API keys, in which case those providers'

@@ -201,10 +201,6 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://redis:6379/1"
     celery_result_backend: str = "redis://redis:6379/2"
 
-    # Meilisearch
-    meilisearch_url: str = "http://meilisearch:7700"
-    meilisearch_master_key: str = "readprism_search_key"
-
     # Rate limiting (Redis-backed, fixed window). Guards auth endpoints against
     # credential stuffing and registration spam.
     rate_limit_enabled: bool = True
