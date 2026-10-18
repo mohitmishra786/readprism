@@ -23,6 +23,22 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 logger = get_logger(__name__)
 
 
+async def _enforce_capacity(session: AsyncSession, user: User, adding: int) -> None:
+    """Plan limit for every user-initiated way of adding sources (#109).
+
+    No-op in selfhost mode; in hosted mode a free-tier user gets a 402 that
+    says how many more they can add.
+    """
+    if adding <= 0:
+        return
+    count = (
+        await session.execute(
+            select(func.count()).select_from(Source).where(Source.user_id == user.id)
+        )
+    ).scalar() or 0
+    enforce_source_limit(user, count, adding=adding)
+
+
 @router.get("/starter-packs")
 async def list_packs(
     current_user: User = Depends(get_current_user),
@@ -58,6 +74,9 @@ async def subscribe_pack(
         select(Source.url).where(Source.user_id == current_user.id)
     )
     existing_urls = {row[0] for row in existing_result.fetchall()}
+
+    new_count = len({f["url"] for f in pack.feeds} - existing_urls)
+    await _enforce_capacity(session, current_user, new_count)
 
     created = 0
     for feed in pack.feeds:
@@ -128,6 +147,7 @@ async def accept_discover_suggestion(
     suggestion = result.scalar_one_or_none()
     if suggestion is None or suggestion.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
+    await _enforce_capacity(session, current_user, 1)
 
     source = Source(
         user_id=current_user.id,
@@ -174,13 +194,7 @@ async def add_source(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SourceRead:
-    # Enforce the free-tier source limit (audit 13-1/13-5).
-    count = (
-        await session.execute(
-            select(func.count()).select_from(Source).where(Source.user_id == current_user.id)
-        )
-    ).scalar() or 0
-    enforce_source_limit(current_user, count)
+    await _enforce_capacity(session, current_user, 1)
 
     # Autodiscover feed URL
     feed_url = await _autodiscover_feed(body.url)
@@ -257,6 +271,8 @@ async def import_opml(
         import listparser
 
         result = listparser.parse(opml_text)
+        urls = {feed.url or feed.feed or "" for feed in result.feeds} - {""}
+        await _enforce_capacity(session, current_user, len(urls))
         created = 0
         for feed in result.feeds:
             url = feed.url or feed.feed or ""
@@ -275,6 +291,8 @@ async def import_opml(
         return {"created": created}
     except ImportError:
         raise HTTPException(status_code=500, detail="listparser not installed")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"OPML parse error: {e}")
 
@@ -300,6 +318,7 @@ async def import_opml_tagged(
 
     existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
     plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
+    await _enforce_capacity(session, current_user, len(plan.feeds))
     for feed in plan.feeds:
         session.add(
             Source(

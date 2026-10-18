@@ -40,6 +40,14 @@ async def _add_feeds(user: User, feeds: list[dict], session: AsyncSession) -> Si
             await session.execute(select(Source.url).where(Source.user_id == user.id))
         ).fetchall()
     }
+    from app.services.entitlements import enforce_source_limit
+
+    candidates = {
+        feed.get("feed_url") or feed.get("url") or feed.get("site_url") or ""
+        for feed in feeds[:200]
+    }
+    new_urls = {u for u in candidates if u.startswith("http")} - existing
+    enforce_source_limit(user, len(existing), adding=len(new_urls))  # #109; no-op on selfhost
     for feed in feeds[:200]:
         url = feed.get("feed_url") or feed.get("url") or feed.get("site_url") or ""
         if not url.startswith("http"):

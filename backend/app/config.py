@@ -177,12 +177,16 @@ class Settings(BaseSettings):
     temporal_blend_medium: float = 0.35  # medium-term focus weight
     temporal_blend_short: float = 0.15  # session/short-term weight
 
-    # Tier entitlements (audit 13-1/13-5). Free-tier quantity limits; 0 = unlimited.
-    # These are config-driven scaffolding — the final Free/Pro structure is a
-    # business decision (see IMPLEMENTATION_LOG "Needs Human Decision"). Pro is
-    # unlimited by default. Only enforced when `tier == "free"`.
+    # Deployment mode (#109): "selfhost" (default) never applies plan limits;
+    # "hosted" applies the free-tier limits below to tier == "free" users.
+    deployment_mode: str = "selfhost"
+    # Hosted free-tier quantity limits; 0 = unlimited. Final plan structure is
+    # a business decision (see #148). Ignored in selfhost mode.
     free_max_sources: int = 30
     free_max_creators: int = 5
+    hosted_free_digest_regen_minutes: int = 60
+    # Self-host and paid plans: only guards against double-clicking "generate".
+    manual_digest_guard_seconds: int = 60
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True
@@ -192,6 +196,14 @@ class Settings(BaseSettings):
     collaborative_warmup_min_users: int = 1000
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
+
+    @model_validator(mode="after")
+    def _check_deployment_mode(self) -> Settings:
+        mode = self.deployment_mode.strip().lower()
+        if mode not in ("selfhost", "hosted"):
+            raise ValueError(f"DEPLOYMENT_MODE must be 'selfhost' or 'hosted', got {mode!r}")
+        self.deployment_mode = mode
+        return self
 
     @model_validator(mode="after")
     def _normalize_llm(self) -> Settings:
