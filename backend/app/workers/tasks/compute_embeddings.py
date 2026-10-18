@@ -21,7 +21,6 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem
-    from app.models.source import Source
     from app.services.summarization.summarizer import SummarizationService
     from app.utils.embeddings import get_embedding_service
 
@@ -77,16 +76,12 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             await session.commit()
             return {"status": "duplicate", "content_item_id": str(content_item_id)}
 
-        # Enqueue PRS computation for all users following this source
+        # Enqueue PRS computation for every user following this feed (#108),
+        # not just the subscriber whose source row stored the item.
         if item.source_id:
-            from app.models.user import User
+            from app.services.feed_identity import follower_user_ids
 
-            users_result = await session.execute(
-                select(User.id)
-                .join(Source, Source.user_id == User.id)
-                .where(Source.id == item.source_id)
-            )
-            user_ids = [row[0] for row in users_result.fetchall()]
+            user_ids = await follower_user_ids(session, item.source_id)
             for uid in user_ids:
                 from app.workers.tasks.compute_prs import compute_prs_for_user_item
 

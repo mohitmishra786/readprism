@@ -227,7 +227,7 @@ async def list_sources(
 ) -> list[SourceRead]:
     result = await session.execute(select(Source).where(Source.user_id == current_user.id))
     sources = list(result.scalars().all())
-    counts = await _items_per_week(session, [s.id for s in sources])
+    counts = await _items_per_week(session, sources)
     rows = []
     for source in sources:
         row = SourceRead.model_validate(source)
@@ -236,16 +236,30 @@ async def list_sources(
     return rows
 
 
-async def _items_per_week(session: AsyncSession, source_ids: list) -> dict:
-    if not source_ids:
+async def _items_per_week(session: AsyncSession, sources: list[Source]) -> dict:
+    """Items per week for each of the user's sources, counted per feed (#108).
+
+    A shared item is stored under one subscriber's source row, so counting by
+    `source_id` showed 0 for every later subscriber of the same feed.
+    """
+    if not sources:
         return {}
+    from app.services.feed_identity import feed_key
+
+    keys = {s.feed_url or s.url for s in sources}
     cutoff = datetime.now(UTC) - timedelta(days=7)
     result = await session.execute(
-        select(ContentItem.source_id, func.count())
-        .where(ContentItem.source_id.in_(source_ids), ContentItem.fetched_at >= cutoff)
-        .group_by(ContentItem.source_id)
+        select(feed_key(), func.count(ContentItem.id))
+        .join(ContentItem, ContentItem.source_id == Source.id)
+        .where(
+            feed_key().in_(keys),
+            ContentItem.fetched_at >= cutoff,
+            ContentItem.owner_user_id.is_(None),
+        )
+        .group_by(feed_key())
     )
-    return {row[0]: int(row[1]) for row in result.all()}
+    per_key = {row[0]: int(row[1]) for row in result.all()}
+    return {s.id: per_key.get(s.feed_url or s.url, 0) for s in sources}
 
 
 # Static path must be registered before /{source_id} to prevent shadowing

@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.digest import Digest, DigestFeedbackPrompt, DigestImpression, DigestItem
-from app.models.source import Source
 from app.models.user import User
 from app.services.digest.sections import SectionBuilder
 from app.services.ranking.engine import rank_content_for_user
@@ -88,12 +87,12 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     else:
         cutoff = datetime.now(UTC) - timedelta(hours=24)
 
-    # Get user's active sources
-    sources_result = await session.execute(
-        select(Source).where(Source.user_id == user.id, Source.is_active == True)
-    )
-    sources = list(sources_result.scalars().all())
-    source_ids = [s.id for s in sources]
+    # Sources sharing a feed with any of the user's active sources (#108): a
+    # public item is stored once, under whichever subscriber's source ingested
+    # it first, so filtering by the user's own source ids missed it.
+    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+
+    source_ids = await equivalent_source_ids(session, user.id)
 
     # Fetch content items from user's sources
     if source_ids:
@@ -102,6 +101,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             .where(
                 ContentItem.source_id.in_(source_ids),
                 ContentItem.fetched_at >= cutoff,
+                visible_item_filter(user.id),
             )
             .limit(200)
         )

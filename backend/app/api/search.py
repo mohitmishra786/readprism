@@ -100,16 +100,30 @@ async def search(
     Postgres FTS (weighted tsvector) + pgvector semantic, fused with
     Reciprocal Rank Fusion. Filters apply inside both legs.
     """
-    # Scope: the user's own sources by default.
-    scope_result = await session.execute(
-        select(Source.id).where(Source.user_id == current_user.id, Source.is_active == True)
-    )
-    source_ids = [row[0] for row in scope_result.fetchall()]
-    if source_id is not None:
-        source_ids = [sid for sid in source_ids if sid == source_id]
+    # Scope: the user's feeds (#108: including other subscribers' source rows
+    # for the same feed, which hold the shared items), never other users'
+    # private items.
+    from app.services.feed_identity import equivalent_source_ids, feed_key
 
-    filters: list[str] = ["ci.source_id = ANY(:source_ids)"]
-    params: dict = {"source_ids": [str(s) for s in source_ids]}
+    source_ids = await equivalent_source_ids(session, current_user.id)
+    if source_id is not None:
+        own = (
+            await session.execute(
+                select(feed_key()).where(Source.id == source_id, Source.user_id == current_user.id)
+            )
+        ).scalar_one_or_none()
+        if own is None:
+            source_ids = []
+        else:
+            same_feed = await session.execute(select(Source.id).where(feed_key() == own))
+            wanted = {row[0] for row in same_feed.all()}
+            source_ids = [sid for sid in source_ids if sid in wanted]
+
+    filters: list[str] = [
+        "ci.source_id = ANY(:source_ids)",
+        "(ci.owner_user_id IS NULL OR ci.owner_user_id = :viewer)",
+    ]
+    params: dict = {"source_ids": [str(s) for s in source_ids], "viewer": str(current_user.id)}
     if origin is not None:
         filters.append("ci.origin = :origin")
         params["origin"] = origin

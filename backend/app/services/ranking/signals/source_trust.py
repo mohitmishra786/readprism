@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.source import Source
 from app.models.user import User
 from app.services.ranking.signals import UserInterestGraph
 from app.utils.logging import get_logger
@@ -19,11 +17,11 @@ async def compute(
     interest_graph: UserInterestGraph,
     session: AsyncSession,
 ) -> float:
-    if content.source_id is None:
-        return 0.4
+    from app.services.feed_identity import user_source_for_item
 
-    result = await session.execute(select(Source).where(Source.id == content.source_id))
-    source = result.scalar_one_or_none()
+    # The user's own trust for this feed, not that of whichever subscriber's
+    # source happens to hold the shared item (#108).
+    source = await user_source_for_item(session, user.id, content.source_id)
     if source is None:
         return 0.4
 

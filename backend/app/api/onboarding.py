@@ -60,13 +60,11 @@ async def get_calibration_items(
     from sqlalchemy import select
 
     from app.models.content import ContentItem
-    from app.models.source import Source
     from app.services.cold_start.calibration import select_calibration_items
+    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
 
-    source_ids_result = await session.execute(
-        select(Source.id).where(Source.user_id == current_user.id, Source.is_active == True)
-    )
-    source_ids = [row[0] for row in source_ids_result.fetchall()]
+    # Same-feed sources of other subscribers hold shared items too (#108).
+    source_ids = await equivalent_source_ids(session, current_user.id)
     if not source_ids:
         return []
 
@@ -77,6 +75,7 @@ async def get_calibration_items(
             ContentItem.source_id.in_(source_ids),
             ContentItem.fetched_at >= cutoff,
             ContentItem.rankable.is_(True),
+            visible_item_filter(current_user.id),
         )
         .order_by(ContentItem.fetched_at.desc())
         .limit(100)
