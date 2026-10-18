@@ -239,7 +239,10 @@ async def serve(api_base: str, token: str, http: bool = False, port: int = 8001)
         import uvicorn
 
         app = server.sdk_server().streamable_http_app()
-        uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
+        # Already inside asyncio.run(): await the server rather than calling
+        # uvicorn.run(), which would try to start a second event loop.
+        config = uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")
+        await uvicorn.Server(config).serve()
         return
     # stdio: the official SDK owns the JSON-RPC session on stdin/stdout.
     await server.sdk_server().run_stdio_async()
