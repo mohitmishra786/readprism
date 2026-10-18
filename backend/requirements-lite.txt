@@ -58,8 +58,5 @@ pytest-asyncio==1.4.0
 respx==0.23.1
 httpx==0.28.1
 
-# Search — Meilisearch is integrated via raw httpx in app/utils/search.py;
-# the official SDK pin (3.3.3) referenced a nonexistent release and was never imported.
-
 # Utilities
 python-dotenv==1.2.3
