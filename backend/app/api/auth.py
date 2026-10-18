@@ -225,7 +225,9 @@ async def _session(request: Request, response: Response, user_id: uuid.UUID) -> 
     token = await _issue_tokens(user_id)
     if not wants_cookies(request):
         return token
-    csrf = set_session_cookies(response, access=token.access_token, refresh=token.refresh_token)
+    csrf = set_session_cookies(
+        response, request, access=token.access_token, refresh=token.refresh_token
+    )
     return Token(access_token="", refresh_token=None, expires_in=token.expires_in, csrf_token=csrf)
 
 

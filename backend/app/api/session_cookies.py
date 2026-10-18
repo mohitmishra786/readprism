@@ -35,19 +35,39 @@ def wants_cookies(request: Request) -> bool:
     return request.headers.get(AUTH_MODE_HEADER, "").lower() == "cookie"
 
 
-def _common() -> dict:
-    s = get_settings()
+def is_secure_request(request: Request) -> bool:
+    """Whether the browser reached us over HTTPS (directly or via a TLS proxy)."""
+    forwarded = request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower()
+    return (forwarded or request.url.scheme) == "https"
+
+
+def _secure(request: Request) -> bool:
+    """`Secure` cookie flag. COOKIE_SECURE=auto (default) follows the request
+    scheme: a self-hosted instance on plain http://192.168.x.x must still be
+    able to sign in, since browsers drop Secure cookies on non-HTTPS origins
+    other than localhost."""
+    mode = get_settings().cookie_secure.strip().lower()
+    if mode in ("true", "1", "yes"):
+        return True
+    if mode in ("false", "0", "no"):
+        return False
+    return is_secure_request(request)
+
+
+def _common(request: Request) -> dict:
     return {
-        "secure": s.app_env != "development",
+        "secure": _secure(request),
         "samesite": "strict",
-        "domain": s.cookie_domain or None,
+        "domain": get_settings().cookie_domain or None,
     }
 
 
-def set_session_cookies(response: Response, *, access: str, refresh: str | None) -> str:
+def set_session_cookies(
+    response: Response, request: Request, *, access: str, refresh: str | None
+) -> str:
     """Set the session cookies and return the CSRF token."""
     s = get_settings()
-    common = _common()
+    common = _common(request)
     response.set_cookie(
         ACCESS_COOKIE,
         access,

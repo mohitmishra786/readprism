@@ -118,3 +118,23 @@ async def test_unauthenticated_request_is_401(client: AsyncClient):
     client.cookies.clear()
     resp = await client.get("/api/v1/auth/me")
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_secure_flag_follows_the_request_scheme(client: AsyncClient, monkeypatch):
+    from app.api import session_cookies
+
+    monkeypatch.setattr(session_cookies.get_settings(), "app_env", "production")
+    plain = await client.post("/api/v1/auth/register", json=_creds(), headers=COOKIE_MODE)
+    assert all("secure" not in c.lower() for c in _set_cookie_headers(plain))
+
+    proxied = await client.post(
+        "/api/v1/auth/register",
+        json=_creds(),
+        headers={**COOKIE_MODE, "X-Forwarded-Proto": "https"},
+    )
+    assert all("secure" in c.lower() for c in _set_cookie_headers(proxied))
+
+    monkeypatch.setattr(session_cookies.get_settings(), "cookie_secure", "true")
+    forced = await client.post("/api/v1/auth/register", json=_creds(), headers=COOKIE_MODE)
+    assert all("secure" in c.lower() for c in _set_cookie_headers(forced))

@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     # Session cookies (#103). Leave empty for a host-only cookie; set e.g.
     # ".example.com" when the API and web app are on different subdomains.
     cookie_domain: str = ""
+    # "auto" (default): Secure flag follows the request scheme (honors
+    # X-Forwarded-Proto from a TLS proxy). "true"/"false" force it.
+    cookie_secure: str = "auto"
     # Passwordless magic-link sign-in (audit 10-8): single-use, short-lived.
     magic_link_expire_minutes: int = 20
     frontend_url: str = "http://localhost:3000"
