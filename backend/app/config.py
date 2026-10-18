@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # Short-lived access tokens + long-lived, revocable refresh tokens.
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    # Who may register (#153): closed | invite | open. Empty = closed on
+    # selfhost (only the first account), open on hosted.
+    registration_mode: str = ""
+    registration_invite_codes: str = ""
     # Session cookies (#103). Leave empty for a host-only cookie; set e.g.
     # ".example.com" when the API and web app are on different subdomains.
     cookie_domain: str = ""

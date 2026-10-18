@@ -162,11 +162,14 @@ function rememberCsrf(t: Token): Token {
 // Auth
 export const api = {
   auth: {
-    register: (email: string, password: string, display_name?: string) =>
+    register: (email: string, password: string, display_name?: string, invite_code?: string) =>
       request<Token>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, display_name }),
+        body: JSON.stringify({ email, password, display_name, invite_code }),
       }).then(rememberCsrf),
+    /** Whether this instance accepts new accounts (#153). */
+    registration: () =>
+      request<{ mode: string; open: boolean; invite_required: boolean }>('/auth/registration'),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',

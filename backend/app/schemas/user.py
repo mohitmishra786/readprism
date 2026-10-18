@@ -10,6 +10,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     display_name: str | None = None
+    # Required when REGISTRATION_MODE=invite (#153).
+    invite_code: str | None = None
 
 
 class UserLogin(BaseModel):

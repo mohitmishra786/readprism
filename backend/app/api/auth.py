@@ -252,6 +252,11 @@ async def register(
     response: Response,
     session: AsyncSession = Depends(get_db),
 ) -> Token:
+    from app.services.registration import can_register
+
+    allowed, reason = await can_register(session, body.invite_code)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason)
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -314,10 +319,17 @@ async def magic_link_request(
     """Email a passwordless sign-in link. Always returns 202 (non-enumerating):
     the response is identical whether or not the email has an account."""
     email = body.email.lower()
-    # Create the account lazily if it doesn't exist (magic link doubles as signup).
+    # Create the account lazily if it doesn't exist (magic link doubles as signup),
+    # but only when registration is allowed (#153). Either way the response is
+    # the same 202, so the endpoint never reveals which emails have accounts.
     existing = await session.execute(select(User).where(User.email == email))
     user = existing.scalar_one_or_none()
     if user is None:
+        from app.services.registration import can_register
+
+        allowed, _ = await can_register(session)
+        if not allowed:
+            return {"status": "sent"}
         user = User(
             email=email,
             hashed_password=_hash_password(uuid.uuid4().hex),  # unusable random pw
@@ -436,6 +448,16 @@ async def logout(request: Request, response: Response, body: TokenRefresh | None
     jti = payload.get("jti")
     if jti:
         await cache_delete(_refresh_allowlist_key(jti))
+
+
+@router.get("/registration")
+async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
+    """What the sign-up page should offer (#153)."""
+    from app.services.registration import can_register, effective_mode
+
+    mode = effective_mode()
+    allowed, _ = await can_register(session)
+    return {"mode": mode, "open": allowed, "invite_required": mode == "invite" and not allowed}
 
 
 @router.get("/session")
