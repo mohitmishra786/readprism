@@ -87,6 +87,8 @@ export interface ContentItem {
   is_original_reporting: boolean | null;
   topic_clusters: string[];
   summarization_cached: boolean;
+  /** "llm" summaries are labelled as AI-written (#177). */
+  summary_source?: string | null;
   paywalled?: boolean;
   page_type?: string | null;
   language?: string | null;
@@ -96,6 +98,8 @@ export interface ContentItem {
 /** Full content item including the extracted body — only from the single-item endpoint. */
 export interface ContentItemFull extends ContentItem {
   full_text: string | null;
+  /** Text exists but the hosted display policy withholds it (#177). */
+  full_text_withheld?: boolean;
 }
 
 export interface DigestItem {

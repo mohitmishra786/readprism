@@ -144,6 +144,9 @@ class Settings(BaseSettings):
     # full third-party copies — a copyright-exposure control (audit 08-3).
     # Set 0 to disable pruning (keep full text indefinitely).
     content_full_text_retention_days: int = 90
+    # Reader full text (#177): "auto" = feed-syndicated text only on hosted,
+    # everything on selfhost; or force "all" / "feed_only".
+    reader_full_text: str = "auto"
     content_excerpt_chars: int = 500
     content_per_source_cap: int = 500
     source_backfill_limit: int = 20
