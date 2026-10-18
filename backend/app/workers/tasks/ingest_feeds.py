@@ -41,10 +41,23 @@ async def _insert_items(session, rows: list[dict]) -> list[uuid.UUID]:
 
 
 def _enqueue_embeddings(item_ids: list[uuid.UUID]) -> None:
+    """Best effort per item: a broker hiccup must not stop the run. Committed
+    items whose task was lost are picked up by repair_missing_embeddings."""
     from app.workers.tasks.compute_embeddings import compute_embedding_for_item
 
     for item_id in item_ids:
-        compute_embedding_for_item.delay(str(item_id))
+        try:
+            compute_embedding_for_item.delay(str(item_id))
+        except Exception as e:
+            logger.warning(f"Could not enqueue embedding for {item_id}: {e}")
+
+
+async def _safe_rollback(session, what: str) -> None:
+    """Roll back without letting a dead connection end the whole run."""
+    try:
+        await session.rollback()
+    except Exception as e:
+        logger.error(f"Rollback failed for {what}: {e}")
 
 
 @celery_app.task(name="app.workers.tasks.ingest_feeds.ingest_user_sources", bind=True)
@@ -110,7 +123,7 @@ async def _ingest_all_feeds_async(user_id: uuid.UUID | None = None) -> dict:
                         new_ids = await _ingest_source(target, session, rng)
                     await session.commit()
                 except Exception as e:
-                    await session.rollback()
+                    await _safe_rollback(session, f"{model.__name__.lower()} {target_id}")
                     logger.error(f"Failed to ingest {model.__name__.lower()} {target_id}: {e}")
                     await _record_source_failure(target_id, rng, str(e), model=model)
                     continue
@@ -220,10 +233,12 @@ async def _ingest_source(
                 combined = transcript
                 if row["full_text"]:
                     combined = f"{transcript}\n\n{row['full_text']}"
-                row["full_text"] = combined[:100_000]
+                stored = combined[:100_000]
+                row["full_text"] = stored
                 # Metadata from the STORED text (post-truncation).
-                row["word_count"] = len(row["full_text"].split())
-                row["reading_time_minutes"] = max(1, round(row["word_count"] / 200))
+                word_count = len(stored.split())
+                row["word_count"] = word_count
+                row["reading_time_minutes"] = max(1, round(word_count / 200))
         rows.append(row)
 
     new_ids = await _insert_items(session, rows)
@@ -335,7 +350,7 @@ async def _ingest_creator_feeds_async() -> dict:
                 new_ids = await _insert_items(session, rows)
                 await session.commit()
             except Exception as e:
-                await session.rollback()
+                await _safe_rollback(session, f"creator {creator_id}")
                 logger.error(f"Failed to ingest creator {creator_id}: {e}")
                 continue
         total_new += len(new_ids)

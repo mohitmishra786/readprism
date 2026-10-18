@@ -31,6 +31,10 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.prune_content.prune_old_full_text",
             "schedule": crontab(hour=3, minute=30),  # daily at 3:30 AM UTC
         },
+        "repair-missing-embeddings": {
+            "task": "app.workers.tasks.compute_embeddings.repair_missing_embeddings",
+            "schedule": 30 * 60,
+        },
         "prune-raw-telemetry": {
             "task": "app.workers.tasks.prune_telemetry.prune_raw_telemetry",
             "schedule": crontab(hour=3, minute=45),  # daily, after the full-text prune

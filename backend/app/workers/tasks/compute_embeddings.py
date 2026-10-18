@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from datetime import UTC, datetime, timedelta
 
 from app.utils.logging import get_logger
 from app.workers.celery_app import celery_app
@@ -133,3 +134,56 @@ async def _summarize_item_async(content_item_id: uuid.UUID) -> dict:
         calls = await ensure_llm_summaries([item])
         await session.commit()
         return {"status": "ok", "llm_calls": calls, "summary_source": item.summary_source}
+
+
+# Items committed by ingestion whose embedding task never reached the broker
+# (or was lost) would otherwise stay unembedded forever: later polls skip
+# their URL. Re-enqueue them, at most once per item per REPAIR_RETRY.
+REPAIR_MIN_AGE = timedelta(minutes=15)
+REPAIR_WINDOW = timedelta(days=3)
+REPAIR_RETRY_SECONDS = 6 * 3600
+REPAIR_BATCH = 500
+
+
+@celery_app.task(name="app.workers.tasks.compute_embeddings.repair_missing_embeddings")
+def repair_missing_embeddings() -> dict:
+    return asyncio.run(_repair_missing_embeddings_async())
+
+
+async def _repair_missing_embeddings_async(now: datetime | None = None) -> dict:
+    from sqlalchemy import select
+
+    from app.database import AsyncSessionLocal
+    from app.models.content import ContentItem
+    from app.utils.cache import cache_set_nx
+
+    now = now or datetime.now(UTC)
+    async with AsyncSessionLocal() as session:
+        ids = [
+            row[0]
+            for row in (
+                await session.execute(
+                    select(ContentItem.id)
+                    .where(
+                        ContentItem.embedding.is_(None),
+                        ContentItem.rankable.is_(True),
+                        ContentItem.fetched_at >= now - REPAIR_WINDOW,
+                        ContentItem.fetched_at <= now - REPAIR_MIN_AGE,
+                    )
+                    .order_by(ContentItem.fetched_at.desc())
+                    .limit(REPAIR_BATCH)
+                )
+            ).all()
+        ]
+    queued = 0
+    for item_id in ids:
+        if not await cache_set_nx(f"embed-repair:{item_id}", 1, ttl_seconds=REPAIR_RETRY_SECONDS):
+            continue
+        try:
+            compute_embedding_for_item.delay(str(item_id))
+            queued += 1
+        except Exception as e:
+            logger.warning(f"Embedding repair could not enqueue {item_id}: {e}")
+    if queued:
+        logger.info(f"Embedding repair re-queued {queued} items")
+    return {"missing": len(ids), "queued": queued}

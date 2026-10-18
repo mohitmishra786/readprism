@@ -215,3 +215,92 @@ async def test_creator_reingest_inserts_nothing_new_and_does_not_raise(db_sessio
     assert first["new_items"] == 1
     assert second["new_items"] == 0
     assert delay.call_count == 1  # embeddings only for genuinely new rows
+
+
+def test_one_failed_embedding_enqueue_does_not_stop_the_rest():
+    from app.workers.tasks import ingest_feeds
+
+    ids = [uuid.uuid4() for _ in range(3)]
+    calls: list[str] = []
+
+    def delay(item_id):
+        calls.append(item_id)
+        if item_id == str(ids[0]):
+            raise ConnectionError("broker down")
+
+    with patch("app.workers.tasks.compute_embeddings.compute_embedding_for_item.delay", delay):
+        ingest_feeds._enqueue_embeddings(ids)
+    assert calls == [str(i) for i in ids]
+
+
+@pytest.mark.asyncio
+async def test_failed_rollback_does_not_end_the_run(db_session):
+    user = _user("rb@example.com")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add_all(
+        [
+            Source(
+                user_id=user.id,
+                url="https://dead.example.com",
+                feed_url="https://dead.example.com/f",
+            ),
+            Source(
+                user_id=user.id, url="https://ok.example.org", feed_url="https://ok.example.org/f"
+            ),
+        ]
+    )
+    await db_session.commit()
+
+    async def dispatch(source, session):
+        if "dead" in source.url:
+            raise RuntimeError("connection reset")
+        return [RawContentItem(url="https://ok.example.org/1", title="Ok", guid="o1")]
+
+    real_rollback = TestingSessionLocal.class_.rollback
+
+    async def flaky_rollback(self):
+        await real_rollback(self)
+        raise RuntimeError("rollback on a dead connection")
+
+    with patch.object(TestingSessionLocal.class_, "rollback", flaky_rollback):
+        await _run_ingest(dispatch)
+
+    async with TestingSessionLocal() as s:
+        urls = {row[0] for row in (await s.execute(select(ContentItem.url))).all()}
+    assert "https://ok.example.org/1" in urls
+
+
+@pytest.mark.asyncio
+async def test_repair_requeues_committed_items_without_embeddings(db_session):
+    from datetime import UTC, datetime, timedelta
+
+    from app.workers.tasks.compute_embeddings import _repair_missing_embeddings_async
+
+    now = datetime.now(UTC)
+    stuck = ContentItem(
+        url="https://r.example/stuck", title="s", fetched_at=now - timedelta(hours=1)
+    )
+    fresh = ContentItem(
+        url="https://r.example/fresh", title="f", fetched_at=now - timedelta(minutes=2)
+    )
+    old = ContentItem(url="https://r.example/old", title="o", fetched_at=now - timedelta(days=10))
+    db_session.add_all([stuck, fresh, old])
+    await db_session.commit()
+    seen: set[str] = set()
+
+    async def nx(key, value, ttl_seconds):
+        if key in seen:
+            return False
+        seen.add(key)
+        return True
+
+    with (
+        patch("app.database.AsyncSessionLocal", TestingSessionLocal),
+        patch("app.utils.cache.cache_set_nx", nx),
+        patch("app.workers.tasks.compute_embeddings.compute_embedding_for_item.delay") as delay,
+    ):
+        first = await _repair_missing_embeddings_async(now=now)
+        second = await _repair_missing_embeddings_async(now=now)
+    delay.assert_called_once_with(str(stuck.id))
+    assert first["queued"] == 1 and second["queued"] == 0

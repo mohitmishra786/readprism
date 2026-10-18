@@ -27,7 +27,7 @@ async def _refresh_all(only: uuid.UUID | None = None) -> dict:
     from app.database import AsyncSessionLocal
     from app.models.user import User
     from app.services.discovery.pool import refresh_for_user
-    from app.workers.tasks.ingest_feeds import _enqueue_embeddings
+    from app.workers.tasks.ingest_feeds import _enqueue_embeddings, _safe_rollback
 
     async with AsyncSessionLocal() as session:
         query = select(User.id).where(User.onboarding_complete == True)
@@ -43,7 +43,7 @@ async def _refresh_all(only: uuid.UUID | None = None) -> dict:
                 new_ids = await refresh_for_user(user_id, session, feed_cache=feed_cache)
                 await session.commit()
             except Exception as e:
-                await session.rollback()
+                await _safe_rollback(session, f"discovery {user_id}")
                 logger.error(f"discovery refresh failed for {user_id}: {e}")
                 continue
         _enqueue_embeddings(new_ids)
