@@ -21,7 +21,9 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    loadItems(1);
+    queueMicrotask(() => {
+      void loadItems(1);
+    });
   }, [loadItems]);
 
   return (

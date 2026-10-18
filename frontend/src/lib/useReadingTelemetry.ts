@@ -116,7 +116,7 @@ export function useReadingTelemetry({
     scrollDepthPct: 0,
     activeTimeMs: 0,
     reachedEnd: false,
-    lastActiveAt: Date.now(),
+    lastActiveAt: 0,
     intervalStartedAt: null,
     lastFlushedProgress: 0,
   });
@@ -137,7 +137,15 @@ export function useReadingTelemetry({
   // of closing over the initial null (before content fetch resolves). Without
   // this, the active-time half of the composite score is permanently zeroed.
   const readingTimeMsRef = useRef(readingTimeMs);
-  readingTimeMsRef.current = readingTimeMs;
+  useEffect(() => {
+    readingTimeMsRef.current = readingTimeMs;
+  }, [readingTimeMs]);
+
+  useEffect(() => {
+    if (!stateRef.current.lastActiveAt) {
+      stateRef.current.lastActiveAt = Date.now();
+    }
+  }, []);
 
   const buildSnapshot = useCallback((): ReadingSnapshot => {
     const s = stateRef.current;

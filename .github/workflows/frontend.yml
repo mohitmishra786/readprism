@@ -43,9 +43,9 @@ jobs:
         working-directory: frontend
         run: npx tsc --noEmit
 
-      # NOTE: `next lint` was removed in Next.js 16 and no ESLint config is set up
-      # in this project, so typecheck + a strict production build are the gates.
-      # (Adding an ESLint flat config is tracked as a follow-up.)
+      - name: ESLint
+        working-directory: frontend
+        run: npm run lint
 
       - name: Build
         working-directory: frontend

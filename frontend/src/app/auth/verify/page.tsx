@@ -9,7 +9,7 @@ export default function VerifyEmailPage() {
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
     if (!token) {
-      setState("error");
+      queueMicrotask(() => setState("error"));
       return;
     }
     api.auth

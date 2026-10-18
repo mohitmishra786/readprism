@@ -13,16 +13,15 @@ export default function DigestPage() {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [userCreatedAt, setUserCreatedAt] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    loadDigest();
-  }, []);
+  const [isNewUser, setIsNewUser] = useState(false);
 
   const loadDigest = async () => {
     setLoading(true);
     try {
       const user = await api.auth.me();
       setUserCreatedAt(user.created_at);
+      const created = user.created_at ? new Date(user.created_at).getTime() : 0;
+      setIsNewUser(created > 0 && Date.now() - created < 6 * 60 * 60 * 1000);
       if (!user.onboarding_complete) {
         setNeedsOnboarding(true);
         setLoading(false);
@@ -37,6 +36,12 @@ export default function DigestPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadDigest();
+    });
+  }, []);
 
   const generate = async () => {
     setGenerating(true);
@@ -88,9 +93,6 @@ export default function DigestPage() {
   // First run (#102): a brand-new user's sources are still being fetched and
   // read. Show real progress and load the digest the moment it exists, instead
   // of an empty or near-random digest at the make-or-break moment.
-  const isNewUser =
-    userCreatedAt != null &&
-    Date.now() - new Date(userCreatedAt).getTime() < 6 * 60 * 60 * 1000;
   if (isNewUser && !digest && !generating) {
     return <FirstDigestProgress onReady={loadDigest} />;
   }
