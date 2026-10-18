@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
+from app.services.summarization.groq_client import LLMSummarizer, SummarizationResult
 
 MOCK_GROQ_RESPONSE = json.dumps(
     {
@@ -36,7 +36,7 @@ async def test_groq_summarizer_calls_correct_model():
     async def _no_sleep(_: float) -> None:
         return None
 
-    summarizer = GroqSummarizer(
+    summarizer = LLMSummarizer(
         llm=LLMClient(
             api_key="test-key",
             transport=httpx.MockTransport(handler),

@@ -80,8 +80,8 @@ def _parse_result(raw: str) -> SummarizationResult | None:
         return None
 
 
-class GroqSummarizer:
-    """Historical name. Talks to whatever OpenAI-compatible endpoint is configured."""
+class LLMSummarizer:
+    """Provider-agnostic summarizer. Talks to whatever OpenAI-compatible endpoint is configured."""
 
     def __init__(self, llm: LLMClient | None = None) -> None:
         self._llm_client = llm
@@ -203,3 +203,9 @@ def _parse_result_data(data: dict) -> SummarizationResult | None:
     except (KeyError, TypeError, ValueError) as e:
         logger.warning(f"Failed to parse summarization JSON: {e}")
         return None
+
+
+# Deprecated alias (issue #265): the historical Groq name. External code and
+# tests patch ``app.services.summarization.groq_client.GroqSummarizer``; that
+# path keeps working until the alias is removed in v0.3.
+GroqSummarizer = LLMSummarizer

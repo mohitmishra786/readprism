@@ -112,7 +112,7 @@ restriction, objection, and to lodge a complaint with a supervisory authority.
 
 Passwords are hashed with bcrypt. The API authenticates the newsletter webhook,
 guards server-side fetches against SSRF, sanitizes ingested HTML, and rate-limits
-authentication. See [SECURITY.md](../SECURITY.md) to report a vulnerability.
+authentication. See [SECURITY.md](https://github.com/mohitmishra786/readprism/blob/main/SECURITY.md) to report a vulnerability.
 
 ## Changes
 

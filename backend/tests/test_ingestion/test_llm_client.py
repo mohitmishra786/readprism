@@ -11,7 +11,7 @@ import pytest
 from app.config import get_settings
 from app.services.llm.client import LLMClient, TokenBucket
 from app.services.summarization.extractive import extractive_summary
-from app.services.summarization.groq_client import GroqSummarizer
+from app.services.summarization.groq_client import LLMSummarizer
 from app.services.summarization.summarizer import SummarizationService
 
 MOCK_JSON = json.dumps(
@@ -62,7 +62,7 @@ async def test_summarizer_sends_configured_model_not_a_literal():
         seen["model"] = json.loads(request.content)["model"]
         return httpx.Response(200, json={"choices": [{"message": {"content": MOCK_JSON}}]})
 
-    result = await GroqSummarizer(llm=_client(handler)).summarize("Title", "Body text here.")
+    result = await LLMSummarizer(llm=_client(handler)).summarize("Title", "Body text here.")
     assert result is not None
     assert result.summary_source == "llm"
     assert result.headline == "Test article headline"

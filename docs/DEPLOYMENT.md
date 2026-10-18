@@ -26,7 +26,7 @@ Outside development the app refuses to start when `SECRET_KEY` (or
 `REFRESH_SECRET_KEY`, if set) is empty, shorter than 32 characters, or a
 published placeholder. Before a hosted deployment also set
 `MAILGUN_WEBHOOK_SIGNING_KEY` (or the provider secret you use),
-SMTP credentials. See [`.env.example`](../.env.example).
+SMTP credentials. See [`.env.example`](https://github.com/mohitmishra786/readprism/blob/main/.env.example).
 
 ## Upgrading to shared feeds (migration 0025)
 
@@ -120,8 +120,9 @@ Test a restore periodically — an untested backup is not a backup.
 
 ## Self-hosting with your own LLM key (BYO)
 
-Self-hosted instances bring their own `GROQ_API_KEY` (and optionally an OpenAI
-fallback), so heavy/niche readers pay their own inference bill directly — the
+Self-hosted instances bring their own `LLM_API_KEY` (or the legacy, deprecated
+`GROQ_API_KEY` — removed in v0.3; and optionally an OpenAI fallback), so
+heavy/niche readers pay their own inference bill directly — the
 intended pressure-release for the worst-margin users (audit 13-3). The full
 ranking engine and summarization run locally against your key; no ReadPrism
 hosted service is involved. Tier limits (`FREE_MAX_SOURCES`,

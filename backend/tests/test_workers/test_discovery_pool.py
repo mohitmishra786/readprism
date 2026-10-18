@@ -190,7 +190,7 @@ async def test_single_user_digest_includes_a_discovery_item(db_session, monkeypa
     await db_session.commit()
     assert (await db_session.execute(select(User).where(User.id != user.id))).first() is None
 
-    with patch("app.services.summarization.groq_client.GroqSummarizer", side_effect=Exception):
+    with patch("app.services.summarization.groq_client.LLMSummarizer", side_effect=Exception):
         digest = await build_digest(user, db_session)
     await db_session.commit()
 

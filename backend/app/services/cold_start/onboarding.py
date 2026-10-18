@@ -11,7 +11,7 @@ from app.models.source import Source
 from app.models.user import User
 from app.services.cold_start.starter_sources import get_starter_sources
 from app.services.interest_graph.graph import InterestGraphManager
-from app.services.summarization.groq_client import GroqSummarizer
+from app.services.summarization.groq_client import LLMSummarizer
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
 from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
@@ -42,8 +42,8 @@ async def process_onboarding(
     if confirmed_topics:
         topics = [t.strip() for t in confirmed_topics if t.strip()][:15]
     else:
-        groq = GroqSummarizer()
-        topics = await groq.extract_topics(interest_text)
+        summarizer = LLMSummarizer()
+        topics = await summarizer.extract_topics(interest_text)
         if not topics:
             topics = _fallback_topic_extract(interest_text)
 
