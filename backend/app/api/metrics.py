@@ -40,6 +40,9 @@ class RankingEvalRead(BaseModel):
     read_prediction_auc: float | None
     spearman_completion: float | None
     positives: int
+    no_learning_auc: float | None = None
+    oracle_auc: float | None = None
+    chance_auc: float | None = None
 
 
 @router.get("/llm-status")
@@ -97,6 +100,9 @@ async def ranking_eval(
         read_prediction_auc=result.read_prediction_auc,
         spearman_completion=result.spearman_completion,
         positives=result.positives,
+        no_learning_auc=result.no_learning_auc,
+        oracle_auc=result.oracle_auc,
+        chance_auc=result.chance_auc,
     )
 
 

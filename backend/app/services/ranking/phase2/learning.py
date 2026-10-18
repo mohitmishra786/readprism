@@ -178,21 +178,27 @@ class EvalReport:
     chronological_ndcg: float
     semantic_ndcg: float
     random_ndcg: float
+    no_learning_ndcg: float
+    oracle_ndcg: float
     margin: float
+    margin_over_no_learning: float
 
     def beats_baselines(self, margin: float = 0.05) -> bool:
         return (
             self.prs_ndcg >= self.chronological_ndcg + margin
             and self.prs_ndcg >= self.semantic_ndcg + margin
             and self.prs_ndcg >= self.random_ndcg + margin
+            and self.prs_ndcg >= self.no_learning_ndcg + margin
         )
 
 
 def synthetic_eval(*, users: int = 12, items: int = 40, seed: int = 7) -> EvalReport:
-    """Learn weights on a training split, then score a held-out split.
+    """Unit test / harness for learner mechanics on synthetic data.
 
-    Relevance is the persona's dominant feature. PRS is `score_matrix` after
-    `update_weights`. It is not an oracle sort of the labels.
+    CAVEAT: This is a synthetic sanity check of optimization convergence on i.i.d.
+    features with single-signal ground truth. It is NOT empirical evidence of real-user
+    ranking quality or human preference superiority. Real engagement must be evaluated
+    via observed telemetry (see scripts/ranking_eval.py).
     """
     rng = np.random.default_rng(seed)
     py_rng = random.Random(seed)
@@ -200,6 +206,8 @@ def synthetic_eval(*, users: int = 12, items: int = 40, seed: int = 7) -> EvalRe
     chrono_scores: list[float] = []
     semantic_scores: list[float] = []
     random_scores: list[float] = []
+    no_learning_scores: list[float] = []
+    oracle_scores: list[float] = []
     split = items // 2
     for persona in range(users):
         dominant = persona % len(SIGNALS)
@@ -220,20 +228,48 @@ def synthetic_eval(*, users: int = 12, items: int = 40, seed: int = 7) -> EvalRe
             else:
                 positive, negative = train[right], train[left]
             state = update_weights(state, positive, negative, lr=0.4, l2=0.01)
+
+        # PRS: scored with learned weights
         scored = score_matrix(state.weights, hold).reshape(-1)
         prs_order = list(np.argsort(-scored))
+
+        # Baselines:
         chrono_order = list(range(split))
         semantic_order = list(np.argsort(-hold[:, 0]))
         random_order = list(rng.permutation(split))
+
+        # No-learning baseline: scored with static uniform prior weights (no updates)
+        no_learning_scored = score_matrix(prior_weights(), hold).reshape(-1)
+        no_learning_order = list(np.argsort(-no_learning_scored))
+
+        # Oracle baseline: perfect sort by ground truth held-out relevance
+        oracle_order = list(np.argsort(-hold_rel))
+
         prs_scores.append(ndcg_at_k([float(hold_rel[index]) for index in prs_order]))
         chrono_scores.append(ndcg_at_k([float(hold_rel[index]) for index in chrono_order]))
         semantic_scores.append(ndcg_at_k([float(hold_rel[index]) for index in semantic_order]))
         random_scores.append(ndcg_at_k([float(hold_rel[index]) for index in random_order]))
+        no_learning_scores.append(
+            ndcg_at_k([float(hold_rel[index]) for index in no_learning_order])
+        )
+        oracle_scores.append(ndcg_at_k([float(hold_rel[index]) for index in oracle_order]))
+
     prs = float(np.mean(prs_scores))
     chrono = float(np.mean(chrono_scores))
     semantic = float(np.mean(semantic_scores))
     random_ndcg = float(np.mean(random_scores))
-    return EvalReport(prs, chrono, semantic, random_ndcg, prs - chrono)
+    no_learning = float(np.mean(no_learning_scores))
+    oracle = float(np.mean(oracle_scores))
+    return EvalReport(
+        prs_ndcg=prs,
+        chronological_ndcg=chrono,
+        semantic_ndcg=semantic,
+        random_ndcg=random_ndcg,
+        no_learning_ndcg=no_learning,
+        oracle_ndcg=oracle,
+        margin=prs - chrono,
+        margin_over_no_learning=prs - no_learning,
+    )
 
 
 def debiased_recovers_better(*, seed: int = 3) -> bool:

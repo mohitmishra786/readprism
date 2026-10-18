@@ -7,15 +7,22 @@ Spearman(PRS, completion) — the falsifiable "does the PRS predict reads, and i
 it improving?" view the audit asks for. A runnable script rather than a Jupyter
 notebook so it can live in the repo and run in CI/containers unchanged:
 
-    docker compose exec backend python scripts/ranking_eval.py --days 30
+    python scripts/ranking_eval.py --days 30
+    python scripts/ranking_eval.py --synthetic
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import sys
 from collections import defaultdict
+from pathlib import Path
 from statistics import mean
+
+backend_dir = Path(__file__).resolve().parents[1]
+if str(backend_dir) not in sys.path:
+    sys.path.insert(0, str(backend_dir))
 
 
 async def _run(days: int) -> None:
@@ -43,17 +50,26 @@ async def _run(days: int) -> None:
         print(f"No scored engagement in the last {days} days.")
         return
 
-    print(f"Ranking eval — last {days} days, {sum(len(v) for v in cohorts.values())} users\n")
-    print(f"{'cohort':<12} {'users':>6} {'mean_AUC':>9} {'mean_rho':>9} {'reads':>7}")
-    print("-" * 48)
+    print(
+        f"Ranking eval (Observed Engagement — Not Synthetic) — last {days} days, "
+        f"{sum(len(v) for v in cohorts.values())} users\n"
+    )
+    print(
+        f"{'cohort':<12} {'users':>6} {'PRS_AUC':>9} {'no_learn':>9} {'oracle':>7} {'mean_rho':>9} {'reads':>7}"
+    )
+    print("-" * 65)
     for week in sorted(cohorts):
         evals = cohorts[week]
         aucs = [e.read_prediction_auc for e in evals if e.read_prediction_auc is not None]
+        no_learns = [e.no_learning_auc for e in evals if e.no_learning_auc is not None]
+        oracles = [e.oracle_auc for e in evals if e.oracle_auc is not None]
         rhos = [e.spearman_completion for e in evals if e.spearman_completion is not None]
         auc = f"{mean(aucs):.3f}" if aucs else "  n/a"
+        nl = f"{mean(no_learns):.3f}" if no_learns else "  n/a"
+        orc = f"{mean(oracles):.3f}" if oracles else "  n/a"
         rho = f"{mean(rhos):.3f}" if rhos else "  n/a"
         reads = sum(e.positives for e in evals)
-        print(f"{week:<12} {len(evals):>6} {auc:>9} {rho:>9} {reads:>7}")
+        print(f"{week:<12} {len(evals):>6} {auc:>9} {nl:>9} {orc:>7} {rho:>9} {reads:>7}")
 
     all_aucs = [
         e.read_prediction_auc
@@ -61,17 +77,57 @@ async def _run(days: int) -> None:
         for e in evals
         if e.read_prediction_auc is not None
     ]
+    all_nl = [
+        e.no_learning_auc
+        for evals in cohorts.values()
+        for e in evals
+        if e.no_learning_auc is not None
+    ]
     if all_aucs:
-        print(
-            f"\nOverall mean read-prediction AUC: {mean(all_aucs):.3f} "
-            f"(0.5 = chance; target > 0.6 and rising)"
-        )
+        nl_str = f"{mean(all_nl):.3f}" if all_nl else "n/a"
+        print(f"\nOverall mean read-prediction AUC (observed): {mean(all_aucs):.3f}")
+        print("Baselines for read-prediction AUC:")
+        print("  - Chance / Random baseline:   0.500 (uninformative order)")
+        print(f"  - No-learning baseline:       {nl_str} (uniform weights on signals)")
+        print("  - Oracle baseline:            1.000 (perfect separation)")
+        print("  - Production target:          > 0.600 and rising")
+
+
+def run_synthetic() -> None:
+    from app.services.ranking.phase2.learning import synthetic_eval
+
+    report = synthetic_eval()
+    print("=" * 64)
+    print("SYNTHETIC RANKING EVALUATION BENCHMARK (Unit Test for Learner)")
+    print("CAVEAT: Synthetic simulation only — not real user engagement.")
+    print("=" * 64)
+    print("Baselines (NDCG@10 across synthetic personas):")
+    print(f"  - PRS (learned weights):              {report.prs_ndcg:.4f}")
+    print(f"  - Oracle (upper bound, ground truth): {report.oracle_ndcg:.4f}")
+    print(f"  - No-learning (uniform prior weights): {report.no_learning_ndcg:.4f}")
+    print(f"  - Semantic-only (first feature):       {report.semantic_ndcg:.4f}")
+    print(f"  - Chronological (ingest order):        {report.chronological_ndcg:.4f}")
+    print(f"  - Random (permutation):                {report.random_ndcg:.4f}")
+    print("\nMargins & Gate:")
+    print(f"  - Margin over chronological:          {report.margin:.4f}")
+    print(f"  - Margin over no-learning:            {report.margin_over_no_learning:.4f}")
+    print(f"  - Gate passed (beats all non-oracle by >= 0.05): {report.beats_baselines()}")
+    print("=" * 64)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Offline ranking-eval report")
     parser.add_argument("--days", type=int, default=30, help="Lookback window in days")
+    parser.add_argument(
+        "--synthetic",
+        action="store_true",
+        help="Run synthetic ranking evaluation benchmark (unit test of learner mechanics; NOT real users)",
+    )
     args = parser.parse_args()
+    if args.synthetic:
+        run_synthetic()
+        return
+
     asyncio.run(_run(args.days))
 
 
