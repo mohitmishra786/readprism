@@ -21,6 +21,7 @@ import { api } from "../../../../lib/api";
 import { sanitizeHtml } from "../../../../lib/sanitize";
 import type { ContentItemFull } from "../../../../lib/types";
 import { FeedbackBar } from "../../../../components/digest/FeedbackBar";
+import { SummaryLabel } from "../../../../components/SummaryLabel";
 
 export default function ReaderPage() {
   const params = useParams<{ id: string }>();
@@ -188,13 +189,23 @@ export default function ReaderPage() {
     );
   }
 
-  // If we have no extracted body, offer the original.
+  // No body to show: either none was extracted, or this instance's display
+  // policy withholds page-extracted text (#177). Offer the summary + original.
   if (!item.full_text) {
+    const summary = item.summary_detailed || item.summary_brief;
     return (
       <div className="mx-auto max-w-prose py-12">
         <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
+        {summary && (
+          <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600">
+            <SummaryLabel source={item.summary_source} />
+            {summary}
+          </p>
+        )}
         <p className="mt-4 text-stone-500">
-          The full article text isn’t available for in-app reading.
+          {item.full_text_withheld
+            ? `Read the full article on ${safeHostname(item.url)}.`
+            : "The full article text isn’t available for in-app reading."}
         </p>
         <a
           href={item.url}
@@ -272,6 +283,7 @@ export default function ReaderPage() {
         {/* AI summary deck — the editorial "standfirst" */}
         {item.summary_detailed && (
           <p className="deck mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg italic leading-relaxed text-stone-600">
+            <SummaryLabel source={item.summary_source} />
             {item.summary_detailed}
           </p>
         )}

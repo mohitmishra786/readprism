@@ -65,21 +65,16 @@ async def test_persona_first_digest_meets_the_gate(
     """CS-05/Gate 4: five personas' first real build_digest output passes.
 
     Each persona follows two sources with 6 distinct-topic summarized
-    articles; a second user's public discovery item exists in the window.
+    articles; one discovery-pool item (no source, no other user, #141) exists.
     """
     resp = await client.post("/api/v1/auth/register", json=test_user_data)
     headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
     user = (
         await db_session.execute(select(User).where(User.email == test_user_data["email"]))
     ).scalar_one()
-    other = User(email=f"cs5-{persona}-pub@example.com", hashed_password="x")
-    db_session.add(other)
-    await db_session.flush()
-
     src = Source(user_id=user.id, url=f"https://cs5-{persona}.example/feed")
     src2 = Source(user_id=user.id, url=f"https://cs5b-{persona}.example/feed")
-    pub = Source(user_id=other.id, url=f"https://cs5pub-{persona}.example/feed")
-    db_session.add_all([src, src2, pub])
+    db_session.add_all([src, src2])
     await db_session.flush()
 
     now = datetime.now(UTC)
@@ -98,12 +93,12 @@ async def test_persona_first_digest_meets_the_gate(
         )
     db_session.add(
         ContentItem(
-            source_id=pub.id,
             url=f"https://cs5pub-{persona}.example/d",
             title="discovery-item",
             topic_clusters=[f"{persona}-discovery"],
             summary_brief="A discovery summary.",
             origin="discovery",
+            discovered_via="a link in a followed post",
             fetched_at=now,
         )
     )

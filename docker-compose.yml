@@ -3,6 +3,13 @@ version: "3.9"
 networks:
   readprism_net:
     driver: bridge
+  # Headless Chrome lives here (#127): internal-only, no route to the
+  # database, Redis or the API. Its only way out is the egress proxy.
+  render_net:
+    driver: bridge
+    internal: true
+  egress_net:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -32,12 +39,19 @@ x-worker-base: &worker-base
       condition: service_healthy
     redis:
       condition: service_healthy
+    # The backend applies migrations before it reports healthy (#126).
+    backend:
+      condition: service_healthy
   networks:
     - readprism_net
+    - render_net  # reaches browserless; browserless cannot reach back out
   volumes:
     - ./backend:/app
-  healthcheck:
-    test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
+  healthcheck: &worker-health
+    # Each worker overrides `test` to ping its own node name (scrape@, embed@,
+    # digest@ + hostname). Pinging celery@ matched no worker, so every worker
+    # reported unhealthy (#239).
+    test: ["CMD-SHELL", "exit 1"]
     interval: 30s
     timeout: 10s
     retries: 3
@@ -100,7 +114,8 @@ services:
       MEILISEARCH_URL: http://meilisearch:7700
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
     # Production-shaped: no --reload here. The dev override adds --reload.
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # Migrations run first, under an advisory lock (#126; AUTO_MIGRATE=false to skip).
+    command: sh -c "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     depends_on:
@@ -110,6 +125,7 @@ services:
         condition: service_healthy
     networks:
       - readprism_net
+      - render_net  # API-side rendering (creator resolution) reaches browserless
     volumes:
       - ./backend:/app
     healthcheck:
@@ -122,18 +138,30 @@ services:
   # One --pool=solo worker per queue (audit 07-2), so a slow Playwright scrape on
   # the scrape queue can't block embeddings or digest delivery. See
   # docs/adr/0001-celery-solo-pool.md for why each worker is single-process.
+  # Scale a queue by running more of its worker (#239), e.g.
+  #   docker compose up -d --scale worker-digest=4 --scale worker-embed=2
+  # Node names use the container hostname (%h), so replicas never collide.
   worker-scrape:
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q scrape -n scrape@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d scrape@$$HOSTNAME || exit 1"]
 
   worker-embed:
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q embed -n embed@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d embed@$$HOSTNAME || exit 1"]
 
   worker-digest:
     # Also drains the default "celery" queue for any unrouted task.
     <<: *worker-base
     command: celery -A app.workers.celery_app worker --loglevel=info --pool=solo -Q digest,celery -n digest@%h
+    healthcheck:
+      <<: *worker-health
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d digest@$$HOSTNAME || exit 1"]
 
   beat:
     image: readprism-backend
@@ -156,6 +184,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      backend:
         condition: service_healthy
     networks:
       - readprism_net
@@ -197,21 +227,35 @@ services:
     # Rendered-page extraction (JS-heavy sites). Enabled with:
     #   docker compose --profile full up
     # The lite profile skips it: those pages keep their feed summary.
+    # Isolated (#127): only on render_net, all traffic through egress-proxy,
+    # and no published port (anyone reaching :3000 could drive the browser).
     image: browserless/chrome:1.61.0-puppeteer-21.3.8
     profiles: ["full"]
     environment:
       MAX_CONCURRENT_SESSIONS: 5
       PREBOOT_CHROME: "true"
-    ports:
-      - "3000:3000"
+      # <-loopback> removes Chrome's implicit proxy bypass for localhost.
+      DEFAULT_LAUNCH_ARGS: '["--proxy-server=http://egress-proxy:3128","--proxy-bypass-list=<-loopback>","--force-webrtc-ip-handling-policy=disable_non_proxied_udp"]'
     networks:
-      - readprism_net
+      - render_net
+    depends_on:
+      - egress-proxy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+
+  egress-proxy:
+    # The renderer's only route to the internet (#127). Squid checks the
+    # address it resolved and connects to, and denies anything non-global.
+    image: ubuntu/squid:6.6-24.04_edge
+    profiles: ["full"]
+    volumes:
+      - ./deploy/egress-proxy/squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - render_net
+      - egress_net
 
   frontend:
     build:

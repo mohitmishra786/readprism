@@ -20,8 +20,7 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 
 ```bash
 ./scripts/init_env.sh        # creates .env with generated secrets (add LLM_API_KEY optionally)
-docker compose up -d --build  # lite profile: db, redis, backend, workers, frontend
-docker compose exec backend alembic upgrade head
+docker compose up -d --build  # db, redis, backend, workers, frontend; migrations run automatically
 open http://localhost:3001    # create your account and onboard
 ```
 
@@ -116,11 +115,11 @@ This starts seven services:
 | `browserless` | 3000 | Headless Chrome pool for scraping |
 | `frontend` | 3001 | Next.js web application |
 
-### 3. Run migrations
+### 3. Migrations
 
-```bash
-docker compose exec backend alembic upgrade head
-```
+The backend applies database migrations automatically on start (under a lock,
+so several replicas never race). Set `AUTO_MIGRATE=false` to run them yourself
+with `docker compose exec backend python -m app.migrate`.
 
 ### 4. Open the app
 

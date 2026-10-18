@@ -29,10 +29,15 @@ def _client_ip(request: Request) -> str:
 class RateLimiter:
     """FastAPI dependency enforcing `max_requests` per `window_seconds` per IP."""
 
-    def __init__(self, max_requests: int, window_seconds: int, scope: str) -> None:
+    def __init__(
+        self, max_requests: int, window_seconds: int, scope: str, *, fail_closed: bool = False
+    ) -> None:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
         self.scope = scope
+        # Auth-sensitive limits refuse requests when Redis is unavailable
+        # instead of silently dropping brute-force protection (#156).
+        self.fail_closed = fail_closed
 
     async def __call__(self, request: Request) -> None:
         if not settings.rate_limit_enabled or self.max_requests <= 0:
@@ -44,7 +49,14 @@ class RateLimiter:
             count = await redis.incr(key)
             if count == 1:
                 await redis.expire(key, self.window_seconds)
-        except Exception as e:  # pragma: no cover - fail open on cache errors
+        except Exception as e:
+            if self.fail_closed:
+                logger.error(f"Rate limiter unavailable ({e}); refusing {self.scope} request")
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Temporarily unavailable. Please try again shortly.",
+                    headers={"Retry-After": "30"},
+                )
             logger.warning(f"Rate limiter unavailable ({e}); allowing request")
             return
         if count > self.max_requests:

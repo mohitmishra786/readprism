@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { setToken } from "../../../lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,8 +34,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const token = await api.auth.login(email, password);
-      setToken(token.access_token, token.refresh_token);
+      // Credentials arrive as httpOnly cookies (#103); nothing to store here.
+      await api.auth.login(email, password);
       router.replace("/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed");
