@@ -1,4 +1,4 @@
-.PHONY: extract-eval starter-pack-check env up up-lite up-full up-dev build-lite backup restore demo docs-serve
+.PHONY: up-build extract-eval starter-pack-check env up up-lite up-full up-dev build-lite backup restore demo docs-serve
 
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
@@ -19,8 +19,12 @@ up-full: env
 up-dev: env
 	docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
+# Build from this checkout (no source mounts) instead of pulling GHCR images.
+up-build: env
+	docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
 build-lite:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml build --build-arg LITE=1 backend
+	docker compose -f docker-compose.yml -f docker-compose.build.yml build --build-arg LITE=1 backend
 
 backup:
 	./scripts/backup.sh

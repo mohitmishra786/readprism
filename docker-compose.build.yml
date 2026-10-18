@@ -1,0 +1,25 @@
+# Build the images from this checkout instead of pulling them from GHCR (#128).
+# No source mounts and no development settings: this runs the code as it
+# would ship. CI uses it so every PR is tested on its own code.
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+# or `make up-build`. Add `--build-arg LITE=1` (or `make build-lite`) for lite.
+x-backend-build: &backend-build
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+
+services:
+  backend:
+    <<: *backend-build
+  worker-scrape:
+    <<: *backend-build
+  worker-embed:
+    <<: *backend-build
+  worker-digest:
+    <<: *backend-build
+  beat:
+    <<: *backend-build
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
