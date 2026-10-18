@@ -32,6 +32,7 @@ celery_app = Celery(
         "app.workers.tasks.prune_content",
         "app.workers.tasks.heartbeat",
         "app.workers.tasks.reengagement",
+        "app.workers.tasks.discovery",
     ],
 )
 
@@ -47,6 +48,7 @@ celery_app.conf.task_routes = {
     "app.workers.tasks.prune_content.*": {"queue": "digest"},
     "app.workers.tasks.heartbeat.*": {"queue": "digest"},
     "app.workers.tasks.reengagement.*": {"queue": "digest"},
+    "app.workers.tasks.discovery.*": {"queue": "scrape"},
 }
 
 celery_app.conf.update(

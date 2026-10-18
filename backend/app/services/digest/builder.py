@@ -261,6 +261,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     for section_name, section in sections.items():
         for item, prs, breakdown in section.items:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
+            if getattr(item, "discovered_via", None):
+                clean_breakdown["discovered_via"] = item.discovered_via
             numeric = {
                 key: float(value)
                 for key, value in clean_breakdown.items()

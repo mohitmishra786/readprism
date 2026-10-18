@@ -33,6 +33,9 @@ export function ContentCard({
   const [showWhyTooltip, setShowWhyTooltip] = useState(false);
   const [summaryLevel, setSummaryLevel] = useState<"brief" | "detailed">("brief");
 
+  const discoveredVia =
+    typeof signalBreakdown?.discovered_via === "string" ? signalBreakdown.discovered_via : null;
+
   // Explainability: rank signals by relative contribution.
   const signalEntries = signalBreakdown
     ? Object.entries(signalBreakdown)
@@ -89,7 +92,9 @@ export function ContentCard({
       {isDiscovery && (
         <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-          Outside your usual sources — based on your interests
+          {discoveredVia
+            ? `Outside your usual sources — found via ${discoveredVia}`
+            : "Outside your usual sources — based on your interests"}
         </span>
       )}
 
