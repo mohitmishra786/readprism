@@ -162,6 +162,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
     ranked = await rank_content_for_user(user, all_items, session, limit=limit)
+    ranked = diversify_ranked(ranked)
 
     # The serendipity picks ARE the discovery section candidates (A6):
     # label them explicitly and make sure they survived the rank cutoff.
@@ -285,6 +286,37 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
 
     logger.info(f"Built digest {digest.id} for user {user.id}: {total} items")
     return digest
+
+
+def diversify_ranked(ranked: list[tuple]) -> list[tuple]:
+    """MMR re-rank of the scored candidates before section layout (#148).
+
+    Trades a little score for variety (lambda 0.7), drops near-duplicates
+    (cosine >= 0.92) that story clustering missed, and caps any one topic at
+    30% of the candidates. No "novelty share" swap-ins here: exploration
+    slots already do that, with logged propensities.
+    """
+    import numpy as np
+
+    from app.services.ranking.phase2.interests import diversify
+
+    if len(ranked) < 3:
+        return ranked
+    vectors = []
+    for item, _, _ in ranked:
+        raw = getattr(item, "embedding", None)
+        vec = None if raw is None else np.asarray(raw, dtype=np.float32)
+        vectors.append(vec if vec is not None and float(np.linalg.norm(vec)) > 1e-8 else None)
+    return diversify(
+        ranked,
+        scores=[float(prs) for _, prs, _ in ranked],
+        vectors=vectors,
+        clusters=[(item.topic_clusters or [None])[0] for item, _, _ in ranked],
+        lam=0.7,
+        cluster_cap=0.3,
+        novelty_share=0.0,
+        near_dup=0.92,
+    )
 
 
 async def _synthesize_topic_clusters(
