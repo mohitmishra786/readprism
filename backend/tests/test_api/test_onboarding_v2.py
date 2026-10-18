@@ -18,7 +18,7 @@ async def test_expand_interests_uses_the_llm(client: AsyncClient, test_user_data
     headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
     with patch(
-        "app.services.summarization.groq_client.GroqSummarizer.expand_interests",
+        "app.services.summarization.groq_client.LLMSummarizer.expand_interests",
         return_value=["vector databases", "raft consensus", "ebpf"],
     ):
         result = await client.post(
@@ -39,7 +39,7 @@ async def test_expand_interests_falls_back_without_an_llm(
     headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
 
     with patch(
-        "app.services.summarization.groq_client.GroqSummarizer.expand_interests",
+        "app.services.summarization.groq_client.LLMSummarizer.expand_interests",
         side_effect=RuntimeError("no key"),
     ):
         result = await client.post(
@@ -64,7 +64,7 @@ async def test_confirmed_topics_become_the_initial_clusters(
     ).scalar_one()
 
     with (
-        patch("app.services.cold_start.onboarding.GroqSummarizer") as mock_groq,
+        patch("app.services.cold_start.onboarding.LLMSummarizer") as mock_groq,
         patch(
             "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"
         ),

@@ -24,7 +24,8 @@ provider-agnostic client and an extractive fallback.
 ## Decision
 
 Option 2. Defaults on Groq are `openai/gpt-oss-120b` (primary) and
-`openai/gpt-oss-20b` (fast). Legacy `GROQ_*` variables still work. The two
+`openai/gpt-oss-20b` (fast). Legacy `GROQ_*` variables still work but are
+deprecated since #265 and will be removed in v0.3. The two
 retired ids are rewritten with a warning. `summary_source` on each item is
 `llm` or `extractive`.
 

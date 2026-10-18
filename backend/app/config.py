@@ -81,7 +81,8 @@ class Settings(BaseSettings):
     llm_summarize: str = "lazy"
     # Max LLM summaries requested per digest build.
     digest_llm_summary_limit: int = 20
-    # Legacy aliases. A retired model id is rewritten in `_normalize_llm`.
+    # Legacy aliases (deprecated in #265, scheduled for removal in v0.3).
+    # A retired model id is rewritten in `_normalize_llm`.
     groq_api_key: str = ""
     groq_summarization_model: str = ""
     groq_fast_model: str = ""
@@ -273,8 +274,16 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def _normalize_llm(self) -> Settings:
         """Honor legacy GROQ_* env vars and refuse retired Groq model ids."""
+        import warnings
+
         if not self.llm_api_key and self.groq_api_key:
             self.llm_api_key = self.groq_api_key
+            warnings.warn(
+                "GROQ_API_KEY is deprecated and will be removed in v0.3. "
+                "Set LLM_API_KEY instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.llm_model_primary = _resolve_model(
             configured=self.llm_model_primary,
             legacy=self.groq_summarization_model,
@@ -339,6 +348,12 @@ def _resolve_model(*, configured: str, legacy: str, default: str, legacy_name: s
             stacklevel=2,
         )
         return replacement
+    warnings.warn(
+        f"{legacy_name} is deprecated and will be removed in v0.3. "
+        "Set LLM_MODEL_PRIMARY / LLM_MODEL_FAST instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return legacy
 
 

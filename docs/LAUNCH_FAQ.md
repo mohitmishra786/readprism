@@ -25,7 +25,7 @@ yourself with `scripts/ranking_eval.py` (read-prediction AUC per cohort).
 
 ### Is it actually self-hostable, or is that aspirational?
 
-Actually. `docker compose up`, one required env var (`GROQ_API_KEY`, free tier
+Actually. `docker compose up`, one required env var (`LLM_API_KEY`, free tier
 fine), and you're running the full engine on your own Postgres/Redis. Bring your
 own LLM key so heavy/niche use is on your bill, not a hosted service. See the
 README quickstart.

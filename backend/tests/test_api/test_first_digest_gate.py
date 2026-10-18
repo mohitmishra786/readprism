@@ -108,7 +108,7 @@ async def test_persona_first_digest_meets_the_gate(
 
     with (
         patch(
-            "app.services.summarization.groq_client.GroqSummarizer",
+            "app.services.summarization.groq_client.LLMSummarizer",
             side_effect=Exception("llm off"),
         ),
         patch(
