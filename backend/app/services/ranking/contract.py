@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 SIGNALS = (
     "semantic",
@@ -27,58 +27,6 @@ def clamp01(value: float) -> float:
     if math.isnan(value) or math.isinf(value):
         return 0.5
     return max(0.0, min(1.0, float(value)))
-
-
-@dataclass
-class ScoreFeatures:
-    semantic: float
-    reading_depth: float
-    suggestion: float
-    explicit_feedback: float
-    source_trust: float
-    content_quality: float
-    temporal_context: float
-    novelty: float
-
-    def as_dict(self) -> dict[str, float]:
-        return {name: clamp01(getattr(self, name)) for name in SIGNALS}
-
-    def vector(self) -> list[float]:
-        values = self.as_dict()
-        return [values[name] for name in SIGNALS]
-
-
-def features_from_scores(scores: dict[str, float]) -> ScoreFeatures:
-    return ScoreFeatures(**{name: clamp01(float(scores.get(name, 0.5))) for name in SIGNALS})
-
-
-def history_without_target(history: list, item_id: object) -> list:
-    return [row for row in history if getattr(row, "content_item_id", None) != item_id]
-
-
-def predicted_reading_depth(
-    history: list,
-    *,
-    item_id: object,
-    source_id: object,
-    length_bucket: str,
-    prior: float = 0.5,
-    prior_strength: float = 4.0,
-) -> float:
-    """Beta-shrunk completion for the same source and length, excluding this item."""
-    usable = [
-        row
-        for row in history_without_target(history, item_id)
-        if getattr(row, "read_completion_pct", None) is not None
-        and getattr(row, "source_id", None) == source_id
-        and getattr(row, "length_bucket", length_bucket) == length_bucket
-    ]
-    if not usable:
-        return prior
-    total = sum(float(row.read_completion_pct) for row in usable)
-    mean = total / len(usable)
-    weight = len(usable) / (len(usable) + prior_strength)
-    return clamp01(weight * mean + (1 - weight) * prior)
 
 
 def label_event(
@@ -128,23 +76,6 @@ def label_event(
     if completion < 0.6:
         return 0.45, 0.6
     return min(1.0, 0.7 + 0.3 * completion), 0.8
-
-
-def content_quality_score(
-    *,
-    word_count: int = 0,
-    link_count: int = 0,
-    citation_count: int = 0,
-    has_code: bool = False,
-    user_completion_for_bucket: float | None = None,
-) -> float:
-    length = 0.2 if word_count < 200 else 0.7 if word_count < 2000 else 0.85
-    density = min(1.0, (link_count + citation_count) / 12)
-    code = 0.15 if has_code else 0.0
-    raw = clamp01(0.55 * length + 0.3 * density + code)
-    if user_completion_for_bucket is None:
-        return raw
-    return clamp01(0.7 * raw + 0.3 * user_completion_for_bucket)
 
 
 @dataclass
@@ -237,11 +168,3 @@ def length_bucket(word_count: int | None) -> str:
     if words < 1500:
         return "medium"
     return "long"
-
-
-def hours_between(start: datetime, end: datetime) -> float:
-    return max(0.0, (end - start).total_seconds() / 3600)
-
-
-def within(moment: datetime, now: datetime, days: float) -> bool:
-    return now - timedelta(days=days) <= moment <= now

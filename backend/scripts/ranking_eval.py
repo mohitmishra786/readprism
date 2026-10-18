@@ -94,7 +94,7 @@ async def _run(days: int) -> None:
 
 
 def run_synthetic() -> None:
-    from app.services.ranking.phase2.learning import synthetic_eval
+    from app.services.ranking.learning import synthetic_eval
 
     report = synthetic_eval()
     print("=" * 64)

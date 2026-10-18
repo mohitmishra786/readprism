@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
 from app.models.user import User
-from app.services.ranking.phase2.contract import SIGNALS
+from app.services.ranking.contract import SIGNALS
 from app.services.ranking.ranker import UserRankingState, rank
 
 

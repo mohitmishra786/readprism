@@ -10,7 +10,7 @@ from sqlalchemy import select
 
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.user import User
-from app.services.ranking.phase2.contract import label_event
+from app.services.ranking.contract import label_event
 
 
 def test_saved_then_fully_read_is_a_strong_positive():

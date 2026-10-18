@@ -68,7 +68,7 @@ async def get_feed(
     rows = result.fetchall()
 
     from app.models.digest import DigestImpression
-    from app.services.ranking.phase2.learning import RANKER_VERSION
+    from app.services.ranking.learning import RANKER_VERSION
 
     feed_items = []
     for index, (content_item, interaction) in enumerate(rows):

@@ -222,7 +222,7 @@ async def _learn_send_times_async() -> dict:
     from app.database import AsyncSessionLocal
     from app.models.content import UserContentInteraction
     from app.models.user import User
-    from app.services.ranking.phase2.contract import preferred_hour
+    from app.services.ranking.contract import preferred_hour
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(
