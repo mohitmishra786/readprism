@@ -36,6 +36,30 @@ jobs:
         working-directory: backend
         run: ruff format --check .
 
+  config-checks:
+    # Tests that read deployment files (docker-compose.yml, deploy/, scripts/)
+    # skip inside the backend container, which only mounts backend/. Run them
+    # on the host checkout here (#106, #127).
+    name: Config checks (deployment files)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install backend deps (lite) + PyYAML
+        run: pip install -r backend/requirements-lite.txt pyyaml
+      - name: Run config tests
+        working-directory: backend
+        env:
+          APP_ENV: development
+        run: >-
+          python -m pytest -q -p no:cacheprovider
+          tests/test_utils/test_production_defaults.py
+          tests/test_utils/test_renderer_isolation.py
+
   typecheck:
     name: Typecheck (mypy)
     runs-on: ubuntu-latest

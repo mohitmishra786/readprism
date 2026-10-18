@@ -1,30 +1,21 @@
-import Cookies from 'js-cookie';
+/**
+ * Browser session state (#103).
+ *
+ * Credentials live only in httpOnly cookies set by the API; JavaScript never
+ * sees an access or refresh token. The only client-side state is the CSRF
+ * token, kept in memory and restored from `GET /auth/session` after a reload.
+ */
 
-const TOKEN_KEY = 'readprism_token';
-const REFRESH_KEY = 'readprism_refresh';
+let csrfToken: string | null = null;
 
-export function getToken(): string | null {
-  return Cookies.get(TOKEN_KEY) || null;
+export function setCsrfToken(token: string | null | undefined): void {
+  csrfToken = token || null;
 }
 
-export function getRefreshToken(): string | null {
-  return Cookies.get(REFRESH_KEY) || null;
+export function getCsrfToken(): string | null {
+  return csrfToken;
 }
 
-// Access tokens are short-lived (30m); the refresh token (30d, revocable
-// server-side) is used to mint new access tokens without re-login.
-export function setToken(token: string, refreshToken?: string): void {
-  Cookies.set(TOKEN_KEY, token, { expires: 1, sameSite: 'strict' });
-  if (refreshToken) {
-    Cookies.set(REFRESH_KEY, refreshToken, { expires: 30, sameSite: 'strict' });
-  }
-}
-
-export function removeToken(): void {
-  Cookies.remove(TOKEN_KEY);
-  Cookies.remove(REFRESH_KEY);
-}
-
-export function isAuthenticated(): boolean {
-  return !!getToken();
+export function clearSession(): void {
+  csrfToken = null;
 }

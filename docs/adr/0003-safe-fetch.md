@@ -24,8 +24,10 @@ for user-supplied URLs.
 Option 2. `safe_get` is a wrapper around `safe_fetch`. Browserless is the
 remaining exception: the URL is validated before `page.goto`, and a route
 hook aborts any request whose URL fails the same check. Browserless still
-resolves DNS itself, so a rebinding between the check and the browser's
-connect is possible. Operator-configured hosts (Meilisearch, Notion,
+resolves DNS itself; since #127 that residual is closed at the network level
+(internal-only network, all browser traffic through an egress proxy that
+denies non-global addresses after resolution). `safe_fetch` itself connects
+to the validated IP since #165. Operator-configured hosts (Meilisearch, Notion,
 Readwise, the iTunes Search API host, the Browserless CDP endpoint) are not
 user URLs and keep their own clients. A feed URL returned by iTunes is
 validated before it is stored.

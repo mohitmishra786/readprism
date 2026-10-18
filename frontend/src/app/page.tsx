@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import { isAuthenticated } from "../lib/auth";
+import { hasSession } from "../lib/api";
 
 // Asset URLs — kept exactly per the design spec (atmospheric dark imagery that
 // the spotlight reveals). Swap here to retheme without touching the mechanic.
@@ -127,7 +127,9 @@ export default function RootPage() {
   const [staticReveal, setStaticReveal] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated()) router.replace("/digest");
+    hasSession().then((signedIn) => {
+      if (signedIn) router.replace("/digest");
+    });
   }, [router]);
 
   useEffect(() => {

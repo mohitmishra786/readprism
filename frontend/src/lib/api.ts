@@ -1,5 +1,6 @@
-import { getRefreshToken, getToken, removeToken, setToken } from './auth';
+import { clearSession, getCsrfToken, setCsrfToken } from './auth';
 import type {
+  BillingState,
   ContentItem,
   ContentItemFull,
   Creator,
@@ -15,16 +16,50 @@ import type {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const V1 = `${API_BASE}/api/v1`;
 
-function buildHeaders(options: RequestInit): Record<string, string> {
-  const token = getToken();
+const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** Browser session state as reported by the API (#103). */
+export interface SessionState {
+  authenticated: boolean;
+  refreshable: boolean;
+  csrf_token: string | null;
+}
+
+/**
+ * Credentials are httpOnly cookies (#103): every call sends them with
+ * `credentials: 'include'`, asks for cookie mode, and adds the in-memory CSRF
+ * token on mutating requests.
+ */
+function buildHeaders(options: RequestInit, json = true): Record<string, string> {
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    'X-Auth-Mode': 'cookie',
+    ...(json ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string>),
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  const method = (options.method || 'GET').toUpperCase();
+  const csrf = getCsrfToken();
+  if (MUTATING.has(method) && csrf) headers['X-CSRF-Token'] = csrf;
   return headers;
+}
+
+/** Ask the API whether a session exists, restoring the CSRF token if so. */
+export async function loadSession(): Promise<SessionState> {
+  try {
+    const res = await fetch(`${V1}/auth/session`, { credentials: 'include' });
+    const state = (await res.json()) as SessionState;
+    setCsrfToken(state.csrf_token);
+    return state;
+  } catch {
+    return { authenticated: false, refreshable: false, csrf_token: null };
+  }
+}
+
+/** True when signed in (refreshing an expired access cookie if possible). */
+export async function hasSession(): Promise<boolean> {
+  const state = await loadSession();
+  if (state.authenticated) return true;
+  if (state.refreshable && (await tryRefresh())) return (await loadSession()).authenticated;
+  return false;
 }
 
 // Single-flight refresh: concurrent 401s share one refresh request so we don't
@@ -32,19 +67,17 @@ function buildHeaders(options: RequestInit): Record<string, string> {
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) return false;
   if (!refreshInFlight) {
     refreshInFlight = (async () => {
       try {
         const res = await fetch(`${V1}/auth/refresh`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: refreshToken }),
+          credentials: 'include',
+          headers: { 'X-Auth-Mode': 'cookie' },
         });
         if (!res.ok) return false;
         const data = (await res.json()) as Token;
-        setToken(data.access_token, data.refresh_token);
+        setCsrfToken(data.csrf_token);
         return true;
       } catch {
         return false;
@@ -56,28 +89,38 @@ async function tryRefresh(): Promise<boolean> {
   return refreshInFlight;
 }
 
+async function ensureCsrf(method: string | undefined): Promise<void> {
+  if (MUTATING.has((method || 'GET').toUpperCase()) && !getCsrfToken()) {
+    await loadSession();
+  }
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   _retried = false,
 ): Promise<T> {
+  const isAuthPath = path.startsWith('/auth/');
+  if (!isAuthPath) await ensureCsrf(options.method);
+  const json = !(options.body instanceof FormData);
   const res = await fetch(`${V1}${path}`, {
     ...options,
-    headers: buildHeaders(options),
+    credentials: 'include',
+    headers: buildHeaders(options, json),
   });
 
   if (res.status === 401) {
-    // Access token likely expired — attempt one silent refresh + retry before
+    // Access cookie likely expired — attempt one silent refresh + retry before
     // bouncing to /login. Don't attempt to refresh the auth endpoints themselves.
-    const isAuthPath = path.startsWith('/auth/');
     if (!_retried && !isAuthPath && (await tryRefresh())) {
       return request<T>(path, options, true);
     }
-    removeToken();
-    if (typeof window !== 'undefined') {
+    clearSession();
+    if (typeof window !== 'undefined' && !isAuthPath) {
       window.location.href = '/login';
     }
-    throw new Error('Unauthorized');
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || 'Unauthorized');
   }
 
   if (!res.ok) {
@@ -92,7 +135,7 @@ async function request<T>(
 /**
  * Fire-and-forget POST that survives page unload (`keepalive`).
  *
- * `navigator.sendBeacon` cannot carry the Authorization header, so unload-time
+ * `navigator.sendBeacon` cannot carry the CSRF header, so unload-time
  * telemetry uses a keepalive fetch instead: the browser finishes the request
  * even after the page goes away (UX-05).
  */
@@ -100,7 +143,8 @@ export function keepalivePost(path: string, payload: Record<string, unknown>): v
   try {
     void fetch(`${V1}${path}`, {
       method: 'POST',
-      headers: buildHeaders({}),
+      credentials: 'include',
+      headers: buildHeaders({ method: 'POST' }),
       body: JSON.stringify(payload),
       keepalive: true,
     }).catch(() => {
@@ -111,30 +155,31 @@ export function keepalivePost(path: string, payload: Record<string, unknown>): v
   }
 }
 
+function rememberCsrf(t: Token): Token {
+  setCsrfToken(t.csrf_token);
+  return t;
+}
+
 // Auth
 export const api = {
   auth: {
-    register: (email: string, password: string, display_name?: string) =>
+    register: (email: string, password: string, display_name?: string, invite_code?: string) =>
       request<Token>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, display_name }),
-      }),
+        body: JSON.stringify({ email, password, display_name, invite_code }),
+      }).then(rememberCsrf),
+    /** Whether this instance accepts new accounts (#153). */
+    registration: () =>
+      request<{ mode: string; open: boolean; invite_required: boolean }>('/auth/registration'),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
-      }),
+      }).then(rememberCsrf),
     me: () => request<User>('/auth/me'),
-    refresh: (refresh_token: string) =>
-      request<Token>('/auth/refresh', {
-        method: 'POST',
-        body: JSON.stringify({ refresh_token }),
-      }),
-    logout: (refresh_token: string) =>
-      request<void>('/auth/logout', {
-        method: 'POST',
-        body: JSON.stringify({ refresh_token }),
-      }),
+    /** Revokes the refresh cookie server-side and clears all session cookies. */
+    logout: () =>
+      request<void>('/auth/logout', { method: 'POST' }).finally(() => clearSession()),
     // Passwordless sign-in (audit 10-8).
     magicLinkRequest: (email: string) =>
       request<{ status: string }>('/auth/magic-link/request', {
@@ -145,7 +190,26 @@ export const api = {
       request<Token>('/auth/magic-link/verify', {
         method: 'POST',
         body: JSON.stringify({ token }),
+      }).then(rememberCsrf),
+    // Email confirmation (#175).
+    verifyEmail: (token: string) =>
+      request<{ verified: boolean }>('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
       }),
+    resendVerification: () =>
+      request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
+  },
+
+  // Hosted billing (#173). Self-hosted instances report plan "selfhost".
+  billing: {
+    state: () => request<BillingState>('/billing'),
+    checkout: (interval: 'month' | 'year') =>
+      request<{ url: string }>('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ interval }),
+      }),
+    portal: () => request<{ url: string }>('/billing/portal'),
   },
 
   account: {
@@ -171,12 +235,7 @@ export const api = {
     importOpml: (file: File) => {
       const form = new FormData();
       form.append('file', file);
-      const token = getToken();
-      return fetch(`${V1}/sources/import-opml`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: form,
-      }).then((r) => r.json());
+      return request<{ created: number }>('/sources/import-opml', { method: 'POST', body: form });
     },
   },
 
@@ -311,5 +370,21 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    /** Start the first-digest flow (idempotent) and return its status (#102). */
+    startFirstDigest: () =>
+      request<FirstDigestStatus & { started: boolean }>('/onboarding/first-digest', {
+        method: 'POST',
+      }),
+    firstDigestStatus: () => request<FirstDigestStatus>('/onboarding/first-digest/status'),
   },
 };
+
+export interface FirstDigestStatus {
+  sources_total: number;
+  sources_fetched: number;
+  items: number;
+  items_embedded: number;
+  items_summarized: number;
+  ready: boolean;
+  digest_id: string | null;
+}

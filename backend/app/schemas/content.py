@@ -27,6 +27,8 @@ class ContentItemRead(BaseModel):
     is_original_reporting: bool | None
     topic_clusters: list
     summarization_cached: bool
+    # "llm" | "extractive" | None; the UI labels AI-written summaries (#177).
+    summary_source: str | None = None
     paywalled: bool = False
     page_type: str | None = None
     language: str | None = None
@@ -40,6 +42,9 @@ class ContentItemFullRead(ContentItemRead):
     not by feed/listing endpoints, to keep list responses light."""
 
     full_text: str | None
+    # True when the text exists but this instance's display policy withholds
+    # it (#177); the reader shows the summary and a link instead.
+    full_text_withheld: bool = False
 
 
 class UserContentInteractionCreate(BaseModel):
