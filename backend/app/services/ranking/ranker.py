@@ -47,7 +47,7 @@ from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.source import Source
 from app.models.user import User
-from app.services.ranking.phase2.contract import (
+from app.services.ranking.contract import (
     SIGNALS,
     beta_trust,
     clamp01,

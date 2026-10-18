@@ -17,8 +17,8 @@ from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.source import Source
 from app.models.user import User
-from app.services.ranking.phase2.contract import SIGNALS
-from app.services.ranking.phase2.learning import faithful
+from app.services.ranking.contract import SIGNALS
+from app.services.ranking.learning import faithful
 from app.services.ranking.ranker import (
     FeedState,
     HistoryRow,

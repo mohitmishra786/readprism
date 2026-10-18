@@ -39,7 +39,7 @@ def test_reason_effect_returns_none_for_unknown():
 
 
 def test_label_event_uses_the_mapping():
-    from app.services.ranking.phase2.contract import label_event
+    from app.services.ranking.contract import label_event
 
     y, c = label_event(rating=-1, reason="off_topic")
     assert (y, c) == (0.0, 1.0)

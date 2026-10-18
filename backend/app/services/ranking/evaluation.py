@@ -133,7 +133,7 @@ async def evaluate_user_ranking(
         if isinstance(signal_breakdown, dict):
             # Raw per-signal values (not the weighted "contributions"), so an
             # unweighted mean is what scoring without learned weights gives.
-            from app.services.ranking.phase2.contract import SIGNALS
+            from app.services.ranking.contract import SIGNALS
 
             numeric_vals = [
                 float(v)

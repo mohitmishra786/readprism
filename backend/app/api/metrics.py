@@ -201,7 +201,7 @@ async def time_to_value(session: AsyncSession = Depends(get_db)) -> dict:
 async def recompute_scores(session: AsyncSession = Depends(get_db)) -> dict:
     """List items the ranker version should rescore. The Celery task does the write."""
     from app.models.content import ContentItem
-    from app.services.ranking.phase2.learning import RANKER_VERSION
+    from app.services.ranking.learning import RANKER_VERSION
 
     ids = (await session.execute(select(ContentItem.id))).scalars().all()
     return {"ranker_version": RANKER_VERSION, "items": len(ids)}
