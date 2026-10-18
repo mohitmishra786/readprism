@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.config import get_settings
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, mask_email
 
 logger = get_logger(__name__)
 
@@ -49,17 +49,20 @@ def send_email_sync(
             server.login(settings.zoho_email, settings.zoho_password)
             server.sendmail(settings.zoho_email, to, msg.as_string())
 
-        logger.info(f"Email sent to {to} via Zoho SMTP (subject={subject!r})")
+        # #198: no email addresses in log lines — the recipient is hashed, and
+        # the subject is dropped (it can carry digest content details).
+        logger.info(f"Email sent to {mask_email(to)} via Zoho SMTP")
         return True
 
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"Zoho SMTP authentication failed: {e}")
+    except smtplib.SMTPAuthenticationError:
+        # The exception text can carry the account email — do not log it (#198).
+        logger.error("Zoho SMTP authentication failed")
         return False
     except smtplib.SMTPException as e:
-        logger.error(f"Zoho SMTP error sending to {to}: {e}")
+        logger.error(f"Zoho SMTP error sending to {mask_email(to)}: {e}")
         return False
     except Exception as e:
-        logger.error(f"Unexpected error sending email to {to}: {e}")
+        logger.error(f"Unexpected error sending email to {mask_email(to)}: {e}")
         return False
 
 

@@ -205,7 +205,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # the drawn propensity is logged on each impression for later IPW.
     from random import Random
 
-    from app.services.ranking.phase2.learning import exploration_plan
+    from app.services.ranking.learning import exploration_plan
 
     placed: list[tuple] = []
     for section in sections.values():
@@ -254,8 +254,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # The ranker already produced each item's features, faithful contributions,
     # explanation and topic phrase from the same computation that scored it
     # (#129, #143); the digest stores them as they are.
-    from app.services.ranking.phase2.contract import SIGNALS
-    from app.services.ranking.phase2.learning import RANKER_VERSION
+    from app.services.ranking.contract import SIGNALS
+    from app.services.ranking.learning import RANKER_VERSION
 
     position = 0
     for section_name, section in sections.items():
@@ -323,7 +323,7 @@ def diversify_ranked(ranked: list[tuple]) -> list[tuple]:
     """
     import numpy as np
 
-    from app.services.ranking.phase2.interests import diversify
+    from app.services.ranking.interests import diversify
 
     if len(ranked) < 3:
         return ranked

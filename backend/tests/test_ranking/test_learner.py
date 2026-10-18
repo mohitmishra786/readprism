@@ -12,8 +12,8 @@ from app.models.content import ContentItem, UserContentInteraction
 from app.models.digest import Digest, DigestImpression, RankerWeightRevision
 from app.models.meta_weights import UserMetaWeights
 from app.models.user import User
+from app.services.ranking.contract import SIGNALS
 from app.services.ranking.learner import digest_pairs, prior_vector, train_user
-from app.services.ranking.phase2.contract import SIGNALS
 
 NOW = datetime(2026, 10, 18, 12, tzinfo=UTC)
 

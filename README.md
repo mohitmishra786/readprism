@@ -314,6 +314,8 @@ ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` t
 | `CELERY_BROKER_URL` | `redis://redis:6379/1` | Celery broker URL. |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/2` | Celery result backend URL. |
 
+Redis is persistent: the compose service runs with AOF (`--appendonly yes --appendfsync everysec`) on the `redis_data` volume, so a restart or upgrade keeps logged-in sessions (refresh-token allowlist) and pending magic links (#204). `make backup` snapshots the store (BGSAVE) and `make restore` clears the AOF directory before loading the snapshot.
+
 ### LLM Summarization
 
 | Variable | Default | Description |

@@ -118,7 +118,7 @@ async def refresh_for_user(
     """Add up to `limit` discovery items for this user; returns new item ids."""
     from app.services.ingestion.rss_parser import fetch_feed as default_fetch_feed
     from app.services.ingestion.scraper import scrape_page
-    from app.services.ranking.phase2.interests import outbound_links
+    from app.services.ranking.interests import outbound_links
 
     scrape_fn: Callable[[str], Awaitable] = scrape or scrape_page
     fetch_feed_fn: Callable[[str], Awaitable] = fetch_feed or default_fetch_feed

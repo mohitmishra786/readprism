@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import type { Source } from "../../lib/types";
 import { api } from "../../lib/api";
 
@@ -21,6 +22,8 @@ interface SourceListProps {
 }
 
 export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
+  // Read the clock once per mount, not on every render (react-hooks/purity).
+  const [redditStillLive] = useState(() => Date.now() < REDDIT_RSS_END);
   const toggle = async (source: Source) => {
     const updated = await api.sources.update(source.id, { is_active: !source.is_active });
     onUpdated(updated);
@@ -78,7 +81,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 {" · "}
                 Relevance {Math.round(s.trust_weight * 100)}%
               </div>
-              {isRedditUrl(s.feed_url || s.url) && Date.now() < REDDIT_RSS_END && (
+              {redditStillLive && isRedditUrl(s.feed_url || s.url) && (
                 <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
                   Reddit stops serving RSS on 13 Nov 2026. This source keeps updating until
                   then and pauses after. Consider a blog, Substack, Bluesky or Mastodon feed instead.

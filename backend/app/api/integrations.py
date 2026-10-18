@@ -1,12 +1,13 @@
 """PKM integration endpoints — export saved items.
 
 - GET  /integrations/obsidian       → Markdown files (downloadable)
-- POST /integrations/notion         → push to a Notion database
-- POST /integrations/readwise       → push to Readwise
+- GET  /integrations/logseq         → Logseq pages (downloadable)
+- GET  /integrations/export-zip     → zip of the Markdown export
+- POST /integrations/export-webhook → push the Markdown export to a webhook
+- POST /integrations/import-sidecar → Miniflux/FreshRSS subscription import
 
-Obsidian requires no credentials (file-based export). Notion and Readwise take
-per-user tokens supplied in the request body, never stored server-side by
-default.
+The Notion and Readwise API exporters were removed in #258 (unused; the
+Markdown zip + webhook cover the same needs without third-party API churn).
 """
 
 from __future__ import annotations
@@ -21,23 +22,12 @@ from app.database import get_db
 from app.models.user import User
 from app.services.integrations.export import (
     export_to_logseq,
-    export_to_notion,
     export_to_obsidian,
-    export_to_readwise,
 )
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 logger = get_logger(__name__)
-
-
-class NotionExportRequest(BaseModel):
-    notion_token: str
-    database_id: str
-
-
-class ReadwiseExportRequest(BaseModel):
-    readwise_token: str
 
 
 @router.get("/obsidian")
@@ -191,33 +181,3 @@ async def import_sidecar(
         "read_marked": result.read_marked,
         "errors": result.errors,
     }
-
-
-@router.post("/notion")
-async def notion_export(
-    body: NotionExportRequest,
-    session: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Push saved items to a Notion database."""
-    try:
-        pushed = await export_to_notion(
-            current_user.id, body.notion_token, body.database_id, session
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return {"pushed": pushed}
-
-
-@router.post("/readwise")
-async def readwise_export(
-    body: ReadwiseExportRequest,
-    session: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    """Push saved items to Readwise."""
-    try:
-        pushed = await export_to_readwise(current_user.id, body.readwise_token, session)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return {"pushed": pushed}

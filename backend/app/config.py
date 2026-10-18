@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # webhook authentication, opens operator metrics and echoes SQL, so it must
     # be chosen explicitly (APP_ENV=development, set by docker-compose.dev.yml).
     app_env: str = "production"
+    # Log line format (#198): "json" (one object per line, message passed
+    # through sanitize_log) or "text" (the pre-#198 human format).
+    log_format: str = "json"
     # No usable default: generate one with scripts/init_env.sh. Outside
     # development the app refuses to start with an empty, short or published key.
     secret_key: str = ""

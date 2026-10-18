@@ -29,7 +29,6 @@ from app.models.digest import Digest, DigestItem
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.source import Source
-from app.models.team import Team, TeamMember
 from app.models.user import User
 from app.utils.logging import get_logger
 
@@ -80,9 +79,6 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             select(CreatorPlatform).where(CreatorPlatform.creator_id.in_(creator_ids)),
         )
 
-    teams_created = await _all(session, select(Team).where(Team.created_by == uid))
-    team_memberships = await _all(session, select(TeamMember).where(TeamMember.user_id == uid))
-
     return {
         "export_metadata": {
             "generated_at": datetime.now(UTC).isoformat(),
@@ -112,28 +108,22 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             session, select(UserMetaWeights).where(UserMetaWeights.user_id == uid)
         ),
         "digests": await _all(session, select(Digest).where(Digest.user_id == uid)),
-        "teams_created": teams_created,
-        "team_memberships": team_memberships,
     }
 
 
 async def delete_user_account(session: AsyncSession, user_id: uuid.UUID) -> None:
     """Irreversibly delete a user and all their personal data.
 
-    Teams the user *created* carry a RESTRICT foreign key (deleting the user
-    can't silently orphan them), so they are deleted first — which cascades to
-    their members. The final `DELETE FROM users` then cascades to every other
-    user-owned table via the DB-level foreign keys.
+    The final `DELETE FROM users` cascades to every user-owned table via the
+    DB-level foreign keys.
     """
     # DigestItems cascade from Digest; Digests cascade from User. But delete
-    # explicitly is unnecessary — the DB handles it. We only need to clear the
-    # RESTRICT relationship (teams created by this user) up front.
+    # explicitly is unnecessary — the DB handles it.
     await session.execute(
         delete(DigestItem).where(
             DigestItem.digest_id.in_(select(Digest.id).where(Digest.user_id == user_id))
         )
     )
-    await session.execute(delete(Team).where(Team.created_by == user_id))
     await session.execute(delete(User).where(User.id == user_id))
     await session.flush()
     logger.info(f"Deleted account and all personal data for user {user_id}")
