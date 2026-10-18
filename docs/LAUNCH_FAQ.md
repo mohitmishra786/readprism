@@ -44,7 +44,7 @@ MIT (relicensed from AGPL-3.0 on 2026-10-02, decision D-13). Use, modify,
 self-host, and fork freely — keep the license notice. The moat is accumulated
 behavioral data (per-instance, not portable), not license restrictions.
 Contributions take a DCO sign-off
-([CONTRIBUTING.md](../CONTRIBUTING.md)).
+([CONTRIBUTING.md](https://github.com/mohitmishra786/readprism/blob/main/CONTRIBUTING.md)).
 
 ### Pricing?
 

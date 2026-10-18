@@ -1,0 +1,73 @@
+# Docs site (RL-02 / #256): build with strict link checking; publish to Pages.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "mkdocs.yml", ".github/workflows/docs.yml", "README.md"]
+  pull_request:
+    branches: [main]
+    paths: ["docs/**", "mkdocs.yml", ".github/workflows/docs.yml", "README.md"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  # Pages deploy needs write; the link-check job does not use it.
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link-check:
+    name: Link check (mkdocs strict + lychee)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install mkdocs
+        run: pip install mkdocs-material==9.5.49
+      # Strict mode fails the build on broken internal links and nav entries.
+      - name: mkdocs build --strict
+        run: mkdocs build --strict --site-dir site
+      # lychee (offline): every relative link must resolve to a real file in
+      # the checkout; external URLs are not fetched (deterministic, no network).
+      - name: lychee link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --offline
+            --no-progress
+            docs README.md
+
+  publish:
+    name: Publish to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: link-check
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install mkdocs
+        run: pip install mkdocs-material==9.5.49
+      - name: Build
+        run: mkdocs build --strict --site-dir site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

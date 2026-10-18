@@ -27,7 +27,7 @@ Outside development the app refuses to start when `SECRET_KEY` (or
 `REFRESH_SECRET_KEY`, if set) is empty, shorter than 32 characters, or a
 published placeholder. Before a hosted deployment also set
 `MAILGUN_WEBHOOK_SIGNING_KEY` (or the provider secret you use),
-`MEILISEARCH_MASTER_KEY` and SMTP credentials. See [`.env.example`](../.env.example).
+`MAILGUN_WEBHOOK_SIGNING_KEY` and SMTP credentials. See [`.env.example`](https://github.com/mohitmishra786/readprism/blob/main/.env.example).
 
 ## Upgrading to shared feeds (migration 0025)
 
