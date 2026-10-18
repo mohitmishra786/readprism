@@ -107,6 +107,68 @@ async def test_dead_feed_pauses_and_notifies_every_subscriber_once(db_session):
 
 
 @pytest.mark.asyncio
+async def test_existing_reddit_sources_show_notice_once_and_are_paused(db_session):
+    """Existing Reddit sources show the notice once and are paused without error-looping (#107)."""
+    user = User(
+        email="reddit_sub@example.com",
+        hashed_password="x",
+        email_verified_at=datetime.now(UTC),
+        onboarding_complete=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    src = Source(
+        user_id=user.id,
+        url="https://www.reddit.com/r/MachineLearning",
+        feed_url="https://www.reddit.com/r/MachineLearning/.rss",
+        is_active=True,
+    )
+    db_session.add(src)
+    await db_session.commit()
+
+    called = False
+
+    async def fail_if_dispatched(target, session):
+        nonlocal called
+        called = True
+        return []
+
+    await _run(fail_if_dispatched)
+
+    assert not called  # Reddit feeds are never fetched/error-looped
+
+    async with TestingSessionLocal() as s:
+        feed = (
+            await s.execute(
+                select(Feed).where(Feed.key == "https://www.reddit.com/r/MachineLearning/.rss")
+            )
+        ).scalar_one()
+        source = (await s.execute(select(Source).where(Source.id == src.id))).scalar_one()
+
+    assert feed.is_active is False
+    assert feed.feed_status == "dead"
+    assert "Unsupported: Reddit ended RSS on 13 Nov 2026" in (feed.last_error or "")
+    assert source.is_active is False
+    assert source.dead_notice_pending is True
+    assert source.feed_status == "dead"
+    assert "Unsupported: Reddit ended RSS on 13 Nov 2026" in (source.last_error or "")
+
+    # Now verify delivery notices: notice is shown once, then cleared
+    from app.services.digest.delivery import _clear_dead_notices, _pending_dead_sources
+
+    async with TestingSessionLocal() as s:
+        notices = await _pending_dead_sources(user.id, s)
+        assert len(notices) == 1
+        await _clear_dead_notices(user.id, s)
+        await s.commit()
+
+    async with TestingSessionLocal() as s:
+        notices_second = await _pending_dead_sources(user.id, s)
+        assert len(notices_second) == 0
+
+
+@pytest.mark.asyncio
 async def test_item_survives_deletion_of_the_subscriber_row_that_filed_it(db_session):
     subs = await _subscribers(db_session, 2)
 

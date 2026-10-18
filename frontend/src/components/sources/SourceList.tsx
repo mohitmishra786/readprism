@@ -66,6 +66,11 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 {" · "}
                 Relevance {Math.round(s.trust_weight * 100)}%
               </div>
+              {s.last_error && s.health !== "healthy" && (
+                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
+                  {s.last_error}
+                </div>
+              )}
               {/* Trust-weight bar */}
               <div className="mt-2.5 h-1 w-24 overflow-hidden rounded-full bg-stone-200">
                 <div

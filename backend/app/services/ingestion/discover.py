@@ -114,14 +114,6 @@ def platform_candidates(page_url: str, html: str) -> list[FeedCandidate]:
                 add(f"https://medium.com/feed/{username}")
             elif publication and publication not in {"feed", "tag"}:
                 add(f"https://medium.com/feed/{publication}")
-    if _is_host(page_url, "reddit.com") and parts:
-        if parts[0] in {"r", "user", "u"} and len(parts) >= 2:
-            name = parts[1]
-            kind = parts[0]
-            if parts[2:3] == ["top"]:
-                add(f"https://www.reddit.com/{kind}/{name}/top/.rss?t=week")
-            else:
-                add(f"https://www.reddit.com/{kind}/{name}/.rss")
     if _is_host(page_url, "bsky.app") and len(parts) >= 2 and parts[0] == "profile":
         add(f"https://bsky.app/profile/{parts[1]}/rss")
     mastodon_hosts = ("mastodon.social", "fosstodon.org", "hachyderm.io")

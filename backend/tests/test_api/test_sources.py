@@ -108,3 +108,18 @@ async def test_source_health_surfaced(client: AsyncClient, test_user_data: dict,
     assert by_url["https://failing.com"]["health"] == "failing"
     assert by_url["https://dead.com"]["health"] == "dead"
     assert by_url["https://ok.com"]["items_per_week"] == 0
+
+
+@pytest.mark.asyncio
+async def test_adding_reddit_url_shows_unsupported_error(client: AsyncClient, test_user_data: dict):
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    token = reg.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.post(
+        "/api/v1/sources",
+        json={"url": "https://www.reddit.com/r/MachineLearning"},
+        headers=headers,
+    )
+    assert resp.status_code == 400
+    assert "Unsupported: Reddit ended RSS on 13 Nov 2026" in resp.json()["detail"]

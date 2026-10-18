@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,8 +32,11 @@ async def sync_feeds(session: AsyncSession, *, user_id: uuid.UUID | None = None)
         query = query.where(Source.user_id == user_id)
     pending = list((await session.execute(query)).scalars())
     attached = 0
+    from app.services.ingestion.schedule import REDDIT_UNSUPPORTED_NOTICE, is_reddit_feed
+
     for source in pending:
         key = feed_key_of(source)
+        reddit = is_reddit_feed(key)
         feed = (await session.execute(select(Feed).where(Feed.key == key))).scalar_one_or_none()
         if feed is None:
             feed = Feed(
@@ -40,25 +44,33 @@ async def sync_feeds(session: AsyncSession, *, user_id: uuid.UUID | None = None)
                 url=source.url,
                 feed_url=source.feed_url,
                 source_type=source.source_type or "rss",
-                is_active=True,
+                is_active=not reddit,
                 last_fetched_at=source.last_fetched_at,
                 http_etag=source.http_etag,
                 http_last_modified=source.http_last_modified,
                 poll_interval_seconds=source.poll_interval_seconds or 3600,
-                next_poll_at=source.next_poll_at,
+                next_poll_at=None if reddit else source.next_poll_at,
                 recent_gap_seconds=list(source.recent_gap_seconds or []),
-                feed_status=source.feed_status or "healthy",
+                feed_status="dead" if reddit else (source.feed_status or "healthy"),
+                last_error=REDDIT_UNSUPPORTED_NOTICE if reddit else source.last_error,
+                last_error_at=datetime.now(UTC) if reddit else source.last_error_at,
+                dead_notice_pending=reddit,
                 fetch_error_count=source.fetch_error_count or 0,
                 initial_backfill_done=bool(source.initial_backfill_done),
             )
             session.add(feed)
             await session.flush()
-        elif not feed.is_active:
+        elif not feed.is_active and not reddit:
             # A dead feed someone subscribes to again gets a fresh chance.
             feed.is_active = True
             feed.feed_status = "healthy"
             feed.next_poll_at = None
         source.feed_id = feed.id
+        if reddit:
+            source.is_active = False
+            source.dead_notice_pending = True
+            source.feed_status = "dead"
+            source.last_error = REDDIT_UNSUPPORTED_NOTICE
         attached += 1
     if attached:
         await session.flush()

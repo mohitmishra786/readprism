@@ -169,6 +169,11 @@ def apply_poll_result(
     gap_seconds: int = 0,
 ) -> None:
     """Write the next schedule onto a source row."""
+    url = getattr(source, "feed_url", None) or getattr(source, "url", None)
+    if is_reddit_feed(url):
+        mark_reddit_feed_dead(source, now=now)
+        return
+
     previous = str(getattr(source, "feed_status", None) or "healthy")
     state = ScheduleState(
         interval_seconds=int(getattr(source, "poll_interval_seconds", None) or DEFAULT_INTERVAL),
@@ -197,6 +202,32 @@ def apply_poll_result(
         source.is_active = False  # type: ignore[attr-defined]
         if previous != "dead":
             source.dead_notice_pending = True  # type: ignore[attr-defined]
+
+
+REDDIT_UNSUPPORTED_NOTICE = (
+    "Unsupported: Reddit ended RSS on 13 Nov 2026. "
+    "Consider subscribing to an RSS/Atom feed from a blog, Substack, Bluesky, or Mastodon."
+)
+
+
+def is_reddit_feed(url: str | None) -> bool:
+    if not url:
+        return False
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    return host == "reddit.com" or host.endswith(".reddit.com")
+
+
+def mark_reddit_feed_dead(source: object, *, now: datetime) -> None:
+    previous = getattr(source, "feed_status", None)
+    source.feed_status = "dead"  # type: ignore[attr-defined]
+    source.is_active = False  # type: ignore[attr-defined]
+    source.last_error = REDDIT_UNSUPPORTED_NOTICE  # type: ignore[attr-defined]
+    source.last_error_at = now  # type: ignore[attr-defined]
+    source.next_poll_at = None  # type: ignore[attr-defined]
+    if previous != "dead":
+        source.dead_notice_pending = True  # type: ignore[attr-defined]
 
 
 def permanent_redirect_target(location: str | None, current_url: str) -> str | None:
