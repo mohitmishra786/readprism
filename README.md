@@ -24,13 +24,10 @@ docker compose up -d --build  # db, redis, backend, workers, frontend; migration
 open http://localhost:3001    # create your account and onboard
 ```
 
-**Profiles** (RL-01):
-- `lite` (default, ~1.5 GB RAM): no Browserless, no Meilisearch. Hash
-  embeddings; JS-heavy pages keep their feed summaries; search is Postgres
-  FTS + pgvector.
-- `full`: `docker compose --profile full up -d --build` — adds Browserless
-  (rendered extraction) and Meilisearch. For MiniLM embeddings build the
-  default backend image (published as `:latest`; torch-free as `:latest-lite`).
+**Profiles & Resource Options** (RL-01):
+- **Default (`docker compose up -d --build` / `make up`)**: Standard self-host (~2.5 GB RAM). MiniLM dense neural embeddings (`all-MiniLM-L6-v2`), Postgres FTS + pgvector search; leaves heavy browser rendering and Meilisearch off.
+- **`lite` (low-RAM option, `make up-lite`)**: Resource-constrained VPS (~1 GB RAM). Uses `LITE=1` build arg (or `:latest-lite` image) with deterministic lexical hash embeddings instead of PyTorch/SentenceTransformers.
+- **`full` (`docker compose --profile full up -d --build` / `make up-full`)**: Maximum capability (~4 GB RAM). Adds Browserless (isolated headless Chrome for JS-heavy web rendering) and Meilisearch alongside MiniLM embeddings.
 
 **Operations**:
 - `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —

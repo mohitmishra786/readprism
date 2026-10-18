@@ -1,10 +1,13 @@
-.PHONY: extract-eval starter-pack-check env up-lite up-full up-dev build-lite backup restore demo docs-serve
+.PHONY: extract-eval starter-pack-check env up up-lite up-full up-dev build-lite backup restore demo docs-serve
 
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
 
 env:
 	./scripts/init_env.sh
+
+up: env
+	docker compose up -d --build
 
 up-lite: env
 	docker compose build --build-arg LITE=1 backend
