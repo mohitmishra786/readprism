@@ -20,15 +20,19 @@ def update_interest_graph_for_interaction(self, interaction_id: str) -> dict:
 
 
 async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
-    from sqlalchemy import func, select
+    from sqlalchemy import func, or_, select
 
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem, UserContentInteraction
     from app.services.interest_graph.updater import update_from_interaction
 
     async with AsyncSessionLocal() as session:
+        # Row lock: concurrent flush tasks for the same read must not both see
+        # the old `graph_signal_applied` and apply the same delta twice (#105).
         result = await session.execute(
-            select(UserContentInteraction).where(UserContentInteraction.id == interaction_id)
+            select(UserContentInteraction)
+            .where(UserContentInteraction.id == interaction_id)
+            .with_for_update()
         )
         interaction = result.scalar_one_or_none()
         if not interaction:
@@ -41,22 +45,51 @@ async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
         if not content:
             return {"status": "content_not_found"}
 
-        await update_from_interaction(interaction, content, session)
+        changed = await update_from_interaction(interaction, content, session)
 
-        # Check if user has enough interactions to update meta weights
+        # Count only interactions that carry a real signal. Rows created by
+        # PRS precompute or digest surfacing (score only, never opened) used
+        # to satisfy the threshold before the user had read anything (#105).
         count_result = await session.execute(
             select(func.count(UserContentInteraction.id)).where(
-                UserContentInteraction.user_id == interaction.user_id
+                UserContentInteraction.user_id == interaction.user_id,
+                or_(
+                    UserContentInteraction.opened_at.isnot(None),
+                    UserContentInteraction.explicit_rating.isnot(None),
+                    UserContentInteraction.saved.is_(True),
+                ),
             )
         )
         count = count_result.scalar() or 0
 
         await session.commit()
 
-        if count > MIN_INTERACTIONS_FOR_META_UPDATE:
-            update_meta_weights_task.delay(str(interaction.user_id))
+        if changed and count > MIN_INTERACTIONS_FOR_META_UPDATE:
+            await _enqueue_meta_weights_update(interaction.user_id)
 
         return {"status": "ok", "interaction_id": str(interaction_id)}
+
+
+# A burst of interactions (several telemetry flushes, a few ratings) should
+# produce one weight update, run after the burst settles (#104).
+META_UPDATE_DEBOUNCE_SECONDS = 300
+META_UPDATE_DELAY_SECONDS = 60
+# Train on the most recent digest rows only.
+META_TRAINING_WINDOW = 100
+
+
+def _meta_debounce_key(user_id: uuid.UUID) -> str:
+    return f"meta-weights-pending:{user_id}"
+
+
+async def _enqueue_meta_weights_update(user_id: uuid.UUID) -> bool:
+    """Schedule one delayed weight update per user per debounce window."""
+    from app.utils.cache import cache_set_nx
+
+    if not await cache_set_nx(_meta_debounce_key(user_id), 1, META_UPDATE_DEBOUNCE_SECONDS):
+        return False
+    update_meta_weights_task.apply_async(args=[str(user_id)], countdown=META_UPDATE_DELAY_SECONDS)
+    return True
 
 
 @celery_app.task(name="app.workers.tasks.update_interest_graph.update_meta_weights_task")
@@ -65,27 +98,23 @@ def update_meta_weights_task(user_id: str) -> dict:
 
 
 async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
-    from sqlalchemy import select
+    """Train the user's ranking weights on settled digests (#154).
 
+    Pairs come only from this user's own digests and impressions (#104), each
+    digest is trained on once, and every update is logged as a revision.
+    """
     from app.database import AsyncSessionLocal
-    from app.models.content import UserContentInteraction
-    from app.models.digest import DigestItem
-    from app.services.ranking.meta_weights import update_meta_weights
+    from app.services.ranking.learner import train_user
+    from app.utils.cache import cache_delete
+
+    # Re-arm the debounce so interactions arriving from now on schedule the
+    # next update instead of being absorbed by this one.
+    await cache_delete(_meta_debounce_key(user_id))
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(DigestItem, UserContentInteraction)
-            .join(
-                UserContentInteraction,
-                (UserContentInteraction.content_item_id == DigestItem.content_item_id)
-                & (UserContentInteraction.user_id == user_id),
-            )
-            .limit(100)
-        )
-        pairs = [(row[0], row[1]) for row in result.fetchall()]
-        await update_meta_weights(user_id, pairs, session)
+        result = await train_user(user_id, session)
         await session.commit()
-        return {"status": "ok", "user_id": str(user_id)}
+    return {"user_id": str(user_id), **{k: v for k, v in result.items() if k != "weights"}}
 
 
 @celery_app.task(name="app.workers.tasks.update_interest_graph.apply_decay_all_users")

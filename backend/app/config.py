@@ -22,15 +22,40 @@ class Settings(BaseSettings):
     # non-development environments; open in development for convenience.
     metrics_token: str = ""
 
-    # Application
-    app_env: str = "development"
-    secret_key: str = "change_me_to_a_long_random_string"
+    # Application. Production is the default (#106): development mode relaxes
+    # webhook authentication, opens operator metrics and echoes SQL, so it must
+    # be chosen explicitly (APP_ENV=development, set by docker-compose.dev.yml).
+    app_env: str = "production"
+    # No usable default: generate one with scripts/init_env.sh. Outside
+    # development the app refuses to start with an empty, short or published key.
+    secret_key: str = ""
     # Optional distinct signing key for refresh tokens (defense in depth). Falls
     # back to secret_key when empty.
     refresh_secret_key: str = ""
     # Short-lived access tokens + long-lived, revocable refresh tokens.
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    # Self-host only (#164): let the Miniflux/FreshRSS sidecar import reach the
+    # configured server over plain http on a private address (typical homelab).
+    # Never honored when DEPLOYMENT_MODE=hosted.
+    sidecar_allow_private_http: bool = False
+    # Who may register (#153): closed | invite | open. Empty = closed on
+    # selfhost (only the first account), open on hosted.
+    registration_mode: str = ""
+    registration_invite_codes: str = ""
+    # Email verification before any non-verification email or inbound
+    # newsletter (#175): "auto" = required on hosted, off on selfhost.
+    email_verification: str = "auto"
+    email_verification_expire_hours: int = 48
+    # Signups per email domain per hour (hosted, #175). Large mail providers
+    # get `signup_per_domain_per_hour * 20`.
+    signup_per_domain_per_hour: int = 10
+    # Session cookies (#103). Leave empty for a host-only cookie; set e.g.
+    # ".example.com" when the API and web app are on different subdomains.
+    cookie_domain: str = ""
+    # "auto" (default): Secure flag follows the request scheme (honors
+    # X-Forwarded-Proto from a TLS proxy). "true"/"false" force it.
+    cookie_secure: str = "auto"
     # Passwordless magic-link sign-in (audit 10-8): single-use, short-lived.
     magic_link_expire_minutes: int = 20
     frontend_url: str = "http://localhost:3000"
@@ -51,6 +76,11 @@ class Settings(BaseSettings):
     llm_tpm_limit: int = 6000
     llm_rpm_limit: int = 30
     llm_timeout_seconds: float = 30.0
+    # "lazy" (default): extractive at ingest, LLM only for items placed in a
+    # digest or opened in the reader (#147). "all": LLM for every item.
+    llm_summarize: str = "lazy"
+    # Max LLM summaries requested per digest build.
+    digest_llm_summary_limit: int = 20
     # Legacy aliases. A retired model id is rewritten in `_normalize_llm`.
     groq_api_key: str = ""
     groq_summarization_model: str = ""
@@ -74,6 +104,9 @@ class Settings(BaseSettings):
     # Leave false until the golden retrieval ADR says nomic beat MiniLM.
     embedding_cutover_enabled: bool = False
     ranking_exploration_enabled: bool = False
+    # Team-draft interleave PRS with newest-first in every digest and log teams,
+    # to measure the PRS win rate (#130). For the beta; off by default.
+    ranking_interleaving: bool = False
     ranker_version: str = "2"
 
     # Email delivery — Zoho SMTP
@@ -111,6 +144,12 @@ class Settings(BaseSettings):
     # full third-party copies — a copyright-exposure control (audit 08-3).
     # Set 0 to disable pruning (keep full text indefinitely).
     content_full_text_retention_days: int = 90
+    # Raw reading telemetry (#224): per-impression rows and fine-grained
+    # reading fields older than this are aggregated or dropped. 0 = keep.
+    telemetry_raw_retention_days: int = 90
+    # Reader full text (#177): "auto" = feed-syndicated text only on hosted,
+    # everything on selfhost; or force "all" / "feed_only".
+    reader_full_text: str = "auto"
     content_excerpt_chars: int = 500
     content_per_source_cap: int = 500
     source_backfill_limit: int = 20
@@ -127,6 +166,10 @@ class Settings(BaseSettings):
 
     # Scraping
     browserless_url: str = "http://browserless:3000"
+    # Rendered extraction runs arbitrary third-party pages in Chrome. On the
+    # hosted service it stays off unless the renderer sits behind the egress
+    # proxy (docker-compose `full` profile) and this is set (#127).
+    browserless_hosted_allowed: bool = False
     # Optional RSSHub instance. Empty disables the discovery route (IN-06).
     rsshub_base_url: str = ""
     scraper_max_concurrency: int = 5
@@ -173,21 +216,59 @@ class Settings(BaseSettings):
     temporal_blend_medium: float = 0.35  # medium-term focus weight
     temporal_blend_short: float = 0.15  # session/short-term weight
 
-    # Tier entitlements (audit 13-1/13-5). Free-tier quantity limits; 0 = unlimited.
-    # These are config-driven scaffolding — the final Free/Pro structure is a
-    # business decision (see IMPLEMENTATION_LOG "Needs Human Decision"). Pro is
-    # unlimited by default. Only enforced when `tier == "free"`.
+    # Deployment mode (#109): "selfhost" (default) never applies plan limits;
+    # "hosted" applies the free-tier limits below to tier == "free" users.
+    deployment_mode: str = "selfhost"
+    # Hosted free-tier quantity limits; 0 = unlimited. Final plan structure is
+    # a business decision (see #138). Ignored in selfhost mode.
     free_max_sources: int = 30
     free_max_creators: int = 5
+    hosted_free_digest_regen_minutes: int = 60
+    # Billing on hosted through a merchant of record (#173). Prices and trial
+    # length are a business decision (#138); this is configuration only.
+    billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off
+    billing_webhook_secret: str = ""
+    billing_api_key: str = ""  # Paddle only: checkout + portal sessions
+    billing_sandbox: bool = False  # Paddle sandbox API
+    # Lemon Squeezy: hosted checkout links. Paddle: price ids (pri_...).
+    billing_checkout_monthly: str = ""
+    billing_checkout_yearly: str = ""
+    # Which provider price/variant ids grant which tier (comma-separated).
+    billing_pro_price_ids: str = ""
+    billing_team_price_ids: str = ""
+    billing_trial_days: int = 30
+    billing_past_due_grace_days: int = 3
+    # Abuse controls on hosted (#169). 0 disables a limit.
+    hosted_fetch_budget_per_hour: int = 300  # feed polls + on-demand fetches per account
+    hosted_host_polls_per_hour: int = 120  # polls of one host across all accounts
+    hosted_max_sources_per_host: int = 10  # one account's subscriptions on one host
+    hosted_inbound_per_day: int = 100  # newsletter emails per account
+    hosted_inbound_mb_per_day: int = 25
+    # Any instance: a single inbound newsletter larger than this is dropped.
+    inbound_max_message_bytes: int = 2_000_000
+    # Self-host and paid plans: only guards against double-clicking "generate".
+    manual_digest_guard_seconds: int = 60
+    # SLO (#239): a scheduled digest is on time when it is delivered within
+    # this many seconds of being due.
+    digest_on_time_seconds: int = 900
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True
-    # Collaborative warmup is mathematically inert below a critical mass of active
-    # users with warm interest vectors; gate it off until then rather than
-    # pretending it contributes at launch (audit 05-6).
-    collaborative_warmup_min_users: int = 1000
+    # Collaborative warmup (#210): items many readers finished, never one
+    # person's history. Off until the instance has this many active readers.
+    collaborative_warmup_min_users: int = 100
+    # An item is eligible only once this many distinct users engaged with it.
+    collaborative_k_anonymity: int = 20
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
+
+    @model_validator(mode="after")
+    def _check_deployment_mode(self) -> Settings:
+        mode = self.deployment_mode.strip().lower()
+        if mode not in ("selfhost", "hosted"):
+            raise ValueError(f"DEPLOYMENT_MODE must be 'selfhost' or 'hosted', got {mode!r}")
+        self.deployment_mode = mode
+        return self
 
     @model_validator(mode="after")
     def _normalize_llm(self) -> Settings:
@@ -221,6 +302,8 @@ class Settings(BaseSettings):
 
 
 _DEFAULT_SECRET_KEY = "change_me_to_a_long_random_string"
+# Used only when APP_ENV=development and SECRET_KEY is empty. Public by design.
+_DEV_ONLY_SECRET_KEY = "insecure-development-only-key-do-not-use-in-production"
 _MIN_SECRET_LEN = 32
 _DEFAULT_LLM_PRIMARY = "openai/gpt-oss-120b"
 _DEFAULT_LLM_FAST = "openai/gpt-oss-20b"
@@ -259,22 +342,40 @@ def _resolve_model(*, configured: str, legacy: str, default: str, legacy_name: s
     return legacy
 
 
+def validate_settings(s: Settings) -> None:
+    """Refuse to boot outside development with an unsafe signing key.
+
+    A known SECRET_KEY makes every JWT forgeable, and the user id in the token
+    is also in every digest email link (audit 06-8, #106). The published
+    placeholder is rejected even if an old .env still carries it.
+    """
+    if s.app_env == "development":
+        if not s.secret_key:
+            import warnings
+
+            warnings.warn(
+                "SECRET_KEY is empty; using an insecure development-only key. "
+                "Never expose a development instance.",
+                stacklevel=2,
+            )
+            s.secret_key = _DEV_ONLY_SECRET_KEY
+        return
+    for name, value in (("SECRET_KEY", s.secret_key), ("REFRESH_SECRET_KEY", s.refresh_secret_key)):
+        if name == "REFRESH_SECRET_KEY" and not value:
+            continue  # optional; falls back to SECRET_KEY
+        if value in (_DEFAULT_SECRET_KEY, _DEV_ONLY_SECRET_KEY) or len(value) < _MIN_SECRET_LEN:
+            raise RuntimeError(
+                f"{name} is missing, the published placeholder, or shorter than "
+                f"{_MIN_SECRET_LEN} characters (APP_ENV={s.app_env!r}). Run "
+                "`./scripts/init_env.sh` to generate secrets into .env, or set "
+                'it yourself: `python -c "import secrets; print(secrets.token_hex(32))"`.'
+            )
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     s = Settings()
-
-    # Refuse to boot outside development with the placeholder signing key — a
-    # default SECRET_KEY means every JWT is forgeable (audit 06-8).
-    if s.app_env != "development" and (
-        s.secret_key == _DEFAULT_SECRET_KEY or len(s.secret_key) < _MIN_SECRET_LEN
-    ):
-        raise RuntimeError(
-            "SECRET_KEY is missing, still the insecure default, or shorter than "
-            f"{_MIN_SECRET_LEN} characters in a non-development environment "
-            f"(APP_ENV={s.app_env!r}). Generate one with "
-            '`python -c "import secrets; print(secrets.token_hex(32))"` and set '
-            "it in the environment before deploying."
-        )
+    validate_settings(s)
 
     if not s.llm_configured:
         import warnings

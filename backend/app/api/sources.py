@@ -23,6 +23,57 @@ router = APIRouter(prefix="/sources", tags=["sources"])
 logger = get_logger(__name__)
 
 
+async def _enforce_capacity(session: AsyncSession, user: User, urls: list[str]) -> None:
+    """Plan and abuse limits for every user-initiated way of adding sources.
+
+    No-op in selfhost mode. In hosted mode a free-tier user gets a 402 that
+    says how many more they can add (#109), and no account may pile more
+    than HOSTED_MAX_SOURCES_PER_HOST feeds onto one host (#169).
+    """
+    adding = len(urls)
+    if adding <= 0:
+        return
+    from app.services.abuse import enforce_sources_per_host
+
+    await enforce_sources_per_host(session, user, urls)
+    count = (
+        await session.execute(
+            select(func.count()).select_from(Source).where(Source.user_id == user.id)
+        )
+    ).scalar() or 0
+    enforce_source_limit(user, count, adding=adding)
+
+
+async def _seed_pack_interest(session: AsyncSession, user_id, title: str) -> None:
+    """A subscribed pack is a stated interest: give the ranker an embedded
+    topic for it so day-0 scores aren't flat (#135). Never lowers an
+    existing node."""
+    from app.services.interest_graph.graph import InterestGraphManager
+    from app.utils.embeddings import get_embedding_service
+
+    label = title.strip()
+    if not label:
+        return
+    try:
+        embedding = (await get_embedding_service().encode_batch_cached([label]))[0]
+    except Exception:  # embeddings are optional polish here
+        embedding = None
+    node = await InterestGraphManager().get_or_create_node(
+        user_id=user_id, topic_label=label, topic_embedding=embedding, session=session
+    )
+    node.weight = max(node.weight or 0.0, 0.4)
+    if node.topic_embedding is None and embedding is not None:
+        node.topic_embedding = embedding
+    await session.flush()
+
+
+def _fetch_new_sources_soon(user_id) -> None:
+    """Fetch a user's sources now instead of waiting for the next beat (#102)."""
+    from app.workers.tasks.ingest_feeds import ingest_user_sources
+
+    ingest_user_sources.delay(str(user_id))
+
+
 @router.get("/starter-packs")
 async def list_packs(
     current_user: User = Depends(get_current_user),
@@ -59,6 +110,9 @@ async def subscribe_pack(
     )
     existing_urls = {row[0] for row in existing_result.fetchall()}
 
+    new_urls = sorted({f["url"] for f in pack.feeds} - existing_urls)
+    await _enforce_capacity(session, current_user, new_urls)
+
     created = 0
     for feed in pack.feeds:
         if feed["url"] in existing_urls:
@@ -78,6 +132,9 @@ async def subscribe_pack(
         existing_urls.add(feed["url"])
         created += 1
     await session.flush()
+    await _seed_pack_interest(session, current_user.id, pack.title)
+    if created:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "status": "ok",
         "pack": pack.id,
@@ -128,6 +185,7 @@ async def accept_discover_suggestion(
     suggestion = result.scalar_one_or_none()
     if suggestion is None or suggestion.status != "pending":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Suggestion not found")
+    await _enforce_capacity(session, current_user, [suggestion.url])
 
     source = Source(
         user_id=current_user.id,
@@ -174,13 +232,10 @@ async def add_source(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SourceRead:
-    # Enforce the free-tier source limit (audit 13-1/13-5).
-    count = (
-        await session.execute(
-            select(func.count()).select_from(Source).where(Source.user_id == current_user.id)
-        )
-    ).scalar() or 0
-    enforce_source_limit(current_user, count)
+    await _enforce_capacity(session, current_user, [body.url])
+    from app.services.abuse import require_fetch_budget
+
+    await require_fetch_budget(session, current_user)  # autodiscovery fetches the page
 
     # Autodiscover feed URL
     feed_url = await _autodiscover_feed(body.url)
@@ -198,10 +253,9 @@ async def add_source(
     session.add(source)
     await session.flush()
 
-    # Enqueue initial ingestion
-    from app.workers.tasks.ingest_feeds import ingest_all_feeds
-
-    ingest_all_feeds.delay()
+    # Fetch this user's sources now. Never the whole instance: on hosted any
+    # user could otherwise trigger a poll of every feed (#169).
+    _fetch_new_sources_soon(current_user.id)
 
     return SourceRead.model_validate(source)
 
@@ -213,7 +267,7 @@ async def list_sources(
 ) -> list[SourceRead]:
     result = await session.execute(select(Source).where(Source.user_id == current_user.id))
     sources = list(result.scalars().all())
-    counts = await _items_per_week(session, [s.id for s in sources])
+    counts = await _items_per_week(session, sources)
     rows = []
     for source in sources:
         row = SourceRead.model_validate(source)
@@ -222,16 +276,30 @@ async def list_sources(
     return rows
 
 
-async def _items_per_week(session: AsyncSession, source_ids: list) -> dict:
-    if not source_ids:
+async def _items_per_week(session: AsyncSession, sources: list[Source]) -> dict:
+    """Items per week for each of the user's sources, counted per feed (#108).
+
+    A shared item is stored under one subscriber's source row, so counting by
+    `source_id` showed 0 for every later subscriber of the same feed.
+    """
+    if not sources:
         return {}
+    from app.services.feed_identity import feed_key
+
+    keys = {s.feed_url or s.url for s in sources}
     cutoff = datetime.now(UTC) - timedelta(days=7)
     result = await session.execute(
-        select(ContentItem.source_id, func.count())
-        .where(ContentItem.source_id.in_(source_ids), ContentItem.fetched_at >= cutoff)
-        .group_by(ContentItem.source_id)
+        select(feed_key(), func.count(ContentItem.id))
+        .join(ContentItem, ContentItem.source_id == Source.id)
+        .where(
+            feed_key().in_(keys),
+            ContentItem.fetched_at >= cutoff,
+            ContentItem.owner_user_id.is_(None),
+        )
+        .group_by(feed_key())
     )
-    return {row[0]: int(row[1]) for row in result.all()}
+    per_key = {row[0]: int(row[1]) for row in result.all()}
+    return {s.id: per_key.get(s.feed_url or s.url, 0) for s in sources}
 
 
 # Static path must be registered before /{source_id} to prevent shadowing
@@ -257,6 +325,8 @@ async def import_opml(
         import listparser
 
         result = listparser.parse(opml_text)
+        urls = {feed.url or feed.feed or "" for feed in result.feeds} - {""}
+        await _enforce_capacity(session, current_user, sorted(urls))
         created = 0
         for feed in result.feeds:
             url = feed.url or feed.feed or ""
@@ -272,9 +342,13 @@ async def import_opml(
             session.add(source)
             created += 1
         await session.flush()
+        if created:
+            _fetch_new_sources_soon(current_user.id)
         return {"created": created}
     except ImportError:
         raise HTTPException(status_code=500, detail="listparser not installed")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"OPML parse error: {e}")
 
@@ -300,6 +374,7 @@ async def import_opml_tagged(
 
     existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
     plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
+    await _enforce_capacity(session, current_user, [feed.url for feed in plan.feeds])
     for feed in plan.feeds:
         session.add(
             Source(
@@ -313,6 +388,8 @@ async def import_opml_tagged(
             )
         )
     await session.flush()
+    if plan.feeds:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "created": plan.created,
         "skipped": plan.skipped,
@@ -348,7 +425,7 @@ async def import_saved(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    from app.models.content import ContentItem, UserContentInteraction
+    from app.models.content import UserContentInteraction
     from app.services.ingestion.importers import import_csv, import_opml_starred
 
     raw = (await file.read()).decode("utf-8", errors="replace")
@@ -359,31 +436,41 @@ async def import_saved(
             imported = import_csv(raw, kind)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    from app.services.content_lookup import get_or_create_private_item
+
     created = 0
     for item in imported:
         if not item.url:
             continue
-        exists = await session.execute(select(ContentItem.id).where(ContentItem.url == item.url))
-        if exists.scalar_one_or_none():
-            continue
-        row = ContentItem(
-            owner_user_id=current_user.id,
-            url=item.url,
+        # Reuse the public row or this user's own row; another user's private
+        # import of the same URL must neither block nor be revealed (#101).
+        row, is_new = await get_or_create_private_item(
+            session,
+            current_user.id,
+            item.url,
             title=item.title,
-            full_text=item.note,
             origin="import",
+            full_text=item.note,
         )
-        session.add(row)
-        await session.flush()
-        session.add(
-            UserContentInteraction(
-                user_id=current_user.id,
-                content_item_id=row.id,
-                saved=True,
-                explicit_rating=1,
+        existing_ix = (
+            await session.execute(
+                select(UserContentInteraction).where(
+                    UserContentInteraction.user_id == current_user.id,
+                    UserContentInteraction.content_item_id == row.id,
+                )
             )
-        )
-        created += 1
+        ).scalar_one_or_none()
+        if existing_ix is None:
+            session.add(
+                UserContentInteraction(
+                    user_id=current_user.id,
+                    content_item_id=row.id,
+                    saved=True,
+                    explicit_rating=1,
+                )
+            )
+        if is_new:
+            created += 1
     await session.flush()
     return {"created": created, "origin": "import"}
 

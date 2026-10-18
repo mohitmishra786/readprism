@@ -2,8 +2,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { api } from "../../lib/api";
-import { getRefreshToken, isAuthenticated, removeToken } from "../../lib/auth";
+import { api, hasSession } from "../../lib/api";
+import { AccountNotices } from "../../components/AccountNotices";
 
 const NAV = [
   { href: "/digest", label: "Digest" },
@@ -21,8 +21,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
-    if (!isAuthenticated()) router.replace("/login");
+    // Session lives in httpOnly cookies (#103): ask the API instead of
+    // reading a token in JavaScript.
+    let cancelled = false;
+    hasSession().then((signedIn) => {
+      if (cancelled) return;
+      if (signedIn) setMounted(true);
+      else router.replace("/login");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   if (!mounted) return null;
@@ -60,13 +69,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <button
-            onClick={() => {
-              const refresh = getRefreshToken();
-              if (refresh) {
-                // Best-effort server-side revocation; don't block sign-out on it.
-                api.auth.logout(refresh).catch(() => {});
-              }
-              removeToken();
+            onClick={async () => {
+              // Revokes the refresh token and clears the session cookies.
+              await api.auth.logout().catch(() => {});
               router.replace("/login");
             }}
             className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
@@ -75,6 +80,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+      <AccountNotices />
       <main id="main-content" className="mx-auto max-w-3xl px-4 py-8">
         {children}
       </main>

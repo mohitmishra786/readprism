@@ -27,7 +27,26 @@ async def get_feed(
 ) -> list[FeedItem]:
     offset = (page - 1) * limit
 
-    # Get interactions with PRS scores for this user
+    from sqlalchemy import or_
+
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
+
+    # Only this user's world (#167): items from feeds they follow, their own
+    # private items, and items they interacted with. The outer join used to
+    # list every row in the instance, including other users' private
+    # newsletters and saves.
+    source_ids = await equivalent_source_ids(session, current_user.id)
+    feed_ids = await user_feed_ids(session, current_user.id)
+    in_scope = or_(
+        from_user_feeds(source_ids, feed_ids),
+        ContentItem.owner_user_id == current_user.id,
+        UserContentInteraction.id.isnot(None),
+    )
     query = (
         select(ContentItem, UserContentInteraction)
         .join(
@@ -36,7 +55,11 @@ async def get_feed(
             & (UserContentInteraction.user_id == current_user.id),
             isouter=True,
         )
-        .order_by(UserContentInteraction.prs_score.desc().nullslast())
+        .where(in_scope, visible_item_filter(current_user.id))
+        .order_by(
+            UserContentInteraction.prs_score.desc().nullslast(),
+            ContentItem.fetched_at.desc(),
+        )
         .offset(offset)
         .limit(limit)
     )
@@ -162,4 +185,25 @@ async def get_content(
     # (audit 06-6).
     if item.owner_user_id is not None and item.owner_user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    return ContentItemFullRead.model_validate(item)
+    await _queue_llm_summary(item)
+    from app.services.display_policy import may_display_full_text
+
+    read = ContentItemFullRead.model_validate(item)
+    if read.full_text and not may_display_full_text(item, current_user.id):
+        read.full_text = None
+        read.full_text_withheld = True
+    return read
+
+
+async def _queue_llm_summary(item: ContentItem) -> None:
+    """Someone is reading it: get the model summary in the background (#147)."""
+    from app.config import get_settings
+    from app.services.summarization.lazy import needs_llm_summary
+    from app.utils.cache import cache_set_nx
+
+    if not get_settings().llm_configured or not needs_llm_summary(item):
+        return
+    if await cache_set_nx(f"llm-summary-queued:{item.id}", 1, ttl_seconds=3600):
+        from app.workers.tasks.compute_embeddings import summarize_item_with_llm
+
+        summarize_item_with_llm.delay(str(item.id))

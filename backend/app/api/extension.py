@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
 from app.database import get_db
-from app.models.content import ContentItem, UserContentInteraction
+from app.models.content import UserContentInteraction
 from app.models.user import User
 from app.utils.logging import get_logger
 
@@ -39,32 +39,14 @@ async def save_and_rate(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="rating must be 1 or -1"
         )
 
-    from datetime import UTC, datetime
+    from app.services.content_lookup import get_or_create_private_item
 
-    result = await session.execute(select(ContentItem).where(ContentItem.url == body.url))
-    item = result.scalar_one_or_none()
-    if (
-        item is not None
-        and item.owner_user_id is not None
-        and item.owner_user_id != current_user.id
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="URL already saved by another user"
-        )
-    if item is None:
-        item = ContentItem(
-            url=body.url,
-            title=body.title,
-            origin="extension",
-            owner_user_id=current_user.id,  # private: never another user's discovery pool
-            fetched_at=datetime.now(UTC),
-            rankable=True,
-        )
-        session.add(item)
-        await session.flush()
-    elif item.owner_user_id is None:
-        # Public item already ingested from a feed: keep it public, just rate it.
-        pass
+    # Public row if the URL was ingested from a feed (keep it shared, just rate
+    # it); else this user's own private row, created if needed. Other users'
+    # private saves are invisible (#101).
+    item, _ = await get_or_create_private_item(
+        session, current_user.id, body.url, title=body.title, origin="extension"
+    )
 
     ix_result = await session.execute(
         select(UserContentInteraction).where(

@@ -50,14 +50,23 @@ class InterestGraphManager:
         node: InterestNode,
         signal_strength: float,
         session: AsyncSession,
+        *,
+        count: bool = True,
     ) -> None:
+        """Move the node weight by `signal_strength * 0.1` (clamped to [0, 1]).
+
+        `count=False` applies a correction to an interaction that was already
+        counted (e.g. a later telemetry flush or a changed rating), so the
+        reinforcement count reflects reads, not updates.
+        """
         if signal_strength > 0:
             node.weight = min(1.0, node.weight + signal_strength * 0.1)
         else:
             node.weight = max(0.0, node.weight + signal_strength * 0.1)
 
         node.last_reinforced_at = datetime.now(UTC)
-        node.reinforcement_count = (node.reinforcement_count or 0) + 1
+        if count:
+            node.reinforcement_count = (node.reinforcement_count or 0) + 1
 
         if (
             node.weight > CORE_WEIGHT_THRESHOLD

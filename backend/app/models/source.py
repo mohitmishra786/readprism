@@ -17,6 +17,11 @@ class Source(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # The shared feed this subscription reads (#161); NULL for newsletter
+    # sources (private) and for rows not yet attached by the ingest sync.
+    feed_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("feeds.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     url: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str | None] = mapped_column(String, nullable=True)
     feed_url: Mapped[str | None] = mapped_column(String, nullable=True)

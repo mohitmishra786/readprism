@@ -59,10 +59,13 @@ class SectionBuilder:
         self,
         ranked_items: list[tuple[ContentItem, float, dict]],
     ) -> dict[str, DigestSection]:
+        # Insertion order is the display order (the builder assigns positions
+        # by iterating this dict): lead, creators, deep reads, more, discovery.
         sections: dict[str, DigestSection] = {
             "lead": DigestSection("lead", max_items=self.lead_count),
             "creator": DigestSection("creator", max_items=max(1, self.total_items // 4)),
             "deep_reads": DigestSection("deep_reads", max_items=max(1, self.total_items // 5)),
+            "more": DigestSection("more", max_items=0),
             "discovery": DigestSection("discovery", max_items=self.discovery_count),
         }
 
@@ -143,5 +146,23 @@ class SectionBuilder:
                 _update_topics(item)
             if sections["deep_reads"].is_full():
                 break
+
+        # "More from your feeds": every other ranked followed item, best first,
+        # until the digest reaches its target length (#275). Without this, a
+        # user whose feeds publish ordinary short posts got only the lead.
+        placed = sum(len(sec.items) for sec in sections.values())
+        sections["more"].max_items = max(0, self.total_items - placed)
+        for item, prs, breakdown in ranked_items:
+            if sections["more"].is_full():
+                break
+            if item.id in used_ids:
+                continue
+            if self.is_discovery_eligible(item, breakdown):
+                continue  # discovery candidates only ever appear as discovery
+            if not _check_saturation(item):
+                continue
+            if sections["more"].add(item, prs, breakdown):
+                used_ids.add(item.id)
+                _update_topics(item)
 
         return sections
