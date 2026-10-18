@@ -37,6 +37,33 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     # Local part of the inbound newsletter address: u.{token}@the configured domain.
     newsletter_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    # Set when the user proves they own the address (#175).
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Hosted fetch budget exhausted (#169): scheduled polls for feeds only
+    # this account follows wait until then.
+    fetch_paused_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Keep this account's reading out of the crowd counts behind
+    # collaborative warmup for other users (#210).
+    collaborative_opt_out: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    # Hosted billing (#173). `tier` is what was bought; app.services.billing
+    # .effective_plan() combines it with these dates.
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    billing_provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    billing_customer_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    billing_subscription_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    billing_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    billing_portal_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Time of the newest provider event applied; older ones arriving late are ignored.
+    billing_event_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -46,3 +73,10 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    @property
+    def email_verified(self) -> bool:
+        """True when verified, or when this instance doesn't require it."""
+        from app.services.email_verification import is_verified
+
+        return is_verified(self)

@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { setToken } from "../../../lib/auth";
 
 // Verifies a magic-link token and signs the user in (audit 10-8).
 export default function MagicVerifyPage() {
@@ -17,10 +16,7 @@ export default function MagicVerifyPage() {
     }
     api.auth
       .magicLinkVerify(token)
-      .then((t) => {
-        setToken(t.access_token, t.refresh_token);
-        router.replace("/digest");
-      })
+      .then(() => router.replace("/digest"))
       .catch(() => setError("This sign-in link is invalid or has already been used."));
   }, [router]);
 
