@@ -54,9 +54,31 @@ async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
         await session.commit()
 
         if count > MIN_INTERACTIONS_FOR_META_UPDATE:
-            update_meta_weights_task.delay(str(interaction.user_id))
+            await _enqueue_meta_weights_update(interaction.user_id)
 
         return {"status": "ok", "interaction_id": str(interaction_id)}
+
+
+# A burst of interactions (several telemetry flushes, a few ratings) should
+# produce one weight update, run after the burst settles (#104).
+META_UPDATE_DEBOUNCE_SECONDS = 300
+META_UPDATE_DELAY_SECONDS = 60
+# Train on the most recent digest rows only.
+META_TRAINING_WINDOW = 100
+
+
+def _meta_debounce_key(user_id: uuid.UUID) -> str:
+    return f"meta-weights-pending:{user_id}"
+
+
+async def _enqueue_meta_weights_update(user_id: uuid.UUID) -> bool:
+    """Schedule one delayed weight update per user per debounce window."""
+    from app.utils.cache import cache_set_nx
+
+    if not await cache_set_nx(_meta_debounce_key(user_id), 1, META_UPDATE_DEBOUNCE_SECONDS):
+        return False
+    update_meta_weights_task.apply_async(args=[str(user_id)], countdown=META_UPDATE_DELAY_SECONDS)
+    return True
 
 
 @celery_app.task(name="app.workers.tasks.update_interest_graph.update_meta_weights_task")
@@ -69,18 +91,30 @@ async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
 
     from app.database import AsyncSessionLocal
     from app.models.content import UserContentInteraction
-    from app.models.digest import DigestItem
+    from app.models.digest import Digest, DigestItem
     from app.services.ranking.meta_weights import update_meta_weights
+    from app.utils.cache import cache_delete
+
+    # Re-arm the debounce so interactions arriving from now on schedule the
+    # next update instead of being absorbed by this one.
+    await cache_delete(_meta_debounce_key(user_id))
 
     async with AsyncSessionLocal() as session:
+        # Only this user's digests: a shared public item also appears in other
+        # users' digests with *their* signal breakdowns, and pairing those with
+        # this user's reading trained one user's weights on another's
+        # features (#104).
         result = await session.execute(
             select(DigestItem, UserContentInteraction)
+            .join(Digest, Digest.id == DigestItem.digest_id)
             .join(
                 UserContentInteraction,
                 (UserContentInteraction.content_item_id == DigestItem.content_item_id)
                 & (UserContentInteraction.user_id == user_id),
             )
-            .limit(100)
+            .where(Digest.user_id == user_id)
+            .order_by(Digest.generated_at.desc(), DigestItem.position.asc())
+            .limit(META_TRAINING_WINDOW)
         )
         pairs = [(row[0], row[1]) for row in result.fetchall()]
         await update_meta_weights(user_id, pairs, session)
