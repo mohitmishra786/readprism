@@ -1,4 +1,15 @@
-.PHONY: extract-eval starter-pack-check env up-lite up-full up-dev build-lite backup restore demo docs-serve
+.PHONY: extract-eval starter-pack-check env up-lite up-full up-dev build-lite backup restore demo docs-serve test-services test-services-down test-backend test
+
+test-services:
+	docker compose -f docker-compose.test.yml up -d
+
+test-services-down:
+	docker compose -f docker-compose.test.yml down -v
+
+test-backend: test-services
+	cd backend && pytest
+
+test: test-backend
 
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
