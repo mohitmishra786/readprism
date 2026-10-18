@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # Test this checkout's code, not the published images (#128).
+  COMPOSE_FILE: docker-compose.yml:docker-compose.build.yml
+
 jobs:
   roundtrip:
     runs-on: ubuntu-latest
