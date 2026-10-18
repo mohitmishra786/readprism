@@ -1,0 +1,42 @@
+version: "3.9"
+
+# Local development overrides. Not applied automatically (#106):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# or `make up-dev`.
+services:
+  backend:
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_ENV: development
+    command: sh -c "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  meilisearch:
+    environment:
+      MEILI_ENV: development
+
+  # The queue workers already mount ./backend via the x-worker-base anchor;
+  # here we just flip them to development mode for local runs.
+  worker-scrape:
+    environment:
+      APP_ENV: development
+
+  worker-embed:
+    environment:
+      APP_ENV: development
+
+  worker-digest:
+    environment:
+      APP_ENV: development
+
+  beat:
+    volumes:
+      - ./backend:/app
+    environment:
+      APP_ENV: development
+
+  frontend:
+    volumes:
+      - ./frontend/src:/app/src
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000

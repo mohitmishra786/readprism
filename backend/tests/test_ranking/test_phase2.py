@@ -119,12 +119,30 @@ def test_discovery_pool_and_suggestion_origin():
 
 @pytest.mark.asyncio
 async def test_suggestion_signal_fires_for_discovery_origin():
-    from app.services.ranking.signals import UserInterestGraph, suggestion
+    """A discovery item scores above neutral even with no embedding or history."""
+    import uuid as _uuid
 
-    content = SimpleNamespace(origin="discovery", embedding=None, id="x")
-    user = SimpleNamespace(created_at=datetime.now(UTC))
-    score = await suggestion.compute(content, user, [], UserInterestGraph(nodes=[], edges=[]), None)
-    assert score == 0.8
+    from app.models.content import ContentItem
+    from app.services.ranking.phase2.contract import SIGNALS
+    from app.services.ranking.ranker import UserRankingState, score_candidates
+
+    content = ContentItem(
+        id=_uuid.uuid4(), url="https://d.example/x", title="x", origin="discovery"
+    )
+    state = UserRankingState(
+        user_id=_uuid.uuid4(),
+        weights={name: 1 / len(SIGNALS) for name in SIGNALS},
+        history=[],
+        interests=[],
+        bridges=[],
+        feeds={},
+        source_feed_key={},
+        prefers_fresh=True,
+        novelty_target=0.35,
+    )
+    scored = score_candidates(state, [content])[0]
+    assert scored.features["suggestion"] > 0.5
+    assert "suggestion" not in scored.no_data
 
 
 def test_diversity_cap_and_near_duplicates():

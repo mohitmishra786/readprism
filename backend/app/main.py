@@ -100,11 +100,18 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     async def health() -> dict:
-        # Check Groq connectivity
+        # Redis carries rate limits, refresh tokens and webhook replay guards;
+        # report a live check so an outage shows as degraded (#156).
+        from app.utils.cache import ping_redis
+
+        try:
+            redis_ok = await ping_redis()
+        except Exception:
+            redis_ok = False
         return {
-            "status": "ok",
+            "status": "ok" if redis_ok else "degraded",
             "db": getattr(app.state, "db_ok", False),
-            "redis": getattr(app.state, "redis_ok", False),
+            "redis": redis_ok,
             "llm": settings.llm_configured,
             "llm_model": settings.llm_model_primary if settings.llm_configured else None,
             # Kept so older health checks that look at `groq` still see a bool.
