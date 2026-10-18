@@ -3,6 +3,13 @@ version: "3.9"
 networks:
   readprism_net:
     driver: bridge
+  # Headless Chrome lives here (#127): internal-only, no route to the
+  # database, Redis or the API. Its only way out is the egress proxy.
+  render_net:
+    driver: bridge
+    internal: true
+  egress_net:
+    driver: bridge
 
 volumes:
   postgres_data:
@@ -37,6 +44,7 @@ x-worker-base: &worker-base
       condition: service_healthy
   networks:
     - readprism_net
+    - render_net  # reaches browserless; browserless cannot reach back out
   volumes:
     - ./backend:/app
   healthcheck:
@@ -114,6 +122,7 @@ services:
         condition: service_healthy
     networks:
       - readprism_net
+      - render_net  # API-side rendering (creator resolution) reaches browserless
     volumes:
       - ./backend:/app
     healthcheck:
@@ -203,21 +212,35 @@ services:
     # Rendered-page extraction (JS-heavy sites). Enabled with:
     #   docker compose --profile full up
     # The lite profile skips it: those pages keep their feed summary.
+    # Isolated (#127): only on render_net, all traffic through egress-proxy,
+    # and no published port (anyone reaching :3000 could drive the browser).
     image: browserless/chrome:1.61.0-puppeteer-21.3.8
     profiles: ["full"]
     environment:
       MAX_CONCURRENT_SESSIONS: 5
       PREBOOT_CHROME: "true"
-    ports:
-      - "3000:3000"
+      # <-loopback> removes Chrome's implicit proxy bypass for localhost.
+      DEFAULT_LAUNCH_ARGS: '["--proxy-server=http://egress-proxy:3128","--proxy-bypass-list=<-loopback>","--force-webrtc-ip-handling-policy=disable_non_proxied_udp"]'
     networks:
-      - readprism_net
+      - render_net
+    depends_on:
+      - egress-proxy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 20s
+
+  egress-proxy:
+    # The renderer's only route to the internet (#127). Squid checks the
+    # address it resolved and connects to, and denies anything non-global.
+    image: ubuntu/squid:6.6-24.04_edge
+    profiles: ["full"]
+    volumes:
+      - ./deploy/egress-proxy/squid.conf:/etc/squid/squid.conf:ro
+    networks:
+      - render_net
+      - egress_net
 
   frontend:
     build:

@@ -145,6 +145,10 @@ class Settings(BaseSettings):
 
     # Scraping
     browserless_url: str = "http://browserless:3000"
+    # Rendered extraction runs arbitrary third-party pages in Chrome. On the
+    # hosted service it stays off unless the renderer sits behind the egress
+    # proxy (docker-compose `full` profile) and this is set (#127).
+    browserless_hosted_allowed: bool = False
     # Optional RSSHub instance. Empty disables the discovery route (IN-06).
     rsshub_base_url: str = ""
     scraper_max_concurrency: int = 5
