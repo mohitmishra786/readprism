@@ -89,7 +89,7 @@ async def test_builder_attaches_perspectives(db_session):
     with (
         patch("app.utils.cache.cache_get", _no_cache),
         patch(
-            "app.services.summarization.groq_client.GroqSummarizer.synthesize_topic",
+            "app.services.summarization.groq_client.LLMSummarizer.synthesize_topic",
             return_value="",
         ),
     ):

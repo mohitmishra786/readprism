@@ -31,11 +31,11 @@ async def expand_interests(
     confirms/edits before onboarding continues. Without an LLM the keyword
     fallback still returns topics — the flow never blocks."""
     from app.services.cold_start.onboarding import _fallback_topic_extract
-    from app.services.summarization.groq_client import GroqSummarizer
+    from app.services.summarization.groq_client import LLMSummarizer
 
     topics: list[str] = []
     try:
-        topics = await GroqSummarizer().expand_interests(body.interest_text)
+        topics = await LLMSummarizer().expand_interests(body.interest_text)
     except Exception as e:
         logger.info(f"Interest expansion fell back to keywords: {e}")
     if not topics:

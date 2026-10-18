@@ -102,7 +102,7 @@ FROM_EMAIL=digest@yourdomain.com
 FRONTEND_URL=http://localhost:3001
 ```
 
-`LLM_API_KEY` (or the legacy `GROQ_API_KEY`) is optional: without a key, the digest still builds using extractive summaries. Without email credentials, digests are still readable in-app (email delivery is skipped). All other values have working defaults for local development.
+`LLM_API_KEY` (or the legacy, deprecated `GROQ_API_KEY`, removed in v0.3) is optional: without a key, the digest still builds using extractive summaries. Without email credentials, digests are still readable in-app (email delivery is skipped). All other values have working defaults for local development.
 
 ### 2. Start the stack
 
@@ -313,6 +313,8 @@ ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` t
 | `REDIS_URL` | `redis://redis:6379/0` | Redis instance used for caching, rate limiting, and sessions. |
 | `CELERY_BROKER_URL` | `redis://redis:6379/1` | Celery broker URL. |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/2` | Celery result backend URL. |
+
+Redis is persistent: the compose service runs with AOF (`--appendonly yes --appendfsync everysec`) on the `redis_data` volume, so a restart or upgrade keeps logged-in sessions (refresh-token allowlist) and pending magic links (#204). `make backup` snapshots the store (BGSAVE) and `make restore` clears the AOF directory before loading the snapshot.
 
 ### LLM Summarization
 

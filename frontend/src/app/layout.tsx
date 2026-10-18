@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
 import "../styles/globals.css";
 import { ServiceWorkerRegister } from "../components/ServiceWorkerRegister";
@@ -70,7 +71,10 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// The CSP middleware sets a per-request nonce; the JSON-LD script must carry
+// it, or a nonce-based CSP blocks the inline script tag (#187).
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en">
       <head>
@@ -88,6 +92,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{ __html: JSON.stringify(STRUCTURED_DATA) }}
         />
         <ServiceWorkerRegister />
