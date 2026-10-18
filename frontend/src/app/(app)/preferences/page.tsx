@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { removeToken } from "../../../lib/auth";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -187,7 +186,7 @@ export default function PreferencesPage() {
     setBusy(true);
     try {
       await api.account.delete();
-      removeToken();
+      await api.auth.logout().catch(() => {});
       router.replace("/register");
     } catch {
       setBusy(false);

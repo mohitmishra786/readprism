@@ -142,8 +142,10 @@ export interface InterestGraph {
 }
 
 export interface Token {
+  /** Empty in cookie mode (#103): credentials are httpOnly cookies. */
   access_token: string;
-  refresh_token?: string;
+  refresh_token?: string | null;
   token_type: string;
   expires_in: number;
+  csrf_token?: string | null;
 }

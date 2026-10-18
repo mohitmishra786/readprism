@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
-import { setToken } from "../../../lib/auth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,8 +16,8 @@ export default function RegisterPage() {
     setLoading(true);
     setError("");
     try {
-      const token = await api.auth.register(email, password, displayName || undefined);
-      setToken(token.access_token, token.refresh_token);
+      // Credentials arrive as httpOnly cookies (#103); nothing to store here.
+      await api.auth.register(email, password, displayName || undefined);
       router.replace("/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");

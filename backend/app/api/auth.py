@@ -31,7 +31,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# auto_error=False: browsers authenticate with the httpOnly session cookie instead (#103).
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 ALGORITHM = "HS256"
 
@@ -115,9 +116,24 @@ def _decode_token(token: str, *, secret: str) -> dict:
 
 async def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_db),
 ) -> User:
+    from app.api.session_cookies import ACCESS_COOKIE, enforce_csrf
+
+    if not token:
+        # Browser session (#103): access JWT in an httpOnly cookie. Mutating
+        # requests must carry the double-submit CSRF token.
+        token = request.cookies.get(ACCESS_COOKIE)
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        enforce_csrf(request)
+        request.state.auth_via = "cookie"
+
     # API tokens (EC-03): rp_-prefixed bearer tokens, hashed at rest, with
     # read/write scopes. JWTs remain the primary path.
     if token.startswith("rp_"):
@@ -202,13 +218,29 @@ async def _issue_tokens(user_id: uuid.UUID) -> Token:
     )
 
 
+async def _session(request: Request, response: Response, user_id: uuid.UUID) -> Token:
+    """Issue tokens; in cookie mode set httpOnly cookies and omit them from the body."""
+    from app.api.session_cookies import set_session_cookies, wants_cookies
+
+    token = await _issue_tokens(user_id)
+    if not wants_cookies(request):
+        return token
+    csrf = set_session_cookies(response, access=token.access_token, refresh=token.refresh_token)
+    return Token(access_token="", refresh_token=None, expires_in=token.expires_in, csrf_token=csrf)
+
+
 @router.post(
     "/register",
     response_model=Token,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(register_rate_limit)],
 )
-async def register(body: UserCreate, session: AsyncSession = Depends(get_db)) -> Token:
+async def register(
+    body: UserCreate,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> Token:
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -220,11 +252,16 @@ async def register(body: UserCreate, session: AsyncSession = Depends(get_db)) ->
     )
     session.add(user)
     await session.flush()
-    return await _issue_tokens(user.id)
+    return await _session(request, response, user.id)
 
 
 @router.post("/login", response_model=Token, dependencies=[Depends(login_rate_limit)])
-async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Token:
+async def login(
+    body: UserLogin,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> Token:
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     # Always run a bcrypt verification (against a dummy hash when the user is
@@ -232,7 +269,7 @@ async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Tok
     password_ok = _verify_password(body.password, user.hashed_password if user else _DUMMY_HASH)
     if not user or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return await _issue_tokens(user.id)
+    return await _session(request, response, user.id)
 
 
 def _magic_secret() -> str:
@@ -298,7 +335,10 @@ async def magic_link_request(
 
 @router.post("/magic-link/verify", response_model=Token)
 async def magic_link_verify(
-    body: MagicLinkVerify, session: AsyncSession = Depends(get_db)
+    body: MagicLinkVerify,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
 ) -> Token:
     """Verify a magic-link token (single-use) and issue an access+refresh pair."""
     payload = _decode_token(body.token, secret=_magic_secret())
@@ -320,41 +360,62 @@ async def magic_link_verify(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return await _issue_tokens(user.id)
+    return await _session(request, response, user.id)
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh(body: TokenRefresh) -> Token:
+async def refresh(request: Request, response: Response, body: TokenRefresh | None = None) -> Token:
     """Rotate a refresh token: verify it, revoke it (single-use), and issue a
     fresh access+refresh pair. A revoked/rotated/unknown jti is rejected, so a
-    leaked refresh token can be killed via logout and can't be replayed."""
-    payload = _decode_token(body.refresh_token, secret=_refresh_secret())
-    if payload.get("type") != "refresh":
+    leaked refresh token can be killed via logout and can't be replayed.
+
+    Cookie-mode clients send no body; the token comes from the httpOnly
+    `rp_refresh` cookie (#103)."""
+    from app.api.session_cookies import REFRESH_COOKIE, clear_session_cookies
+
+    raw = body.refresh_token if body and body.refresh_token else request.cookies.get(REFRESH_COOKIE)
+    if not raw:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
         )
-    user_id = payload.get("sub")
-    jti = payload.get("jti")
-    if not user_id or not jti:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-        )
-    # The jti must still be in the allowlist (not rotated out or revoked).
-    stored = await cache_get(_refresh_allowlist_key(jti))
-    if stored != str(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked or expired"
-        )
+    try:
+        payload = _decode_token(raw, secret=_refresh_secret())
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            )
+        user_id = payload.get("sub")
+        jti = payload.get("jti")
+        if not user_id or not jti:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            )
+        # The jti must still be in the allowlist (not rotated out or revoked).
+        stored = await cache_get(_refresh_allowlist_key(jti))
+        if stored != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked or expired"
+            )
+    except HTTPException:
+        clear_session_cookies(response)
+        raise
     await cache_delete(_refresh_allowlist_key(jti))  # rotate: single-use
-    return await _issue_tokens(uuid.UUID(user_id))
+    return await _session(request, response, uuid.UUID(user_id))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def logout(body: TokenRefresh) -> None:
-    """Revoke a refresh token server-side so it can no longer be rotated."""
+async def logout(request: Request, response: Response, body: TokenRefresh | None = None) -> None:
+    """Revoke a refresh token server-side so it can no longer be rotated, and
+    clear the browser session cookies."""
+    from app.api.session_cookies import REFRESH_COOKIE, clear_session_cookies
+
+    clear_session_cookies(response)
+    raw = body.refresh_token if body and body.refresh_token else request.cookies.get(REFRESH_COOKIE)
+    if not raw:
+        return
     try:
         payload = jwt.decode(
-            body.refresh_token,
+            raw,
             _refresh_secret(),
             algorithms=[ALGORITHM],
             options={"verify_exp": False},
@@ -364,6 +425,29 @@ async def logout(body: TokenRefresh) -> None:
     jti = payload.get("jti")
     if jti:
         await cache_delete(_refresh_allowlist_key(jti))
+
+
+@router.get("/session")
+async def session_state(request: Request) -> dict:
+    """Is there a valid browser session? Returns the CSRF token for it (#103).
+
+    Lets the web app restore its in-memory CSRF token after a reload without
+    reading cookies (which also works when the API is on another subdomain).
+    """
+    from app.api.session_cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
+
+    access = request.cookies.get(ACCESS_COOKIE)
+    valid = False
+    if access:
+        try:
+            valid = _decode_token(access, secret=_access_secret()).get("type") == "access"
+        except HTTPException:
+            valid = False
+    return {
+        "authenticated": valid,
+        "refreshable": bool(request.cookies.get(REFRESH_COOKIE)),
+        "csrf_token": request.cookies.get(CSRF_COOKIE) if valid else None,
+    }
 
 
 @router.get("/me", response_model=UserRead)

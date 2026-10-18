@@ -53,14 +53,18 @@ class UserUpdate(BaseModel):
 
 
 class Token(BaseModel):
+    # Empty in cookie mode (#103): the browser holds the credentials in
+    # httpOnly cookies and only receives the CSRF token.
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
     expires_in: int = 1800
+    csrf_token: str | None = None
 
 
 class TokenRefresh(BaseModel):
-    refresh_token: str
+    # Optional: cookie-mode clients send the refresh token as a cookie instead.
+    refresh_token: str | None = None
 
 
 class MagicLinkRequest(BaseModel):
