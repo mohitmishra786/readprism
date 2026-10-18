@@ -18,6 +18,11 @@ const SECTION_META: Record<string, { title: string; eyebrow: string; accent: str
     eyebrow: "Worth your full attention",
     accent: "text-spectrum-cyan",
   },
+  more: {
+    title: "More From Your Feeds",
+    eyebrow: "Also worth a look",
+    accent: "text-stone-700",
+  },
   discovery: {
     title: "Discover",
     eyebrow: "Outside your usual sources",
