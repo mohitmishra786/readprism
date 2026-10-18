@@ -72,7 +72,11 @@ async def _run() -> dict:
         opened: dict = {row[0]: row[1] for row in opened_rows}
 
         sent = 0
+        from app.services.email_verification import may_email
+
         for user in users:
+            if not may_email(user):
+                continue  # unverified address (#175)
             last = opened.get(user.id)
             if last is not None:
                 last = last if last.tzinfo else last.replace(tzinfo=UTC)

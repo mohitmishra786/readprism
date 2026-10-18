@@ -93,6 +93,7 @@ EXEMPT = {
     ("GET", "/api/v1/digest/e/{action}/{item_id}"): "signed email link (HMAC over user+item)",
     ("POST", "/api/v1/digest/e/{action}/{item_id}"): "signed email link (HMAC over user+item)",
     ("POST", "/api/v1/newsletter/inbound/{provider}"): "provider webhook, signature-authenticated",
+    ("POST", "/api/v1/billing/webhook/{provider_name}"): "MoR webhook, signature-authenticated",
     ("POST", "/api/v1/sources/starter-packs/{pack_id}/subscribe"): "public pack catalogue",
 }
 

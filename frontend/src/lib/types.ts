@@ -13,6 +13,12 @@ export interface User {
   tier: string;
   timezone: string;
   created_at: string;
+  /** False only while this instance requires email confirmation (#175). */
+  email_verified?: boolean;
+  /** Hosted fetch budget exhausted until then (#169). */
+  fetch_paused_until?: string | null;
+  /** Keep my reading out of other readers' collaborative warmup counts (#210). */
+  collaborative_opt_out?: boolean;
 }
 
 export interface Source {
@@ -83,6 +89,8 @@ export interface ContentItem {
   is_original_reporting: boolean | null;
   topic_clusters: string[];
   summarization_cached: boolean;
+  /** "llm" summaries are labelled as AI-written (#177). */
+  summary_source?: string | null;
   paywalled?: boolean;
   page_type?: string | null;
   language?: string | null;
@@ -92,6 +100,8 @@ export interface ContentItem {
 /** Full content item including the extracted body — only from the single-item endpoint. */
 export interface ContentItemFull extends ContentItem {
   full_text: string | null;
+  /** Text exists but the hosted display policy withholds it (#177). */
+  full_text_withheld?: boolean;
 }
 
 export interface DigestItem {
@@ -148,4 +158,14 @@ export interface Token {
   token_type: string;
   expires_in: number;
   csrf_token?: string | null;
+}
+
+export interface BillingState {
+  plan: "selfhost" | "trial" | "pro" | "team" | "free";
+  billing_enabled: boolean;
+  status: string | null;
+  trial_ends_at: string | null;
+  trial_days_left: number | null;
+  plan_expires_at: string | null;
+  can_manage: boolean;
 }

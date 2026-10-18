@@ -32,6 +32,13 @@ controller. This template refers to whoever runs the instance as "we".
 
 We do **not** sell personal data, and we do not use it for advertising.
 
+- **Collaborative warmup (#210):** to give new readers a better first
+  digest, ReadPrism may suggest public articles that at least
+  `COLLABORATIVE_K_ANONYMITY` readers (default 20) recently finished or
+  upvoted, matched to the new reader's own topics. Only per-article counts
+  are used, never one person's history, and private items never qualify.
+  You can leave the counts in Preferences → Your Data.
+
 ## Why we process it (legal bases)
 
 - To provide the service you asked for (ranking, digests) — performance of a
@@ -42,8 +49,17 @@ We do **not** sell personal data, and we do not use it for advertising.
 
 ## Retention
 
-- **Reading telemetry and derived data** persist while your account exists so
-  the model can keep learning.
+- **Raw reading telemetry** is kept for `TELEMETRY_RAW_RETENTION_DAYS`
+  (default 90 days). After that, each record of an item being shown to you is
+  folded into daily totals that are not linked to any account, and the
+  finest-grained reading measurements (scroll depth, active reading time) are
+  cleared.
+- **Derived data and coarse reading history** (your interest graph, what you
+  finished, rated or saved) persist while your account exists so the model
+  can keep learning. What you read can reveal sensitive things about you
+  (health, politics, religion), so this data is never shared, sold, or used
+  in logs or support tools, and operator metrics endpoints only report
+  aggregates.
 - **Full article text** we fetch is pruned to a short excerpt after
   `CONTENT_FULL_TEXT_RETENTION_DAYS` (default 90 days); we keep the summary,
   excerpt, and link, not an indefinite full copy.

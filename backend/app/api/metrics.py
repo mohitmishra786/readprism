@@ -61,6 +61,25 @@ async def llm_status(
     }
 
 
+@router.get("/interleaving", dependencies=[Depends(require_metrics_token)])
+async def interleaving_metrics(days: int = 7, session: AsyncSession = Depends(get_db)) -> dict:
+    """PRS vs newest-first win rate from interleaved digests (#130)."""
+    from app.services.ranking.interleaving import interleaving_report
+
+    return await interleaving_report(session, days=max(1, min(days, 90)))
+
+
+@router.get("/queues", dependencies=[Depends(require_metrics_token)])
+async def queue_metrics(hours: int = Query(24, ge=1, le=72)) -> dict:
+    """Queue wait, task runtime and digest on-time ratio (#239)."""
+    import asyncio
+
+    from app.services.metrics.queues import queue_report
+    from app.workers.queue_metrics import _redis
+
+    return await asyncio.to_thread(queue_report, _redis(), hours=hours)
+
+
 @router.get("/ranking-eval", response_model=RankingEvalRead)
 async def ranking_eval(
     days: int = Query(30, ge=1, le=365),

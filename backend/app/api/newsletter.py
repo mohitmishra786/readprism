@@ -161,6 +161,17 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
         if local_part.startswith("user-"):
             user_id_str = local_part[5:]
 
+    from app.services.email_verification import may_receive_newsletters
+
+    if not await may_receive_newsletters(session, user_id_str):
+        return {"status": "ignored", "reason": "recipient has not verified their email"}
+    from app.services.abuse import inbound_allowed
+
+    allowed, why = await inbound_allowed(user_id_str, len(body_text.encode()))
+    if not allowed:
+        logger.warning(f"Inbound newsletter dropped: {why}")
+        return {"status": "ignored", "reason": why}
+
     await process_inbound_email(
         sender=sender,
         subject=subject,
@@ -229,6 +240,16 @@ async def inbound_provider(
     if token:
         found = await session.execute(select(User.id).where(User.newsletter_token == token))
         owner = found.scalar_one_or_none()
+    from app.services.email_verification import may_receive_newsletters
+
+    if owner and not await may_receive_newsletters(session, owner):
+        return {"status": "ignored", "reason": "recipient has not verified their email"}
+    from app.services.abuse import inbound_allowed
+
+    allowed, why = await inbound_allowed(owner, len(raw))
+    if not allowed:
+        logger.warning(f"Inbound newsletter dropped: {why}")
+        return {"status": "ignored", "reason": why}
     await process_inbound_email(
         sender=parsed.sender,
         subject=parsed.subject,

@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # selfhost (only the first account), open on hosted.
     registration_mode: str = ""
     registration_invite_codes: str = ""
+    # Email verification before any non-verification email or inbound
+    # newsletter (#175): "auto" = required on hosted, off on selfhost.
+    email_verification: str = "auto"
+    email_verification_expire_hours: int = 48
+    # Signups per email domain per hour (hosted, #175). Large mail providers
+    # get `signup_per_domain_per_hour * 20`.
+    signup_per_domain_per_hour: int = 10
     # Session cookies (#103). Leave empty for a host-only cookie; set e.g.
     # ".example.com" when the API and web app are on different subdomains.
     cookie_domain: str = ""
@@ -69,6 +76,11 @@ class Settings(BaseSettings):
     llm_tpm_limit: int = 6000
     llm_rpm_limit: int = 30
     llm_timeout_seconds: float = 30.0
+    # "lazy" (default): extractive at ingest, LLM only for items placed in a
+    # digest or opened in the reader (#147). "all": LLM for every item.
+    llm_summarize: str = "lazy"
+    # Max LLM summaries requested per digest build.
+    digest_llm_summary_limit: int = 20
     # Legacy aliases. A retired model id is rewritten in `_normalize_llm`.
     groq_api_key: str = ""
     groq_summarization_model: str = ""
@@ -92,6 +104,9 @@ class Settings(BaseSettings):
     # Leave false until the golden retrieval ADR says nomic beat MiniLM.
     embedding_cutover_enabled: bool = False
     ranking_exploration_enabled: bool = False
+    # Team-draft interleave PRS with newest-first in every digest and log teams,
+    # to measure the PRS win rate (#130). For the beta; off by default.
+    ranking_interleaving: bool = False
     ranker_version: str = "2"
 
     # Email delivery — Zoho SMTP
@@ -129,6 +144,12 @@ class Settings(BaseSettings):
     # full third-party copies — a copyright-exposure control (audit 08-3).
     # Set 0 to disable pruning (keep full text indefinitely).
     content_full_text_retention_days: int = 90
+    # Raw reading telemetry (#224): per-impression rows and fine-grained
+    # reading fields older than this are aggregated or dropped. 0 = keep.
+    telemetry_raw_retention_days: int = 90
+    # Reader full text (#177): "auto" = feed-syndicated text only on hosted,
+    # everything on selfhost; or force "all" / "feed_only".
+    reader_full_text: str = "auto"
     content_excerpt_chars: int = 500
     content_per_source_cap: int = 500
     source_backfill_limit: int = 20
@@ -203,15 +224,41 @@ class Settings(BaseSettings):
     free_max_sources: int = 30
     free_max_creators: int = 5
     hosted_free_digest_regen_minutes: int = 60
+    # Billing on hosted through a merchant of record (#173). Prices and trial
+    # length are a business decision (#138); this is configuration only.
+    billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off
+    billing_webhook_secret: str = ""
+    billing_api_key: str = ""  # Paddle only: checkout + portal sessions
+    billing_sandbox: bool = False  # Paddle sandbox API
+    # Lemon Squeezy: hosted checkout links. Paddle: price ids (pri_...).
+    billing_checkout_monthly: str = ""
+    billing_checkout_yearly: str = ""
+    # Which provider price/variant ids grant which tier (comma-separated).
+    billing_pro_price_ids: str = ""
+    billing_team_price_ids: str = ""
+    billing_trial_days: int = 30
+    billing_past_due_grace_days: int = 3
+    # Abuse controls on hosted (#169). 0 disables a limit.
+    hosted_fetch_budget_per_hour: int = 300  # feed polls + on-demand fetches per account
+    hosted_host_polls_per_hour: int = 120  # polls of one host across all accounts
+    hosted_max_sources_per_host: int = 10  # one account's subscriptions on one host
+    hosted_inbound_per_day: int = 100  # newsletter emails per account
+    hosted_inbound_mb_per_day: int = 25
+    # Any instance: a single inbound newsletter larger than this is dropped.
+    inbound_max_message_bytes: int = 2_000_000
     # Self-host and paid plans: only guards against double-clicking "generate".
     manual_digest_guard_seconds: int = 60
+    # SLO (#239): a scheduled digest is on time when it is delivered within
+    # this many seconds of being due.
+    digest_on_time_seconds: int = 900
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True
-    # Collaborative warmup is mathematically inert below a critical mass of active
-    # users with warm interest vectors; gate it off until then rather than
-    # pretending it contributes at launch (audit 05-6).
-    collaborative_warmup_min_users: int = 1000
+    # Collaborative warmup (#210): items many readers finished, never one
+    # person's history. Off until the instance has this many active readers.
+    collaborative_warmup_min_users: int = 100
+    # An item is eligible only once this many distinct users engaged with it.
+    collaborative_k_anonymity: int = 20
     serendipity_default_percentage: int = 15
     digest_default_items: int = 12
 
