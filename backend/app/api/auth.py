@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import (
+    EmailVerify,
     MagicLinkRequest,
     MagicLinkVerify,
     Token,
@@ -31,7 +32,8 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 settings = get_settings()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# auto_error=False: browsers authenticate with the httpOnly session cookie instead (#103).
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 ALGORITHM = "HS256"
 
@@ -49,14 +51,31 @@ def _refresh_allowlist_key(jti: str) -> str:
 
 
 login_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_login_per_minute, window_seconds=60, scope="login"
+    max_requests=settings.rate_limit_login_per_minute,
+    window_seconds=60,
+    scope="login",
+    fail_closed=True,
 )
 register_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="register"
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="register",
+    fail_closed=True,
 )
 magic_link_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="magic"
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="magic",
+    fail_closed=True,
 )
+verify_resend_rate_limit = RateLimiter(
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="verify_resend",
+    fail_closed=True,
+)
+
+_DOMAIN_LIMIT_DETAIL = "Too many new accounts from this email domain. Try again in an hour."
 
 # Precomputed bcrypt hash of a random string, used to spend the same time on a
 # password check whether or not the account exists — closing the login timing
@@ -115,9 +134,24 @@ def _decode_token(token: str, *, secret: str) -> dict:
 
 async def get_current_user(
     request: Request,
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
     session: AsyncSession = Depends(get_db),
 ) -> User:
+    from app.api.session_cookies import ACCESS_COOKIE, enforce_csrf
+
+    if not token:
+        # Browser session (#103): access JWT in an httpOnly cookie. Mutating
+        # requests must carry the double-submit CSRF token.
+        token = request.cookies.get(ACCESS_COOKIE)
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        enforce_csrf(request)
+        request.state.auth_via = "cookie"
+
     # API tokens (EC-03): rp_-prefixed bearer tokens, hashed at rest, with
     # read/write scopes. JWTs remain the primary path.
     if token.startswith("rp_"):
@@ -202,29 +236,72 @@ async def _issue_tokens(user_id: uuid.UUID) -> Token:
     )
 
 
+async def _session(request: Request, response: Response, user_id: uuid.UUID) -> Token:
+    """Issue tokens; in cookie mode set httpOnly cookies and omit them from the body."""
+    from app.api.session_cookies import set_session_cookies, wants_cookies
+
+    token = await _issue_tokens(user_id)
+    if not wants_cookies(request):
+        return token
+    csrf = set_session_cookies(
+        response, request, access=token.access_token, refresh=token.refresh_token
+    )
+    return Token(access_token="", refresh_token=None, expires_in=token.expires_in, csrf_token=csrf)
+
+
 @router.post(
     "/register",
     response_model=Token,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(register_rate_limit)],
 )
-async def register(body: UserCreate, session: AsyncSession = Depends(get_db)) -> Token:
+async def register(
+    body: UserCreate,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> Token:
+    from app.services.registration import can_register
+
+    allowed, reason = await can_register(session, body.invite_code)
+    if not allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason)
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    from app.services import email_verification
+
+    if not await email_verification.domain_signup_allowed(session, body.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=_DOMAIN_LIMIT_DETAIL
+        )
 
     user = User(
         email=body.email,
         hashed_password=_hash_password(body.password),
         display_name=body.display_name,
     )
+    from app.services.billing import start_trial
+
+    start_trial(user)
     session.add(user)
     await session.flush()
-    return await _issue_tokens(user.id)
+    if email_verification.verification_required():
+        # Best effort: the account works in-app either way and can resend.
+        try:
+            await email_verification.send_verification_email(user)
+        except Exception as e:
+            logger.warning(f"Verification email failed for {user.id}: {e}")
+    return await _session(request, response, user.id)
 
 
 @router.post("/login", response_model=Token, dependencies=[Depends(login_rate_limit)])
-async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Token:
+async def login(
+    body: UserLogin,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> Token:
     result = await session.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
     # Always run a bcrypt verification (against a dummy hash when the user is
@@ -232,7 +309,7 @@ async def login(body: UserLogin, session: AsyncSession = Depends(get_db)) -> Tok
     password_ok = _verify_password(body.password, user.hashed_password if user else _DUMMY_HASH)
     if not user or not password_ok:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    return await _issue_tokens(user.id)
+    return await _session(request, response, user.id)
 
 
 def _magic_secret() -> str:
@@ -266,15 +343,26 @@ async def magic_link_request(
     """Email a passwordless sign-in link. Always returns 202 (non-enumerating):
     the response is identical whether or not the email has an account."""
     email = body.email.lower()
-    # Create the account lazily if it doesn't exist (magic link doubles as signup).
+    # Create the account lazily if it doesn't exist (magic link doubles as signup),
+    # but only when registration is allowed (#153). Either way the response is
+    # the same 202, so the endpoint never reveals which emails have accounts.
     existing = await session.execute(select(User).where(User.email == email))
     user = existing.scalar_one_or_none()
     if user is None:
+        from app.services.email_verification import domain_signup_allowed
+        from app.services.registration import can_register
+
+        allowed, _ = await can_register(session)
+        if not allowed or not await domain_signup_allowed(session, email):
+            return {"status": "sent"}
         user = User(
             email=email,
             hashed_password=_hash_password(uuid.uuid4().hex),  # unusable random pw
             display_name=body.display_name,
         )
+        from app.services.billing import start_trial
+
+        start_trial(user)
         session.add(user)
         await session.flush()
 
@@ -298,7 +386,10 @@ async def magic_link_request(
 
 @router.post("/magic-link/verify", response_model=Token)
 async def magic_link_verify(
-    body: MagicLinkVerify, session: AsyncSession = Depends(get_db)
+    body: MagicLinkVerify,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
 ) -> Token:
     """Verify a magic-link token (single-use) and issue an access+refresh pair."""
     payload = _decode_token(body.token, secret=_magic_secret())
@@ -320,41 +411,98 @@ async def magic_link_verify(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    return await _issue_tokens(user.id)
+    # The link reached this inbox, so the address is proven (#175).
+    from app.services.email_verification import mark_verified
+
+    mark_verified(user)
+    await session.flush()
+    return await _session(request, response, user.id)
+
+
+@router.post("/verify-email")
+async def verify_email(body: EmailVerify, session: AsyncSession = Depends(get_db)) -> dict:
+    """Confirm an address from the emailed link (#175). Idempotent."""
+    from app.services.email_verification import verify_token
+
+    user = await verify_token(session, body.token)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This confirmation link is invalid or has expired.",
+        )
+    return {"verified": True}
+
+
+@router.post(
+    "/verify-email/resend",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_resend_rate_limit)],
+)
+async def resend_verification(user: User = Depends(get_current_user)) -> dict:
+    from app.services.email_verification import send_verification_email
+    from app.utils.cache import cache_set_nx
+
+    if user.email_verified_at is not None:
+        return {"status": "already_verified"}
+    # One email per account per 5 minutes, whatever the IP.
+    if await cache_set_nx(f"verify_resend:{user.id}", "1", ttl_seconds=300):
+        await send_verification_email(user)
+    return {"status": "sent"}
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh(body: TokenRefresh) -> Token:
+async def refresh(request: Request, response: Response, body: TokenRefresh | None = None) -> Token:
     """Rotate a refresh token: verify it, revoke it (single-use), and issue a
     fresh access+refresh pair. A revoked/rotated/unknown jti is rejected, so a
-    leaked refresh token can be killed via logout and can't be replayed."""
-    payload = _decode_token(body.refresh_token, secret=_refresh_secret())
-    if payload.get("type") != "refresh":
+    leaked refresh token can be killed via logout and can't be replayed.
+
+    Cookie-mode clients send no body; the token comes from the httpOnly
+    `rp_refresh` cookie (#103)."""
+    from app.api.session_cookies import REFRESH_COOKIE, clear_session_cookies
+
+    raw = body.refresh_token if body and body.refresh_token else request.cookies.get(REFRESH_COOKIE)
+    if not raw:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
         )
-    user_id = payload.get("sub")
-    jti = payload.get("jti")
-    if not user_id or not jti:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-        )
-    # The jti must still be in the allowlist (not rotated out or revoked).
-    stored = await cache_get(_refresh_allowlist_key(jti))
-    if stored != str(user_id):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked or expired"
-        )
+    try:
+        payload = _decode_token(raw, secret=_refresh_secret())
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            )
+        user_id = payload.get("sub")
+        jti = payload.get("jti")
+        if not user_id or not jti:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            )
+        # The jti must still be in the allowlist (not rotated out or revoked).
+        stored = await cache_get(_refresh_allowlist_key(jti))
+        if stored != str(user_id):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked or expired"
+            )
+    except HTTPException:
+        clear_session_cookies(response)
+        raise
     await cache_delete(_refresh_allowlist_key(jti))  # rotate: single-use
-    return await _issue_tokens(uuid.UUID(user_id))
+    return await _session(request, response, uuid.UUID(user_id))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
-async def logout(body: TokenRefresh) -> None:
-    """Revoke a refresh token server-side so it can no longer be rotated."""
+async def logout(request: Request, response: Response, body: TokenRefresh | None = None) -> None:
+    """Revoke a refresh token server-side so it can no longer be rotated, and
+    clear the browser session cookies."""
+    from app.api.session_cookies import REFRESH_COOKIE, clear_session_cookies
+
+    clear_session_cookies(response)
+    raw = body.refresh_token if body and body.refresh_token else request.cookies.get(REFRESH_COOKIE)
+    if not raw:
+        return
     try:
         payload = jwt.decode(
-            body.refresh_token,
+            raw,
             _refresh_secret(),
             algorithms=[ALGORITHM],
             options={"verify_exp": False},
@@ -364,6 +512,39 @@ async def logout(body: TokenRefresh) -> None:
     jti = payload.get("jti")
     if jti:
         await cache_delete(_refresh_allowlist_key(jti))
+
+
+@router.get("/registration")
+async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
+    """What the sign-up page should offer (#153)."""
+    from app.services.registration import can_register, effective_mode
+
+    mode = effective_mode()
+    allowed, _ = await can_register(session)
+    return {"mode": mode, "open": allowed, "invite_required": mode == "invite" and not allowed}
+
+
+@router.get("/session")
+async def session_state(request: Request) -> dict:
+    """Is there a valid browser session? Returns the CSRF token for it (#103).
+
+    Lets the web app restore its in-memory CSRF token after a reload without
+    reading cookies (which also works when the API is on another subdomain).
+    """
+    from app.api.session_cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
+
+    access = request.cookies.get(ACCESS_COOKIE)
+    valid = False
+    if access:
+        try:
+            valid = _decode_token(access, secret=_access_secret()).get("type") == "access"
+        except HTTPException:
+            valid = False
+    return {
+        "authenticated": valid,
+        "refreshable": bool(request.cookies.get(REFRESH_COOKIE)),
+        "csrf_token": request.cookies.get(CSRF_COOKIE) if valid else None,
+    }
 
 
 @router.get("/me", response_model=UserRead)

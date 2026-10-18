@@ -6,7 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.source import Source
 from app.services.interest_graph.graph import InterestGraphManager
 from app.utils.embeddings import get_embedding_service
 from app.utils.logging import get_logger
@@ -128,16 +127,20 @@ async def _update_source_trust(
     first_application: bool,
     session: AsyncSession,
 ) -> None:
-    """Nudge source trust_weight by the change in this interaction's signal."""
+    """Nudge the reader's source trust by the change in this interaction's signal."""
     if not normalised_delta:
         return
-    if content.source_id is not None:
-        result = await session.execute(select(Source).where(Source.id == content.source_id))
-        source = result.scalar_one_or_none()
-        if source is not None:
-            delta = TRUST_LEARN_RATE * normalised_delta
-            source.trust_weight = float(max(TRUST_MIN, min(TRUST_MAX, source.trust_weight + delta)))
-            await session.flush()
+    from app.services.feed_identity import user_source_for_item
+
+    # The reader's own source for this feed: the item may be stored under
+    # another subscriber's source row, and writing there changed someone
+    # else's trust (#108). Only the change since the last application is
+    # applied (#105).
+    source = await user_source_for_item(session, interaction.user_id, content.source_id)
+    if source is not None:
+        delta = TRUST_LEARN_RATE * normalised_delta
+        source.trust_weight = float(max(TRUST_MIN, min(TRUST_MAX, source.trust_weight + delta)))
+        await session.flush()
 
     # Update per-creator-per-topic trust if content has a creator
     if content.creator_platform_id is not None:

@@ -223,3 +223,51 @@ def test_creator_section_rechecks_topic_saturation():
     )
     assert ai_total <= 3
     assert len(sections["creator"].items) == 2  # third "ai" row was skipped
+
+
+# --- #275: fill the digest to its target length -------------------------------
+
+
+def _total(sections) -> int:
+    return sum(len(sec.items) for sec in sections.values())
+
+
+def test_short_followed_items_fill_the_digest_to_its_target_length():
+    """12 ordinary short posts with a 12-item target used to yield only the lead."""
+    items = [_make_item(topics=[f"t{i}"], prs=0.9 - i * 0.01) for i in range(12)]
+    sections = SectionBuilder(total_items=12).build(items)
+
+    assert _total(sections) == 12
+    assert len(sections["more"].items) == 12 - len(sections["lead"].items)
+    # Best-ranked first within "more".
+    more_scores = [prs for _, prs, _ in sections["more"].items]
+    assert more_scores == sorted(more_scores, reverse=True)
+
+
+def test_total_never_exceeds_target_and_caps_hold():
+    items = (
+        [_make_item(topics=[f"a{i}"], reading_time=12, prs=0.8) for i in range(10)]
+        + [_make_item(topics=[f"b{i}"], creator_id=uuid.uuid4(), prs=0.7) for i in range(10)]
+        + [_make_item(topics=[f"c{i}"], serendipity=True, prs=0.5) for i in range(10)]
+        + [_make_item(topics=[f"d{i}"], prs=0.6) for i in range(30)]
+    )
+    builder = SectionBuilder(total_items=15, serendipity_pct=20)
+    sections = builder.build(items)
+
+    assert _total(sections) == 15
+    assert len(sections["lead"].items) <= builder.lead_count
+    assert len(sections["discovery"].items) <= builder.discovery_count
+    assert all(not bd.get("_serendipity_candidate") for _, _, bd in sections["more"].items)
+
+
+def test_more_section_respects_topic_saturation():
+    items = [_make_item(topics=["same-topic"], prs=0.9 - i * 0.01) for i in range(20)]
+    builder = SectionBuilder(total_items=10, max_topic_pct=0.30)
+    sections = builder.build(items)
+
+    assert _total(sections) == 3  # floor(10 * 0.30): saturation still wins
+
+
+def test_display_order_puts_more_before_discovery():
+    sections = SectionBuilder(total_items=8).build([_make_item(prs=0.5)])
+    assert list(sections) == ["lead", "creator", "deep_reads", "more", "discovery"]
