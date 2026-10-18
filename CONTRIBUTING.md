@@ -5,11 +5,51 @@ a pull request.
 
 ## Developer environment
 
-See the [README](README.md) for the Docker Compose setup. Before submitting:
+See the [README](README.md) for the general stack architecture and Quickstart.
 
-- **Backend:** `ruff check .` and `ruff format --check .` must pass, and
-  `pytest tests/` must be green (run inside the backend container, as CI does).
-- **Frontend:** `npx tsc --noEmit` and `npm run build` must pass.
+### Running Backend Tests
+
+The backend test suite requires **PostgreSQL 16 with pgvector** (database `readprism_test`) and **Redis 7** (for auth sessions, magic links, rate limits, and Celery broker). Host-side tests require Python ≥ 3.11.
+
+You can run the tests in two ways:
+
+1. **Inside Docker (Production-equivalent):**
+   ```bash
+   docker compose exec backend pytest tests/ -v
+   ```
+
+2. **On Host with Test Containers (`docker-compose.test.yml`):**
+   ```bash
+   # Start test Postgres + Redis containers:
+   make test-services
+   # or: docker compose -f docker-compose.test.yml up -d
+
+   # Run tests from the backend directory:
+   cd backend
+   pytest -q
+
+   # Tear down test services when done:
+   make test-services-down
+   # or: docker compose -f docker-compose.test.yml down -v
+   ```
+
+The test runner in `backend/tests/conftest.py` automatically defaults `TEST_DATABASE_URL` to `localhost:5432/readprism_test` and `REDIS_URL` / `CELERY_BROKER_URL` to `redis://127.0.0.1:6379/0` when running outside Docker.
+
+Before submitting a pull request:
+- **Backend checks:**
+  ```bash
+  cd backend
+  ruff check . && ruff format --check .
+  mypy app --python-version 3.11 --ignore-missing-imports
+  pytest -q
+  ```
+- **Frontend checks:**
+  ```bash
+  cd frontend
+  npm run lint
+  npx tsc --noEmit -p .
+  npm test
+  ```
 - Add or update tests for any code change — an item isn't done until it's covered.
 - Keep commits focused and reference the relevant area in the message.
 
