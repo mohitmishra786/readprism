@@ -31,13 +31,14 @@
 <h1>ReadPrism Digest</h1>
 <p style="color:#6b7280;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</p>
 
-{% for section_name in ["lead", "creator", "deep_reads", "discovery"] %}
+{% for section_name in ["lead", "creator", "deep_reads", "more", "discovery"] %}
   {% set items = sections.get(section_name, []) %}
   {% if items %}
     <h2>
       {% if section_name == "lead" %}Top Reads
       {% elif section_name == "creator" %}From Your Creators
       {% elif section_name == "deep_reads" %}Deep Reads
+      {% elif section_name == "more" %}More From Your Feeds
       {% else %}Discover
       {% endif %}
     </h2>
