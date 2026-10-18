@@ -173,3 +173,30 @@ async def complete_onboarding(
     await session.commit()
 
     return {"status": "ok", "message": "Onboarding complete"}
+
+
+@router.post("/first-digest", response_model=dict)
+async def start_first_digest_endpoint(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Fetch the user's sources now and build the first digest when ready (#102).
+
+    Idempotent: calling it again returns the current status without
+    re-triggering the fetch.
+    """
+    from app.services.cold_start.first_digest_flow import first_digest_status, start_first_digest
+
+    started = await start_first_digest(current_user.id)
+    status_ = await first_digest_status(session, current_user.id)
+    return {"started": started, **status_}
+
+
+@router.get("/first-digest/status", response_model=dict)
+async def first_digest_status_endpoint(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    from app.services.cold_start.first_digest_flow import first_digest_status
+
+    return await first_digest_status(session, current_user.id)

@@ -47,7 +47,14 @@ def _enqueue_embeddings(item_ids: list[uuid.UUID]) -> None:
         compute_embedding_for_item.delay(str(item_id))
 
 
-async def _ingest_all_feeds_async() -> dict:
+@celery_app.task(name="app.workers.tasks.ingest_feeds.ingest_user_sources", bind=True)
+def ingest_user_sources(self, user_id: str) -> dict:
+    """Fetch one user's sources now, regardless of schedule (first digest, #102)."""
+    return asyncio.run(_ingest_all_feeds_async(user_id=uuid.UUID(user_id)))
+
+
+async def _ingest_all_feeds_async(user_id: uuid.UUID | None = None) -> dict:
+    """Ingest due sources, or every active source of `user_id` when given."""
     from sqlalchemy import or_, select
 
     from app.database import AsyncSessionLocal
@@ -57,12 +64,12 @@ async def _ingest_all_feeds_async() -> dict:
     rng = random.Random()
 
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(Source.id).where(
-                Source.is_active == True,
-                or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now),
-            )
-        )
+        query = select(Source.id).where(Source.is_active == True)
+        if user_id is not None:
+            query = query.where(Source.user_id == user_id)
+        else:
+            query = query.where(or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now))
+        result = await session.execute(query)
         source_ids = [row[0] for row in result.all()]
     logger.info(f"Ingesting {len(source_ids)} sources")
 

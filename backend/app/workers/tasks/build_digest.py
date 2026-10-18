@@ -24,6 +24,30 @@ def build_digest_for_user(self, user_id: str) -> dict:
     return asyncio.run(_build_digest_async(uuid.UUID(user_id)))
 
 
+@celery_app.task(name="app.workers.tasks.build_digest.prepare_first_digest", bind=True)
+def prepare_first_digest(self, user_id: str, deadline: str) -> dict:
+    return asyncio.run(
+        _prepare_first_digest_async(uuid.UUID(user_id), datetime.fromisoformat(deadline))
+    )
+
+
+async def _prepare_first_digest_async(user_id: uuid.UUID, deadline: datetime) -> dict:
+    """Build the first digest once enough items are ready, or at the deadline (#102)."""
+    from app.database import AsyncSessionLocal
+    from app.services.cold_start.first_digest_flow import POLL_SECONDS, first_digest_status
+
+    async with AsyncSessionLocal() as session:
+        status = await first_digest_status(session, user_id)
+    if status["digest_id"]:
+        return {"status": "already_built", "digest_id": status["digest_id"]}
+    if not status["ready"] and datetime.now(UTC) < deadline:
+        prepare_first_digest.apply_async(
+            args=[str(user_id), deadline.isoformat()], countdown=POLL_SECONDS
+        )
+        return {"status": "waiting", **status}
+    return await _build_digest_async(user_id)
+
+
 def _dedupe_window(frequency: str) -> timedelta:
     """How long a just-built digest makes the next build a duplicate.
 

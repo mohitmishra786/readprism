@@ -39,6 +39,13 @@ async def _enforce_capacity(session: AsyncSession, user: User, adding: int) -> N
     enforce_source_limit(user, count, adding=adding)
 
 
+def _fetch_new_sources_soon(user_id) -> None:
+    """Fetch a user's sources now instead of waiting for the next beat (#102)."""
+    from app.workers.tasks.ingest_feeds import ingest_user_sources
+
+    ingest_user_sources.delay(str(user_id))
+
+
 @router.get("/starter-packs")
 async def list_packs(
     current_user: User = Depends(get_current_user),
@@ -97,6 +104,8 @@ async def subscribe_pack(
         existing_urls.add(feed["url"])
         created += 1
     await session.flush()
+    if created:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "status": "ok",
         "pack": pack.id,
@@ -302,6 +311,8 @@ async def import_opml(
             session.add(source)
             created += 1
         await session.flush()
+        if created:
+            _fetch_new_sources_soon(current_user.id)
         return {"created": created}
     except ImportError:
         raise HTTPException(status_code=500, detail="listparser not installed")
@@ -346,6 +357,8 @@ async def import_opml_tagged(
             )
         )
     await session.flush()
+    if plan.feeds:
+        _fetch_new_sources_soon(current_user.id)
     return {
         "created": plan.created,
         "skipped": plan.skipped,

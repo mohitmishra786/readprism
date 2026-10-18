@@ -311,5 +311,21 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    /** Start the first-digest flow (idempotent) and return its status (#102). */
+    startFirstDigest: () =>
+      request<FirstDigestStatus & { started: boolean }>('/onboarding/first-digest', {
+        method: 'POST',
+      }),
+    firstDigestStatus: () => request<FirstDigestStatus>('/onboarding/first-digest/status'),
   },
 };
+
+export interface FirstDigestStatus {
+  sources_total: number;
+  sources_fetched: number;
+  items: number;
+  items_embedded: number;
+  items_summarized: number;
+  ready: boolean;
+  digest_id: string | null;
+}

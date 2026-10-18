@@ -88,8 +88,9 @@ export function OnboardingWizard() {
       // 3. Update preferences
       await api.preferences.update({ digest_frequency: digestFreq });
 
-      // 4. Trigger first digest
-      await api.digest.generate().catch(() => {});
+      // 4. Fetch the new sources now and build the first digest once articles
+      // are in (#102). The digest page shows live progress until it exists.
+      await api.onboarding.startFirstDigest().catch(() => {});
 
       router.replace("/digest");
     } catch (err: unknown) {
