@@ -20,18 +20,11 @@ DEFAULT_WEIGHTS = {
     "temporal_context": 0.07,
     "novelty": 0.03,
 }
-MIN_INTERACTIONS_FOR_LEARNING = 20
 CACHE_TTL = 24 * 3600
 
-# Signals whose value is derived from the same quantities as the engagement
-# target (completion, rating). Including them in the regression would let the
-# model "predict its own inputs" and inflate their weights for reasons that
-# don't reflect genuine predictive value, invalidating the learning story. We
-# hold them out of the gradient so only genuinely-independent signals are
-# learned against the engagement target (audit 05-3).
-#   - reading_depth  <- derived from read_completion_pct
-#   - explicit_feedback <- derived from explicit_rating
-LEAKING_SIGNALS = {"reading_depth", "explicit_feedback"}
+
+def cache_key(user_id: uuid.UUID) -> str:
+    return f"meta_weights:{user_id}"
 
 
 class UserMetaWeights:
@@ -72,8 +65,7 @@ class UserMetaWeights:
 
 
 async def get_meta_weights(user_id: uuid.UUID, session: AsyncSession) -> UserMetaWeights:
-    cache_key = f"meta_weights:{user_id}"
-    cached = await cache_get(cache_key)
+    cached = await cache_get(cache_key(user_id))
     if cached is not None:
         return UserMetaWeights.from_dict(cached)
 
@@ -92,98 +84,7 @@ async def get_meta_weights(user_id: uuid.UUID, session: AsyncSession) -> UserMet
             weights=row.weights,
             update_count=row.update_count,
         )
-        await cache_set(cache_key, obj.to_dict(), ttl_seconds=CACHE_TTL)
+        await cache_set(cache_key(user_id), obj.to_dict(), ttl_seconds=CACHE_TTL)
         return obj
 
     return UserMetaWeights(user_id=user_id)
-
-
-async def update_meta_weights(
-    user_id: uuid.UUID,
-    digest_items_with_interactions: list[tuple],
-    session: AsyncSession,
-) -> UserMetaWeights:
-    """
-    Gradient descent update of meta weights.
-    digest_items_with_interactions: list of (DigestItem, UserContentInteraction)
-    """
-    if len(digest_items_with_interactions) < MIN_INTERACTIONS_FOR_LEARNING:
-        return await get_meta_weights(user_id, session)
-
-    weights_obj = await get_meta_weights(user_id, session)
-    weights = weights_obj.weights
-
-    step_size = 0.01
-    gradients: dict[str, float] = {k: 0.0 for k in weights}
-    n = 0
-
-    for digest_item, interaction in digest_items_with_interactions:
-        if interaction is None or interaction.read_completion_pct is None:
-            continue
-
-        # Actual engagement
-        rating_norm = 0.0
-        if interaction.explicit_rating is not None:
-            rating_norm = float(interaction.explicit_rating)  # -1, 0, or 1
-        actual = (
-            (interaction.read_completion_pct or 0.0) * 0.5
-            + rating_norm * 0.3
-            + (1.0 if interaction.saved else 0.0) * 0.2
-        )
-        actual = max(0.0, min(1.0, actual))
-
-        # Predicted engagement from the *non-leaking* signals only, so the
-        # regression can't cheat by up-weighting signals that are themselves
-        # functions of the target (audit 05-3).
-        breakdown = digest_item.signal_breakdown or {}
-        predicted = sum(
-            weights.get(k, 0.0) * v
-            for k, v in breakdown.items()
-            if k not in LEAKING_SIGNALS and isinstance(v, int | float)
-        )
-        error = predicted - actual
-
-        for signal_name, signal_score in breakdown.items():
-            if signal_name in gradients and signal_name not in LEAKING_SIGNALS:
-                gradients[signal_name] += 2 * error * signal_score
-        n += 1
-
-    if n == 0:
-        return weights_obj
-
-    for k in weights:
-        if k in LEAKING_SIGNALS:
-            continue  # weight left unchanged; not learned from a circular target
-        weights[k] = weights[k] - step_size * (gradients[k] / n)
-        weights[k] = max(0.01, min(0.50, weights[k]))
-
-    weights_obj.weights = weights
-    weights_obj._normalize()
-    weights_obj.update_count += 1
-    weights_obj.last_updated = datetime.now(UTC)
-
-    cache_key = f"meta_weights:{user_id}"
-    await cache_set(cache_key, weights_obj.to_dict(), ttl_seconds=CACHE_TTL)
-
-    # Persist to DB (upsert)
-    from sqlalchemy import select
-
-    from app.models.meta_weights import UserMetaWeights as UserMetaWeightsModel
-
-    result = await session.execute(
-        select(UserMetaWeightsModel).where(UserMetaWeightsModel.user_id == user_id)
-    )
-    row = result.scalar_one_or_none()
-    if row is not None:
-        row.weights = weights_obj.weights
-        row.update_count = weights_obj.update_count
-    else:
-        row = UserMetaWeightsModel(
-            user_id=user_id,
-            weights=weights_obj.weights,
-            update_count=weights_obj.update_count,
-        )
-        session.add(row)
-    await session.flush()
-
-    return weights_obj

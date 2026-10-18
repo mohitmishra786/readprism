@@ -28,19 +28,31 @@ def prior_weights() -> np.ndarray:
 
 
 def project_simplex(weights: np.ndarray, floor: float = FLOOR) -> np.ndarray:
+    """Non-negative weights summing to 1, each at least `floor` when feasible.
+
+    Idempotent: a vector that already satisfies the constraints comes back
+    unchanged. (The previous version added the floor to every weight before
+    normalizing, which pulled weights toward uniform on every call, so each
+    learning step partly undid itself, #154.)
+    """
     count = len(weights)
     floor = min(floor, 1.0 / count)
     cleaned = np.array(
         [0.0 if not math.isfinite(float(value)) else max(0.0, float(value)) for value in weights]
     )
-    cleaned = cleaned + floor
-    total = float(cleaned.sum()) or 1.0
-    projected = cleaned / total
-    # A second pass keeps the floor after normalization when it is feasible.
-    if float(projected.min()) + 1e-9 < floor:
-        projected = np.maximum(projected, floor)
-        projected = projected / float(projected.sum())
-    return projected
+    total = float(cleaned.sum())
+    projected = cleaned / total if total > 0 else np.full(count, 1.0 / count)
+    # Raise anything below the floor and take the excess proportionally from
+    # the rest; a few passes settle it.
+    for _ in range(count):
+        low = projected < floor - 1e-12
+        if not low.any():
+            break
+        deficit = float((floor - projected[low]).sum())
+        high = ~low
+        projected[low] = floor
+        projected[high] -= deficit * projected[high] / float(projected[high].sum())
+    return projected / float(projected.sum())
 
 
 def sigmoid(value: float) -> float:

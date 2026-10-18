@@ -84,6 +84,8 @@ class DigestImpression(Base):
     exploration: Mapped[bool] = mapped_column(Boolean, default=False)
     propensity: Mapped[float] = mapped_column(Float, default=1.0)
     viewed: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Team-draft interleaving (#130): "prs", "baseline" or "both".
+    team: Mapped[str | None] = mapped_column(String(16), nullable=True)
     shown_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
