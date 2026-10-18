@@ -181,7 +181,7 @@ class Settings(BaseSettings):
     # "hosted" applies the free-tier limits below to tier == "free" users.
     deployment_mode: str = "selfhost"
     # Hosted free-tier quantity limits; 0 = unlimited. Final plan structure is
-    # a business decision (see #148). Ignored in selfhost mode.
+    # a business decision (see #138). Ignored in selfhost mode.
     free_max_sources: int = 30
     free_max_creators: int = 5
     hosted_free_digest_regen_minutes: int = 60
