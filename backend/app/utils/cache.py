@@ -48,6 +48,25 @@ async def cache_set(key: str, value: Any, ttl_seconds: int = 3600) -> bool:
         return False
 
 
+class CacheUnavailable(RuntimeError):
+    """Raised by strict cache operations when Redis cannot be reached."""
+
+
+async def cache_set_nx_strict(key: str, value: Any, ttl_seconds: int) -> bool:
+    """SET NX EX that raises CacheUnavailable instead of failing open (#156).
+
+    For security dedupe (webhook replay protection): an outage must reject
+    the request (providers retry) rather than accept a possible replay.
+    """
+    client = get_redis()
+    try:
+        result = await client.set(key, json.dumps(value, default=str), ex=ttl_seconds, nx=True)
+        return bool(result)
+    except Exception as e:
+        logger.error(f"Redis SET NX failed for key {sanitize_log(key)}: {e}")
+        raise CacheUnavailable(str(e)) from e
+
+
 async def cache_set_nx(key: str, value: Any, ttl_seconds: int) -> bool:
     """Atomically set `key` only if absent (SET NX EX). Returns True if the key
     was newly set, False if it already existed. Used for replay-attack dedupe.

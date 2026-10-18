@@ -14,12 +14,27 @@ from app.services.ingestion.newsletter import (
     process_inbound_email,
     verify_mailgun_signature,
 )
-from app.utils.cache import cache_set_nx
+from app.utils.cache import CacheUnavailable, cache_set_nx_strict
 from app.utils.logging import get_logger
 
 router = APIRouter(prefix="/newsletter", tags=["newsletter"])
 logger = get_logger(__name__)
 settings = get_settings()
+
+
+async def _first_seen(key: str) -> bool:
+    """Replay guard that fails closed (#156): with Redis down we cannot tell a
+    replay from a first delivery, so answer 503 and let the provider retry."""
+    try:
+        return await cache_set_nx_strict(
+            key, "1", ttl_seconds=settings.newsletter_webhook_max_age_seconds
+        )
+    except CacheUnavailable:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Temporarily unavailable",
+            headers={"Retry-After": "60"},
+        )
 
 
 def _extract_signature_fields(
@@ -131,11 +146,7 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
             )
         # Replay guard: a valid signature can be captured and resent within the
         # freshness window; refuse a token we've already honoured.
-        first_seen = await cache_set_nx(
-            f"mailgun:webhook:token:{token}",
-            "1",
-            ttl_seconds=settings.newsletter_webhook_max_age_seconds,
-        )
+        first_seen = await _first_seen(f"mailgun:webhook:token:{token}")
         if not first_seen:
             logger.warning("Rejected inbound webhook: replayed Mailgun token")
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate webhook")
@@ -208,11 +219,7 @@ async def inbound_provider(
     if not isinstance(payload, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payload")
     parsed = parser(payload)
-    first_seen = await cache_set_nx(
-        f"newsletter:webhook:{provider}:{parsed.dedupe_key}",
-        "1",
-        ttl_seconds=settings.newsletter_webhook_max_age_seconds,
-    )
+    first_seen = await _first_seen(f"newsletter:webhook:{provider}:{parsed.dedupe_key}")
     if not first_seen:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Duplicate webhook")
     from app.services.ingestion.newsletter_parse import recipient_token

@@ -50,13 +50,22 @@ def _refresh_allowlist_key(jti: str) -> str:
 
 
 login_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_login_per_minute, window_seconds=60, scope="login"
+    max_requests=settings.rate_limit_login_per_minute,
+    window_seconds=60,
+    scope="login",
+    fail_closed=True,
 )
 register_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="register"
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="register",
+    fail_closed=True,
 )
 magic_link_rate_limit = RateLimiter(
-    max_requests=settings.rate_limit_register_per_minute, window_seconds=60, scope="magic"
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="magic",
+    fail_closed=True,
 )
 
 # Precomputed bcrypt hash of a random string, used to spend the same time on a
