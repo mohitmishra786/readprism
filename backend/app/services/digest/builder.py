@@ -205,7 +205,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # the drawn propensity is logged on each impression for later IPW.
     from random import Random
 
-    from app.services.ranking.phase2.learning import exploration_plan
+    from app.services.ranking.learning import exploration_plan
 
     placed: list[tuple] = []
     for section in sections.values():
@@ -254,8 +254,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # The ranker already produced each item's features, faithful contributions,
     # explanation and topic phrase from the same computation that scored it
     # (#129, #143); the digest stores them as they are.
-    from app.services.ranking.phase2.contract import SIGNALS
-    from app.services.ranking.phase2.learning import RANKER_VERSION
+    from app.services.ranking.contract import SIGNALS
+    from app.services.ranking.learning import RANKER_VERSION
 
     position = 0
     for section_name, section in sections.items():
@@ -323,7 +323,7 @@ def diversify_ranked(ranked: list[tuple]) -> list[tuple]:
     """
     import numpy as np
 
-    from app.services.ranking.phase2.interests import diversify
+    from app.services.ranking.interests import diversify
 
     if len(ranked) < 3:
         return ranked
@@ -399,10 +399,10 @@ async def _synthesize_topic_clusters(
 
             synthesized = await cache_get(cache_key)
             if synthesized is None:
-                from app.services.summarization.groq_client import GroqSummarizer
+                from app.services.summarization.groq_client import LLMSummarizer
                 from app.services.summarization.groq_client import SummarizationResult as SR
 
-                groq = GroqSummarizer()
+                summarizer = LLMSummarizer()
                 pseudo_results = [
                     SR(
                         headline=items[idx].summary_headline or items[idx].title,
@@ -417,7 +417,7 @@ async def _synthesize_topic_clusters(
                     for idx in cluster[:5]
                 ]
                 topic_label = (primary.topic_clusters or [primary.title])[0]
-                synthesized = await groq.synthesize_topic(pseudo_results, topic_label)
+                synthesized = await summarizer.synthesize_topic(pseudo_results, topic_label)
                 if synthesized:
                     await cache_set(cache_key, synthesized, ttl_seconds=7 * 24 * 3600)
             story_payloads[primary.id]["story_briefing"] = synthesized or None

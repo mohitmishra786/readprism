@@ -36,7 +36,7 @@ open http://localhost:3001    # create your account and onboard
 **Profiles**:
 - **Default (`docker compose up -d`)**: ~2.5 GB RAM. Runs the standard 8 services with local MiniLM embeddings (`sentence-transformers/all-MiniLM-L6-v2`, 384-dimensional), Postgres FTS + pgvector search, and dedicated Celery solo workers.
 - **Lite (`make up-lite`)**: ~1.0 GB RAM. Runs the torch-free `:latest-lite` image (built with `LITE=1`), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
-- **Full (`docker compose --profile full up -d`)**: ~4.0 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites), an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services), and Meilisearch (optional; search itself is Postgres FTS + pgvector). SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
+- **Full (`docker compose --profile full up -d`)**: ~3.5 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites) and an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services). Search itself is Postgres FTS + pgvector — no separate search service. SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
 - **Bridge (`docker compose --profile bridge up -d`)**: Adds an RSSHub service to bridge closed platforms lacking RSS feeds.
 - **Build from source (`make up-build`)**: builds the images from your checkout instead of pulling them from GHCR (`docker-compose.build.yml`; no source mounts).
 
@@ -75,7 +75,7 @@ open http://localhost:3001    # create your account and onboard
 - **RAM**:
   - ~1.0 GB RAM for the `lite` profile (hash embeddings)
   - ~2.5 GB RAM for the default self-host profile (MiniLM sentence-transformers)
-  - ~4.0 GB RAM minimum for the `full` profile (MiniLM + Browserless + Meilisearch)
+  - ~3.5 GB RAM minimum for the `full` profile (MiniLM + Browserless)
 - **LLM API Key (Optional)**: Groq (default), OpenAI, or any OpenAI-compatible provider. If unset, ReadPrism automatically falls back to extractive summaries (`summary_source=extractive`) with zero API dependencies.
 - **SMTP Credentials (Optional)**: Any standard SMTP provider (Zoho, Postmark, SendGrid, etc.) for daily email digest delivery. If omitted, digests are still compiled and accessible in-app.
 
@@ -102,7 +102,7 @@ FROM_EMAIL=digest@yourdomain.com
 FRONTEND_URL=http://localhost:3001
 ```
 
-`LLM_API_KEY` (or the legacy `GROQ_API_KEY`) is optional: without a key, the digest still builds using extractive summaries. Without email credentials, digests are still readable in-app (email delivery is skipped). All other values have working defaults for local development.
+`LLM_API_KEY` (or the legacy, deprecated `GROQ_API_KEY`, removed in v0.3) is optional: without a key, the digest still builds using extractive summaries. Without email credentials, digests are still readable in-app (email delivery is skipped). All other values have working defaults for local development.
 
 ### 2. Start the stack
 
@@ -128,7 +128,7 @@ This starts eight services by default:
 | `frontend` | 3001 | Next.js web application |
 
 Additional services are enabled with profiles:
-- **`--profile full`**: `browserless` (port 3000, internal headless Chrome pool on an isolated network), `egress-proxy` (Squid forward proxy; Browserless's only way out), and `meilisearch` (port 7700, full-text search).
+- **`--profile full`**: `browserless` (port 3000, internal headless Chrome pool on an isolated network) and `egress-proxy` (Squid forward proxy; Browserless's only way out).
 - **`--profile bridge`**: `rsshub` (port 1200, RSSHub bridge for closed platforms).
 
 ### 3. Migrations
@@ -313,6 +313,8 @@ ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` t
 | `REDIS_URL` | `redis://redis:6379/0` | Redis instance used for caching, rate limiting, and sessions. |
 | `CELERY_BROKER_URL` | `redis://redis:6379/1` | Celery broker URL. |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/2` | Celery result backend URL. |
+
+Redis is persistent: the compose service runs with AOF (`--appendonly yes --appendfsync everysec`) on the `redis_data` volume, so a restart or upgrade keeps logged-in sessions (refresh-token allowlist) and pending magic links (#204). `make backup` snapshots the store (BGSAVE) and `make restore` clears the AOF directory before loading the snapshot.
 
 ### LLM Summarization
 

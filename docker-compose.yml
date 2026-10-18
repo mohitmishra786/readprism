@@ -14,7 +14,6 @@ networks:
 volumes:
   postgres_data:
   redis_data:
-  meilisearch_data:
 
 # Shared config for the queue-specific Celery workers (audit 07-2). `x-` keys are
 # ignored by Compose; the anchor is merged into each worker service below.
@@ -29,8 +28,6 @@ x-worker-base: &worker-base
     CELERY_BROKER_URL: redis://redis:6379/1
     CELERY_RESULT_BACKEND: redis://redis:6379/2
     BROWSERLESS_URL: http://browserless:3000
-    MEILISEARCH_URL: http://meilisearch:7700
-    MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
   depends_on:
     db:
       condition: service_healthy
@@ -72,6 +69,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Persistent session store (#204): the refresh-token allowlist and magic
+    # links live only here, so a restart must not wipe them. AOF writes every
+    # command (everysec fsync) on top of the redis_data volume.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_data:/data
     networks:
@@ -103,8 +104,6 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       BROWSERLESS_URL: http://browserless:3000
-      MEILISEARCH_URL: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
     # Production-shaped: no --reload here. The dev override adds --reload.
     # Migrations run first, under an advisory lock (#126; AUTO_MIGRATE=false to skip).
     command: sh -c "python -m app.migrate && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"
@@ -164,8 +163,6 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       BROWSERLESS_URL: http://browserless:3000
-      MEILISEARCH_URL: http://meilisearch:7700
-      MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
     command: celery -A app.workers.celery_app beat --loglevel=info
     depends_on:
       db:
@@ -185,28 +182,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 150s  # allow first heartbeat + worker warm-up
-
-  meilisearch:
-    # Optional since ADR 0005 (Postgres FTS+vector search). Kept for operators
-    # who want it; enabled with: docker compose --profile full up
-    image: getmeili/meilisearch:v1.6
-    profiles: ["full"]
-    environment:
-      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-readprism_search_key}
-      # production mode enforces the master key (search isn't left open); the dev
-      # override switches this back to development locally (audit 07-9).
-      MEILI_ENV: production
-    ports:
-      - "7700:7700"
-    volumes:
-      - meilisearch_data:/meili_data
-    networks:
-      - readprism_net
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:7700/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
   browserless:
     # Rendered-page extraction (JS-heavy sites). Enabled with:

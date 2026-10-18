@@ -17,8 +17,8 @@ from app.models.digest import DigestImpression, DigestItem
 from app.models.source import Source
 from app.models.user import User
 from app.services.digest.builder import build_digest
-from app.services.ranking.phase2.contract import SIGNALS
-from app.services.ranking.phase2.learning import faithful
+from app.services.ranking.contract import SIGNALS
+from app.services.ranking.learning import faithful
 
 
 async def _seed_with_cached_scores(db_session, n: int = 8) -> User:

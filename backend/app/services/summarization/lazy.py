@@ -34,7 +34,7 @@ async def ensure_llm_summaries(items: list[ContentItem], *, limit: int | None = 
     settings = get_settings()
     if not settings.llm_configured:
         return 0
-    from app.services.summarization.summarizer import apply_summary, get_groq_summarizer
+    from app.services.summarization.summarizer import apply_summary, get_llm_summarizer
 
     todo = [item for item in items if needs_llm_summary(item)]
     if limit is not None:
@@ -42,7 +42,7 @@ async def ensure_llm_summaries(items: list[ContentItem], *, limit: int | None = 
     if not todo:
         return 0
     gate = asyncio.Semaphore(CONCURRENCY)
-    summarizer = get_groq_summarizer()
+    summarizer = get_llm_summarizer()
 
     async def one(item: ContentItem):
         async with gate:

@@ -1,8 +1,7 @@
 """Hybrid search: Postgres FTS + pgvector, fused with Reciprocal Rank Fusion.
 
-Postgres-only by design (D-09): FTS + vector fusion is the default; the
-Meilisearch client stays dormant until this proves insufficient (UX-11 gate,
-see docs/adr/0005-search-fusion.md).
+Postgres-only by design (D-09, ADR 0005): FTS + vector fusion is the only
+search path. The old dormant Meilisearch client was removed in #139.
 """
 
 from __future__ import annotations

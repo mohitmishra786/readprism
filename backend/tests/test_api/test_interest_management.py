@@ -122,7 +122,7 @@ async def test_language_preference_round_trip_and_filter(
 
     with (
         patch(
-            "app.services.summarization.groq_client.GroqSummarizer", side_effect=Exception("no llm")
+            "app.services.summarization.groq_client.LLMSummarizer", side_effect=Exception("no llm")
         ),
         patch(
             "app.workers.tasks.update_interest_graph.update_interest_graph_for_interaction.delay"

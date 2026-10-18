@@ -42,7 +42,7 @@ def llm_on(monkeypatch):
 
     monkeypatch.setattr(get_settings(), "llm_api_key", "test-key")
     fake = AsyncMock(return_value=_llm_result())
-    with patch("app.services.summarization.groq_client.GroqSummarizer.summarize", fake):
+    with patch("app.services.summarization.groq_client.LLMSummarizer.summarize", fake):
         yield fake
 
 

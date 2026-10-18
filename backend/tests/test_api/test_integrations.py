@@ -1,7 +1,7 @@
 """Tests for the PKM integration export — Obsidian Markdown rendering.
 
 The Obsidian path is pure (file generation), so it's directly unit-testable.
-Notion/Readwise are HTTP-bound and covered by their error-path validation only.
+The Notion/Readwise API exporters were removed in #258.
 """
 
 from __future__ import annotations

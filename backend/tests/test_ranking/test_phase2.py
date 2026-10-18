@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -19,25 +18,17 @@ from app.services.embeddings.registry import (
 )
 from app.services.embeddings.retrieval import backfill_batch, compare
 from app.services.embeddings.text import embedding_pieces, pool_vectors, prefix_only
-from app.services.ranking.phase2.contract import (
+from app.services.ranking.contract import (
     beta_trust,
-    content_quality_score,
-    features_from_scores,
-    history_without_target,
     label_event,
-    predicted_reading_depth,
     preferred_hour,
     temporal_score,
 )
-from app.services.ranking.phase2.interests import (
-    cluster_medoids,
-    discovery_candidates,
+from app.services.ranking.interests import (
     diversify,
-    mean_vector_score,
     ndcg_at_k,
-    semantic_score,
 )
-from app.services.ranking.phase2.learning import (
+from app.services.ranking.learning import (
     MIN_PAIRS,
     RANKER_VERSION,
     EvalReport,
@@ -50,7 +41,6 @@ from app.services.ranking.phase2.learning import (
     project_simplex,
     score_matrix,
     synthetic_eval,
-    task_dedup_key,
     update_weights,
 )
 
@@ -61,22 +51,6 @@ def _axis(index: int) -> np.ndarray:
     return vector
 
 
-def test_features_stay_in_unit_interval_and_drop_the_target_row():
-    features = features_from_scores({"semantic": 2.0, "novelty": -1, "reading_depth": float("nan")})
-    assert all(0.0 <= value <= 1.0 for value in features.as_dict().values())
-    target = SimpleNamespace(
-        content_item_id="self", read_completion_pct=1.0, source_id="s", length_bucket="short"
-    )
-    other = SimpleNamespace(
-        content_item_id="other", read_completion_pct=0.2, source_id="s", length_bucket="short"
-    )
-    assert history_without_target([target, other], "self") == [other]
-    depth = predicted_reading_depth(
-        [target, other], item_id="self", source_id="s", length_bucket="short"
-    )
-    assert depth < 0.5
-
-
 def test_labels_ignore_unviewed_skips_and_keep_viewed_ones():
     assert label_event(skipped=True, viewed=False) is None
     assert label_event(skipped=True, viewed=True) == (0.0, 0.5)
@@ -85,46 +59,13 @@ def test_labels_ignore_unviewed_skips_and_keep_viewed_ones():
     assert label_event(saved=True)[0] >= 0.9
 
 
-def test_two_topic_user_prefers_medoids_over_the_mean():
-    rust = [_axis(0) for _ in range(6)]
-    city = [_axis(1) for _ in range(6)]
-    vectors = rust + city
-    clusters = cluster_medoids(vectors, labels=["rust"] * 6 + ["cities"] * 6)
-    assert len(clusters) == 2
-    blend = (_axis(0) + _axis(1)) / np.sqrt(2)
-    candidates = [_axis(0), _axis(1), blend]
-    relevance = [1.0, 1.0, 0.0]
-    medoid_order = sorted(
-        range(3),
-        key=lambda index: semantic_score(candidates[index], vectors, clusters),
-        reverse=True,
-    )
-    mean_order = sorted(
-        range(3),
-        key=lambda index: mean_vector_score(candidates[index], vectors),
-        reverse=True,
-    )
-    assert ndcg_at_k([relevance[index] for index in medoid_order]) > ndcg_at_k(
-        [relevance[index] for index in mean_order]
-    )
-
-
-def test_discovery_pool_and_suggestion_origin():
-    rows = discovery_candidates(
-        followed_texts=[("See https://1.1.1.1/story", "example.com")], topics=["rust"]
-    )
-    assert rows[0]["origin"] == "discovery"
-    assert any(row["topic"] == "rust" for row in rows)
-    assert discovery_candidates(followed_texts=[], topics=None)
-
-
 @pytest.mark.asyncio
 async def test_suggestion_signal_fires_for_discovery_origin():
     """A discovery item scores above neutral even with no embedding or history."""
     import uuid as _uuid
 
     from app.models.content import ContentItem
-    from app.services.ranking.phase2.contract import SIGNALS
+    from app.services.ranking.contract import SIGNALS
     from app.services.ranking.ranker import UserRankingState, score_candidates
 
     content = ContentItem(
@@ -189,9 +130,6 @@ def test_temporal_saturation_and_trust_prior():
     decayed = beta_trust(20, 0, age_days=180)
     assert decayed.mean < aged.mean
     assert preferred_hour([7, 7, 21]) == 7
-    assert (
-        content_quality_score(word_count=1200, link_count=4, citation_count=2, has_code=True) > 0.5
-    )
 
 
 def test_learning_waits_for_evidence_then_moves_and_stays_finite():
@@ -243,7 +181,6 @@ def test_exploration_ipw_and_eval_gate():
     assert not failing_report.beats_baselines()
     matrix = score_matrix(np.full(8, 0.125), np.ones((1000, 8)))
     assert matrix.shape == (1000, 1)
-    assert task_dedup_key("embed", "abc") == "embed:abc"
 
 
 def test_embedding_registry_retrieval_and_windows():

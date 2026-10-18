@@ -27,8 +27,8 @@ hook aborts any request whose URL fails the same check. Browserless still
 resolves DNS itself; since #127 that residual is closed at the network level
 (internal-only network, all browser traffic through an egress proxy that
 denies non-global addresses after resolution). `safe_fetch` itself connects
-to the validated IP since #165. Operator-configured hosts (Meilisearch, Notion,
-Readwise, the iTunes Search API host, the Browserless CDP endpoint) are not
+to the validated IP since #165. Operator-configured hosts (Notion, Readwise,
+the iTunes Search API host, the Browserless CDP endpoint) are not
 user URLs and keep their own clients. A feed URL returned by iTunes is
 validated before it is stored.
 
