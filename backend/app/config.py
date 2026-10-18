@@ -92,6 +92,9 @@ class Settings(BaseSettings):
     # Leave false until the golden retrieval ADR says nomic beat MiniLM.
     embedding_cutover_enabled: bool = False
     ranking_exploration_enabled: bool = False
+    # Team-draft interleave PRS with newest-first in every digest and log teams,
+    # to measure the PRS win rate (#130). For the beta; off by default.
+    ranking_interleaving: bool = False
     ranker_version: str = "2"
 
     # Email delivery — Zoho SMTP

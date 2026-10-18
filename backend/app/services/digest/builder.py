@@ -163,6 +163,12 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     limit = max(user.digest_max_items * 3, 60)
     ranked = await rank_content_for_user(user, all_items, session, limit=limit)
     ranked = diversify_ranked(ranked)
+    if get_settings().ranking_interleaving:
+        from random import Random
+
+        from app.services.ranking.interleaving import interleave_ranked
+
+        ranked = interleave_ranked(ranked, Random(f"interleave:{user.id}:{uuid.uuid4()}"))
 
     # The serendipity picks ARE the discovery section candidates (A6):
     # label them explicitly and make sure they survived the rank cutoff.
@@ -270,6 +276,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
                     weights_version=RANKER_VERSION,
                     exploration=bool(clean_breakdown.get("exploration")),
                     propensity=float(breakdown.get("_propensity", 1.0)),
+                    team=breakdown.get("_team"),
                 )
             )
             position += 1

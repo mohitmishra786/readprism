@@ -61,6 +61,14 @@ async def llm_status(
     }
 
 
+@router.get("/interleaving", dependencies=[Depends(require_metrics_token)])
+async def interleaving_metrics(days: int = 7, session: AsyncSession = Depends(get_db)) -> dict:
+    """PRS vs newest-first win rate from interleaved digests (#130)."""
+    from app.services.ranking.interleaving import interleaving_report
+
+    return await interleaving_report(session, days=max(1, min(days, 90)))
+
+
 @router.get("/ranking-eval", response_model=RankingEvalRead)
 async def ranking_eval(
     days: int = Query(30, ge=1, le=365),
