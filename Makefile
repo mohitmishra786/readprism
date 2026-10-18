@@ -14,6 +14,15 @@ test: test-backend
 starter-pack-check:
 	cd backend && PYTHONPATH=. python3 scripts/check_starter_packs.py
 
+# Ranking evals (issue #199). Read-only by default: they print a report and
+# leave the tree clean. rank_eval.py --write is the only mode that writes
+# docs/eval/ranking.md (run it deliberately).
+eval:
+	cd backend && PYTHONPATH=. python3 scripts/rank_eval.py
+
+retrieval-eval:
+	cd backend && PYTHONPATH=. python3 scripts/retrieval_eval.py
+
 env:
 	./scripts/init_env.sh
 

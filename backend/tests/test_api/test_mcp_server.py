@@ -83,3 +83,38 @@ async def test_scope_probe_via_403(client: AsyncClient, test_user_data: dict):
         ]["tools"]
     ]
     assert "add_source" not in names
+
+
+@pytest.mark.asyncio
+async def test_http_transport_serves_on_localhost():
+    """--http used to crash: uvicorn.run() inside the running event loop (#262)."""
+    import asyncio
+    import contextlib
+    import socket
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+
+    from app import mcp_server
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    with patch.object(mcp_server.ReadPrismMcpServer, "detect_scope", AsyncMock()):
+        task = asyncio.create_task(mcp_server.serve("http://x", "rp_t", http=True, port=port))
+        try:
+            for _ in range(50):
+                await asyncio.sleep(0.1)
+                try:
+                    async with httpx.AsyncClient() as client:
+                        resp = await client.get(f"http://127.0.0.1:{port}/mcp")
+                    break
+                except httpx.ConnectError:
+                    continue
+            else:
+                pytest.fail("MCP HTTP server never came up")
+            assert resp.status_code < 500
+        finally:
+            task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, SystemExit):
+                await task

@@ -3,6 +3,9 @@ fastapi==0.141.1
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32
 
+# MCP server (official SDK, #262)
+mcp==2.3.0
+
 # Database
 sqlalchemy[asyncio]==2.1.1
 asyncpg==0.31.0
@@ -58,9 +61,6 @@ pytest==9.1.1
 pytest-asyncio==1.4.0
 respx==0.23.1
 httpx==0.28.1
-
-# Search — Meilisearch is integrated via raw httpx in app/utils/search.py;
-# the official SDK pin (3.3.3) referenced a nonexistent release and was never imported.
 
 # Utilities
 python-dotenv==1.2.3

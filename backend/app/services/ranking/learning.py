@@ -8,15 +8,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from app.services.ranking.phase2.contract import SIGNALS, clamp01
-from app.services.ranking.phase2.interests import ndcg_at_k
+from app.services.ranking.contract import SIGNALS
+from app.services.ranking.interests import ndcg_at_k
 
 RANKER_VERSION = "2"
-
-
-def task_dedup_key(task: str, *parts: object) -> str:
-    return task + ":" + ":".join(str(part) for part in parts)
-
 
 FLOOR = 0.02
 MIN_PAIRS = 30
@@ -162,10 +157,6 @@ def explain(scores: dict[str, float], weights: dict[str, float]) -> tuple[str, d
 
 def faithful(contributions: dict[str, float], score: float, tol: float = 1e-6) -> bool:
     return abs(sum(contributions.values()) - score) <= tol
-
-
-def dot_score(weights: np.ndarray, features: np.ndarray) -> float:
-    return clamp01(float(np.dot(weights, features)))
 
 
 def score_matrix(weights: np.ndarray, features: np.ndarray) -> np.ndarray:

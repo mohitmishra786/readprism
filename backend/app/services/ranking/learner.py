@@ -3,7 +3,7 @@
 Replaces the MSE step in meta_weights (which froze reading_depth and
 explicit_feedback at their priors forever and counted unseen items as
 failures). Each settled digest yields pairs "item the user preferred" vs
-"item shown in the same digest they liked less", labeled by the phase2
+"item shown in the same digest they liked less", labeled by the ranking
 label contract:
 
 - unviewed skips never train (the user may not have seen the item);
@@ -29,15 +29,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.content import UserContentInteraction
 from app.models.digest import Digest, DigestImpression, RankerWeightRevision
 from app.models.meta_weights import UserMetaWeights as WeightsRow
-from app.services.ranking.meta_weights import DEFAULT_WEIGHTS, cache_key
-from app.services.ranking.phase2.contract import SIGNALS, label_event
-from app.services.ranking.phase2.learning import (
+from app.services.ranking.contract import SIGNALS, label_event
+from app.services.ranking.learning import (
     RANKER_VERSION,
     WeightState,
     clipped_ipw,
     project_simplex,
     update_weights,
 )
+from app.services.ranking.meta_weights import DEFAULT_WEIGHTS, cache_key
 
 # A digest is ready to train on once the user has had this long to read it.
 SETTLE_AFTER = timedelta(hours=12)

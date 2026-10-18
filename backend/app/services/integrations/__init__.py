@@ -1,1 +1,1 @@
-"""PKM integration service — export saved items to Obsidian / Notion / Readwise."""
+"""PKM integration service — export saved items to Obsidian / Logseq Markdown."""
