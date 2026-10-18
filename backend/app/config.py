@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # Short-lived access tokens + long-lived, revocable refresh tokens.
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    # Self-host only (#164): let the Miniflux/FreshRSS sidecar import reach the
+    # configured server over plain http on a private address (typical homelab).
+    # Never honored when DEPLOYMENT_MODE=hosted.
+    sidecar_allow_private_http: bool = False
     # Who may register (#153): closed | invite | open. Empty = closed on
     # selfhost (only the first account), open on hosted.
     registration_mode: str = ""
