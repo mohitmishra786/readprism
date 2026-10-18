@@ -15,6 +15,8 @@ export interface User {
   created_at: string;
   /** False only while this instance requires email confirmation (#175). */
   email_verified?: boolean;
+  /** Hosted fetch budget exhausted until then (#169). */
+  fetch_paused_until?: string | null;
 }
 
 export interface Source {

@@ -218,6 +218,14 @@ class Settings(BaseSettings):
     free_max_sources: int = 30
     free_max_creators: int = 5
     hosted_free_digest_regen_minutes: int = 60
+    # Abuse controls on hosted (#169). 0 disables a limit.
+    hosted_fetch_budget_per_hour: int = 300  # feed polls + on-demand fetches per account
+    hosted_host_polls_per_hour: int = 120  # polls of one host across all accounts
+    hosted_max_sources_per_host: int = 10  # one account's subscriptions on one host
+    hosted_inbound_per_day: int = 100  # newsletter emails per account
+    hosted_inbound_mb_per_day: int = 25
+    # Any instance: a single inbound newsletter larger than this is dropped.
+    inbound_max_message_bytes: int = 2_000_000
     # Self-host and paid plans: only guards against double-clicking "generate".
     manual_digest_guard_seconds: int = 60
 

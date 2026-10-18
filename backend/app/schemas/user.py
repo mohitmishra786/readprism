@@ -38,6 +38,7 @@ class UserRead(BaseModel):
     created_at: datetime
     # False only while this instance requires verification and it is pending (#175).
     email_verified: bool = True
+    fetch_paused_until: datetime | None = None
 
 
 class UserUpdate(BaseModel):

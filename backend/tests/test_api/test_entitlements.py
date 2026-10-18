@@ -30,7 +30,7 @@ async def _seed_sources(db_session, user: User, n: int) -> None:
 async def _add_source(client: AsyncClient, headers: dict, url: str):
     with (
         patch("app.api.sources._autodiscover_feed", new=AsyncMock(return_value=None)),
-        patch("app.workers.tasks.ingest_feeds.ingest_all_feeds.delay"),
+        patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay"),
     ):
         return await client.post("/api/v1/sources", json={"url": url}, headers=headers)
 
