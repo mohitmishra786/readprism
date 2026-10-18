@@ -248,6 +248,9 @@ class Settings(BaseSettings):
     inbound_max_message_bytes: int = 2_000_000
     # Self-host and paid plans: only guards against double-clicking "generate".
     manual_digest_guard_seconds: int = 60
+    # SLO (#239): a scheduled digest is on time when it is delivered within
+    # this many seconds of being due.
+    digest_on_time_seconds: int = 900
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True

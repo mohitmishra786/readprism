@@ -52,6 +52,13 @@ Ingestion, embedding, and digest work run on separate Celery queues, one
 [ADR 0001](adr/0001-celery-solo-pool.md) for why each worker is single-process
 and the migration path for higher throughput.
 
+To add capacity, run more workers for the queue that is behind:
+`docker compose up -d --scale worker-digest=4 --scale worker-embed=2`. Keep
+exactly one `beat`. `GET /api/v1/metrics/queues` (metrics token) reports the
+wait per queue, runtime per task, and the share of scheduled digests
+delivered within `DIGEST_ON_TIME_SECONDS`. Targets and the load test
+(`scripts/load_test_digests.py`) are in ADR 0001.
+
 ## Monitoring
 
 - **Errors:** set `SENTRY_DSN` (backend) and `NEXT_PUBLIC_SENTRY_DSN` /
