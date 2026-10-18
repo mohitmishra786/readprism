@@ -218,6 +218,20 @@ class Settings(BaseSettings):
     free_max_sources: int = 30
     free_max_creators: int = 5
     hosted_free_digest_regen_minutes: int = 60
+    # Billing on hosted through a merchant of record (#173). Prices and trial
+    # length are a business decision (#138); this is configuration only.
+    billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off
+    billing_webhook_secret: str = ""
+    billing_api_key: str = ""  # Paddle only: checkout + portal sessions
+    billing_sandbox: bool = False  # Paddle sandbox API
+    # Lemon Squeezy: hosted checkout links. Paddle: price ids (pri_...).
+    billing_checkout_monthly: str = ""
+    billing_checkout_yearly: str = ""
+    # Which provider price/variant ids grant which tier (comma-separated).
+    billing_pro_price_ids: str = ""
+    billing_team_price_ids: str = ""
+    billing_trial_days: int = 30
+    billing_past_due_grace_days: int = 3
     # Abuse controls on hosted (#169). 0 disables a limit.
     hosted_fetch_budget_per_hour: int = 300  # feed polls + on-demand fetches per account
     hosted_host_polls_per_hour: int = 120  # polls of one host across all accounts

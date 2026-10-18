@@ -153,3 +153,13 @@ export interface Token {
   expires_in: number;
   csrf_token?: string | null;
 }
+
+export interface BillingState {
+  plan: "selfhost" | "trial" | "pro" | "team" | "free";
+  billing_enabled: boolean;
+  status: string | null;
+  trial_ends_at: string | null;
+  trial_days_left: number | null;
+  plan_expires_at: string | null;
+  can_manage: boolean;
+}

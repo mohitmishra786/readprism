@@ -1,5 +1,6 @@
 import { clearSession, getCsrfToken, setCsrfToken } from './auth';
 import type {
+  BillingState,
   ContentItem,
   ContentItemFull,
   Creator,
@@ -198,6 +199,17 @@ export const api = {
       }),
     resendVerification: () =>
       request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
+  },
+
+  // Hosted billing (#173). Self-hosted instances report plan "selfhost".
+  billing: {
+    state: () => request<BillingState>('/billing'),
+    checkout: (interval: 'month' | 'year') =>
+      request<{ url: string }>('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ interval }),
+      }),
+    portal: () => request<{ url: string }>('/billing/portal'),
   },
 
   account: {

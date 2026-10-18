@@ -281,6 +281,9 @@ async def register(
         hashed_password=_hash_password(body.password),
         display_name=body.display_name,
     )
+    from app.services.billing import start_trial
+
+    start_trial(user)
     session.add(user)
     await session.flush()
     if email_verification.verification_required():
@@ -357,6 +360,9 @@ async def magic_link_request(
             hashed_password=_hash_password(uuid.uuid4().hex),  # unusable random pw
             display_name=body.display_name,
         )
+        from app.services.billing import start_trial
+
+        start_trial(user)
         session.add(user)
         await session.flush()
 

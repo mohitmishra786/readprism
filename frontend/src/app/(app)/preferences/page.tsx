@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { PlanSection } from "../../../components/PlanSection";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -408,6 +409,8 @@ export default function PreferencesPage() {
           </div>
         </section>
       )}
+
+      <PlanSection />
 
       <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>

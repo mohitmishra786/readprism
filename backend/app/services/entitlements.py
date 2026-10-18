@@ -32,7 +32,10 @@ def is_hosted() -> bool:
 
 
 def _is_free(user: User) -> bool:
-    return (user.tier or "free") == "free"
+    """No paid plan in force and no trial running (#173)."""
+    from app.services.billing import effective_plan
+
+    return effective_plan(user) in ("free", "selfhost")
 
 
 def _limited(user: User) -> bool:

@@ -46,6 +46,19 @@ class User(Base):
     fetch_paused_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Hosted billing (#173). `tier` is what was bought; app.services.billing
+    # .effective_plan() combines it with these dates.
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    billing_provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    billing_customer_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    billing_subscription_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    billing_status: Mapped[str | None] = mapped_column(String, nullable=True)
+    billing_portal_url: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Time of the newest provider event applied; older ones arriving late are ignored.
+    billing_event_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

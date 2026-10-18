@@ -46,6 +46,8 @@ def _opml(n: int) -> bytes:
 @pytest.fixture
 def hosted(monkeypatch):
     monkeypatch.setattr(entitlements.settings, "deployment_mode", "hosted")
+    # No trial: these tests are about the limits a non-paying account gets (#173).
+    monkeypatch.setattr(entitlements.settings, "billing_trial_days", 0)
 
 
 @pytest.mark.asyncio
