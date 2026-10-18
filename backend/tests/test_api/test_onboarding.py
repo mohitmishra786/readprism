@@ -49,7 +49,7 @@ async def test_onboarding_idempotent_returns_409(
     # flow runs and sets onboarding_complete=True, making the second call 409.
     with (
         patch(
-            "app.services.cold_start.onboarding.GroqSummarizer",
+            "app.services.cold_start.onboarding.LLMSummarizer",
         ) as mock_groq_cls,
         patch("app.services.cold_start.onboarding.get_embedding_service") as mock_emb_svc,
     ):

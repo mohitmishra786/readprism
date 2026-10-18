@@ -9,21 +9,25 @@ from app.config import get_settings
 from app.models.content import ContentItem
 from app.services.llm.client import PROMPT_VERSION
 from app.services.summarization.extractive import extractive_summary
-from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
+from app.services.summarization.groq_client import LLMSummarizer, SummarizationResult
 from app.utils.cache import cache_get, cache_set
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 settings = get_settings()
 
-_groq_summarizer: GroqSummarizer | None = None
+_llm_summarizer: LLMSummarizer | None = None
 
 
-def get_groq_summarizer() -> GroqSummarizer:
-    global _groq_summarizer
-    if _groq_summarizer is None:
-        _groq_summarizer = GroqSummarizer()
-    return _groq_summarizer
+def get_llm_summarizer() -> LLMSummarizer:
+    global _llm_summarizer
+    if _llm_summarizer is None:
+        _llm_summarizer = LLMSummarizer()
+    return _llm_summarizer
+
+
+# Deprecated alias (issue #265): the historical Groq name, removed in v0.3.
+get_groq_summarizer = get_llm_summarizer
 
 
 class SummarizationService:
@@ -50,7 +54,7 @@ class SummarizationService:
             return SummarizationResult(**cached)
 
         # LLM when configured. A miss, a 404, or a rate limit must not block the digest.
-        llm_result = await get_groq_summarizer().summarize(title, full_text)
+        llm_result = await get_llm_summarizer().summarize(title, full_text)
         if llm_result is None:
             logger.info("extractive summary for item %s (llm unavailable)", content_item_id)
             result = extractive_summary(title, full_text)

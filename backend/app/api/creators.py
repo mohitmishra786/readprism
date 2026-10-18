@@ -107,7 +107,7 @@ async def get_creator_summary(
 
     from app.models.content import ContentItem
     from app.models.creator import CreatorPlatform
-    from app.services.summarization.groq_client import GroqSummarizer, SummarizationResult
+    from app.services.summarization.groq_client import LLMSummarizer, SummarizationResult
 
     cutoff = datetime.now(UTC) - timedelta(days=7)
     platforms_result = await session.execute(
@@ -128,7 +128,7 @@ async def get_creator_summary(
     if not recent_items:
         return {"summary": f"No recent content from {creator.display_name} in the past week."}
 
-    groq = GroqSummarizer()
+    summarizer = LLMSummarizer()
     summaries = [
         SummarizationResult(
             headline=item.summary_headline or item.title,
@@ -146,7 +146,9 @@ async def get_creator_summary(
     if not summaries:
         return {"summary": f"{creator.display_name} published {len(recent_items)} items this week."}
 
-    summary_text = await groq.synthesize_topic(summaries, f"{creator.display_name}'s recent work")
+    summary_text = await summarizer.synthesize_topic(
+        summaries, f"{creator.display_name}'s recent work"
+    )
     return {"summary": summary_text, "item_count": len(recent_items)}
 
 
