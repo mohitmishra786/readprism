@@ -200,3 +200,20 @@ async def test_fixture_site_resolves(kind, page, html, expected, method, monkeyp
     assert found, kind
     assert found[0].url == expected
     assert found[0].method == method
+
+
+def test_link_candidates_with_multi_value_and_list_attributes():
+    from app.services.ingestion.discover import link_candidates
+
+    html = """<!DOCTYPE html>
+    <html>
+    <head>
+      <link rel="alternate extra-rel" type="application/rss+xml" href="/rss.xml" />
+      <link rel="alternate" type="application/atom+xml" href="https://example.com/atom.xml" />
+    </head>
+    <body></body>
+    </html>"""
+    candidates = link_candidates("https://example.com/blog", html)
+    urls = [c.url for c in candidates]
+    assert "https://example.com/rss.xml" in urls
+    assert "https://example.com/atom.xml" in urls
