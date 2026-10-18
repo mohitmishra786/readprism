@@ -35,8 +35,8 @@ open http://localhost:3001    # create your account and onboard
 
 **Profiles**:
 - **Default (`docker compose up -d`)**: ~2.5 GB RAM. Runs the standard 8 services with local MiniLM embeddings (`sentence-transformers/all-MiniLM-L6-v2`, 384-dimensional), Postgres FTS + pgvector search, and dedicated Celery solo workers.
-- **Lite (`make up-lite` or `docker compose -f docker-compose.yml -f docker-compose.lite.yml up -d`)**: ~1.0 GB RAM. Uses torch-free hash embeddings (`EMBEDDING_MODEL=hash`, 128-dimensional) and stripped worker dependencies. Search runs via Postgres FTS. Ideal for low-memory VPS instances.
-- **Full (`docker compose --profile full up -d`)**: ~4.0 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites), an egress proxy (Squid pinning external fetches and preventing SSRF), and Meilisearch for hybrid search.
+- **Lite (`make up-lite`)**: ~1.0 GB RAM. Builds the backend with `LITE=1` (no PyTorch), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
+- **Full (`docker compose --profile full up -d`)**: ~4.0 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites), an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services), and Meilisearch (optional; search itself is Postgres FTS + pgvector). SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
 - **Bridge (`docker compose --profile bridge up -d`)**: Adds an RSSHub service to bridge closed platforms lacking RSS feeds.
 
 **Operations**:
@@ -61,7 +61,7 @@ open http://localhost:3001    # create your account and onboard
 - **Real reading telemetry** — An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end — feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
 - **Daily digest** — Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
 - **Interest graph** — Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
-- **Cold start handling** — Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) provides personalization once the 1,000-user threshold is reached (inert and safe on single-user instances).
+- **Cold start handling** — Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) suggests articles at least 20 readers finished (k-anonymous, opt-out in Preferences) once the instance has 100 active readers (inert on single-user and family instances).
 - **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (Twitter/X and LinkedIn have no public feed and are clearly marked).
 
 ---
@@ -127,7 +127,7 @@ This starts eight services by default:
 | `frontend` | 3001 | Next.js web application |
 
 Additional services are enabled with profiles:
-- **`--profile full`**: `browserless` (port 3000, internal headless Chrome pool on an isolated network), `egress-proxy` (Squid forward proxy pinning external fetches), and `meilisearch` (port 7700, full-text search).
+- **`--profile full`**: `browserless` (port 3000, internal headless Chrome pool on an isolated network), `egress-proxy` (Squid forward proxy; Browserless's only way out), and `meilisearch` (port 7700, full-text search).
 - **`--profile bridge`**: `rsshub` (port 1200, RSSHub bridge for closed platforms).
 
 ### 3. Migrations
@@ -330,7 +330,7 @@ ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` t
 |---|---|---|
 | `EMBEDDING_MODEL` | `all-MiniLM-L6-v2` | Sentence-transformers model name or `hash` for torch-free hash embeddings. |
 | `EMBEDDING_DEVICE` | `cpu` | PyTorch device (`cpu` or `cuda`). |
-| `COLD_START_COLLABORATIVE_ENABLED` | `true` | Enable collaborative filtering warmup once 1,000 users accumulate. |
+| `COLD_START_COLLABORATIVE_ENABLED` | `true` | Enable k-anonymous collaborative warmup (active from 100 readers; items need 20 distinct readers). |
 | `SERENDIPITY_DEFAULT_PERCENTAGE` | `15` | Percentage of digest slots reserved for exploration/serendipity. |
 | `RANKER_VERSION` | `2` | Active ranking engine algorithm version. |
 
