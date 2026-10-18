@@ -71,12 +71,32 @@ async def _add_feeds(user: User, feeds: list[dict], session: AsyncSession) -> Si
     return result
 
 
+def _network_policy(url: str) -> dict:
+    """HTTPS and public addresses only, except the homelab opt-in (#164).
+
+    With DEPLOYMENT_MODE=selfhost and SIDECAR_ALLOW_PRIVATE_HTTP=true, the
+    sidecar server's own host may be plain http on a private address. That
+    exemption is for that exact host only and never applies on hosted.
+    """
+    from urllib.parse import urlparse
+
+    from app.config import get_settings
+
+    s = get_settings()
+    if s.deployment_mode == "selfhost" and s.sidecar_allow_private_http:
+        host = (urlparse(url).hostname or "").lower()
+        return {"require_https": False, "allow_private_hosts": frozenset({host})}
+    return {"require_https": True}
+
+
 async def _safe_get(url: str, **kwargs) -> httpx.Response | None:
     """safe_fetch wrapper for sidecar calls: auth headers must never be
     replayed on a redirect hop, so redirects are disabled outright
     (CodeRabbit CWE-200); failures become None (graceful)."""
     try:
-        return await safe_fetch(url, method="GET", require_https=True, max_redirects=0, **kwargs)
+        return await safe_fetch(
+            url, method="GET", max_redirects=0, **_network_policy(url), **kwargs
+        )
     except Exception as e:
         logger.info(f"Sidecar fetch failed for {url}: {e}")
         return None
@@ -90,8 +110,8 @@ async def _sidecar_post(url: str, content: bytes) -> httpx.Response | None:
             method="POST",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
             content=content,
-            require_https=True,
             max_redirects=0,
+            **_network_policy(url),
         )
     except Exception as e:
         logger.info(f"Sidecar POST failed for {url}: {e}")

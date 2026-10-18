@@ -284,6 +284,7 @@ async def get_latest_digest(
     if not digest:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No digest found")
 
+    await _mark_viewed(digest, session)
     return await _build_digest_read(digest, session)
 
 
@@ -412,6 +413,7 @@ async def get_digest(
     digest = result.scalar_one_or_none()
     if not digest:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+    await _mark_viewed(digest, session)
     return await _build_digest_read(digest, session)
 
 
@@ -512,6 +514,28 @@ async def dismiss_digest_prompt(
     prompt.dismissed = True
     await session.flush()
     return FeedbackPromptRead.model_validate(prompt)
+
+
+async def _mark_viewed(digest: Digest, session: AsyncSession) -> None:
+    """The owner opened this digest: its items were shown (#154).
+
+    The learner only treats a skipped item as a negative once the digest was
+    actually seen; without this flag every skip looked "unseen".
+    """
+    from sqlalchemy import update
+
+    from app.models.digest import DigestImpression
+
+    await session.execute(
+        update(DigestImpression)
+        .where(
+            DigestImpression.digest_id == digest.id,
+            DigestImpression.user_id == digest.user_id,
+            DigestImpression.viewed.is_(False),
+        )
+        .values(viewed=True)
+        .execution_options(synchronize_session=False)
+    )
 
 
 async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRead:

@@ -130,26 +130,30 @@ async def test_reading_a_shared_item_moves_only_the_readers_trust(db_session):
     item = (
         await db_session.execute(select(ContentItem).where(ContentItem.url.endswith("/read-me")))
     ).scalar_one()
-    assert item.source_id == src_a.id  # stored under the first subscriber's row
+    # Stored once, under one subscriber's row (both rows share a created_at
+    # here, so which one is decided by id). The *other* subscriber reads it.
+    assert item.source_id in (src_a.id, src_b.id)
+    filer, reader_src = (src_a, src_b) if item.source_id == src_a.id else (src_b, src_a)
+    reader = b if reader_src is src_b else a
     item.topic_clusters = ["airships"]
 
     interaction = UserContentInteraction(
-        user_id=b.id, content_item_id=item.id, read_completion_pct=0.95
+        user_id=reader.id, content_item_id=item.id, read_completion_pct=0.95
     )
     db_session.add(interaction)
     await db_session.flush()
     await update_from_interaction(interaction, item, db_session)
     await db_session.commit()
 
-    await db_session.refresh(src_a)
-    await db_session.refresh(src_b)
-    assert src_a.trust_weight == pytest.approx(0.5)
-    assert src_b.trust_weight > 0.5
+    await db_session.refresh(filer)
+    await db_session.refresh(reader_src)
+    assert filer.trust_weight == pytest.approx(0.5)
+    assert reader_src.trust_weight > 0.5
 
 
 @pytest.mark.asyncio
 async def test_trust_signal_reads_the_users_own_source(db_session):
-    from app.services.ranking.signals import UserInterestGraph, source_trust
+    from app.services.ranking.ranker import rank
 
     a, b, src_a, src_b = await _two_subscribers(db_session)
     src_a.trust_weight, src_b.trust_weight = 0.9, 0.2
@@ -158,8 +162,8 @@ async def test_trust_signal_reads_the_users_own_source(db_session):
     await db_session.commit()
 
     user_b = await db_session.get(User, b.id)
-    score = await source_trust.compute(item, user_b, [], UserInterestGraph([], []), db_session)
-    assert score == pytest.approx(0.2)
+    scored = (await rank(user_b, [item], db_session))[0]
+    assert scored.features["source_trust"] == pytest.approx(0.2)
 
 
 @pytest.mark.asyncio

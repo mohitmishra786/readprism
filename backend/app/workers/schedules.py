@@ -31,10 +31,13 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.prune_content.prune_old_full_text",
             "schedule": crontab(hour=3, minute=30),  # daily at 3:30 AM UTC
         },
-        "precompute-prs": {
-            "task": "app.workers.tasks.compute_prs.precompute_prs_for_active_users",
-            # Every 2 hours so PRS scores are ready when digests are built
-            "schedule": 2 * 60 * 60,
+        "prune-raw-telemetry": {
+            "task": "app.workers.tasks.prune_telemetry.prune_raw_telemetry",
+            "schedule": crontab(hour=3, minute=45),  # daily, after the full-text prune
+        },
+        "refresh-discovery-pools": {
+            "task": "app.workers.tasks.discovery.refresh_discovery_pools",
+            "schedule": crontab(hour=4, minute=30),  # daily, before morning digests
         },
         "beat-heartbeat": {
             "task": "app.workers.tasks.heartbeat.beat_heartbeat",

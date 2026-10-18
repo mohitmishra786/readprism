@@ -24,6 +24,59 @@ def _tokens(text: str) -> set[str]:
     return {tok for tok in _WORD.findall(text.lower()) if len(tok) > 2}
 
 
+_STOP = frozenset(
+    """a about above after again against all also am an and any are as at be because been before
+    being below between both but by can could did do does doing down during each few for from
+    further had has have having he her here hers him his how i if in into is it its itself just
+    me more most my no nor not now of off on once only or other our ours out over own same she
+    should so some such than that the their theirs them then there these they this those through
+    to too under until up very was we were what when where which while who whom why will with
+    would you your yours new one two get got like make made use used using way ways many much
+    via says said say per may might must shall within without across among around every
+    including include includes really still even thing things lot lots time year years today
+    week day days people post posts blog article read here https http www com""".split()
+)
+
+
+def keyword_topics(title: str, full_text: str, k: int = 3) -> list[str]:
+    """Up to `k` topic phrases without an LLM (#147).
+
+    Title words count triple; a body bigram seen at least twice beats single
+    words. Deterministic, so the same article always gets the same topics.
+    """
+    from collections import Counter
+    from itertools import pairwise
+
+    def words(text: str) -> list[str]:
+        return [
+            w
+            for w in _WORD.findall(text.lower())
+            if len(w) > 2 and w not in _STOP and not w.isdigit()
+        ]
+
+    title_words = words(title)
+    body_words = words(" ".join((full_text or "").split()[:600]))
+    singles: Counter[str] = Counter()
+    for w in title_words:
+        singles[w] += 3
+    for w in body_words:
+        singles[w] += 1
+    bigrams: Counter[str] = Counter(f"{a} {b}" for a, b in pairwise(body_words) if a != b)
+    for a, b in pairwise(title_words):
+        bigrams[f"{a} {b}"] += 2
+    topics: list[str] = []
+    for phrase, count in bigrams.most_common():
+        if count < 2 or len(topics) >= k:
+            break
+        topics.append(phrase)
+    for word, _ in singles.most_common():
+        if len(topics) >= k:
+            break
+        if not any(word in t.split() for t in topics):
+            topics.append(word)
+    return topics[:k]
+
+
 def extractive_summary(title: str, full_text: str) -> SummarizationResult:
     sentences = _sentences(full_text) or ([title.strip()] if title.strip() else ["Untitled"])
     title_tokens = _tokens(title)
@@ -49,7 +102,7 @@ def extractive_summary(title: str, full_text: str) -> SummarizationResult:
         depth_score=0.5,
         is_original_reporting=False,
         has_citations=False,
-        topic_clusters=[],
+        topic_clusters=keyword_topics(title, full_text),
         reading_time_minutes=reading_time,
         summary_source="extractive",
     )
