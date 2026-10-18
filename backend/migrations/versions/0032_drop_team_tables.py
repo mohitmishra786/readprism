@@ -6,8 +6,8 @@ Create Date: 2026-10-18 00:00:00.000000
 
 Drops `teams` and `team_members`. The Team digests product (EC-09) was
 dropped by decision D-10; the code and routes are removed in the same
-change. The downgrade recreates both tables with the exact schema from
-migration 0004 so a round-trip restores the pre-#140 shape.
+change. The downgrade recreates both tables as migrations 0004 + 0005 left them
+(created_by is ON DELETE RESTRICT), so a round-trip restores the pre-#140 shape.
 """
 from __future__ import annotations
 
@@ -36,7 +36,8 @@ def downgrade() -> None:
         sa.Column(
             "created_by",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            # RESTRICT, as migration 0005 left it (0004 had CASCADE).
+            sa.ForeignKey("users.id", ondelete="RESTRICT", name="teams_created_by_fkey"),
             nullable=False,
         ),
         sa.Column(
