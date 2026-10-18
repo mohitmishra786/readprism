@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -30,7 +31,25 @@ except ImportError:
 
 class ContentItem(Base):
     __tablename__ = "content_items"
-    __table_args__ = (UniqueConstraint("source_id", "guid", name="uq_content_source_guid"),)
+    __table_args__ = (
+        UniqueConstraint("source_id", "guid", name="uq_content_source_guid"),
+        # A URL is unique among public rows, and per owner among private rows
+        # (#101). A global unique URL let one user's private save block every
+        # other user from saving it, and revealed that someone had.
+        Index(
+            "uq_content_items_public_url",
+            "url",
+            unique=True,
+            postgresql_where=sa.text("owner_user_id IS NULL"),
+        ),
+        Index(
+            "uq_content_items_private_url",
+            "owner_user_id",
+            "url",
+            unique=True,
+            postgresql_where=sa.text("owner_user_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -50,7 +69,7 @@ class ContentItem(Base):
     owner_user_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    url: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    url: Mapped[str] = mapped_column(String, nullable=False, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     author: Mapped[str | None] = mapped_column(String, nullable=True)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -138,7 +138,12 @@ async def import_from_miniflux(
         }
         read_urls.discard(None)
         if read_urls:
-            rows = await session.execute(select(ContentItem).where(ContentItem.url.in_(read_urls)))
+            from app.services.content_lookup import visible_to
+
+            # Never link this user's read state to someone else's private row.
+            rows = await session.execute(
+                select(ContentItem).where(ContentItem.url.in_(read_urls), visible_to(user.id))
+            )
             for item in rows.scalars():
                 ix = await session.execute(
                     select(UserContentInteraction).where(

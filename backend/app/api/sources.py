@@ -348,7 +348,7 @@ async def import_saved(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    from app.models.content import ContentItem, UserContentInteraction
+    from app.models.content import UserContentInteraction
     from app.services.ingestion.importers import import_csv, import_opml_starred
 
     raw = (await file.read()).decode("utf-8", errors="replace")
@@ -359,31 +359,41 @@ async def import_saved(
             imported = import_csv(raw, kind)
         except ValueError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    from app.services.content_lookup import get_or_create_private_item
+
     created = 0
     for item in imported:
         if not item.url:
             continue
-        exists = await session.execute(select(ContentItem.id).where(ContentItem.url == item.url))
-        if exists.scalar_one_or_none():
-            continue
-        row = ContentItem(
-            owner_user_id=current_user.id,
-            url=item.url,
+        # Reuse the public row or this user's own row; another user's private
+        # import of the same URL must neither block nor be revealed (#101).
+        row, is_new = await get_or_create_private_item(
+            session,
+            current_user.id,
+            item.url,
             title=item.title,
-            full_text=item.note,
             origin="import",
+            full_text=item.note,
         )
-        session.add(row)
-        await session.flush()
-        session.add(
-            UserContentInteraction(
-                user_id=current_user.id,
-                content_item_id=row.id,
-                saved=True,
-                explicit_rating=1,
+        existing_ix = (
+            await session.execute(
+                select(UserContentInteraction).where(
+                    UserContentInteraction.user_id == current_user.id,
+                    UserContentInteraction.content_item_id == row.id,
+                )
             )
-        )
-        created += 1
+        ).scalar_one_or_none()
+        if existing_ix is None:
+            session.add(
+                UserContentInteraction(
+                    user_id=current_user.id,
+                    content_item_id=row.id,
+                    saved=True,
+                    explicit_rating=1,
+                )
+            )
+        if is_new:
+            created += 1
     await session.flush()
     return {"created": created, "origin": "import"}
 
