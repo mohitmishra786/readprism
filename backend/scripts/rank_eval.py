@@ -10,7 +10,7 @@ backend_dir = Path(__file__).resolve().parents[1]
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-from app.services.ranking.phase2.learning import EvalReport, synthetic_eval
+from app.services.ranking.learning import EvalReport, synthetic_eval
 
 
 def render_report(report: EvalReport) -> str:
@@ -58,7 +58,6 @@ def render_report(report: EvalReport) -> str:
             "Linear score of a 1000 by 8 feature matrix is covered by",
             "`test_exploration_ipw_and_eval_gate`. A full digest build against",
             "1,000 database rows was not timed. Celery sets `task_acks_late`.",
-            "Task de-dup keys are `task_dedup_key`.",
             "",
         ]
     )
