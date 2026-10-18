@@ -64,3 +64,6 @@ httpx==0.28.1
 
 # Utilities
 python-dotenv==1.2.3
+
+# Compliance tooling (#260): generates docs/licenses.md (make licenses).
+pip-licenses==5.0.0
