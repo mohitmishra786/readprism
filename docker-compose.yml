@@ -72,6 +72,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Persistent session store (#204): the refresh-token allowlist and magic
+    # links live only here, so a restart must not wipe them. AOF writes every
+    # command (everysec fsync) on top of the redis_data volume.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
     volumes:
       - redis_data:/data
     networks:

@@ -30,6 +30,10 @@ docker compose exec -T db pg_restore -U readprism -d readprism --no-owner --no-p
 if [ -f "$SRC/redis.rdb" ]; then
   echo "==> restoring redis snapshot…"
   docker compose stop redis >/dev/null 2>&1 || true
+  # With AOF enabled (#204) Redis loads the AOF over the RDB if one exists,
+  # which would silently discard the restored snapshot. Clear it first; Redis
+  # falls back to the RDB when the AOF is missing, then AOF takes over.
+  docker compose run --rm --no-deps --entrypoint sh redis -c "rm -rf /data/appendonlydir" >/dev/null 2>&1 || true
   docker compose cp "$SRC/redis.rdb" redis:/data/dump.rdb >/dev/null
   docker compose start redis >/dev/null
 fi
