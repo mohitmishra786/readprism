@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { hasSession } from "../lib/api";
@@ -142,7 +143,7 @@ export default function RootPage() {
         window.matchMedia("(pointer: coarse)").matches);
 
     if (reduce) {
-      setStaticReveal(true);
+      queueMicrotask(() => setStaticReveal(true));
       return;
     }
 
@@ -174,7 +175,7 @@ export default function RootPage() {
       {/* ===== Navigation (fixed, over hero) ===== */}
       <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between p-4 sm:p-5">
         {/* Left: prism logo + wordmark */}
-        <a href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2">
           <svg
             width="26"
             height="26"
@@ -185,7 +186,7 @@ export default function RootPage() {
             <path d="M 128 0 L 256 128 L 128 256 L 0 128 Z M 128 64 L 64 128 L 128 192 L 192 128 Z" />
           </svg>
           <span className="text-white text-2xl font-playfair italic">ReadPrism</span>
-        </a>
+        </Link>
 
         {/* Center pill (desktop) */}
         <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full px-2 py-2 items-center gap-1">

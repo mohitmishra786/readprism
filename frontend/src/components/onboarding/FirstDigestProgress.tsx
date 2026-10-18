@@ -38,12 +38,18 @@ function Step({ done, active, label }: { done: boolean; active: boolean; label: 
 export function FirstDigestProgress({ onReady }: Props) {
   const [status, setStatus] = useState<FirstDigestStatus | null>(null);
   const [stalled, setStalled] = useState(false);
-  const started = useRef(Date.now());
+  const started = useRef<number | null>(null);
   // Keep the latest callback without restarting the polling loop each render.
   const onReadyRef = useRef(onReady);
-  onReadyRef.current = onReady;
 
   useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+
+  useEffect(() => {
+    if (started.current === null) {
+      started.current = Date.now();
+    }
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -59,7 +65,7 @@ export function FirstDigestProgress({ onReady }: Props) {
       } catch {
         // Transient errors: keep polling until the give-up window passes.
       }
-      if (Date.now() - started.current > GIVE_UP_MS) {
+      if (started.current && Date.now() - started.current > GIVE_UP_MS) {
         setStalled(true);
         return;
       }

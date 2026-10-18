@@ -118,9 +118,15 @@ export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
     return acc;
   }, {});
 
-  const isNewUser =
-    userCreatedAt &&
-    Date.now() - new Date(userCreatedAt).getTime() < 14 * 24 * 60 * 60 * 1000;
+  const [isNewUser, setIsNewUser] = useState(false);
+
+  useEffect(() => {
+    if (userCreatedAt) {
+      queueMicrotask(() => {
+        setIsNewUser(Date.now() - new Date(userCreatedAt).getTime() < 14 * 24 * 60 * 60 * 1000);
+      });
+    }
+  }, [userCreatedAt]);
 
   return (
     <div className="animate-fade-in">

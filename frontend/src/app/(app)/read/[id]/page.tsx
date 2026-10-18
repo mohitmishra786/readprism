@@ -62,9 +62,11 @@ export default function ReaderPage() {
 
   useEffect(() => {
     const storedFont = Number(window.localStorage.getItem("reader-font-step"));
-    if (storedFont >= 0 && storedFont <= 2) setFontStep(storedFont);
     const storedTheme = window.localStorage.getItem("reader-theme");
-    if (storedTheme === "sepia" || storedTheme === "dark") setTheme(storedTheme);
+    queueMicrotask(() => {
+      if (storedFont >= 0 && storedFont <= 2) setFontStep(storedFont);
+      if (storedTheme === "sepia" || storedTheme === "dark") setTheme(storedTheme);
+    });
   }, []);
 
   const adjustFont = (step: number) => {
@@ -148,9 +150,10 @@ export default function ReaderPage() {
 
   // Prepare the article body. full_text may be HTML or plain text; wrap plain
   // text in <p> tags so the prose-reader styles apply consistently.
+  const fullText = item?.full_text;
   const articleHtml = useMemo(() => {
-    if (!item?.full_text) return "";
-    const text = item.full_text.trim();
+    if (!fullText) return "";
+    const text = fullText.trim();
     let html: string;
     // If it already contains HTML block tags, render as-is.
     if (/<(?:p|div|h[1-6]|ul|ol|blockquote|figure|pre|table)\b/i.test(text)) {
@@ -165,7 +168,7 @@ export default function ReaderPage() {
     // Sanitize before it reaches dangerouslySetInnerHTML (audit 06-7): ingested
     // article HTML can carry <script>/onerror/javascript: payloads.
     return sanitizeHtml(html);
-  }, [item?.full_text]);
+  }, [fullText]);
 
   if (error) {
     return (

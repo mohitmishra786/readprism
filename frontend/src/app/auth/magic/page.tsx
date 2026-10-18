@@ -11,7 +11,7 @@ export default function MagicVerifyPage() {
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("token");
     if (!token) {
-      setError("This sign-in link is missing its token.");
+      queueMicrotask(() => setError("This sign-in link is missing its token."));
       return;
     }
     api.auth
