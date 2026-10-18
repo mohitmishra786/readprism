@@ -61,18 +61,24 @@ async def get_calibration_items(
 
     from app.models.content import ContentItem
     from app.services.cold_start.calibration import select_calibration_items
-    from app.services.feed_identity import equivalent_source_ids, visible_item_filter
+    from app.services.feed_identity import (
+        equivalent_source_ids,
+        from_user_feeds,
+        user_feed_ids,
+        visible_item_filter,
+    )
 
     # Same-feed sources of other subscribers hold shared items too (#108).
     source_ids = await equivalent_source_ids(session, current_user.id)
-    if not source_ids:
+    feed_ids = await user_feed_ids(session, current_user.id)
+    if not source_ids and not feed_ids:
         return []
 
     cutoff = datetime.now(UTC) - timedelta(days=7)
     items_result = await session.execute(
         select(ContentItem)
         .where(
-            ContentItem.source_id.in_(source_ids),
+            from_user_feeds(source_ids, feed_ids),
             ContentItem.fetched_at >= cutoff,
             ContentItem.rankable.is_(True),
             visible_item_filter(current_user.id),
@@ -116,7 +122,14 @@ async def rate_calibration_item(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="rating must be 1 or -1"
         )
 
-    item_result = await session.execute(select(ContentItem).where(ContentItem.id == content_id))
+    from app.services.feed_identity import visible_item_filter
+
+    # Another user's private item is "not found" (#167).
+    item_result = await session.execute(
+        select(ContentItem).where(
+            ContentItem.id == content_id, visible_item_filter(current_user.id)
+        )
+    )
     item = item_result.scalar_one_or_none()
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")

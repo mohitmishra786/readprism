@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from app.models.content import ContentItem, UserContentInteraction
-from app.models.digest import Digest, DigestItem
+from app.models.digest import Digest
 from app.models.user import User
 from tests.conftest import TestingSessionLocal
 
@@ -18,104 +18,55 @@ def _user(email: str) -> User:
     return User(id=uuid.uuid4(), email=email, hashed_password="x", onboarding_complete=True)
 
 
-async def _captured_pairs(user_id: uuid.UUID) -> list[tuple]:
+@pytest.mark.asyncio
+async def test_task_trains_only_on_the_users_own_digests(db_session):
+    """The weight task learns from this user's settled digests only (#104, #154)."""
+    from sqlalchemy import select
+
+    from app.models.digest import DigestImpression
+    from app.models.meta_weights import UserMetaWeights
     from app.workers.tasks import update_interest_graph as task
 
-    captured: dict = {}
-
-    async def fake_update(uid, pairs, session):
-        captured["pairs"] = pairs
-
-    with (
-        patch("app.database.AsyncSessionLocal", TestingSessionLocal),
-        patch("app.services.ranking.meta_weights.update_meta_weights", fake_update),
-    ):
-        await task._update_meta_weights_async(user_id)
-    return captured["pairs"]
-
-
-@pytest.mark.asyncio
-async def test_training_pairs_come_only_from_the_users_own_digests(db_session):
     a, b = _user("ma@example.com"), _user("mb@example.com")
     db_session.add_all([a, b])
     await db_session.flush()
-    shared = ContentItem(url="https://shared.example.com/1", title="Shared")
-    db_session.add(shared)
-    await db_session.flush()
-    digest_a, digest_b = Digest(user_id=a.id), Digest(user_id=b.id)
-    db_session.add_all([digest_a, digest_b])
-    await db_session.flush()
-    db_session.add_all(
-        [
-            DigestItem(
-                digest_id=digest_a.id,
-                content_item_id=shared.id,
-                position=0,
-                section="lead",
-                prs_score=0.5,
-                signal_breakdown={"semantic": 0.9},
-            ),
-            DigestItem(
-                digest_id=digest_b.id,
-                content_item_id=shared.id,
-                position=0,
-                section="lead",
-                prs_score=0.5,
-                signal_breakdown={"semantic": 0.1},
-            ),
-            UserContentInteraction(
-                user_id=a.id, content_item_id=shared.id, read_completion_pct=1.0
-            ),
-        ]
-    )
-    await db_session.commit()
-
-    pairs = await _captured_pairs(a.id)
-
-    assert len(pairs) == 1
-    digest_item, interaction = pairs[0]
-    assert digest_item.digest_id == digest_a.id
-    assert interaction.user_id == a.id
-
-
-@pytest.mark.asyncio
-async def test_training_window_takes_the_most_recent_digests(db_session, monkeypatch):
-    from app.workers.tasks import update_interest_graph as task
-
-    monkeypatch.setattr(task, "META_TRAINING_WINDOW", 2)
-    user = _user("recent@example.com")
-    db_session.add(user)
-    await db_session.flush()
-    now = datetime.now(UTC)
-    digest_ids = []
-    for age_days in (10, 5, 0):
-        item = ContentItem(url=f"https://recent.example.com/{age_days}", title=f"Item {age_days}")
-        db_session.add(item)
-        await db_session.flush()
-        digest = Digest(user_id=user.id, generated_at=now - timedelta(days=age_days))
+    old = datetime.now(UTC) - timedelta(days=2)
+    for owner in (a, b):
+        digest = Digest(user_id=owner.id, generated_at=old)
         db_session.add(digest)
         await db_session.flush()
-        digest_ids.append(digest.id)
-        db_session.add_all(
-            [
-                DigestItem(
-                    digest_id=digest.id,
+        for completion in (0.95, 0.05):
+            item = ContentItem(url=f"https://t.example/{uuid.uuid4().hex}", title="t")
+            db_session.add(item)
+            await db_session.flush()
+            db_session.add(
+                DigestImpression(
+                    user_id=owner.id,
                     content_item_id=item.id,
-                    position=0,
-                    section="lead",
-                    prs_score=0.5,
-                    signal_breakdown={"semantic": 0.5},
-                ),
-                UserContentInteraction(
-                    user_id=user.id, content_item_id=item.id, read_completion_pct=0.9
-                ),
-            ]
-        )
+                    digest_id=digest.id,
+                    features_json={"content_quality": completion},
+                    viewed=True,
+                )
+            )
+            if owner is b:
+                db_session.add(
+                    UserContentInteraction(
+                        user_id=b.id,
+                        content_item_id=item.id,
+                        read_completion_pct=completion,
+                        opened_at=old,
+                    )
+                )
     await db_session.commit()
 
-    pairs = await _captured_pairs(user.id)
+    with patch("app.database.AsyncSessionLocal", TestingSessionLocal):
+        result_a = await task._update_meta_weights_async(a.id)
+        result_b = await task._update_meta_weights_async(b.id)
 
-    assert [p[0].digest_id for p in pairs] == [digest_ids[2], digest_ids[1]]
+    assert result_a["pairs"] == 0  # B's reading never trains A
+    assert result_b["pairs"] == 1
+    rows = {r.user_id: r for r in (await db_session.execute(select(UserMetaWeights))).scalars()}
+    assert rows[b.id].pairs_seen == 1 and rows[a.id].pairs_seen == 0
 
 
 @pytest.mark.asyncio

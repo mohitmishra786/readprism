@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import re
 import subprocess
-from pathlib import Path
 
 import pytest
 
 from app.config import Settings, validate_settings
+from tests.repo_files import require_repo_root
 
-REPO = Path(__file__).resolve().parents[3]
+REPO = require_repo_root()
 STRONG = "a" * 64
 
 

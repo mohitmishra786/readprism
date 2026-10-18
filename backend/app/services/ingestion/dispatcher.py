@@ -92,10 +92,17 @@ async def dispatch_source(source: Source, session: AsyncSession) -> list[RawCont
             seen_guids.add(item.guid)
         collapsed.append(item)
     raw_items = collapsed
+    from app.models.feed import Feed
+
+    # A shared feed (#162) dedups against everything stored for the feed,
+    # whichever subscriber's source row the earlier items were filed under.
+    scope = (
+        ContentItem.feed_id == source.id
+        if isinstance(source, Feed)
+        else ContentItem.source_id == source.id
+    )
     stored = await session.execute(
-        select(ContentItem.url, ContentItem.guid, ContentItem.simhash).where(
-            ContentItem.source_id == source.id
-        )
+        select(ContentItem.url, ContentItem.guid, ContentItem.simhash).where(scope)
     )
     existing_urls: set[str] = set()
     existing_guids: set[str] = set()

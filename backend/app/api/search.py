@@ -103,9 +103,10 @@ async def search(
     # Scope: the user's feeds (#108: including other subscribers' source rows
     # for the same feed, which hold the shared items), never other users'
     # private items.
-    from app.services.feed_identity import equivalent_source_ids, feed_key
+    from app.services.feed_identity import equivalent_source_ids, feed_key, user_feed_ids
 
     source_ids = await equivalent_source_ids(session, current_user.id)
+    feed_ids = await user_feed_ids(session, current_user.id) if source_id is None else []
     if source_id is not None:
         own = (
             await session.execute(
@@ -120,10 +121,14 @@ async def search(
             source_ids = [sid for sid in source_ids if sid in wanted]
 
     filters: list[str] = [
-        "ci.source_id = ANY(:source_ids)",
+        "(ci.source_id = ANY(:source_ids) OR ci.feed_id = ANY(:feed_ids))",
         "(ci.owner_user_id IS NULL OR ci.owner_user_id = :viewer)",
     ]
-    params: dict = {"source_ids": [str(s) for s in source_ids], "viewer": str(current_user.id)}
+    params: dict = {
+        "source_ids": [str(s) for s in source_ids],
+        "feed_ids": [str(f) for f in feed_ids],
+        "viewer": str(current_user.id),
+    }
     if origin is not None:
         filters.append("ci.origin = :origin")
         params["origin"] = origin
@@ -146,7 +151,7 @@ async def search(
     fts_list = await _fts_ids(session, q, filters_sql, params, depth)
 
     vector_list: list[str] = []
-    if source_ids:
+    if source_ids or feed_ids:
         try:
             from app.services.embeddings.registry import (
                 active_spec,

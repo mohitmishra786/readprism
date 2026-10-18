@@ -10,6 +10,8 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
     display_name: str | None = None
+    # Required when REGISTRATION_MODE=invite (#153).
+    invite_code: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -34,6 +36,10 @@ class UserRead(BaseModel):
     tier: str
     timezone: str
     created_at: datetime
+    # False only while this instance requires verification and it is pending (#175).
+    email_verified: bool = True
+    fetch_paused_until: datetime | None = None
+    collaborative_opt_out: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -50,6 +56,7 @@ class UserUpdate(BaseModel):
     serendipity_percentage: int | None = None
     preferred_languages: list[str] | None = None
     timezone: str | None = None
+    collaborative_opt_out: bool | None = None
 
 
 class Token(BaseModel):
@@ -73,4 +80,8 @@ class MagicLinkRequest(BaseModel):
 
 
 class MagicLinkVerify(BaseModel):
+    token: str
+
+
+class EmailVerify(BaseModel):
     token: str

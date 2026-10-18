@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { PlanSection } from "../../../components/PlanSection";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -409,12 +410,34 @@ export default function PreferencesPage() {
         </section>
       )}
 
+      <PlanSection />
+
       <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
         <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
           Download a portable copy of everything ReadPrism stores about you, or
           permanently delete your account.
         </p>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginBottom: 16 }}>
+          <input
+            type="checkbox"
+            checked={!user.collaborative_opt_out}
+            onChange={async (e) => {
+              const updated = await api.preferences
+                .update({ collaborative_opt_out: !e.target.checked })
+                .catch(() => null);
+              if (updated) {
+                setUser(updated);
+                setInitial(updated);
+              }
+            }}
+          />
+          <span>
+            Count my reading in anonymous &ldquo;popular with readers&rdquo; picks for new
+            users. Only articles at least 20 readers finished are ever used, and never
+            linked to you.
+          </span>
+        </label>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <button
             onClick={exportData}

@@ -1,5 +1,6 @@
 import { clearSession, getCsrfToken, setCsrfToken } from './auth';
 import type {
+  BillingState,
   ContentItem,
   ContentItemFull,
   Creator,
@@ -162,11 +163,14 @@ function rememberCsrf(t: Token): Token {
 // Auth
 export const api = {
   auth: {
-    register: (email: string, password: string, display_name?: string) =>
+    register: (email: string, password: string, display_name?: string, invite_code?: string) =>
       request<Token>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, display_name }),
+        body: JSON.stringify({ email, password, display_name, invite_code }),
       }).then(rememberCsrf),
+    /** Whether this instance accepts new accounts (#153). */
+    registration: () =>
+      request<{ mode: string; open: boolean; invite_required: boolean }>('/auth/registration'),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',
@@ -187,6 +191,25 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       }).then(rememberCsrf),
+    // Email confirmation (#175).
+    verifyEmail: (token: string) =>
+      request<{ verified: boolean }>('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    resendVerification: () =>
+      request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
+  },
+
+  // Hosted billing (#173). Self-hosted instances report plan "selfhost".
+  billing: {
+    state: () => request<BillingState>('/billing'),
+    checkout: (interval: 'month' | 'year') =>
+      request<{ url: string }>('/billing/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ interval }),
+      }),
+    portal: () => request<{ url: string }>('/billing/portal'),
   },
 
   account: {
