@@ -42,8 +42,17 @@ We do **not** sell personal data, and we do not use it for advertising.
 
 ## Retention
 
-- **Reading telemetry and derived data** persist while your account exists so
-  the model can keep learning.
+- **Raw reading telemetry** is kept for `TELEMETRY_RAW_RETENTION_DAYS`
+  (default 90 days). After that, each record of an item being shown to you is
+  folded into daily totals that are not linked to any account, and the
+  finest-grained reading measurements (scroll depth, active reading time) are
+  cleared.
+- **Derived data and coarse reading history** (your interest graph, what you
+  finished, rated or saved) persist while your account exists so the model
+  can keep learning. What you read can reveal sensitive things about you
+  (health, politics, religion), so this data is never shared, sold, or used
+  in logs or support tools, and operator metrics endpoints only report
+  aggregates.
 - **Full article text** we fetch is pruned to a short excerpt after
   `CONTENT_FULL_TEXT_RETENTION_DAYS` (default 90 days); we keep the summary,
   excerpt, and link, not an indefinite full copy.

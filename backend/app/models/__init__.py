@@ -7,6 +7,7 @@ from app.models.digest import (
     DigestFeedbackPrompt,
     DigestImpression,
     DigestItem,
+    ImpressionRollup,
     RankerWeightRevision,
 )
 from app.models.feed import Feed
@@ -36,6 +37,7 @@ __all__ = [
     "Digest",
     "DigestItem",
     "DigestImpression",
+    "ImpressionRollup",
     "DigestFeedbackPrompt",
     "RankerWeightRevision",
     "UserMetaWeights",
