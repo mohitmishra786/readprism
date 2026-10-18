@@ -19,9 +19,9 @@ was absent — the endpoint silently returned zero hits.
   fused with Reciprocal Rank Fusion (k=60; `services/search/hybrid.py`).
 - Filters (source, origin, saved, since) apply inside BOTH legs, so fusion
   never leaks out-of-scope rows.
-- Meilisearch stays dormant: the client code is kept, the endpoint no longer
-  calls it. The compose service remains for operators who want it, but the
-  app does not require it.
+- Meilisearch removed (#139): the dormant client (`utils/search.py`), the
+  compose service and the `MEILISEARCH_*` settings were deleted. Search is
+  Postgres-only.
 
 ## Consequences
 
@@ -33,5 +33,5 @@ was absent — the endpoint silently returned zero hits.
   HNSW; a load benchmark is deferred to RL-06 (benchmarks page) — not yet
   measured at 100k rows.
 - Meilisearch revisit criterion: if ranked-relevance complaints appear that
-  RRF cannot fix (e.g. typo tolerance at scale), re-enable the dormant
-  client behind a flag rather than re-implement.
+  RRF cannot fix (e.g. typo tolerance at scale), re-introduce Meilisearch
+  behind a flag rather than re-implement the fusion.
