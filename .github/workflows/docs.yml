@@ -12,9 +12,6 @@ on:
 
 permissions:
   contents: read
-  # Pages deploy needs write; the link-check job does not use it.
-  pages: write
-  id-token: write
 
 concurrency:
   group: docs-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -53,11 +50,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: link-check
+    # Only the deploy job (main pushes) gets Pages write; PR runs never do.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
