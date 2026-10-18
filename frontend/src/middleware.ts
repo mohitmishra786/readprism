@@ -11,13 +11,14 @@ export function middleware(request: NextRequest) {
   }
   // Next applies this nonce to its own inline flight scripts when the CSP is
   // on the request. A static script-src 'self' blocks those scripts and the
-  // reader never hydrates.
+  // page never hydrates.
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    "style-src 'self' 'unsafe-inline'",
+    // Google Fonts are loaded by <link> in the root layout.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' https: data:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://fonts.gstatic.com",
     `connect-src 'self' ${apiOrigin} https:`,
     "object-src 'none'",
     "base-uri 'self'",
@@ -30,9 +31,19 @@ export function middleware(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("Content-Security-Policy", csp);
+  // App-wide security headers (#187): defense in depth on every page, not
+  // just the reader.
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   return response;
 }
 
+// Every document route. Next's own static/image assets and the public files
+// (service worker, manifest, icons) are excluded — no CSP needed there and
+// applying one would break the service worker's cache behavior.
 export const config = {
-  matcher: ["/read/:path*"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|icon.svg|robots.txt|sitemap.xml).*)",
+  ],
 };

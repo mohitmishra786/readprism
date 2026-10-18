@@ -9,7 +9,9 @@ import { expect, test } from "@playwright/test";
 
 async function injectAxe(page: import("@playwright/test").Page) {
   const axeSource = readFileSync("node_modules/axe-core/axe.min.js", "utf8");
-  await page.addScriptTag({ content: axeSource });
+  // Evaluate, not addScriptTag: the app-wide CSP (#187) blocks nonce-less
+  // inline scripts, and CDP evaluate is not page content.
+  await page.evaluate(axeSource);
 }
 
 interface AxeResults {
