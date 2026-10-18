@@ -21,8 +21,8 @@ autodiscovery, iTunes feed URLs before they are stored) go through
 - `SSRF_PROTECTION_ENABLED=false` turns the check off for a single-tenant
   homelab that must read a LAN feed.
 
-Not user URLs, and therefore not on this path: Notion, Readwise,
-the iTunes Search API host, and the Browserless CDP endpoint. Those hosts come
+Not user URLs, and therefore not on this path: the iTunes Search API host,
+and the Browserless CDP endpoint. Those hosts come
 from operator configuration.
 
 `safe_fetch` connects to the IP it validated (original `Host` header and TLS
