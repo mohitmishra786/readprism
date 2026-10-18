@@ -1,6 +1,8 @@
 version: "3.9"
 
-# Local development overrides
+# Local development overrides. Not applied automatically (#106):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+# or `make up-dev`.
 services:
   backend:
     volumes:
@@ -30,6 +32,8 @@ services:
   beat:
     volumes:
       - ./backend:/app
+    environment:
+      APP_ENV: development
 
   frontend:
     volumes:

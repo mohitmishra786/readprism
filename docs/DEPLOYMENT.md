@@ -4,24 +4,30 @@ Operational notes for running ReadPrism beyond a local dev stack.
 
 ## Production-shaped compose
 
-`docker-compose.yml` is production-shaped; `docker-compose.override.yml` adds
-local-dev conveniences and is loaded automatically by `docker compose` on your
-machine. In production, run without the override:
+`docker-compose.yml` is production-shaped and is what `docker compose up` runs.
+Local-dev conveniences live in `docker-compose.dev.yml`, which is **opt-in**
+(#106):
 
 ```bash
-docker compose -f docker-compose.yml up -d
+./scripts/init_env.sh                 # .env with generated secrets (idempotent)
+docker compose up -d --build          # production mode
+make up-dev                           # development: adds docker-compose.dev.yml
 ```
 
-Differences the override applies for dev only:
+What the dev file changes:
 
-- Backend runs `uvicorn --reload` (base has no reload).
-- Meilisearch runs `MEILI_ENV=development` (base runs `production`, which
-  enforces the master key so search isn't left open).
+- `APP_ENV=development` for every service: webhooks without a configured secret
+  are accepted, operator metrics need no token, SQL is echoed, and an empty
+  `SECRET_KEY` falls back to a public dev-only key. Never expose it.
+- Backend runs `uvicorn --reload`.
+- Meilisearch runs `MEILI_ENV=development`.
 - Source is bind-mounted for hot edits.
 
-Before any hosted deployment, set real values for `SECRET_KEY` (the app refuses
-to boot with the default outside development), `MAILGUN_WEBHOOK_SIGNING_KEY`,
-`MEILISEARCH_MASTER_KEY`, and SMTP credentials. See [`.env.example`](../.env.example).
+Outside development the app refuses to start when `SECRET_KEY` (or
+`REFRESH_SECRET_KEY`, if set) is empty, shorter than 32 characters, or a
+published placeholder. Before a hosted deployment also set
+`MAILGUN_WEBHOOK_SIGNING_KEY` (or the provider secret you use),
+`MEILISEARCH_MASTER_KEY` and SMTP credentials. See [`.env.example`](../.env.example).
 
 ## Workers & queues
 

@@ -22,9 +22,13 @@ class Settings(BaseSettings):
     # non-development environments; open in development for convenience.
     metrics_token: str = ""
 
-    # Application
-    app_env: str = "development"
-    secret_key: str = "change_me_to_a_long_random_string"
+    # Application. Production is the default (#106): development mode relaxes
+    # webhook authentication, opens operator metrics and echoes SQL, so it must
+    # be chosen explicitly (APP_ENV=development, set by docker-compose.dev.yml).
+    app_env: str = "production"
+    # No usable default: generate one with scripts/init_env.sh. Outside
+    # development the app refuses to start with an empty, short or published key.
+    secret_key: str = ""
     # Optional distinct signing key for refresh tokens (defense in depth). Falls
     # back to secret_key when empty.
     refresh_secret_key: str = ""
@@ -221,6 +225,8 @@ class Settings(BaseSettings):
 
 
 _DEFAULT_SECRET_KEY = "change_me_to_a_long_random_string"
+# Used only when APP_ENV=development and SECRET_KEY is empty. Public by design.
+_DEV_ONLY_SECRET_KEY = "insecure-development-only-key-do-not-use-in-production"
 _MIN_SECRET_LEN = 32
 _DEFAULT_LLM_PRIMARY = "openai/gpt-oss-120b"
 _DEFAULT_LLM_FAST = "openai/gpt-oss-20b"
@@ -259,22 +265,40 @@ def _resolve_model(*, configured: str, legacy: str, default: str, legacy_name: s
     return legacy
 
 
+def validate_settings(s: Settings) -> None:
+    """Refuse to boot outside development with an unsafe signing key.
+
+    A known SECRET_KEY makes every JWT forgeable, and the user id in the token
+    is also in every digest email link (audit 06-8, #106). The published
+    placeholder is rejected even if an old .env still carries it.
+    """
+    if s.app_env == "development":
+        if not s.secret_key:
+            import warnings
+
+            warnings.warn(
+                "SECRET_KEY is empty; using an insecure development-only key. "
+                "Never expose a development instance.",
+                stacklevel=2,
+            )
+            s.secret_key = _DEV_ONLY_SECRET_KEY
+        return
+    for name, value in (("SECRET_KEY", s.secret_key), ("REFRESH_SECRET_KEY", s.refresh_secret_key)):
+        if name == "REFRESH_SECRET_KEY" and not value:
+            continue  # optional; falls back to SECRET_KEY
+        if value in (_DEFAULT_SECRET_KEY, _DEV_ONLY_SECRET_KEY) or len(value) < _MIN_SECRET_LEN:
+            raise RuntimeError(
+                f"{name} is missing, the published placeholder, or shorter than "
+                f"{_MIN_SECRET_LEN} characters (APP_ENV={s.app_env!r}). Run "
+                "`./scripts/init_env.sh` to generate secrets into .env, or set "
+                'it yourself: `python -c "import secrets; print(secrets.token_hex(32))"`.'
+            )
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     s = Settings()
-
-    # Refuse to boot outside development with the placeholder signing key — a
-    # default SECRET_KEY means every JWT is forgeable (audit 06-8).
-    if s.app_env != "development" and (
-        s.secret_key == _DEFAULT_SECRET_KEY or len(s.secret_key) < _MIN_SECRET_LEN
-    ):
-        raise RuntimeError(
-            "SECRET_KEY is missing, still the insecure default, or shorter than "
-            f"{_MIN_SECRET_LEN} characters in a non-development environment "
-            f"(APP_ENV={s.app_env!r}). Generate one with "
-            '`python -c "import secrets; print(secrets.token_hex(32))"` and set '
-            "it in the environment before deploying."
-        )
+    validate_settings(s)
 
     if not s.llm_configured:
         import warnings

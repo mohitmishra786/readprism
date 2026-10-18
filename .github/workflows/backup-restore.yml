@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Prepare .env
-        run: cp .env.example .env
+        run: ./scripts/init_env.sh
       - name: Boot db + backend
         run: docker compose up -d db redis backend
       - name: Wait for backend
