@@ -32,11 +32,11 @@ async def sync_feeds(session: AsyncSession, *, user_id: uuid.UUID | None = None)
         query = query.where(Source.user_id == user_id)
     pending = list((await session.execute(query)).scalars())
     attached = 0
-    from app.services.ingestion.schedule import REDDIT_UNSUPPORTED_NOTICE, is_reddit_feed
+    from app.services.ingestion.schedule import is_dead_reddit_feed, reddit_notice
 
     for source in pending:
         key = feed_key_of(source)
-        reddit = is_reddit_feed(key)
+        reddit = is_dead_reddit_feed(key)
         feed = (await session.execute(select(Feed).where(Feed.key == key))).scalar_one_or_none()
         if feed is None:
             feed = Feed(
@@ -52,7 +52,7 @@ async def sync_feeds(session: AsyncSession, *, user_id: uuid.UUID | None = None)
                 next_poll_at=None if reddit else source.next_poll_at,
                 recent_gap_seconds=list(source.recent_gap_seconds or []),
                 feed_status="dead" if reddit else (source.feed_status or "healthy"),
-                last_error=REDDIT_UNSUPPORTED_NOTICE if reddit else source.last_error,
+                last_error=reddit_notice() if reddit else source.last_error,
                 last_error_at=datetime.now(UTC) if reddit else source.last_error_at,
                 dead_notice_pending=reddit,
                 fetch_error_count=source.fetch_error_count or 0,
@@ -70,7 +70,7 @@ async def sync_feeds(session: AsyncSession, *, user_id: uuid.UUID | None = None)
             source.is_active = False
             source.dead_notice_pending = True
             source.feed_status = "dead"
-            source.last_error = REDDIT_UNSUPPORTED_NOTICE
+            source.last_error = reddit_notice()
         attached += 1
     if attached:
         await session.flush()

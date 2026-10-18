@@ -122,4 +122,5 @@ async def test_adding_reddit_url_shows_unsupported_error(client: AsyncClient, te
         headers=headers,
     )
     assert resp.status_code == 400
-    assert "Unsupported: Reddit ended RSS on 13 Nov 2026" in resp.json()["detail"]
+    assert "Unsupported: Reddit" in resp.json()["detail"]
+    assert "13 Nov 2026" in resp.json()["detail"]

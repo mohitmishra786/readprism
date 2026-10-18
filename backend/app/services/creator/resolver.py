@@ -58,7 +58,7 @@ PLATFORM_CAPABILITIES: dict[str, dict[str, str]] = {
     "reddit": {
         "tracking_tier": "unsupported",
         "display_label": "Reddit",
-        "reason": "Reddit ended RSS on 13 Nov 2026",
+        "reason": "Reddit shuts down RSS on 13 Nov 2026",
     },
     "bluesky": {"tracking_tier": "fully_tracked", "display_label": "Bluesky"},
     "mastodon": {"tracking_tier": "fully_tracked", "display_label": "Mastodon"},
@@ -211,10 +211,9 @@ def _autodiscover_feed_url(
             return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", None
         return None, "Could not extract the YouTube channel id; feed not discovered."
     if platform == "reddit":
-        return None, (
-            "Unsupported: Reddit ended RSS on 13 Nov 2026. "
-            "Consider adding the creator's Substack, newsletter, blog, Bluesky, or Mastodon instead."
-        )
+        from app.services.ingestion.schedule import reddit_notice
+
+        return None, reddit_notice()
     if platform in {"bluesky", "mastodon", "github"}:
         from app.services.ingestion.discover import platform_candidates
 

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 MIN_INTERVAL = 15 * 60
 MAX_INTERVAL = 24 * 60 * 60
@@ -170,7 +170,7 @@ def apply_poll_result(
 ) -> None:
     """Write the next schedule onto a source row."""
     url = getattr(source, "feed_url", None) or getattr(source, "url", None)
-    if is_reddit_feed(url):
+    if is_dead_reddit_feed(url, now):
         mark_reddit_feed_dead(source, now=now)
         return
 
@@ -204,10 +204,27 @@ def apply_poll_result(
             source.dead_notice_pending = True  # type: ignore[attr-defined]
 
 
-REDDIT_UNSUPPORTED_NOTICE = (
-    "Unsupported: Reddit ended RSS on 13 Nov 2026. "
+# Reddit stops serving RSS/Atom on this date (announced 30 Sep 2026, #107).
+# Existing Reddit sources keep polling until then and pause afterwards.
+REDDIT_RSS_END = datetime(2026, 11, 13, tzinfo=UTC)
+_REDDIT_ALTERNATIVES = (
     "Consider subscribing to an RSS/Atom feed from a blog, Substack, Bluesky, or Mastodon."
 )
+
+
+def reddit_rss_ended(now: datetime | None = None) -> bool:
+    return (now or datetime.now(UTC)) >= REDDIT_RSS_END
+
+
+def reddit_notice(now: datetime | None = None) -> str:
+    if reddit_rss_ended(now):
+        return f"Unsupported: Reddit ended RSS on 13 Nov 2026. {_REDDIT_ALTERNATIVES}"
+    return f"Unsupported: Reddit ends RSS on 13 Nov 2026. {_REDDIT_ALTERNATIVES}"
+
+
+def is_dead_reddit_feed(url: str | None, now: datetime | None = None) -> bool:
+    """A Reddit feed after the shutdown date: never fetch it again."""
+    return is_reddit_feed(url) and reddit_rss_ended(now)
 
 
 def is_reddit_feed(url: str | None) -> bool:
@@ -223,7 +240,7 @@ def mark_reddit_feed_dead(source: object, *, now: datetime) -> None:
     previous = getattr(source, "feed_status", None)
     source.feed_status = "dead"  # type: ignore[attr-defined]
     source.is_active = False  # type: ignore[attr-defined]
-    source.last_error = REDDIT_UNSUPPORTED_NOTICE  # type: ignore[attr-defined]
+    source.last_error = reddit_notice(now)  # type: ignore[attr-defined]
     source.last_error_at = now  # type: ignore[attr-defined]
     source.next_poll_at = None  # type: ignore[attr-defined]
     if previous != "dead":

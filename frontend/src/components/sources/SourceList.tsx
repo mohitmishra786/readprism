@@ -2,6 +2,18 @@
 import type { Source } from "../../lib/types";
 import { api } from "../../lib/api";
 
+// Reddit ends RSS on this date (#107); the backend pauses its feeds then.
+const REDDIT_RSS_END = Date.UTC(2026, 10, 13);
+
+function isRedditUrl(url: string | null | undefined): boolean {
+  try {
+    const host = new URL(url ?? "").hostname.toLowerCase().replace(/^www\./, "");
+    return host === "reddit.com" || host.endsWith(".reddit.com");
+  } catch {
+    return false;
+  }
+}
+
 interface SourceListProps {
   sources: Source[];
   onUpdated: (source: Source) => void;
@@ -66,6 +78,12 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 {" · "}
                 Relevance {Math.round(s.trust_weight * 100)}%
               </div>
+              {isRedditUrl(s.feed_url || s.url) && Date.now() < REDDIT_RSS_END && (
+                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
+                  Reddit stops serving RSS on 13 Nov 2026. This source keeps updating until
+                  then and pauses after. Consider a blog, Substack, Bluesky or Mastodon feed instead.
+                </div>
+              )}
               {s.last_error && s.health !== "healthy" && (
                 <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
                   {s.last_error}

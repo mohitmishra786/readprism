@@ -107,8 +107,12 @@ async def test_dead_feed_pauses_and_notifies_every_subscriber_once(db_session):
 
 
 @pytest.mark.asyncio
-async def test_existing_reddit_sources_show_notice_once_and_are_paused(db_session):
-    """Existing Reddit sources show the notice once and are paused without error-looping (#107)."""
+async def test_existing_reddit_sources_show_notice_once_and_are_paused(db_session, monkeypatch):
+    """After the shutdown date, existing Reddit sources show the notice once and are
+    paused without error-looping (#107)."""
+    from app.services.ingestion import schedule
+
+    monkeypatch.setattr(schedule, "REDDIT_RSS_END", datetime(2026, 1, 1, tzinfo=UTC))
     user = User(
         email="reddit_sub@example.com",
         hashed_password="x",
@@ -166,6 +170,32 @@ async def test_existing_reddit_sources_show_notice_once_and_are_paused(db_sessio
     async with TestingSessionLocal() as s:
         notices_second = await _pending_dead_sources(user.id, s)
         assert len(notices_second) == 0
+
+
+@pytest.mark.asyncio
+async def test_reddit_sources_keep_polling_until_the_shutdown_date(db_session, monkeypatch):
+    """Before 13 Nov 2026 Reddit RSS still works: keep fetching it (#107)."""
+    from app.services.ingestion import schedule
+
+    monkeypatch.setattr(schedule, "REDDIT_RSS_END", datetime(2099, 1, 1, tzinfo=UTC))
+    user = User(email="reddit_early@example.com", hashed_password="x", onboarding_complete=True)
+    db_session.add(user)
+    await db_session.flush()
+    feed_url = "https://www.reddit.com/r/rust/.rss"
+    db_session.add(Source(user_id=user.id, url="https://www.reddit.com/r/rust", feed_url=feed_url))
+    await db_session.commit()
+    calls: list[str] = []
+
+    async def dispatch(target, session):
+        calls.append(target.feed_url)
+        return [RawContentItem(url=f"{feed_url}/post", title="Post", guid="p")]
+
+    await _run(dispatch)
+
+    assert calls == [feed_url]
+    async with TestingSessionLocal() as s:
+        feed = (await s.execute(select(Feed).where(Feed.key == feed_url))).scalar_one()
+    assert feed.is_active is True and feed.feed_status != "dead"
 
 
 @pytest.mark.asyncio

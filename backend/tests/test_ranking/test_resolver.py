@@ -114,7 +114,7 @@ def test_reddit_returns_unsupported():
     feed, warning = _autodiscover_feed_url("reddit", "https://www.reddit.com/r/MachineLearning", "")
     assert feed is None
     assert warning is not None
-    assert "Unsupported: Reddit ended RSS on 13 Nov 2026" in warning
+    assert "Unsupported: Reddit" in warning and "13 Nov 2026" in warning
 
 
 def test_bluesky_profile_rss():
