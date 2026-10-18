@@ -13,7 +13,7 @@ line cites a decision id.
 | Interest model | One interest representation, graph of topics | The graph is implemented (nodes, edges, decay). Scoring still uses node embeddings and bridge midpoints, not cluster medoids. | D-05 |
 | Cold start | Collaborative filtering warmup | `cold_start/collaborative.py` returns no items when fewer than `COLLABORATIVE_WARMUP_MIN_USERS` (default 1000) distinct users have interactions. A single-user instance does not error. | D-06 |
 | Suggestion candidates | Content the user did not follow | Serendipity selects public `content_items` whose source is not in the user's source list, inside the digest window. Nothing ingests a discovery corpus, so a one-user database has no such rows. | D-06, roadmap IQ-06 |
-| Search | Meilisearch | Meilisearch is in compose and `app/utils/search.py`. Postgres FTS is not built. Revisit is UX-11. | D-09 |
+| Search | Meilisearch | Postgres FTS + pgvector RRF is the only search path (ADR 0005). The Meilisearch client, compose service and `MEILISEARCH_*` settings were removed in #139. | D-09 |
 | Hosted product | Tiers, team digests, pricing pages exist in the tree | Team tables and a pricing discussion exist in code and docs. They are not the product plan. EC-09 and RL-09 are dropped until there is pull. | D-10 |
 | Platform connectors | Broad creator coverage | Native recipes for several platforms, honest unsupported tier for X and LinkedIn. RSSHub bridge is not implemented. | D-11 |
 | Paywalls and robots | Not always explicit | Scrape mode checks robots.txt and fails closed when robots cannot be fetched. Known paywall bypass is not implemented. | D-08 |

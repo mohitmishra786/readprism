@@ -57,8 +57,8 @@ all pass.
 
 | Profile | Services | Notes |
 |---|---|---|
-| lite (default) | 8 | No Browserless/Meilisearch; hash embeddings; search = Postgres FTS+pgvector |
-| full | +2 | Browserless (rendered extraction) + Meilisearch (dormant, operator opt-in) |
+| lite (default) | 8 | No Browserless; hash embeddings; search = Postgres FTS+pgvector |
+| full | +2 | Browserless (rendered extraction) + egress proxy |
 
 Idle RSS measured 2026-09-24: db ~78 MiB, redis ~20 MiB. Backend full image
 includes torch (CUDA wheels on arm ≈ 454 MB extra); `:latest-lite` image
