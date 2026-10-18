@@ -191,7 +191,17 @@ async def _ingest_source(
     """Fetch one source (or shared feed), store its new items, and update its
     poll schedule."""
     from app.services.ingestion.dispatcher import dispatch_source
-    from app.services.ingestion.schedule import apply_poll_result
+    from app.services.ingestion.schedule import (
+        apply_poll_result,
+        is_dead_reddit_feed,
+        mark_reddit_feed_dead,
+    )
+
+    url = getattr(source, "feed_url", None) or getattr(source, "url", None)
+    if is_dead_reddit_feed(url):
+        mark_reddit_feed_dead(source, now=datetime.now(UTC))
+        await session.flush()
+        return []
 
     raw_items = await dispatch_source(source, session)
     # Newsletter content is private to the forwarding user; tag it so it never

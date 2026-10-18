@@ -53,7 +53,7 @@ def test_detect_platform(url, expected):
         ("substack", "fully_tracked"),
         ("medium", "fully_tracked"),
         ("youtube", "fully_tracked"),
-        ("reddit", "fully_tracked"),
+        ("reddit", "unsupported"),
         ("blog", "best_effort"),
         ("podcast", "best_effort"),
         ("twitter", "unsupported"),
@@ -109,25 +109,12 @@ def test_youtube_no_channel_id_returns_warning():
     assert warning is not None  # honest warning about missing channel id
 
 
-def test_reddit_subreddit_feed_url():
-    """Appending .rss to a subreddit URL yields a valid feed."""
+def test_reddit_returns_unsupported():
+    """Reddit ended RSS on 2026-11-13; autodiscovery returns None and an honest warning."""
     feed, warning = _autodiscover_feed_url("reddit", "https://www.reddit.com/r/MachineLearning", "")
-    assert feed == "https://www.reddit.com/r/MachineLearning/.rss"
-    assert warning is None
-
-
-def test_reddit_user_feed_url():
-    feed, warning = _autodiscover_feed_url("reddit", "https://www.reddit.com/user/spez", "")
-    assert feed == "https://www.reddit.com/user/spez/.rss"
-    assert warning is None
-
-
-def test_reddit_top_feed_includes_time_window():
-    feed, warning = _autodiscover_feed_url(
-        "reddit", "https://www.reddit.com/r/MachineLearning/top", ""
-    )
-    assert feed == "https://www.reddit.com/r/MachineLearning/top/.rss?t=week"
-    assert warning is None
+    assert feed is None
+    assert warning is not None
+    assert "Unsupported: Reddit" in warning and "13 Nov 2026" in warning
 
 
 def test_bluesky_profile_rss():
@@ -161,13 +148,6 @@ async def test_github_falls_through_to_commits_when_releases_is_not_a_feed():
 
     feed = await confirmed_platform_feed("https://github.com/owner/repo", "", fetch=fetch)
     assert feed == "https://github.com/owner/repo/commits.atom"
-
-
-def test_reddit_strips_query_and_fragment():
-    feed, _ = _autodiscover_feed_url(
-        "reddit", "https://www.reddit.com/r/MachineLearning/?sort=new#main", ""
-    )
-    assert feed == "https://www.reddit.com/r/MachineLearning/.rss"
 
 
 # ---------------------------------------------------------------------------

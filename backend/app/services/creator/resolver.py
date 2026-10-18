@@ -55,7 +55,11 @@ PLATFORM_CAPABILITIES: dict[str, dict[str, str]] = {
     "substack": {"tracking_tier": "fully_tracked", "display_label": "Substack"},
     "medium": {"tracking_tier": "fully_tracked", "display_label": "Medium"},
     "youtube": {"tracking_tier": "fully_tracked", "display_label": "YouTube"},
-    "reddit": {"tracking_tier": "fully_tracked", "display_label": "Reddit"},
+    "reddit": {
+        "tracking_tier": "unsupported",
+        "display_label": "Reddit",
+        "reason": "Reddit shuts down RSS on 13 Nov 2026",
+    },
     "bluesky": {"tracking_tier": "fully_tracked", "display_label": "Bluesky"},
     "mastodon": {"tracking_tier": "fully_tracked", "display_label": "Mastodon"},
     "github": {"tracking_tier": "fully_tracked", "display_label": "GitHub"},
@@ -207,12 +211,9 @@ def _autodiscover_feed_url(
             return f"https://www.youtube.com/feeds/videos.xml?channel_id={cid}", None
         return None, "Could not extract the YouTube channel id; feed not discovered."
     if platform == "reddit":
-        from app.services.ingestion.discover import platform_candidates
+        from app.services.ingestion.schedule import reddit_notice
 
-        matches = platform_candidates(profile_url, html)
-        if matches:
-            return matches[0].url, None
-        return None, "Could not build a Reddit feed URL."
+        return None, reddit_notice()
     if platform in {"bluesky", "mastodon", "github"}:
         from app.services.ingestion.discover import platform_candidates
 
@@ -228,7 +229,7 @@ def _autodiscover_feed_url(
         return None, (
             f"{PLATFORM_CAPABILITIES[platform]['display_label']} provides no public RSS feed. "
             "ReadPrism cannot automatically track new posts from this profile. "
-            "Consider adding the creator's Substack, newsletter, blog, or Reddit instead."
+            "Consider adding the creator's Substack, newsletter, blog, Bluesky, or Mastodon instead."
         )
 
     # Generic blog: try RSS autodiscovery from the page's <link> tags.

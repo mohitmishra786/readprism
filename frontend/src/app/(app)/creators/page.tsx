@@ -19,7 +19,7 @@ export default function CreatorsPage() {
         <div className="eyebrow text-prism-700">People</div>
         <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Creators</h1>
         <p className="mt-1 text-sm text-stone-500">
-          Track individuals across Substack, YouTube, Medium, Reddit, and more.
+          Track individuals across Substack, YouTube, Medium, Bluesky, Mastodon, and more.
         </p>
       </header>
       <AddCreatorForm onAdded={(c) => setCreators((prev) => [c, ...prev])} />

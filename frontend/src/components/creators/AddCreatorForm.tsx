@@ -57,7 +57,7 @@ export function AddCreatorForm({ onAdded }: AddCreatorFormProps) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="https://simonwillison.substack.com, https://reddit.com/user/..., or a name"
+          placeholder="https://simonwillison.substack.com, https://bsky.app/profile/..., or a name"
           required
           className="input flex-1"
         />

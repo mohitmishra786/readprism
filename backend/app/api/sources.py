@@ -232,6 +232,12 @@ async def add_source(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SourceRead:
+    from app.services.ingestion.schedule import is_reddit_feed, reddit_notice
+
+    # New Reddit sources are refused now: they would die on 13 Nov 2026 (#107).
+    if is_reddit_feed(body.url):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=reddit_notice())
+
     await _enforce_capacity(session, current_user, [body.url])
     from app.services.abuse import require_fetch_budget
 

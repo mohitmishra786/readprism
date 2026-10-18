@@ -111,20 +111,6 @@ CASES = [
         "platform",
     ),
     (
-        "reddit",
-        "https://www.reddit.com/r/MachineLearning",
-        "",
-        "https://www.reddit.com/r/MachineLearning/.rss",
-        "platform",
-    ),
-    (
-        "reddit-named-top",
-        "https://www.reddit.com/r/top",
-        "",
-        "https://www.reddit.com/r/top/.rss",
-        "platform",
-    ),
-    (
         "mastodon-fosstodon",
         "https://fosstodon.org/@alice",
         "",
@@ -200,6 +186,16 @@ async def test_fixture_site_resolves(kind, page, html, expected, method, monkeyp
     assert found, kind
     assert found[0].url == expected
     assert found[0].method == method
+
+
+@pytest.mark.asyncio
+async def test_reddit_recipe_removed_does_not_resolve():
+    """Reddit RSS shuts down on 2026-11-13; platform_candidates returns no feed for Reddit URLs (#107)."""
+    from app.services.ingestion.discover import platform_candidates
+
+    assert platform_candidates("https://www.reddit.com/r/MachineLearning", "") == []
+    assert platform_candidates("https://www.reddit.com/r/top", "") == []
+    assert platform_candidates("https://www.reddit.com/user/spez", "") == []
 
 
 def test_link_candidates_with_multi_value_and_list_attributes():
