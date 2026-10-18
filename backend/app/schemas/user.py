@@ -36,6 +36,8 @@ class UserRead(BaseModel):
     tier: str
     timezone: str
     created_at: datetime
+    # False only while this instance requires verification and it is pending (#175).
+    email_verified: bool = True
 
 
 class UserUpdate(BaseModel):
@@ -75,4 +77,8 @@ class MagicLinkRequest(BaseModel):
 
 
 class MagicLinkVerify(BaseModel):
+    token: str
+
+
+class EmailVerify(BaseModel):
     token: str

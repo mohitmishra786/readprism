@@ -14,6 +14,7 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import (
+    EmailVerify,
     MagicLinkRequest,
     MagicLinkVerify,
     Token,
@@ -67,6 +68,14 @@ magic_link_rate_limit = RateLimiter(
     scope="magic",
     fail_closed=True,
 )
+verify_resend_rate_limit = RateLimiter(
+    max_requests=settings.rate_limit_register_per_minute,
+    window_seconds=60,
+    scope="verify_resend",
+    fail_closed=True,
+)
+
+_DOMAIN_LIMIT_DETAIL = "Too many new accounts from this email domain. Try again in an hour."
 
 # Precomputed bcrypt hash of a random string, used to spend the same time on a
 # password check whether or not the account exists — closing the login timing
@@ -260,6 +269,12 @@ async def register(
     existing = await session.execute(select(User).where(User.email == body.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+    from app.services import email_verification
+
+    if not await email_verification.domain_signup_allowed(session, body.email):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=_DOMAIN_LIMIT_DETAIL
+        )
 
     user = User(
         email=body.email,
@@ -268,6 +283,12 @@ async def register(
     )
     session.add(user)
     await session.flush()
+    if email_verification.verification_required():
+        # Best effort: the account works in-app either way and can resend.
+        try:
+            await email_verification.send_verification_email(user)
+        except Exception as e:
+            logger.warning(f"Verification email failed for {user.id}: {e}")
     return await _session(request, response, user.id)
 
 
@@ -325,10 +346,11 @@ async def magic_link_request(
     existing = await session.execute(select(User).where(User.email == email))
     user = existing.scalar_one_or_none()
     if user is None:
+        from app.services.email_verification import domain_signup_allowed
         from app.services.registration import can_register
 
         allowed, _ = await can_register(session)
-        if not allowed:
+        if not allowed or not await domain_signup_allowed(session, email):
             return {"status": "sent"}
         user = User(
             email=email,
@@ -383,7 +405,43 @@ async def magic_link_verify(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    # The link reached this inbox, so the address is proven (#175).
+    from app.services.email_verification import mark_verified
+
+    mark_verified(user)
+    await session.flush()
     return await _session(request, response, user.id)
+
+
+@router.post("/verify-email")
+async def verify_email(body: EmailVerify, session: AsyncSession = Depends(get_db)) -> dict:
+    """Confirm an address from the emailed link (#175). Idempotent."""
+    from app.services.email_verification import verify_token
+
+    user = await verify_token(session, body.token)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This confirmation link is invalid or has expired.",
+        )
+    return {"verified": True}
+
+
+@router.post(
+    "/verify-email/resend",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(verify_resend_rate_limit)],
+)
+async def resend_verification(user: User = Depends(get_current_user)) -> dict:
+    from app.services.email_verification import send_verification_email
+    from app.utils.cache import cache_set_nx
+
+    if user.email_verified_at is not None:
+        return {"status": "already_verified"}
+    # One email per account per 5 minutes, whatever the IP.
+    if await cache_set_nx(f"verify_resend:{user.id}", "1", ttl_seconds=300):
+        await send_verification_email(user)
+    return {"status": "sent"}
 
 
 @router.post("/refresh", response_model=Token)

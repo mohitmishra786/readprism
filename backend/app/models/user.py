@@ -37,6 +37,10 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     # Local part of the inbound newsletter address: u.{token}@the configured domain.
     newsletter_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    # Set when the user proves they own the address (#175).
+    email_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -46,3 +50,10 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
+
+    @property
+    def email_verified(self) -> bool:
+        """True when verified, or when this instance doesn't require it."""
+        from app.services.email_verification import is_verified
+
+        return is_verified(self)

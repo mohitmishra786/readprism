@@ -190,6 +190,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ token }),
       }).then(rememberCsrf),
+    // Email confirmation (#175).
+    verifyEmail: (token: string) =>
+      request<{ verified: boolean }>('/auth/verify-email', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    resendVerification: () =>
+      request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
   },
 
   account: {

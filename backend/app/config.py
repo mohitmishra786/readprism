@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     # selfhost (only the first account), open on hosted.
     registration_mode: str = ""
     registration_invite_codes: str = ""
+    # Email verification before any non-verification email or inbound
+    # newsletter (#175): "auto" = required on hosted, off on selfhost.
+    email_verification: str = "auto"
+    email_verification_expire_hours: int = 48
+    # Signups per email domain per hour (hosted, #175). Large mail providers
+    # get `signup_per_domain_per_hour * 20`.
+    signup_per_domain_per_hour: int = 10
     # Session cookies (#103). Leave empty for a host-only cookie; set e.g.
     # ".example.com" when the API and web app are on different subdomains.
     cookie_domain: str = ""

@@ -93,6 +93,12 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
     if digest.delivered_at is not None:
         logger.info(f"Digest {digest.id} already delivered at {digest.delivered_at}; skipping")
         return True
+    from app.services.email_verification import may_email
+
+    if not may_email(user):
+        # Readable in the app; no email until the address is confirmed (#175).
+        logger.info(f"Digest {digest.id} not emailed: {user.id} has not verified their email")
+        return False
 
     # Load digest items with content
     items_result = await session.execute(

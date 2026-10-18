@@ -13,6 +13,8 @@ export interface User {
   tier: string;
   timezone: string;
   created_at: string;
+  /** False only while this instance requires email confirmation (#175). */
+  email_verified?: boolean;
 }
 
 export interface Source {
