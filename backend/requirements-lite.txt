@@ -3,6 +3,9 @@ fastapi==0.141.1
 uvicorn[standard]==0.54.0
 python-multipart==0.0.32
 
+# MCP server (official SDK, #262)
+mcp==2.3.0
+
 # Database
 sqlalchemy[asyncio]==2.1.1
 asyncpg==0.31.0
