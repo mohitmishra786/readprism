@@ -19,10 +19,12 @@ volumes:
 # Shared config for the queue-specific Celery workers (audit 07-2). `x-` keys are
 # ignored by Compose; the anchor is merged into each worker service below.
 x-worker-base: &worker-base
-  image: readprism-backend
+  image: readprism-backend:latest
   build:
     context: ./backend
     dockerfile: Dockerfile
+    args:
+      LITE: 0
   env_file:
     - .env
   environment:
@@ -99,9 +101,12 @@ services:
       - readprism_net
 
   backend:
+    image: readprism-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        LITE: 0
     env_file:
       - .env
     environment:
@@ -164,10 +169,12 @@ services:
       test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d digest@$$HOSTNAME || exit 1"]
 
   beat:
-    image: readprism-backend
+    image: readprism-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        LITE: 0
     env_file:
       - .env
     environment:

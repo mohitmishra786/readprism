@@ -121,3 +121,18 @@ async def test_time_to_value(client: AsyncClient, db_session, monkeypatch):
     body = resp.json()
     assert body["median_hours_signup_to_first_digest"] == 2.0
     assert body["median_hours_first_digest_to_first_read"] == 3.0
+
+
+@pytest.mark.asyncio
+async def test_llm_status_reports_embedding_model(client: AsyncClient, test_user_data):
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    token = reg.json()["access_token"]
+    resp = await client.get(
+        "/api/v1/metrics/llm-status", headers={"Authorization": f"Bearer {token}"}
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "embedding_model" in body
+    assert body["embedding_model"] == "all-MiniLM-L6-v2"
+    assert "embedding_is_hash" in body
+    assert isinstance(body["embedding_is_hash"], bool)

@@ -56,11 +56,15 @@ async def llm_status(
     """
     s = get_settings()
     has_primary_key = bool(s.groq_api_key or s.openai_api_key)
+    from app.utils.embeddings import is_hash_embeddings
+
     return {
         "llm_configured": has_primary_key,
         "model_primary": s.llm_model_primary,
         "model_fast": s.llm_model_fast,
         "openai_fallback_enabled": s.openai_fallback_enabled and bool(s.openai_api_key),
+        "embedding_model": s.embedding_model,
+        "embedding_is_hash": is_hash_embeddings(),
     }
 
 

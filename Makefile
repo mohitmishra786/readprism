@@ -1,4 +1,4 @@
-.PHONY: extract-eval starter-pack-check env up-lite up-full up-dev build-lite backup restore demo docs-serve test-services test-services-down test-backend test
+.PHONY: extract-eval starter-pack-check env up up-lite up-full up-dev build-lite backup restore demo docs-serve test-services test-services-down test-backend test
 
 test-services:
 	docker compose -f docker-compose.test.yml up -d
@@ -16,6 +16,9 @@ starter-pack-check:
 
 env:
 	./scripts/init_env.sh
+
+up: env
+	docker compose up -d --build
 
 up-lite: env
 	docker compose build --build-arg LITE=1 backend

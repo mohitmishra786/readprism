@@ -101,9 +101,12 @@ def _disable_rate_limit(monkeypatch):
     IP, so the fixed-window counters would otherwise accumulate across tests and
     spuriously 429. The dedicated rate-limit test re-enables it explicitly.
     """
-    from app.utils import ratelimit
+    from app.utils import cache, ratelimit
 
+    cache._redis_client = None
     monkeypatch.setattr(ratelimit.settings, "rate_limit_enabled", False)
+    yield
+    cache._redis_client = None
 
 
 @pytest.fixture
