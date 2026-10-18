@@ -109,6 +109,7 @@ async def test_interleaved_digest_logs_teams_and_reports_win_rate(client, db_ses
     await db_session.commit()
 
     report = (await client.get("/api/v1/metrics/interleaving")).json()
-    mine = report["users"][str(user.id)]
     assert report["digests"] >= 1
-    assert mine["prs_wins"] == 1 and mine["prs_win_rate"] == 1.0
+    assert report["pooled"]["prs_wins"] == 1 and report["pooled"]["prs_win_rate"] == 1.0
+    assert report["users"] == 1 and report["user_win_rates"] == [1.0]
+    assert str(user.id) not in str(report)  # no user ids in operator output (#224)

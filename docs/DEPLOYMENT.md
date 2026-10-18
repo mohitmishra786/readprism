@@ -52,6 +52,13 @@ Ingestion, embedding, and digest work run on separate Celery queues, one
 [ADR 0001](adr/0001-celery-solo-pool.md) for why each worker is single-process
 and the migration path for higher throughput.
 
+To add capacity, run more workers for the queue that is behind:
+`docker compose up -d --scale worker-digest=4 --scale worker-embed=2`. Keep
+exactly one `beat`. `GET /api/v1/metrics/queues` (metrics token) reports the
+wait per queue, runtime per task, and the share of scheduled digests
+delivered within `DIGEST_ON_TIME_SECONDS`. Targets and the load test
+(`scripts/load_test_digests.py`) are in ADR 0001.
+
 ## Monitoring
 
 - **Errors:** set `SENTRY_DSN` (backend) and `NEXT_PUBLIC_SENTRY_DSN` /
@@ -138,6 +145,45 @@ sends (the SMTP `from` address):
 4. Keep `EMAIL_PHYSICAL_ADDRESS` set — it is rendered in the footer
    (CAN-SPAM) — and leave the tracking pixel off (it is off by default and
    there is no switch to enable one).
+
+## Hosted mode: verification, abuse limits, billing
+
+These apply only with `DEPLOYMENT_MODE=hosted`; a self-hosted instance
+ignores them.
+
+- **Email verification (#175).** New accounts get a confirmation link and no
+  other email until they click it: digests are built and readable in the app
+  but not emailed, and newsletters sent to the account are dropped. A
+  magic-link sign-in also confirms the address. Accounts that existed before
+  migration 0027 count as confirmed. Signups are also capped per email domain
+  per hour (`SIGNUP_PER_DOMAIN_PER_HOUR`, with 20x for large mail providers).
+- **Abuse limits (#169).** Each account has an hourly fetch budget
+  (`HOSTED_FETCH_BUDGET_PER_HOUR`). A feed poll counts against every account
+  that follows the feed, and is skipped only when all of them are over
+  budget. Each host is polled at most `HOSTED_HOST_POLLS_PER_HOUR` times
+  across all accounts, and one account can follow at most
+  `HOSTED_MAX_SOURCES_PER_HOST` feeds on the same host. Inbound newsletters
+  are capped per account per day by count and size.
+- **Billing (#173).** Billing runs through a merchant of record, so the
+  provider handles VAT/GST. Steps:
+  1. Set `BILLING_PROVIDER` to `lemonsqueezy` or `paddle`, and set
+     `BILLING_WEBHOOK_SECRET`.
+  2. Point the provider's webhook at
+     `https://<api>/api/v1/billing/webhook/<provider>`, subscribed to the
+     subscription events.
+  3. Set the checkout links (Lemon Squeezy) or price ids (Paddle) in
+     `BILLING_CHECKOUT_MONTHLY` and `BILLING_CHECKOUT_YEARLY`.
+  4. List the variant or price ids that grant each plan in
+     `BILLING_PRO_PRICE_IDS` and `BILLING_TEAM_PRICE_IDS`. An id that isn't
+     listed never upgrades anyone.
+  5. Paddle only: also set `BILLING_API_KEY`. Use `BILLING_SANDBOX=true`
+     while testing.
+
+  New accounts start a `BILLING_TRIAL_DAYS` trial with no card required.
+  Prices and trial length are the #138 decision. Webhooks are verified,
+  recorded once (a replay does nothing) and applied in order (an older event
+  that arrives late can't bring back a cancelled plan). A plan lapses at its
+  expiry date with no scheduled job.
 
 ## Minimum host sizing
 

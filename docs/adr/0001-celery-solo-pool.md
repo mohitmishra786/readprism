@@ -54,3 +54,39 @@ Pick one, in rough order of effort:
 Do **not** simply remove `--pool=solo` to "add concurrency" — doing so
 reintroduces the cross-loop bug. Address the engine-per-process concern first
 (option 2) or use option 1.
+
+## Update 2026-10-18: scaling for hosted (#239)
+
+Option 1 is in place (`worker-scrape`, `worker-embed`, `worker-digest`).
+Hosted capacity now scales **by process**: run more solo workers of the
+queue that is behind, e.g.
+
+```
+docker compose up -d --scale worker-digest=4 --scale worker-embed=2
+```
+
+Each replica names itself `<queue>@<container hostname>`, and its healthcheck
+pings that name. (Before this update the shared healthcheck pinged
+`celery@<hostname>`, which no worker answers, so workers showed unhealthy.)
+`task_acks_late` + `worker_prefetch_multiplier=1` keep a replica from holding
+tasks another replica could run. Beat must stay a single instance.
+
+**What to watch.** `GET /api/v1/metrics/queues` (metrics token) reports, per
+hour window:
+
+- `queue_wait_seconds` per queue (publish → start), p50/p95/max;
+- `task_runtime_seconds` per task;
+- `digest_delivery`: time from a scheduled digest falling due to its
+  delivery task finishing, and the share within `DIGEST_ON_TIME_SECONDS`
+  (default 900 s).
+
+**Targets.** Digest on-time ≥ 99%. `digest` queue wait p95 < 60 s.
+`embed` queue wait p95 < 10 min. Add a replica to the queue whose wait p95
+breaches its target. Prefork (option 2) is still unnecessary while
+process-level scale meets these targets.
+
+**Load test.** `backend/scripts/load_test_digests.py` creates N synthetic
+users on a running stack, queues their digests as the scheduler would, and
+prints the on-time ratio from the endpoint above. The 1,000-user acceptance
+run for #239 has to happen on the hosted environment; it has not been run
+in development.

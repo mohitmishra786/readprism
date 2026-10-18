@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, hasSession } from "../../lib/api";
+import { AccountNotices } from "../../components/AccountNotices";
 
 const NAV = [
   { href: "/digest", label: "Digest" },
@@ -79,6 +80,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </header>
+      <AccountNotices />
       <main id="main-content" className="mx-auto max-w-3xl px-4 py-8">
         {children}
       </main>

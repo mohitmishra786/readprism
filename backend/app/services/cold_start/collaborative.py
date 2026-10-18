@@ -1,24 +1,89 @@
+"""Collaborative warmup for new users, from crowd signals only (#210).
+
+A new reader with chosen topics gets a few items that many readers on this
+instance recently finished or upvoted. Privacy rules:
+
+- k-anonymity: an item is eligible only when at least
+  `COLLABORATIVE_K_ANONYMITY` distinct users (default 20) engaged with it, so
+  no recommendation can be traced to one person's reading;
+- the selection never looks at any individual's history or interest vector,
+  only at per-item counts;
+- users who opt out (`collaborative_opt_out`) are left out of the counts;
+- private items (newsletters, saves) never qualify.
+
+Eligible items are then matched to the newcomer's own interests (topic
+labels and, when available, their interest vector). Below
+`COLLABORATIVE_WARMUP_MIN_USERS` active readers this is inert; on a
+single-user or family instance k is never met.
+"""
+
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
-from sqlalchemy import select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models.content import ContentItem
+from app.models.content import ContentItem, UserContentInteraction
+from app.models.interest_graph import InterestNode
 from app.models.user import User
 from app.services.interest_graph.graph import InterestGraphManager
-from app.utils.cache import cache_get
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 settings = get_settings()
 graph_manager = InterestGraphManager()
 
-SIMILAR_USERS_COUNT = 10
 MIN_COMPLETION_FOR_POSITIVE = 0.85
+WINDOW = timedelta(days=14)
+CANDIDATES = 200
+
+
+def _words(text: str) -> set[str]:
+    return {w for w in text.lower().replace("&", " ").replace("-", " ").split() if len(w) > 2}
+
+
+def _topic_score(item: ContentItem, labels: list[str]) -> float:
+    clusters = [str(c).lower() for c in (item.topic_clusters or [])]
+    if not clusters or not labels:
+        return 0.0
+    if set(clusters) & set(labels):
+        return 1.0
+    label_words = set().union(*(_words(label) for label in labels))
+    cluster_words = set().union(*(_words(c) for c in clusters))
+    return 0.5 if label_words & cluster_words else 0.0
+
+
+async def crowd_items(
+    session: AsyncSession, *, exclude_user, now: datetime | None = None
+) -> list[tuple[ContentItem, int]]:
+    """Public items at least k distinct, non-opted-out users engaged with recently."""
+    k = max(1, settings.collaborative_k_anonymity)
+    since = (now or datetime.now(UTC)) - WINDOW
+    readers = func.count(func.distinct(UserContentInteraction.user_id))
+    rows = (
+        await session.execute(
+            select(ContentItem, readers)
+            .join(UserContentInteraction, UserContentInteraction.content_item_id == ContentItem.id)
+            .join(User, User.id == UserContentInteraction.user_id)
+            .where(
+                ContentItem.owner_user_id.is_(None),
+                ContentItem.rankable.is_(True),
+                UserContentInteraction.user_id != exclude_user,
+                User.collaborative_opt_out.is_(False),
+                UserContentInteraction.updated_at >= since,
+                (UserContentInteraction.explicit_rating == 1)
+                | (UserContentInteraction.read_completion_pct >= MIN_COMPLETION_FOR_POSITIVE),
+            )
+            .group_by(ContentItem.id)
+            .having(readers >= k)
+            .order_by(readers.desc())
+            .limit(CANDIDATES)
+        )
+    ).all()
+    return [(item, int(count)) for item, count in rows]
 
 
 async def get_collaborative_warmup_items(
@@ -28,12 +93,6 @@ async def get_collaborative_warmup_items(
 ) -> list[ContentItem]:
     if not settings.cold_start_collaborative_enabled:
         return []
-
-    # Gate: below a critical mass of active users this is inert (few/no similar
-    # users, cold Redis vectors). Don't pretend it contributes (audit 05-6).
-    from sqlalchemy import func
-
-    from app.models.content import UserContentInteraction
 
     active_users = (
         await session.execute(select(func.count(func.distinct(UserContentInteraction.user_id))))
@@ -45,90 +104,37 @@ async def get_collaborative_warmup_items(
         )
         return []
 
-    # Get user's interest vector
+    candidates = await crowd_items(session, exclude_user=user.id)
+    if not candidates:
+        return []
+
+    labels = [
+        row[0].lower()
+        for row in (
+            await session.execute(
+                select(InterestNode.topic_label)
+                .where(InterestNode.user_id == user.id)
+                .order_by(InterestNode.weight.desc())
+                .limit(10)
+            )
+        ).all()
+    ]
     user_vec = await graph_manager.build_user_interest_vector(user.id, session)
-    if user_vec is None:
-        return []
+    if not labels and user_vec is None:
+        return []  # nothing to match against; don't push generic popularity
 
-    # Gather up to 200 candidate users who have any interaction history; their
-    # interest-vector similarity is computed below from warm Redis vectors. (This
-    # is not a pgvector similarity query — see audit 05-6 for the known
-    # limitation that this warmup is effectively inert until there are many
-    # active users with cached vectors.)
-    try:
-        result = await session.execute(
-            text(
-                """
-                SELECT DISTINCT uci.user_id
-                FROM user_content_interactions uci
-                WHERE uci.user_id != :user_id
-                LIMIT 200
-            """
-            ),
-            {"user_id": str(user.id)},
-        )
-        candidate_user_ids = [row[0] for row in result.fetchall()]
-    except Exception as e:
-        logger.warning(f"Collaborative warmup user query failed: {e}")
-        return []
-
-    if not candidate_user_ids:
-        return []
-
-    # Compute similarity with each candidate user
-    user_sims: list[tuple[str, float]] = []
-    for cuid in candidate_user_ids:
-        other_vec = await cache_get(f"interest_vec:{cuid}")
-        if other_vec is None:
+    top = max(count for _, count in candidates)
+    scored: list[tuple[float, ContentItem]] = []
+    for item, count in candidates:
+        relevance = _topic_score(item, labels)
+        if user_vec is not None and item.embedding is not None:
+            emb = np.asarray(item.embedding, dtype=np.float32)
+            cosine = float(
+                np.dot(user_vec, emb) / (np.linalg.norm(user_vec) * np.linalg.norm(emb) + 1e-8)
+            )
+            relevance = max(relevance, cosine)
+        if relevance <= 0.3:
             continue
-        other = np.array(other_vec, dtype=np.float32)
-        sim = float(
-            np.dot(user_vec, other) / (np.linalg.norm(user_vec) * np.linalg.norm(other) + 1e-8)
-        )
-        user_sims.append((cuid, sim))
-
-    user_sims.sort(key=lambda x: x[1], reverse=True)
-    top_users = [uid for uid, _ in user_sims[:SIMILAR_USERS_COUNT]]
-
-    if not top_users:
-        return []
-
-    # Collect positively interacted items from similar users
-    from datetime import datetime, timedelta
-
-    cutoff = datetime.now(UTC) - timedelta(days=14)
-    try:
-        result = await session.execute(
-            text(
-                """
-                SELECT ci.*, COUNT(*) as engagement_count
-                FROM content_items ci
-                JOIN user_content_interactions uci ON ci.id = uci.content_item_id
-                WHERE uci.user_id = ANY(:user_ids)
-                  AND uci.created_at >= :cutoff
-                  AND ci.owner_user_id IS NULL
-                  AND (uci.explicit_rating = 1 OR uci.read_completion_pct >= :min_completion)
-                GROUP BY ci.id
-                ORDER BY engagement_count DESC
-                LIMIT :limit
-            """
-            ),
-            {
-                "user_ids": top_users,
-                "cutoff": cutoff,
-                "min_completion": MIN_COMPLETION_FOR_POSITIVE,
-                "limit": limit * 2,
-            },
-        )
-        rows = result.fetchall()
-    except Exception as e:
-        logger.warning(f"Collaborative items query failed: {e}")
-        return []
-
-    # Load full content items
-    if not rows:
-        return []
-
-    item_ids = [row[0] for row in rows][:limit]
-    items_result = await session.execute(select(ContentItem).where(ContentItem.id.in_(item_ids)))
-    return list(items_result.scalars().all())
+        scored.append((relevance + 0.2 * count / top, item))
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    return [item for _, item in scored[:limit]]

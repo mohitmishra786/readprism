@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { ContentItem } from "../../lib/types";
 import { SIGNAL_LABELS } from "../../lib/signals";
 import { FeedbackBar } from "./FeedbackBar";
+import { SummaryLabel } from "../SummaryLabel";
 
 // Section accent colors — the prism splits content into ranked bands.
 const SECTION_ACCENTS: Record<string, string> = {
@@ -145,11 +146,13 @@ export function ContentCard({
 
       {summaryLevel === "brief" && content.summary_brief && (
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
+          <SummaryLabel source={content.summary_source} />
           {content.summary_brief}
         </p>
       )}
       {summaryLevel === "detailed" && (content.summary_detailed || content.summary_brief) && (
         <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700 dark:text-stone-300">
+          <SummaryLabel source={content.summary_source} />
           {content.summary_detailed || content.summary_brief}
         </p>
       )}
