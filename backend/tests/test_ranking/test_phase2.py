@@ -40,6 +40,7 @@ from app.services.ranking.phase2.interests import (
 from app.services.ranking.phase2.learning import (
     MIN_PAIRS,
     RANKER_VERSION,
+    EvalReport,
     WeightState,
     debiased_recovers_better,
     explain,
@@ -222,6 +223,24 @@ def test_exploration_ipw_and_eval_gate():
     assert debiased_recovers_better()
     report = synthetic_eval()
     assert report.beats_baselines()
+    assert report.oracle_ndcg >= report.prs_ndcg
+    assert report.prs_ndcg > report.no_learning_ndcg
+    assert report.margin_over_no_learning >= 0.05
+    assert report.prs_ndcg > report.chronological_ndcg
+    assert report.prs_ndcg > report.semantic_ndcg
+    assert report.prs_ndcg > report.random_ndcg
+    # Gate requires beating the no-learning baseline:
+    failing_report = EvalReport(
+        prs_ndcg=report.no_learning_ndcg + 0.01,
+        chronological_ndcg=0.5,
+        semantic_ndcg=0.5,
+        random_ndcg=0.5,
+        no_learning_ndcg=report.no_learning_ndcg,
+        oracle_ndcg=1.0,
+        margin=0.2,
+        margin_over_no_learning=0.01,
+    )
+    assert not failing_report.beats_baselines()
     matrix = score_matrix(np.full(8, 0.125), np.ones((1000, 8)))
     assert matrix.shape == (1000, 1)
     assert task_dedup_key("embed", "abc") == "embed:abc"

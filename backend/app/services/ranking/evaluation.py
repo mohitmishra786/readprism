@@ -31,6 +31,9 @@ class RankingEval:
     read_prediction_auc: float | None  # None when one class is absent
     spearman_completion: float | None  # None when <2 points or no variance
     positives: int  # items that were opened
+    no_learning_auc: float | None = None  # AUC using uniform prior weights
+    oracle_auc: float | None = None  # Upper bound (1.0 when computable)
+    chance_auc: float | None = None  # Random/chance baseline (0.5 when computable)
 
 
 def read_prediction_auc(scores: list[float], labels: list[bool]) -> float | None:
@@ -93,7 +96,11 @@ async def evaluate_user_ranking(
     since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         await session.execute(
-            select(DigestItem.prs_score, UserContentInteraction)
+            select(
+                DigestItem.prs_score,
+                UserContentInteraction,
+                DigestItem.signal_breakdown,
+            )
             .join(Digest, DigestItem.digest_id == Digest.id)
             .join(
                 UserContentInteraction,
@@ -108,7 +115,11 @@ async def evaluate_user_ranking(
     opened: list[bool] = []
     completion_scores: list[float] = []
     completions: list[float] = []
-    for prs_score, interaction in rows:
+    no_learning_scores: list[float] = []
+    for row in rows:
+        prs_score: float | None = row[0]
+        interaction: UserContentInteraction = row[1]
+        signal_breakdown: dict | None = row[2]
         if prs_score is None:
             continue
         scores.append(float(prs_score))
@@ -118,9 +129,39 @@ async def evaluate_user_ranking(
             completion_scores.append(float(prs_score))
             completions.append(float(interaction.read_completion_pct))
 
+        # No-learning score from unweighted average of available signals
+        if isinstance(signal_breakdown, dict):
+            # Raw per-signal values (not the weighted "contributions"), so an
+            # unweighted mean is what scoring without learned weights gives.
+            from app.services.ranking.phase2.contract import SIGNALS
+
+            numeric_vals = [
+                float(v)
+                for name in SIGNALS
+                if isinstance(v := signal_breakdown.get(name), int | float)
+                and not isinstance(v, bool)
+            ]
+            if numeric_vals:
+                no_learning_scores.append(sum(numeric_vals) / len(numeric_vals))
+            else:
+                no_learning_scores.append(0.5)
+        else:
+            no_learning_scores.append(0.5)
+
+    auc = read_prediction_auc(scores, opened)
+    has_classes = auc is not None
+    nl_auc = (
+        read_prediction_auc(no_learning_scores, opened)
+        if (has_classes and len(no_learning_scores) == len(opened))
+        else None
+    )
+
     return RankingEval(
         n=len(scores),
-        read_prediction_auc=read_prediction_auc(scores, opened),
+        read_prediction_auc=auc,
         spearman_completion=spearman(completion_scores, completions),
         positives=sum(opened),
+        no_learning_auc=nl_auc,
+        oracle_auc=1.0 if has_classes else None,
+        chance_auc=0.5 if has_classes else None,
     )
