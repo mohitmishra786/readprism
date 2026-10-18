@@ -98,12 +98,13 @@ def update_meta_weights_task(user_id: str) -> dict:
 
 
 async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
-    from sqlalchemy import select
+    """Train the user's ranking weights on settled digests (#154).
 
+    Pairs come only from this user's own digests and impressions (#104), each
+    digest is trained on once, and every update is logged as a revision.
+    """
     from app.database import AsyncSessionLocal
-    from app.models.content import UserContentInteraction
-    from app.models.digest import Digest, DigestItem
-    from app.services.ranking.meta_weights import update_meta_weights
+    from app.services.ranking.learner import train_user
     from app.utils.cache import cache_delete
 
     # Re-arm the debounce so interactions arriving from now on schedule the
@@ -111,26 +112,9 @@ async def _update_meta_weights_async(user_id: uuid.UUID) -> dict:
     await cache_delete(_meta_debounce_key(user_id))
 
     async with AsyncSessionLocal() as session:
-        # Only this user's digests: a shared public item also appears in other
-        # users' digests with *their* signal breakdowns, and pairing those with
-        # this user's reading trained one user's weights on another's
-        # features (#104).
-        result = await session.execute(
-            select(DigestItem, UserContentInteraction)
-            .join(Digest, Digest.id == DigestItem.digest_id)
-            .join(
-                UserContentInteraction,
-                (UserContentInteraction.content_item_id == DigestItem.content_item_id)
-                & (UserContentInteraction.user_id == user_id),
-            )
-            .where(Digest.user_id == user_id)
-            .order_by(Digest.generated_at.desc(), DigestItem.position.asc())
-            .limit(META_TRAINING_WINDOW)
-        )
-        pairs = [(row[0], row[1]) for row in result.fetchall()]
-        await update_meta_weights(user_id, pairs, session)
+        result = await train_user(user_id, session)
         await session.commit()
-        return {"status": "ok", "user_id": str(user_id)}
+    return {"user_id": str(user_id), **{k: v for k, v in result.items() if k != "weights"}}
 
 
 @celery_app.task(name="app.workers.tasks.update_interest_graph.apply_decay_all_users")

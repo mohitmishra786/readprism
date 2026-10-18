@@ -31,13 +31,14 @@
 <h1>ReadPrism Digest</h1>
 <p style="color:#6b7280;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</p>
 
-{% for section_name in ["lead", "creator", "deep_reads", "discovery"] %}
+{% for section_name in ["lead", "creator", "deep_reads", "more", "discovery"] %}
   {% set items = sections.get(section_name, []) %}
   {% if items %}
     <h2>
       {% if section_name == "lead" %}Top Reads
       {% elif section_name == "creator" %}From Your Creators
       {% elif section_name == "deep_reads" %}Deep Reads
+      {% elif section_name == "more" %}More From Your Feeds
       {% else %}Discover
       {% endif %}
     </h2>
@@ -55,7 +56,7 @@
           {% if content.reading_time_minutes %}{{ content.reading_time_minutes }} min read{% endif %}
         </div>
         {% if content.summary_brief %}
-          <div class="item-brief">{{ content.summary_brief }}</div>
+          <div class="item-brief">{% if content.summary_source == "llm" %}<span style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px">AI summary</span>{% endif %}{{ content.summary_brief }}</div>
         {% endif %}
         {% if item_data.why_ranked %}
           <div class="why">Ranked because: {{ item_data.why_ranked | join(", ") }}</div>

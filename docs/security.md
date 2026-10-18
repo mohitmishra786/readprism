@@ -25,10 +25,19 @@ Not user URLs, and therefore not on this path: Meilisearch, Notion, Readwise,
 the iTunes Search API host, and the Browserless CDP endpoint. Those hosts come
 from operator configuration.
 
-Browserless still performs its own DNS. Before `page.goto`, the target is
-validated, and a route hook aborts any request that fails `validate_public_url`.
-A DNS rebind between that check and the browser's connect is a residual risk
-(ADR 0003).
+`safe_fetch` connects to the IP it validated (original `Host` header and TLS
+SNI, so certificates are still checked against the real name). A DNS answer
+that changes between the check and the connect cannot redirect the request
+(#165).
+
+Browserless (rendered extraction, `full` profile) resolves DNS itself, so it
+is isolated at the network level (#127): it sits only on the internal
+`render_net` (no route to the database, Redis or the API), publishes no port,
+and Chrome is forced through `egress-proxy` (Squid), which denies loopback,
+RFC 1918, link-local/metadata, CGNAT and other non-global destinations by the
+address *it* resolved. The URL check before `page.goto` and the CDP request
+guard stay as defense in depth. On the hosted service rendering is off unless
+`BROWSERLESS_HOSTED_ALLOWED=true`.
 
 ## Scraping
 
