@@ -20,15 +20,19 @@ def update_interest_graph_for_interaction(self, interaction_id: str) -> dict:
 
 
 async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
-    from sqlalchemy import func, select
+    from sqlalchemy import func, or_, select
 
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem, UserContentInteraction
     from app.services.interest_graph.updater import update_from_interaction
 
     async with AsyncSessionLocal() as session:
+        # Row lock: concurrent flush tasks for the same read must not both see
+        # the old `graph_signal_applied` and apply the same delta twice (#105).
         result = await session.execute(
-            select(UserContentInteraction).where(UserContentInteraction.id == interaction_id)
+            select(UserContentInteraction)
+            .where(UserContentInteraction.id == interaction_id)
+            .with_for_update()
         )
         interaction = result.scalar_one_or_none()
         if not interaction:
@@ -41,19 +45,26 @@ async def _update_graph_async(interaction_id: uuid.UUID) -> dict:
         if not content:
             return {"status": "content_not_found"}
 
-        await update_from_interaction(interaction, content, session)
+        changed = await update_from_interaction(interaction, content, session)
 
-        # Check if user has enough interactions to update meta weights
+        # Count only interactions that carry a real signal. Rows created by
+        # PRS precompute or digest surfacing (score only, never opened) used
+        # to satisfy the threshold before the user had read anything (#105).
         count_result = await session.execute(
             select(func.count(UserContentInteraction.id)).where(
-                UserContentInteraction.user_id == interaction.user_id
+                UserContentInteraction.user_id == interaction.user_id,
+                or_(
+                    UserContentInteraction.opened_at.isnot(None),
+                    UserContentInteraction.explicit_rating.isnot(None),
+                    UserContentInteraction.saved.is_(True),
+                ),
             )
         )
         count = count_result.scalar() or 0
 
         await session.commit()
 
-        if count > MIN_INTERACTIONS_FOR_META_UPDATE:
+        if changed and count > MIN_INTERACTIONS_FOR_META_UPDATE:
             await _enqueue_meta_weights_update(interaction.user_id)
 
         return {"status": "ok", "interaction_id": str(interaction_id)}

@@ -145,6 +145,10 @@ class UserContentInteraction(Base):
     saved_read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     shared: Mapped[bool] = mapped_column(Boolean, default=False)
     skipped: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Signal strength last applied to the interest graph and trust weights for
+    # this interaction. Telemetry is flushed many times per read; each graph
+    # update applies only the change since this value (#105).
+    graph_signal_applied: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
