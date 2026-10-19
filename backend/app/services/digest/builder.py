@@ -5,9 +5,10 @@ import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.digest import Digest, DigestFeedbackPrompt, DigestImpression, DigestItem
 from app.models.user import User
@@ -120,6 +121,45 @@ async def _quiet_day_fallback(
     return [item for item in result.scalars().all() if item.rankable]
 
 
+async def _candidates(
+    user: User, source_ids: list, feed_ids: list, cutoff: datetime, session: AsyncSession
+) -> list[ContentItem]:
+    """The items a digest build ranks (#313): the newest rankable items in the
+    window, at most DIGEST_PER_SOURCE_CAP per feed, up to DIGEST_CANDIDATE_LIMIT,
+    newest first. Without an ORDER BY the old LIMIT 200 handed the ranker an
+    arbitrary subset, and every feed past it never competed."""
+    from app.services.feed_identity import from_user_feeds, visible_item_filter
+
+    settings_ = get_settings()
+    cap = settings_.digest_per_source_cap
+    newest_per_feed = (
+        select(
+            ContentItem.id,
+            func.row_number()
+            .over(
+                partition_by=func.coalesce(ContentItem.feed_id, ContentItem.source_id),
+                order_by=ContentItem.fetched_at.desc(),
+            )
+            .label("rn"),
+        )
+        .where(
+            from_user_feeds(source_ids, feed_ids),
+            ContentItem.fetched_at >= cutoff,
+            visible_item_filter(user.id),
+            ContentItem.rankable.is_(True),
+        )
+        .subquery()
+    )
+    result = await session.execute(
+        select(ContentItem)
+        .join(newest_per_feed, newest_per_feed.c.id == ContentItem.id)
+        .where(newest_per_feed.c.rn <= cap if cap > 0 else true())
+        .order_by(ContentItem.fetched_at.desc(), ContentItem.id)
+        .limit(settings_.digest_candidate_limit)
+    )
+    return list(result.scalars().all())
+
+
 async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Determine time window
     if user.digest_frequency == "weekly":
@@ -132,26 +172,14 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     # it first, so filtering by the user's own source ids missed it.
     from app.services.feed_identity import (
         equivalent_source_ids,
-        from_user_feeds,
         user_feed_ids,
-        visible_item_filter,
     )
 
     source_ids = await equivalent_source_ids(session, user.id)
     feed_ids = await user_feed_ids(session, user.id)
 
-    # Fetch content items from user's sources
     if source_ids or feed_ids:
-        content_result = await session.execute(
-            select(ContentItem)
-            .where(
-                from_user_feeds(source_ids, feed_ids),
-                ContentItem.fetched_at >= cutoff,
-                visible_item_filter(user.id),
-            )
-            .limit(200)
-        )
-        content_items = [item for item in content_result.scalars().all() if item.rankable]
+        content_items = await _candidates(user, source_ids, feed_ids, cutoff, session)
     else:
         content_items = []
 
@@ -165,7 +193,6 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             if item.language is None or str(item.language).lower() in wanted_langs
         ]
 
-    from app.config import get_settings
     from app.services.ingestion.backfill import cap_per_source
 
     content_items = cap_per_source(content_items, get_settings().digest_per_source_cap)

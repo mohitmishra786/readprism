@@ -84,31 +84,65 @@ def cluster_stories(
     """Greedy clustering: first-encountered item seeds a story; every later
     item joins the first story it is similar to (embedding if both have
     vectors, else title overlap). Returns indexes into `items`.
+
+    Vectorised (#313): the embedding comparison against every story seed is
+    one matrix product instead of a pure-Python cosine per pair, which took
+    ~12 s per digest build at 1,000 candidates. Same result as comparing
+    seeds one by one in story order.
     """
+    import numpy as np
+
+    vectors: list = []
+    dim = None
+    for item in items:
+        raw = getattr(item, "embedding", None)
+        if raw is None:
+            vectors.append(None)
+            continue
+        vec = np.asarray(raw, dtype=np.float64)
+        norm = float(np.linalg.norm(vec))
+        # A zero vector still counts as "has a vector" (no title fallback)
+        # but can never reach the threshold, as before.
+        vectors.append(vec / norm if norm > 1e-8 else np.zeros_like(vec))
+        dim = dim or vec.shape[0]
+
     clusters: list[list[int]] = []
+    # Story seeds that have vectors: one row each, in story order.
+    seed_rows = np.zeros((len(items), dim or 1), dtype=np.float64)
+    seed_clusters: list[int] = []  # cluster index of each seed row
+    text_seeds: list[int] = []  # cluster indexes whose seed has no vector
+
     for index, item in enumerate(items):
-        placed = False
-        for cluster in clusters:
-            seed = items[cluster[0]]
-            seed_vec = getattr(seed, "embedding", None)
-            item_vec = getattr(item, "embedding", None)
-            similar = False
-            if seed_vec is not None and item_vec is not None:
-                similar = cosine(list(seed_vec), list(item_vec)) >= embed_threshold
-            elif seed_vec is None and item_vec is None:
-                # Title overlap is ONLY the both-without-vectors path: with
-                # one vector present the comparison never happened, and a
-                # false-positive cluster silently drops a distinct article
-                # (CodeRabbit).
-                similar = (
+        vec = vectors[index]
+        target = None
+        if vec is not None:
+            # Only vector seeds can match a vector item.
+            if seed_clusters and vec.shape[0] == seed_rows.shape[1]:
+                sims = seed_rows[: len(seed_clusters)] @ vec
+                hits = np.nonzero(sims >= embed_threshold)[0]
+                if hits.size:
+                    target = seed_clusters[int(hits[0])]
+        else:
+            # Title overlap is ONLY the both-without-vectors path: with one
+            # vector present the comparison never happened, and a
+            # false-positive cluster silently drops a distinct article
+            # (CodeRabbit).
+            for cluster_index in text_seeds:
+                seed = items[clusters[cluster_index][0]]
+                if (
                     title_overlap(seed.title, item.title) >= title_threshold
                     and len(title_tokens(seed.title)) >= MIN_TITLE_TOKENS
                     and len(title_tokens(item.title)) >= MIN_TITLE_TOKENS
-                )
-            if similar:
-                cluster.append(index)
-                placed = True
-                break
-        if not placed:
-            clusters.append([index])
+                ):
+                    target = cluster_index
+                    break
+        if target is not None:
+            clusters[target].append(index)
+            continue
+        clusters.append([index])
+        if vec is not None and vec.shape[0] == seed_rows.shape[1]:
+            seed_rows[len(seed_clusters)] = vec
+            seed_clusters.append(len(clusters) - 1)
+        elif vec is None:
+            text_seeds.append(len(clusters) - 1)
     return clusters
