@@ -358,6 +358,13 @@ export const api = {
 
   digest: {
     latest: () => request<Digest>('/digest/latest'),
+    /** Your digest vs newest-first over the last 7 days (#237). */
+    vsNewest: () =>
+      request<{
+        available: boolean;
+        examples: { content_id: string; title: string; digest_date: string; your_position: number; newest_first_position: number }[];
+        interleaving: { digests: number; prs_wins: number; newest_wins: number; ties: number } | null;
+      }>('/digest/vs-newest'),
     /** Topics with a burst of coverage across sources this week (#218). */
     emerging: () =>
       request<{ topic: string; recent_sources: number; baseline_mean: number; z: number }[]>(

@@ -425,6 +425,18 @@ async def unsubscribe_weekly_post(
     return {"status": "unsubscribed"}
 
 
+@router.get("/vs-newest")
+async def digest_vs_newest(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Your digest vs newest-first over the last 7 days (#237). Only the
+    signed-in reader's own digests and reads; nothing from other users."""
+    from app.services.ranking.interleaving import user_comparison
+
+    return await user_comparison(session, current_user.id)
+
+
 @router.get("/latest", response_model=DigestRead)
 async def get_latest_digest(
     session: AsyncSession = Depends(get_db),
