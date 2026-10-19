@@ -146,12 +146,9 @@ export default function ReaderPage() {
   const progressPct = Math.round(snapshot.readingProgressPct * 100);
 
   // Scoped reading-surface styles per theme + font step (UX-05).
+  // Colours come from the surface class (#316); the default follows the OS.
   const surface =
-    theme === "dark"
-      ? "bg-stone-900 text-stone-100"
-      : theme === "sepia"
-        ? "bg-[#f4ecd8] text-stone-800"
-        : "";
+    theme === "dark" ? "reader-surface-dark" : theme === "sepia" ? "reader-surface-sepia" : "";
   const fontSizes = ["text-[15px]", "text-[17px]", "text-[19px]"];
 
   // Prepare the article body. full_text may be HTML or plain text; wrap plain
@@ -216,14 +213,14 @@ export default function ReaderPage() {
 
       <button
         onClick={() => router.back()}
-        className="mb-4 text-sm text-stone-500 transition-colors hover:text-stone-900"
+        className="mb-4 text-sm text-stone-500 transition-colors hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
       >
         ← Back
       </button>
 
       {/* Typography / theme controls (UX-05) */}
       <div className="mb-6 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-stone-400">Reading surface:</span>
+        <span className="text-stone-500 dark:text-stone-400">Reading surface:</span>
         <button onClick={() => adjustFont(fontStep - 1)} className="btn-secondary px-2 py-1" aria-label="Smaller text">
           A−
         </button>
@@ -233,7 +230,7 @@ export default function ReaderPage() {
         <button onClick={cycleTheme} className="btn-secondary px-2.5 py-1 capitalize">
           {theme}
         </button>
-        <span className="ml-auto hidden text-stone-400 sm:inline">
+        <span className="ml-auto hidden text-stone-500 sm:inline dark:text-stone-400">
           j/k next·prev · o original · s save · u 👍 · d 👎
         </span>
       </div>
@@ -244,9 +241,9 @@ export default function ReaderPage() {
           {item.title}
         </h1>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-stone-500">
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-stone-500 dark:text-stone-400">
           {item.author && (
-            <span className="font-medium text-stone-700">{item.author}</span>
+            <span className="font-medium text-stone-700 dark:text-stone-300">{item.author}</span>
           )}
           {item.reading_time_minutes && (
             <>
@@ -294,7 +291,7 @@ export default function ReaderPage() {
           href={item.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-medium text-prism-600 hover:text-prism-700"
+          className="text-sm font-medium text-prism-600 hover:text-prism-700 dark:text-prism-300 dark:hover:text-prism-200"
         >
           View original at {safeHostname(item.url)} →
         </a>

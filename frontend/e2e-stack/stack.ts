@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type BrowserContext, type Page } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 
@@ -22,9 +22,11 @@ function article(): string {
   return Array.from({ length: 60 }, (_, i) => `Paragraph ${i + 1}. ${para}`).join("\n\n");
 }
 
-// One account per run: registration is rate-limited (5/min per IP), so a
-// fresh account per test would trip it on repeated local runs.
+// One account and one login per run: registration and login are rate-limited
+// per IP, so a fresh login per test trips the limiter. Later tests reuse the
+// first login's cookies.
 let account: { email: string; password: string } | null = null;
+let sessionCookies: Awaited<ReturnType<BrowserContext["cookies"]>> | null = null;
 
 export async function signIn(page: Page): Promise<string> {
   if (!account) {
@@ -32,12 +34,17 @@ export async function signIn(page: Page): Promise<string> {
     const reg = await page.request.post(`${API}/api/v1/auth/register`, { data: account });
     expect(reg.ok(), await reg.text()).toBeTruthy();
   }
+  if (sessionCookies) {
+    await page.context().addCookies(sessionCookies);
+    return account.email;
+  }
   // Browser session: httpOnly cookies on the API host (#103).
   const login = await page.request.post(`${API}/api/v1/auth/login`, {
     data: account,
     headers: { "X-Auth-Mode": "cookie" },
   });
   expect(login.ok(), await login.text()).toBeTruthy();
+  sessionCookies = await page.context().cookies();
   return account.email;
 }
 

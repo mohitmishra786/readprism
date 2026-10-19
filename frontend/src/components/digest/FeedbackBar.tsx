@@ -94,7 +94,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
         className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
           saved
             ? "border-prism-200 bg-prism-50 text-prism-700"
-            : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
         }`}
       >
         {saved ? "✓ Saved" : "Save"}
@@ -108,7 +108,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
             className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
               quickAdjusted === "boost"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-stone-200 text-stone-600 hover:bg-stone-50"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
             }`}
           >
             More like this
@@ -119,7 +119,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
             className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
               quickAdjusted === "suppress"
                 ? "border-rose-200 bg-rose-50 text-rose-700"
-                : "border-stone-200 text-stone-600 hover:bg-stone-50"
+                : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
             }`}
           >
             Less like this
@@ -129,7 +129,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
 
       {showReasons && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-stone-500">Why?</span>
+          <span className="text-xs text-stone-500 dark:text-stone-400">Why?</span>
           {REASONS.map((r) => (
             <button
               key={r.value}
