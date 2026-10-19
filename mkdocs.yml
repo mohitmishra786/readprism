@@ -16,6 +16,7 @@ nav:
   - Security model: security.md
   - Privacy: PRIVACY.md
   - Benchmarks: benchmarks.md
+  - Email client check: email-clients.md
   - Roadmap & progress: PROGRESS.md
   - ADRs: adr/index.md
 markdown_extensions:

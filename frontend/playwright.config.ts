@@ -18,6 +18,10 @@ export default defineConfig({
     // off, final opacity 1), so scanning is deterministic.
     reducedMotion: "reduce",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    // The digest email in WebKit too: Apple Mail renders with it (#217).
+    { name: "webkit-email", testMatch: /email-rendering/, use: { ...devices["Desktop Safari"] } },
+  ],
   reporter: [["list"]],
 });
