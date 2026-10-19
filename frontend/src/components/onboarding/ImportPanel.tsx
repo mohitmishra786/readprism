@@ -11,6 +11,21 @@ export function kindOf(fileName: string): ImportKind {
   return name.endsWith(".opml") || name.endsWith(".xml") ? "feeds" : "saved";
 }
 
+export function progressLabel(done: number, total: number): string {
+  return `Importing ${done.toLocaleString("en-US")} / ${total.toLocaleString("en-US")} feeds…`;
+}
+
+/** Poll a background import until it finishes; returns feeds created (#202). */
+async function waitForJob(id: string, onProgress: (label: string) => void): Promise<number> {
+  for (;;) {
+    const job = await api.sources.importJob(id);
+    onProgress(progressLabel(job.done, job.total));
+    if (job.status === "done") return job.created;
+    if (job.status === "failed") throw new Error(job.error || "Import stopped part-way");
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
 export function summarize(feeds: number, saved: number): string {
   const parts = [];
   if (feeds) parts.push(`${feeds} feed${feeds === 1 ? "" : "s"}`);
@@ -23,6 +38,7 @@ export function summarize(feeds: number, saved: number): string {
 // never fatal.
 export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved: number) => void }) {
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState("");
   const [dragging, setDragging] = useState(false);
   const [totals, setTotals] = useState({ feeds: 0, saved: 0 });
   const [errors, setErrors] = useState<{ file: string; url: string; error: string }[]>([]);
@@ -37,8 +53,12 @@ export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved
         const kind = kindOf(file.name);
         const result: ImportResult =
           kind === "feeds" ? await api.sources.importFeeds(file) : await api.sources.importSaved(file);
-        if (kind === "feeds") feeds += result.created;
-        else saved += result.created;
+        if (kind === "feeds") {
+          // Large files import in the background; follow the job (#202).
+          feeds += result.queued && result.job_id ? await waitForJob(result.job_id, setProgress) : result.created;
+        } else {
+          saved += result.created;
+        }
         setErrors((prev) => [
           ...prev,
           ...result.errors.map((e) => ({ file: file.name, url: e.url, error: e.error })),
@@ -48,6 +68,7 @@ export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved
       }
     }
     setTotals((t) => ({ feeds: t.feeds + feeds, saved: t.saved + saved }));
+    setProgress("");
     setBusy(false);
     onImported?.(feeds, saved);
   };
@@ -70,7 +91,7 @@ export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved
         }`}
       >
         <span className="font-medium">
-          {busy ? "Importing…" : "Drop OPML, Pocket or CSV files here, or click to choose"}
+          {busy ? progress || "Importing…" : "Drop OPML, Pocket or CSV files here, or click to choose"}
         </span>
         <input
           type="file"

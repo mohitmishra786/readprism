@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kindOf, summarize } from "../src/components/onboarding/ImportPanel";
+import { kindOf, progressLabel, summarize } from "../src/components/onboarding/ImportPanel";
 
 describe("onboarding import (#150)", () => {
   it("routes files to the right import", () => {
@@ -12,5 +12,8 @@ describe("onboarding import (#150)", () => {
     expect(summarize(41, 120)).toBe("Imported 41 feeds, 120 saved articles.");
     expect(summarize(1, 0)).toBe("Imported 1 feed.");
     expect(summarize(0, 0)).toBe("Nothing new to import.");
+  });
+  it("shows background import progress (#202)", () => {
+    expect(progressLabel(1200, 2000)).toBe("Importing 1,200 / 2,000 feeds…");
   });
 });

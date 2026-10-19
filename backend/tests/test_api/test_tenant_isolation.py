@@ -49,6 +49,7 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("PUT", "/api/v1/sources/{source_id}", {"name": "pwned"}),
     ("DELETE", "/api/v1/sources/{source_id}", None),
     ("POST", "/api/v1/sources/{source_id}/fix", None),
+    ("GET", "/api/v1/sources/import-jobs/{import_job_id}", None),
     ("DELETE", "/api/v1/tokens/{token_id}", None),
 ]
 
@@ -174,8 +175,14 @@ async def tenants(client: AsyncClient, db_session):
     node = InterestNode(user_id=a.id, topic_label=MARK, weight=0.9)
     db_session.add_all([prompt, token, suggestion, node])
     await db_session.commit()
+    from app.workers.tasks.import_jobs import create_job
+
+    import_job_id = await create_job(
+        a.id, [{"url": f"https://{MARK.lower()}.example.org/f", "title": MARK}]
+    )
 
     ids = {
+        "import_job_id": import_job_id,
         "private_content_id": private.id,
         "creator_id": creator.id,
         "digest_id": digest.id,

@@ -407,6 +407,24 @@ async def import_opml_tagged(
     plan.feeds = [f for f in plan.feeds if f.url.startswith(("http://", "https://"))]
     plan.created = len(plan.feeds)
     await _enforce_capacity(session, current_user, [feed.url for feed in plan.feeds])
+    if plan.queued:
+        # Large file (#202): insert in a background job; poll its progress.
+        from app.workers.tasks.import_jobs import create_job, run_opml_import
+
+        job_id = await create_job(
+            current_user.id,
+            [{"url": f.url, "title": f.title, "tags": f.tags} for f in plan.feeds],
+        )
+        run_opml_import.delay(job_id)
+        return {
+            "created": 0,
+            "skipped": plan.skipped,
+            "queued": True,
+            "job_id": job_id,
+            "total": len(plan.feeds),
+            "progress": 0.0,
+            "errors": errors,
+        }
     for feed in plan.feeds:
         session.add(
             Source(
@@ -425,9 +443,33 @@ async def import_opml_tagged(
     return {
         "created": plan.created,
         "skipped": plan.skipped,
-        "queued": plan.queued,
-        "progress": plan.progress,
+        "queued": False,
+        "progress": 1.0,
         "errors": errors,
+    }
+
+
+@router.get("/import-jobs/{job_id}", response_model=dict)
+async def import_job_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Progress of a background OPML import (#202). Owner only."""
+    from app.utils.cache import cache_get
+    from app.workers.tasks.import_jobs import job_key
+
+    state = await cache_get(job_key(job_id))
+    if not state or state.get("user_id") != str(current_user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import job not found")
+    total = max(int(state.get("total", 0)), 1)
+    return {
+        "job_id": job_id,
+        "status": state.get("status"),
+        "total": state.get("total", 0),
+        "done": state.get("done", 0),
+        "created": state.get("created", 0),
+        "progress": round(min(int(state.get("done", 0)) / total, 1.0), 3),
+        "error": state.get("error"),
     }
 
 

@@ -238,6 +238,11 @@ export const api = {
       form.append('file', file);
       return request<ImportResult>('/sources/import-opml-v2', { method: 'POST', body: form });
     },
+    /** Progress of a background OPML import (#202). */
+    importJob: (id: string) =>
+      request<{ status: string; total: number; done: number; created: number; progress: number; error?: string | null }>(
+        `/sources/import-jobs/${id}`,
+      ),
     /** Saved articles: Pocket HTML, CSV, or starred OPML; format auto-detected (#150). */
     importSaved: (file: File, kind = 'auto') => {
       const form = new FormData();
