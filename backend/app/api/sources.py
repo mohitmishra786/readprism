@@ -398,6 +398,14 @@ async def import_opml_tagged(
 
     existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
     plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
+    # A bad outline is reported, not fatal (#150).
+    errors = [
+        {"url": feed.url[:200], "error": "not an http(s) feed URL"}
+        for feed in plan.feeds
+        if not feed.url.startswith(("http://", "https://"))
+    ]
+    plan.feeds = [f for f in plan.feeds if f.url.startswith(("http://", "https://"))]
+    plan.created = len(plan.feeds)
     await _enforce_capacity(session, current_user, [feed.url for feed in plan.feeds])
     for feed in plan.feeds:
         session.add(
@@ -419,6 +427,7 @@ async def import_opml_tagged(
         "skipped": plan.skipped,
         "queued": plan.queued,
         "progress": plan.progress,
+        "errors": errors,
     }
 
 
@@ -444,59 +453,96 @@ async def export_opml_file(
 
 @router.post("/import-saved", response_model=dict)
 async def import_saved(
-    kind: str,
+    kind: str = "auto",
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    """Import saved articles: starred OPML, Pocket HTML, or CSV (#150).
+
+    `kind` is "opml", "pocket", one of the CSV shapes, or "auto" (from the
+    file name and contents). Each row is imported on its own: a bad row is
+    reported in `errors` and the rest still import.
+    """
     from app.models.content import UserContentInteraction
-    from app.services.ingestion.importers import import_csv, import_opml_starred
+    from app.services.content_lookup import get_or_create_private_item
+    from app.services.ingestion import importers
 
     raw = (await file.read()).decode("utf-8", errors="replace")
+    name = (file.filename or "").lower()
+    if kind == "auto":
+        if name.endswith((".html", ".htm")) or "<a " in raw[:5000].lower():
+            kind = "pocket"
+        elif name.endswith((".opml", ".xml")) or raw.lstrip().startswith("<?xml"):
+            kind = "opml"
+        else:
+            kind = importers.detect_csv_kind(raw)
     if kind == "opml":
-        imported = import_opml_starred(raw)
+        imported = importers.import_opml_starred(raw)
+    elif kind == "pocket":
+        imported = importers.import_pocket_html(raw)
+    elif kind in importers.CSV_KINDS:
+        imported = importers.import_csv(raw, kind)
     else:
-        try:
-            imported = import_csv(raw, kind)
-        except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    from app.services.content_lookup import get_or_create_private_item
-
-    created = 0
-    for item in imported:
-        if not item.url:
-            continue
-        # Reuse the public row or this user's own row; another user's private
-        # import of the same URL must neither block nor be revealed (#101).
-        row, is_new = await get_or_create_private_item(
-            session,
-            current_user.id,
-            item.url,
-            title=item.title,
-            origin="import",
-            full_text=item.note,
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"unknown format {kind}"
         )
-        existing_ix = (
-            await session.execute(
-                select(UserContentInteraction).where(
-                    UserContentInteraction.user_id == current_user.id,
-                    UserContentInteraction.content_item_id == row.id,
+
+    created = existing = 0
+    errors: list[dict] = []
+    for index, item in enumerate(imported, start=1):
+        if not item.url.startswith(("http://", "https://")):
+            errors.append({"row": index, "url": item.url[:200], "error": "not an http(s) URL"})
+            continue
+        try:
+            async with session.begin_nested():  # one bad row can't undo the others
+                # Reuse the public row or this user's own row; another user's
+                # private import of the same URL must neither block nor be
+                # revealed (#101).
+                row, is_new = await get_or_create_private_item(
+                    session,
+                    current_user.id,
+                    item.url,
+                    title=item.title[:500],
+                    origin="import",
+                    full_text=item.note,
                 )
-            )
-        ).scalar_one_or_none()
-        if existing_ix is None:
-            session.add(
-                UserContentInteraction(
-                    user_id=current_user.id,
-                    content_item_id=row.id,
-                    saved=True,
-                    explicit_rating=1,
-                )
-            )
+                ix = (
+                    await session.execute(
+                        select(UserContentInteraction).where(
+                            UserContentInteraction.user_id == current_user.id,
+                            UserContentInteraction.content_item_id == row.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if ix is None:
+                    session.add(
+                        UserContentInteraction(
+                            user_id=current_user.id,
+                            content_item_id=row.id,
+                            saved=True,
+                            saved_at=datetime.now(UTC),
+                            explicit_rating=1,
+                            tags=item.tags or None,
+                        )
+                    )
+                elif item.tags:
+                    ix.tags = sorted(set(ix.tags or []) | set(item.tags))
+        except Exception as e:
+            errors.append({"row": index, "url": item.url[:200], "error": str(e)[:200]})
+            continue
         if is_new:
             created += 1
+        else:
+            existing += 1
     await session.flush()
-    return {"created": created, "origin": "import"}
+    return {
+        "kind": kind,
+        "origin": "import",
+        "created": created,
+        "already_had": existing,
+        "errors": errors,
+    }
 
 
 @router.post("/{source_id}/fix")

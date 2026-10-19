@@ -1,6 +1,7 @@
 import { clearSession, getCsrfToken, setCsrfToken } from './auth';
 import type {
   BillingState,
+  ImportResult,
   StarterPack,
   ContentItem,
   ContentItemFull,
@@ -231,6 +232,21 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    /** Feed subscriptions from OPML (Feedly/Inoreader); folders become tags (#150). */
+    importFeeds: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return request<ImportResult>('/sources/import-opml-v2', { method: 'POST', body: form });
+    },
+    /** Saved articles: Pocket HTML, CSV, or starred OPML; format auto-detected (#150). */
+    importSaved: (file: File, kind = 'auto') => {
+      const form = new FormData();
+      form.append('file', file);
+      return request<ImportResult>(`/sources/import-saved?kind=${encodeURIComponent(kind)}`, {
+        method: 'POST',
+        body: form,
+      });
+    },
     starterPacks: (topics: string[] = []) =>
       request<StarterPack[]>(
         `/sources/starter-packs${topics.length ? `?topics=${encodeURIComponent(topics.join(","))}` : ""}`,

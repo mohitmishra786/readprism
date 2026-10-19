@@ -181,3 +181,14 @@ export interface StarterPack {
   /** How many of the pack's feeds the user already follows. */
   subscribed: number;
 }
+
+/** Result of a feed or saved-article import (#150, #202). */
+export interface ImportResult {
+  kind?: string;
+  created: number;
+  skipped?: number;
+  already_had?: number;
+  queued?: boolean;
+  job_id?: string;
+  errors: { row?: number; url: string; error: string }[];
+}

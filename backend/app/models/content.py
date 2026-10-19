@@ -176,6 +176,8 @@ class UserContentInteraction(Base):
     # this interaction. Telemetry is flushed many times per read; each graph
     # update applies only the change since this value (#105).
     graph_signal_applied: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # The user's own tags on a saved item (Pocket export, generic CSV; #150).
+    tags: Mapped[list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

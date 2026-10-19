@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { InterestInput } from "./InterestInput";
 import { SampleArticles, type SampleRating } from "./SampleArticles";
 import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
+import { ImportPanel } from "./ImportPanel";
 import { api } from "../../lib/api";
 
 // Steps are addressed by name so new steps don't shift every index.
@@ -24,6 +25,7 @@ export function OnboardingWizard() {
   const current: StepName = STEPS[step];
   const [packIds, setPackIds] = useState<string[]>([]);
   const [subscribing, setSubscribing] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
   const [interestText, setInterestText] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
@@ -226,10 +228,12 @@ export function OnboardingWizard() {
       {current === "Add Sources" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
-            Add websites or RSS feeds you follow.{" "}
-            <strong>Optional</strong> — we’ll seed starter sources from your
-            interests, and you can add your own anytime.
+            Coming from another reader? Import your feeds and saved articles in
+            one go. <strong>Optional</strong>: you can also add sites one by one below.
           </p>
+          <div style={{ marginBottom: 20 }}>
+            <ImportPanel onImported={(feeds, saved) => setImportedCount((n) => n + feeds + saved)} />
+          </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input
               type="url"
@@ -322,7 +326,7 @@ export function OnboardingWizard() {
                 ? "Subscribing…"
                 : /* Optional steps read as "Skip" when nothing was chosen */
                   (current === "Starter Packs" && packIds.length === 0) ||
-                    (current === "Add Sources" && sources.length === 0) ||
+                    (current === "Add Sources" && sources.length === 0 && importedCount === 0) ||
                     (current === "Add Creators" && !creatorInput)
                   ? "Skip for now"
                   : "Continue"}
