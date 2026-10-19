@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { hasSession } from "../lib/api";
 
-// Asset URLs — kept exactly per the design spec (atmospheric dark imagery that
-// the spotlight reveals). Swap here to retheme without touching the mechanic.
-const BG_IMAGE_1 =
-  "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_195923_b0ba8ace-1d1d-4f2c-9a28-1ab84b330680.png&w=1280&q=85";
-const BG_IMAGE_2 =
-  "https://images.higgs.ai/?default=1&output=webp&url=https%3A%2F%2Fd8j0ntlcm91z4.cloudfront.net%2Fuser_38xzZboKViGWJOttwIXH07lWA1P%2Fhf_20260609_201152_bba90a12-bf12-459f-91f0-51f237dbaf3b.png&w=1280&q=85";
+// Atmospheric hero imagery the spotlight reveals, served from this origin:
+// the hotlinked image proxy set a third-party cookie, told it about every
+// visitor, and sent the 4.3 MB original PNG for image 1 (WebP, 99 KB now).
+// Swap here to retheme without touching the mechanic.
+const BG_IMAGE_1 = "/landing/hero-1.webp";
+const BG_IMAGE_2 = "/landing/hero-2.webp";
 
 // Radius of the soft circular mask that reveals the second image.
 const SPOTLIGHT_R = 260;
@@ -109,7 +109,7 @@ function RevealLayer({
       <div
         ref={revealRef}
         className="absolute inset-0 bg-center bg-cover bg-no-repeat z-30 pointer-events-none"
-        style={{ backgroundImage: `url(${image})` }}
+        style={{ backgroundImage: image ? `url(${image})` : "none" }}
       />
     </>
   );
@@ -126,6 +126,9 @@ export default function RootPage() {
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [staticReveal, setStaticReveal] = useState(false);
+  // The spotlight image is only visible under the cursor (or fully on touch /
+  // reduced motion): load it when it can first be seen, not with the page.
+  const [revealReady, setRevealReady] = useState(false);
 
   useEffect(() => {
     hasSession().then((signedIn) => {
@@ -150,6 +153,7 @@ export default function RootPage() {
     const onMove = (e: MouseEvent) => {
       mouse.current.x = e.clientX;
       mouse.current.y = e.clientY;
+      setRevealReady(true);
     };
     window.addEventListener("mousemove", onMove);
 
@@ -170,7 +174,7 @@ export default function RootPage() {
   return (
     <div
       className="min-h-screen bg-white tracking-[-0.02em]"
-      style={{ fontFamily: "'Inter', sans-serif" }}
+      style={{ fontFamily: "var(--font-sans)" }}
     >
       {/* ===== Navigation (fixed, over hero) ===== */}
       <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between p-4 sm:p-5">
@@ -271,7 +275,7 @@ export default function RootPage() {
 
         {/* 2. Reveal layer (cursor spotlight) */}
         <RevealLayer
-          image={BG_IMAGE_2}
+          image={revealReady || staticReveal ? BG_IMAGE_2 : ""}
           cursorX={cursorPos.x}
           cursorY={cursorPos.y}
           revealAll={staticReveal}
