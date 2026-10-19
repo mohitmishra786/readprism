@@ -4,10 +4,22 @@ import { api } from "../../../lib/api";
 import type { Source } from "../../../lib/types";
 import { AddSourceForm } from "../../../components/sources/AddSourceForm";
 import { SourceList } from "../../../components/sources/SourceList";
+import { StarterPackPicker, subscribePacks } from "../../../components/sources/StarterPackPicker";
 
 export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPacks, setShowPacks] = useState(false);
+  const [packIds, setPackIds] = useState<string[]>([]);
+  const [packNote, setPackNote] = useState("");
+
+  const subscribeSelected = async () => {
+    setPackNote("Subscribing…");
+    const added = await subscribePacks(packIds);
+    setPackNote(`Added ${added} new source${added === 1 ? "" : "s"}.`);
+    setPackIds([]);
+    setSources(await api.sources.list());
+  };
 
   useEffect(() => {
     api.sources.list().then((s) => { setSources(s); setLoading(false); }).catch(() => setLoading(false));
@@ -23,6 +35,35 @@ export default function SourcesPage() {
         </p>
       </header>
       <AddSourceForm onAdded={(s) => setSources((prev) => [s, ...prev])} />
+      {/* Starter packs are reachable after onboarding too (#152). */}
+      <section className="mb-6">
+        <button
+          type="button"
+          onClick={() => setShowPacks((v) => !v)}
+          className="text-sm font-medium text-prism-700 underline"
+        >
+          {showPacks ? "Hide starter packs" : "Browse starter packs"}
+        </button>
+        {showPacks && (
+          <div className="mt-3">
+            <StarterPackPicker
+              selected={packIds}
+              onChange={setPackIds}
+              footer={
+                <button
+                  type="button"
+                  disabled={packIds.length === 0}
+                  onClick={subscribeSelected}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  Subscribe
+                </button>
+              }
+            />
+            {packNote && <p className="mt-2 text-sm text-stone-500">{packNote}</p>}
+          </div>
+        )}
+      </section>
       {loading ? (
         <div className="space-y-2.5">
           {[1, 2, 3].map((i) => (

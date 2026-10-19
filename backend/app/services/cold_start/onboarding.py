@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.source import Source
 from app.models.user import User
-from app.services.cold_start.starter_sources import get_starter_sources
 from app.services.interest_graph.graph import InterestGraphManager
 from app.services.summarization.groq_client import LLMSummarizer
 from app.utils.embeddings import get_embedding_service
@@ -96,6 +95,22 @@ async def process_onboarding(
 
 
 def _fallback_topic_extract(text: str) -> list[str]:
+    """Topics from interest text without an LLM: the curated taxonomy first
+    (#196), then any keyword phrases it did not recognise."""
+    from app.services.cold_start.taxonomy import MAX_TOPICS, expand
+
+    topics = expand(text)
+    known = {t.lower() for t in topics}
+    for phrase in _keyword_topics(text):
+        if len(topics) >= MAX_TOPICS:
+            break
+        if phrase not in known and not any(phrase in k or k in phrase for k in known):
+            topics.append(phrase)
+            known.add(phrase)
+    return topics
+
+
+def _keyword_topics(text: str) -> list[str]:
     """Extract topic phrases from interest text without an LLM.
 
     Captures both capitalized phrases (proper nouns) and significant lowercase
@@ -145,21 +160,41 @@ def _fallback_topic_extract(text: str) -> list[str]:
     return out
 
 
+SEED_FEEDS_MAX = 8
+
+
+def _seeds_from_packs(topics: list[str], max_sources: int = SEED_FEEDS_MAX) -> list[dict]:
+    """Feeds from the starter packs that match the user's topics (#152)."""
+    from app.services.cold_start.starter_packs import list_starter_packs
+    from app.services.cold_start.taxonomy import packs_for_topics
+
+    packs = {pack.id: pack for pack in list_starter_packs()}
+    seeds: list[dict] = []
+    seen: set[str] = set()
+    for pack_id in packs_for_topics(topics):
+        for feed in packs[pack_id].feeds if pack_id in packs else []:
+            if feed["url"] in seen:
+                continue
+            seen.add(feed["url"])
+            seeds.append(feed)
+            if len(seeds) >= max_sources:
+                return seeds
+    return seeds
+
+
 async def _seed_starter_sources(
     user_id: uuid.UUID, topics: list[str], session: AsyncSession
 ) -> int:
-    """Seed curated RSS sources matched to the user's interest topics.
-
-    Avoids duplicating any URL the user already added via OPML. Returns the
-    number of new sources created.
-    """
-    seeds = get_starter_sources(topics)
-    if not seeds:
-        return 0
-
-    # Don't double-add sources the user imported via OPML.
+    """Seed feeds from matching starter packs, only if the user has no
+    sources yet (they skipped the pack picker and imports). Returns the
+    number of new sources created."""
     existing_result = await session.execute(select(Source.url).where(Source.user_id == user_id))
     existing_urls = {row[0] for row in existing_result.fetchall()}
+    if existing_urls:
+        return 0  # they chose packs or imported feeds themselves
+    seeds = _seeds_from_packs(topics)
+    if not seeds:
+        return 0
 
     created = 0
     for src in seeds:

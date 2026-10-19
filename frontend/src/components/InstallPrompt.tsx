@@ -3,29 +3,16 @@
  * PWA install prompt (EC-01): captures beforeinstallprompt and shows a small
  * dismissible banner. No Web Push (optional per spec) — see PROGRESS.
  */
-import { useEffect, useState } from "react";
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import { useState } from "react";
+import { useInstallPrompt } from "../lib/useInstallPrompt";
 
 export function InstallPrompt() {
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [hidden, setHidden] = useState(false);
+  const { available, install } = useInstallPrompt();
+  const [hidden, setHidden] = useState(
+    () => typeof window !== "undefined" && window.localStorage.getItem("install-prompt-dismissed") === "1",
+  );
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.localStorage.getItem("install-prompt-dismissed") === "1") return;
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
-  }, []);
-
-  if (!deferred || hidden) return null;
+  if (!available || hidden) return null;
 
   const dismiss = () => {
     window.localStorage.setItem("install-prompt-dismissed", "1");
@@ -43,10 +30,7 @@ export function InstallPrompt() {
       </span>
       <button
         className="btn-primary px-3 py-1.5 text-xs"
-        onClick={async () => {
-          await deferred.prompt();
-          setDeferred(null);
-        }}
+        onClick={() => void install()}
       >
         Install
       </button>

@@ -124,3 +124,75 @@ async def test_adding_reddit_url_shows_unsupported_error(client: AsyncClient, te
     assert resp.status_code == 400
     assert "Unsupported: Reddit" in resp.json()["detail"]
     assert "13 Nov 2026" in resp.json()["detail"]
+
+
+async def _dead_source(client: AsyncClient, test_user_data: dict, db_session):
+    import uuid as _uuid
+
+    from sqlalchemy import select
+
+    from app.models.feed import Feed
+    from app.models.source import Source
+    from app.models.user import User
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+    old_feed = Feed(
+        key=f"https://moved.example/old-{_uuid.uuid4().hex[:4]}.xml", url="https://moved.example"
+    )
+    db_session.add(old_feed)
+    await db_session.flush()
+    src = Source(
+        user_id=user.id,
+        url="https://moved.example/blog",
+        feed_url=old_feed.key,
+        feed_id=old_feed.id,
+        is_active=False,
+        feed_status="dead",
+        fetch_error_count=9,
+        last_error="HTTP 410 Gone",
+        dead_notice_pending=True,
+    )
+    db_session.add(src)
+    await db_session.commit()
+    return headers, src, old_feed
+
+
+@pytest.mark.asyncio
+async def test_fix_moves_a_dead_source_to_its_new_feed(client, test_user_data, db_session):
+    """#212: the site now advertises a different feed; one click switches to it."""
+    from sqlalchemy import select
+
+    from app.models.feed import Feed
+    from app.models.source import Source
+
+    headers, src, old_feed = await _dead_source(client, test_user_data, db_session)
+    new_feed = "https://moved.example/feed.xml"
+    with (
+        patch("app.api.sources._autodiscover_feed", AsyncMock(return_value=new_feed)),
+        patch("app.workers.tasks.ingest_feeds.ingest_user_sources.delay") as fetch_now,
+    ):
+        resp = await client.post(f"/api/v1/sources/{src.id}/fix", headers=headers)
+
+    assert resp.status_code == 200 and resp.json() == {"status": "fixed", "feed_url": new_feed}
+    await db_session.refresh(src)
+    assert src.feed_url == new_feed and src.is_active and src.feed_status == "healthy"
+    assert src.fetch_error_count == 0 and src.last_error is None
+    assert not src.dead_notice_pending
+    attached = (await db_session.execute(select(Feed).where(Feed.id == src.feed_id))).scalar_one()
+    assert attached.key == new_feed and attached.id != old_feed.id
+    fetch_now.assert_called_once()
+    assert (await db_session.execute(select(Source).where(Source.id == src.id))).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_fix_without_a_new_feed_suggests_removal(client, test_user_data, db_session):
+    headers, src, old_feed = await _dead_source(client, test_user_data, db_session)
+    with patch("app.api.sources._autodiscover_feed", AsyncMock(return_value=old_feed.key)):
+        resp = await client.post(f"/api/v1/sources/{src.id}/fix", headers=headers)
+    assert resp.json()["status"] == "no_new_feed" and resp.json()["suggestion"] == "remove"
+    await db_session.refresh(src)
+    assert src.feed_status == "dead"

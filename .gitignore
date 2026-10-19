@@ -45,3 +45,10 @@ TODO.md
 # Celery beat runtime schedule (generated)
 backend/celerybeat-schedule
 backend/celerybeat-schedule.*
+
+# Coverage data (#189)
+.coverage
+.coverage.*
+coverage.json
+coverage.xml
+htmlcov/

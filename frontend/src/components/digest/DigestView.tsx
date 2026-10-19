@@ -119,6 +119,8 @@ export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
   }, {});
 
   const [isNewUser, setIsNewUser] = useState(false);
+  // Quiet-day catch-up (#142): the builder labels fallback items.
+  const quietDay = digest.items.some((i) => Boolean(i.signal_breakdown?.fallback_reason));
 
   useEffect(() => {
     if (userCreatedAt) {
@@ -145,6 +147,16 @@ export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
           · {digest.total_items} items
         </p>
       </header>
+
+      {quietDay && (
+        <div
+          role="status"
+          className="mb-6 rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-600"
+        >
+          Your sources were quiet today, so this edition catches you up on unread
+          items from the last two weeks.
+        </div>
+      )}
 
       {isNewUser && showFirstDigest && (
         <FirstDigestBanner onDismiss={() => setShowFirstDigest(false)} />

@@ -29,6 +29,26 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
     onUpdated(updated);
   };
 
+  const [fixNote, setFixNote] = useState<Record<string, string>>({});
+  const fix = async (source: Source) => {
+    setFixNote((n) => ({ ...n, [source.id]: "Looking for this site's feed…" }));
+    try {
+      const result = await api.sources.fix(source.id);
+      if (result.status === "fixed") {
+        setFixNote((n) => ({ ...n, [source.id]: `Fixed: now following ${result.feed_url}` }));
+        const refreshed = (await api.sources.list()).find((x) => x.id === source.id);
+        if (refreshed) onUpdated(refreshed);
+      } else {
+        setFixNote((n) => ({
+          ...n,
+          [source.id]: "No working feed found on this site. You can remove the source.",
+        }));
+      }
+    } catch {
+      setFixNote((n) => ({ ...n, [source.id]: "Couldn't check the site right now. Try again later." }));
+    }
+  };
+
   const del = async (id: string) => {
     if (!confirm("Remove this source?")) return;
     await api.sources.delete(id);
@@ -90,6 +110,18 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
               {s.last_error && s.health !== "healthy" && (
                 <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
                   {s.last_error}
+                </div>
+              )}
+              {(s.health === "dead" || s.health === "failing") && s.source_type !== "newsletter" && (
+                <div className="mt-1.5 flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => fix(s)}
+                    className="rounded border border-stone-300 px-2 py-0.5 font-medium text-stone-700 hover:bg-stone-100"
+                  >
+                    Fix this feed
+                  </button>
+                  {fixNote[s.id] && <span className="text-stone-500">{fixNote[s.id]}</span>}
                 </div>
               )}
               {/* Trust-weight bar */}

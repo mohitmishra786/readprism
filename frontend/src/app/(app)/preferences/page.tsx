@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
+import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -102,6 +103,8 @@ function LlmStatus() {
     openai_fallback_enabled: boolean;
     embedding_model?: string;
     embedding_is_hash?: boolean;
+    embedding_quality_note?: string;
+    embedding_upgrade_hint?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -120,10 +123,11 @@ function LlmStatus() {
       {status.embedding_model && (
         <p style={{ margin: "4px 0" }}>
           {status.embedding_is_hash ? "⚠️" : "🧠"} Embeddings: {status.embedding_model}
-          {status.embedding_is_hash
-            ? " (lite profile: lexical hash fallback, lower semantic quality)"
-            : " (dense semantic vectors)"}
+          {status.embedding_quality_note ? ` · ${status.embedding_quality_note}` : ""}
         </p>
+      )}
+      {status.embedding_is_hash && status.embedding_upgrade_hint && (
+        <p style={{ margin: "4px 0", color: "#b45309" }}>{status.embedding_upgrade_hint}</p>
       )}
     </div>
   );
@@ -421,6 +425,11 @@ export default function PreferencesPage() {
           </div>
         </section>
       )}
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Newsletters</h2>
+        <NewsletterAddressCard />
+      </section>
 
       <PlanSection />
 

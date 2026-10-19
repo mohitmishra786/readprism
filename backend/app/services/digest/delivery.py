@@ -128,6 +128,9 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
                 "signal_breakdown": di.signal_breakdown,
                 "why_ranked": _top_signals(di.signal_breakdown or {}),
                 "is_discovery": section == "discovery",
+                # Where a discovery item came from, shown in its badge (#141, #217).
+                "discovered_via": (di.signal_breakdown or {}).get("discovered_via")
+                or getattr(content, "discovered_via", None),
                 "position": di.position,
                 # Signed one-click actions (UX-04): title click-through goes
                 # through the instance so reading telemetry can follow.
@@ -156,7 +159,17 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             preferences_url=preferences_url,
             unsubscribe_url=unsub_url,
             physical_address=settings.email_physical_address,
+            # Inbox preview line (#217): the top story's title.
+            lead_title=next(
+                (
+                    row["content"].title
+                    for name in ("lead", "more")
+                    for row in sections.get(name, [])
+                ),
+                None,
+            ),
             dead_sources=await _pending_dead_sources(user.id, session),
+            sources_url=f"{settings.frontend_url.rstrip('/')}/sources",
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")

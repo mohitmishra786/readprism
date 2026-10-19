@@ -127,31 +127,9 @@ async function saveAndRate(tab, rating) {
   return { ok: true, data: await res.json() };
 }
 
-// Returns the detected feed URL for a tab, if the content script found one.
-async function detectedFeed(tab) {
-  const key = `feed:${tab.url}`;
-  const found = await chrome.storage.session.get([key]);
-  return found[key] || null;
-}
-
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === "save-rate") {
     saveAndRate(msg.tab, msg.rating ?? null).then(sendResponse);
-    return true;
-  }
-  if (msg?.type === "detect-feed") {
-    detectedFeed(msg.tab).then(sendResponse);
-    return true;
-  }
-  return false;
-});
-
-// Content scripts cannot access storage.session (trusted contexts only) —
-// they relay detected feeds here for storage.
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  if (msg?.type === "feed-found" && msg.pageUrl && msg.feedUrl) {
-    chrome.storage.session.set({ [`feed:${msg.pageUrl}`]: msg.feedUrl }).catch(() => {});
-    sendResponse({ ok: true });
     return true;
   }
   return false;

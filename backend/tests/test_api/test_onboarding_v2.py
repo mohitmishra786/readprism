@@ -50,7 +50,7 @@ async def test_expand_interests_falls_back_without_an_llm(
     assert result.status_code == 200
     topics = result.json()["topics"]
     assert topics, "keyword fallback must produce topics"
-    assert any("machine learning" in t for t in topics)
+    assert any("machine learning" in t.lower() for t in topics)
 
 
 @pytest.mark.asyncio

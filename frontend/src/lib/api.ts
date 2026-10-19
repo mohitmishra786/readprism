@@ -1,6 +1,14 @@
-import { clearSession, getCsrfToken, setCsrfToken } from './auth';
+import {
+  clearSession,
+  getCsrfToken,
+  rememberSessionSeen,
+  sessionSeenOffline,
+  setCsrfToken,
+} from './auth';
 import type {
   BillingState,
+  ImportResult,
+  StarterPack,
   ContentItem,
   ContentItemFull,
   Creator,
@@ -23,6 +31,8 @@ export interface SessionState {
   authenticated: boolean;
   refreshable: boolean;
   csrf_token: string | null;
+  /** True when the server was unreachable and the cached app is shown (#216). */
+  offline?: boolean;
 }
 
 /**
@@ -48,8 +58,13 @@ export async function loadSession(): Promise<SessionState> {
     const res = await fetch(`${V1}/auth/session`, { credentials: 'include' });
     const state = (await res.json()) as SessionState;
     setCsrfToken(state.csrf_token);
+    rememberSessionSeen(state.authenticated);
     return state;
   } catch {
+    // Offline on a device that was signed in: show the cached app (#216).
+    if (sessionSeenOffline()) {
+      return { authenticated: true, refreshable: false, csrf_token: null, offline: true };
+    }
     return { authenticated: false, refreshable: false, csrf_token: null };
   }
 }
@@ -201,6 +216,19 @@ export const api = {
       request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
   },
 
+  // Personal newsletter address and its live test (#151).
+  newsletter: {
+    address: () =>
+      request<{ address: string; inbound_configured: boolean; email_verified: boolean }>(
+        '/newsletter/address',
+      ),
+    sendTest: () => request<{ status: string }>('/newsletter/address/test', { method: 'POST' }),
+    testStatus: () =>
+      request<{ status: 'none' | 'waiting' | 'received'; sent_at?: string; received_at?: string }>(
+        '/newsletter/address/test',
+      ),
+  },
+
   // Hosted billing (#173). Self-hosted instances report plan "selfhost".
   billing: {
     state: () => request<BillingState>('/billing'),
@@ -230,6 +258,41 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    /** Feed subscriptions from OPML (Feedly/Inoreader); folders become tags (#150). */
+    importFeeds: (file: File) => {
+      const form = new FormData();
+      form.append('file', file);
+      return request<ImportResult>('/sources/import-opml-v2', { method: 'POST', body: form });
+    },
+    /** Progress of a background OPML import (#202). */
+    importJob: (id: string) =>
+      request<{ status: string; total: number; done: number; created: number; progress: number; error?: string | null }>(
+        `/sources/import-jobs/${id}`,
+      ),
+    /** Saved articles: Pocket HTML, CSV, or starred OPML; format auto-detected (#150). */
+    importSaved: (file: File, kind = 'auto') => {
+      const form = new FormData();
+      form.append('file', file);
+      return request<ImportResult>(`/sources/import-saved?kind=${encodeURIComponent(kind)}`, {
+        method: 'POST',
+        body: form,
+      });
+    },
+    starterPacks: (topics: string[] = []) =>
+      request<StarterPack[]>(
+        `/sources/starter-packs${topics.length ? `?topics=${encodeURIComponent(topics.join(","))}` : ""}`,
+      ),
+    subscribePack: (id: string) =>
+      request<{ status: string; subscribed: number; already_had: number }>(
+        `/sources/starter-packs/${id}/subscribe`,
+        { method: 'POST' },
+      ),
+    /** One-click repair of a dead/failing feed (#212). */
+    fix: (id: string) =>
+      request<{ status: 'fixed' | 'no_new_feed'; feed_url: string | null; suggestion?: string }>(
+        `/sources/${id}/fix`,
+        { method: 'POST' },
+      ),
     delete: (id: string) =>
       request<void>(`/sources/${id}`, { method: 'DELETE' }),
     importOpml: (file: File) => {
@@ -305,6 +368,7 @@ export const api = {
       explicit_rating_reason?: string;
       saved?: boolean;
       skipped?: boolean;
+      opened_externally?: boolean;
     }) =>
       request<unknown>('/feedback/interaction', {
         method: 'POST',
@@ -346,6 +410,8 @@ export const api = {
         openai_fallback_enabled: boolean;
         embedding_model?: string;
         embedding_is_hash?: boolean;
+        embedding_quality_note?: string;
+        embedding_upgrade_hint?: string | null;
       }>('/metrics/llm-status'),
   },
 
@@ -372,6 +438,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    /** Up to 8–12 diverse headlines from the user's new sources (#149). */
+    calibration: (limit = 8) =>
+      request<CalibrationItem[]>(`/onboarding/calibration?limit=${limit}`),
+    rateCalibration: (id: string, rating: 1 | -1) =>
+      request<{ status: string; clusters_updated: number; clusters_created: number }>(
+        `/onboarding/calibration/${id}`,
+        { method: 'POST', body: JSON.stringify({ rating }) },
+      ),
     /** Start the first-digest flow (idempotent) and return its status (#102). */
     startFirstDigest: () =>
       request<FirstDigestStatus & { started: boolean }>('/onboarding/first-digest', {
@@ -380,6 +454,14 @@ export const api = {
     firstDigestStatus: () => request<FirstDigestStatus>('/onboarding/first-digest/status'),
   },
 };
+
+export interface CalibrationItem {
+  id: string;
+  title: string;
+  url: string;
+  topic_clusters: string[];
+  reading_time_minutes: number | null;
+}
 
 export interface FirstDigestStatus {
   sources_total: number;

@@ -2,27 +2,61 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InterestInput } from "./InterestInput";
-import { SampleArticles, type SampleRating } from "./SampleArticles";
+import { CalibrationStep } from "./CalibrationStep";
+import { detectedTimezone, digestPreferencesPayload } from "./digestPrefs";
+import { useInstallPrompt } from "../../lib/useInstallPrompt";
+import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
+import { ImportPanel } from "./ImportPanel";
+import { NewsletterAddressCard } from "../NewsletterAddressCard";
 import { api } from "../../lib/api";
 
-const STEPS = ["Interests", "Confirm Topics", "Sample Articles", "Add Sources", "Add Creators", "Digest Preferences"];
+// Steps are addressed by name so new steps don't shift every index.
+const STEPS = [
+  "Interests",
+  "Confirm Topics",
+  "Starter Packs",
+  "Add Sources",
+  "Newsletters",
+  "Add Creators",
+  "Rate Headlines",
+  "Digest Preferences",
+] as const;
+type StepName = (typeof STEPS)[number];
 
 export function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const current: StepName = STEPS[step];
+  const [packIds, setPackIds] = useState<string[]>([]);
+  const [subscribing, setSubscribing] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
   const [interestText, setInterestText] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
   const [expanding, setExpanding] = useState(false);
-  const [sampleRatings, setSampleRatings] = useState<SampleRating[]>([]);
   const [sourceUrl, setSourceUrl] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [creatorInput, setCreatorInput] = useState("");
-  const [digestFreq, setDigestFreq] = useState("daily");
+  const [digestFreq, setDigestFreq] = useState<"daily" | "twice_daily" | "weekly">("daily");
+  const [digestTime, setDigestTime] = useState("07:00");
+  const [emailOn, setEmailOn] = useState(true);
+  const [timezone] = useState(detectedTimezone);
+  const installer = useInstallPrompt();
+  const [installed, setInstalled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const advance = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = async () => {
+    // Leaving the pack step subscribes the chosen packs (#152).
+    if (current === "Starter Packs" && packIds.length) {
+      setSubscribing(true);
+      await subscribePacks(packIds);
+      setPackIds([]);
+      setSubscribing(false);
+    }
+    advance();
+  };
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   // Step 0 -> 1 runs interest expansion (LLM with keyword fallback) so the
@@ -68,11 +102,8 @@ export function OnboardingWizard() {
       // 1. Submit interest text and sample ratings to the onboarding endpoint
       await api.onboarding.complete({
         interest_text: interestText,
-        sample_ratings: sampleRatings.map((r) => ({
-          article_url: r.article_url,
-          title: r.title,
-          rating: r.rating,
-        })),
+        // Real headlines are rated in the "Rate Headlines" step (#149).
+        sample_ratings: [],
         source_opml: null,
         confirmed_topics: topics.length > 0 ? topics : undefined,
       });
@@ -86,7 +117,10 @@ export function OnboardingWizard() {
       }
 
       // 3. Update preferences
-      await api.preferences.update({ digest_frequency: digestFreq });
+      // Time + timezone + email choice (#201); an explicit time locks the send time.
+      await api.preferences.update(
+        digestPreferencesPayload({ frequency: digestFreq, emailOn, time: digestTime, timezone }),
+      );
 
       // 4. Fetch the new sources now and build the first digest once articles
       // are in (#102). The digest page shows live progress until it exists.
@@ -124,11 +158,11 @@ export function OnboardingWizard() {
         </div>
       </div>
 
-      {step === 0 && (
+      {current === "Interests" && (
         <InterestInput value={interestText} onChange={setInterestText} />
       )}
 
-      {step === 1 && (
+      {current === "Confirm Topics" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             We expanded your interests into these topics. They seed your first
@@ -185,17 +219,27 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 2 && (
-        <SampleArticles ratings={sampleRatings} onRate={setSampleRatings} />
-      )}
-
-      {step === 3 && (
+      {current === "Starter Packs" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
-            Add websites or RSS feeds you follow.{" "}
-            <strong>Optional</strong> — we’ll seed starter sources from your
-            interests, and you can add your own anytime.
+            Pick a few starter packs to follow. The ones matching your topics are
+            pre-selected. <strong>Optional</strong>: you can add more from Sources later.
           </p>
+          <StarterPackPicker topics={topics} selected={packIds} onChange={setPackIds} />
+        </div>
+      )}
+
+      {current === "Rate Headlines" && <CalibrationStep />}
+
+      {current === "Add Sources" && (
+        <div>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
+            Coming from another reader? Import your feeds and saved articles in
+            one go. <strong>Optional</strong>: you can also add sites one by one below.
+          </p>
+          <div style={{ marginBottom: 20 }}>
+            <ImportPanel onImported={(feeds, saved) => setImportedCount((n) => n + feeds + saved)} />
+          </div>
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <input
               type="url"
@@ -220,7 +264,17 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 4 && (
+      {current === "Newsletters" && (
+        <div>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
+            Newsletters go in your digest too. <strong>Optional</strong>: the address is
+            also in Preferences.
+          </p>
+          <NewsletterAddressCard />
+        </div>
+      )}
+
+      {current === "Add Creators" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add creators you follow (name or URL). <strong>Optional</strong> —
@@ -236,18 +290,53 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 5 && (
+      {current === "Digest Preferences" && (
         <div>
           <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>Digest frequency</label>
           <select
             value={digestFreq}
-            onChange={(e) => setDigestFreq(e.target.value)}
+            onChange={(e) => setDigestFreq(e.target.value as typeof digestFreq)}
+            disabled={!emailOn}
             style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
           >
             <option value="daily">Daily</option>
             <option value="twice_daily">Twice daily</option>
             <option value="weekly">Weekly</option>
           </select>
+
+          <label style={{ display: "block", fontWeight: 500, margin: "16px 0 8px" }} htmlFor="digest-time">
+            Delivery time
+          </label>
+          <input
+            id="digest-time"
+            type="time"
+            value={digestTime}
+            onChange={(e) => setDigestTime(e.target.value)}
+            style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+          />
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 4 }}>
+            Your time zone: {timezone}
+          </p>
+
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 16, fontSize: 14 }}>
+            <input type="checkbox" checked={emailOn} onChange={(e) => setEmailOn(e.target.checked)} />
+            Email me the digest (otherwise read it in the app)
+          </label>
+
+          {installer.available && !installed && (
+            <div style={{ marginTop: 20, padding: 12, border: "1px solid var(--border)", borderRadius: 8 }}>
+              <p style={{ fontSize: 14, marginBottom: 8 }}>
+                Add ReadPrism to your home screen to open your digest in one tap.
+              </p>
+              <button
+                type="button"
+                onClick={async () => setInstalled(await installer.install())}
+                style={{ padding: "6px 14px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+              >
+                Add to home screen
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -271,7 +360,7 @@ export function OnboardingWizard() {
         {step < STEPS.length - 1 ? (
           <button
             onClick={step === 0 ? expandAndContinue : next}
-            disabled={expanding}
+            disabled={expanding || subscribing}
             style={{
               padding: "10px 20px",
               background: "#2563eb",
@@ -284,10 +373,14 @@ export function OnboardingWizard() {
           >
             {expanding
               ? "Finding your topics…"
-              : /* Optional steps (sources/creators) read as "Skip" when empty */
-                (step === 3 && sources.length === 0) || (step === 4 && !creatorInput)
-                ? "Skip for now"
-                : "Continue"}
+              : subscribing
+                ? "Subscribing…"
+                : /* Optional steps read as "Skip" when nothing was chosen */
+                  (current === "Starter Packs" && packIds.length === 0) ||
+                    (current === "Add Sources" && sources.length === 0 && importedCount === 0) ||
+                    (current === "Add Creators" && !creatorInput)
+                  ? "Skip for now"
+                  : "Continue"}
           </button>
         ) : (
           <button

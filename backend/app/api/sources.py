@@ -76,17 +76,35 @@ def _fetch_new_sources_soon(user_id) -> None:
 
 @router.get("/starter-packs")
 async def list_packs(
+    topics: str = "",
+    session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    """CS-02: curated topic bundles (10-25 feeds each) for one-click subscribe."""
-    from app.services.cold_start.starter_packs import list_starter_packs
+    """CS-02: curated topic bundles (10-25 feeds each) for one-click subscribe.
 
+    `topics` (comma-separated) marks the packs matching the user's interests
+    as suggested so the picker can pre-select them (#152); `subscribed` says
+    how many of a pack's feeds the user already follows.
+    """
+    from app.services.cold_start.starter_packs import list_starter_packs
+    from app.services.cold_start.taxonomy import packs_for_topics
+
+    wanted = [t for t in (part.strip() for part in topics.split(",")) if t]
+    suggested = packs_for_topics(wanted)[:4] if wanted else []
+    followed = {
+        row[0]
+        for row in (
+            await session.execute(select(Source.url).where(Source.user_id == current_user.id))
+        ).all()
+    }
     return [
         {
             "id": pack.id,
             "title": pack.title,
             "feed_count": len(pack.feeds),
             "feeds": [{"name": f["name"], "url": f["url"]} for f in pack.feeds],
+            "suggested": pack.id in suggested,
+            "subscribed": sum(1 for f in pack.feeds if f["url"] in followed),
         }
         for pack in list_starter_packs()
     ]
@@ -380,7 +398,33 @@ async def import_opml_tagged(
 
     existing = await session.execute(select(Source.url).where(Source.user_id == current_user.id))
     plan = plan_import(opml_bytes.decode("utf-8", errors="replace"), {row[0] for row in existing})
+    # A bad outline is reported, not fatal (#150).
+    errors = [
+        {"url": feed.url[:200], "error": "not an http(s) feed URL"}
+        for feed in plan.feeds
+        if not feed.url.startswith(("http://", "https://"))
+    ]
+    plan.feeds = [f for f in plan.feeds if f.url.startswith(("http://", "https://"))]
+    plan.created = len(plan.feeds)
     await _enforce_capacity(session, current_user, [feed.url for feed in plan.feeds])
+    if plan.queued:
+        # Large file (#202): insert in a background job; poll its progress.
+        from app.workers.tasks.import_jobs import create_job, run_opml_import
+
+        job_id = await create_job(
+            current_user.id,
+            [{"url": f.url, "title": f.title, "tags": f.tags} for f in plan.feeds],
+        )
+        run_opml_import.delay(job_id)
+        return {
+            "created": 0,
+            "skipped": plan.skipped,
+            "queued": True,
+            "job_id": job_id,
+            "total": len(plan.feeds),
+            "progress": 0.0,
+            "errors": errors,
+        }
     for feed in plan.feeds:
         session.add(
             Source(
@@ -399,8 +443,33 @@ async def import_opml_tagged(
     return {
         "created": plan.created,
         "skipped": plan.skipped,
-        "queued": plan.queued,
-        "progress": plan.progress,
+        "queued": False,
+        "progress": 1.0,
+        "errors": errors,
+    }
+
+
+@router.get("/import-jobs/{job_id}", response_model=dict)
+async def import_job_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Progress of a background OPML import (#202). Owner only."""
+    from app.utils.cache import cache_get
+    from app.workers.tasks.import_jobs import job_key
+
+    state = await cache_get(job_key(job_id))
+    if not state or state.get("user_id") != str(current_user.id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Import job not found")
+    total = max(int(state.get("total", 0)), 1)
+    return {
+        "job_id": job_id,
+        "status": state.get("status"),
+        "total": state.get("total", 0),
+        "done": state.get("done", 0),
+        "created": state.get("created", 0),
+        "progress": round(min(int(state.get("done", 0)) / total, 1.0), 3),
+        "error": state.get("error"),
     }
 
 
@@ -426,59 +495,156 @@ async def export_opml_file(
 
 @router.post("/import-saved", response_model=dict)
 async def import_saved(
-    kind: str,
+    kind: str = "auto",
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    """Import saved articles: starred OPML, Pocket HTML, or CSV (#150).
+
+    `kind` is "opml", "pocket", one of the CSV shapes, or "auto" (from the
+    file name and contents). Each row is imported on its own: a bad row is
+    reported in `errors` and the rest still import.
+    """
     from app.models.content import UserContentInteraction
-    from app.services.ingestion.importers import import_csv, import_opml_starred
+    from app.services.content_lookup import get_or_create_private_item
+    from app.services.ingestion import importers
 
     raw = (await file.read()).decode("utf-8", errors="replace")
+    name = (file.filename or "").lower()
+    if kind == "auto":
+        if name.endswith((".html", ".htm")) or "<a " in raw[:5000].lower():
+            kind = "pocket"
+        elif name.endswith((".opml", ".xml")) or raw.lstrip().startswith("<?xml"):
+            kind = "opml"
+        else:
+            kind = importers.detect_csv_kind(raw)
     if kind == "opml":
-        imported = import_opml_starred(raw)
+        imported = importers.import_opml_starred(raw)
+    elif kind == "pocket":
+        imported = importers.import_pocket_html(raw)
+    elif kind in importers.CSV_KINDS:
+        imported = importers.import_csv(raw, kind)
     else:
-        try:
-            imported = import_csv(raw, kind)
-        except ValueError as e:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    from app.services.content_lookup import get_or_create_private_item
-
-    created = 0
-    for item in imported:
-        if not item.url:
-            continue
-        # Reuse the public row or this user's own row; another user's private
-        # import of the same URL must neither block nor be revealed (#101).
-        row, is_new = await get_or_create_private_item(
-            session,
-            current_user.id,
-            item.url,
-            title=item.title,
-            origin="import",
-            full_text=item.note,
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=f"unknown format {kind}"
         )
-        existing_ix = (
-            await session.execute(
-                select(UserContentInteraction).where(
-                    UserContentInteraction.user_id == current_user.id,
-                    UserContentInteraction.content_item_id == row.id,
+
+    created = existing = 0
+    errors: list[dict] = []
+    for index, item in enumerate(imported, start=1):
+        if not item.url.startswith(("http://", "https://")):
+            errors.append({"row": index, "url": item.url[:200], "error": "not an http(s) URL"})
+            continue
+        try:
+            async with session.begin_nested():  # one bad row can't undo the others
+                # Reuse the public row or this user's own row; another user's
+                # private import of the same URL must neither block nor be
+                # revealed (#101).
+                row, is_new = await get_or_create_private_item(
+                    session,
+                    current_user.id,
+                    item.url,
+                    title=item.title[:500],
+                    origin="import",
+                    full_text=item.note,
                 )
-            )
-        ).scalar_one_or_none()
-        if existing_ix is None:
-            session.add(
-                UserContentInteraction(
-                    user_id=current_user.id,
-                    content_item_id=row.id,
-                    saved=True,
-                    explicit_rating=1,
-                )
-            )
+                ix = (
+                    await session.execute(
+                        select(UserContentInteraction).where(
+                            UserContentInteraction.user_id == current_user.id,
+                            UserContentInteraction.content_item_id == row.id,
+                        )
+                    )
+                ).scalar_one_or_none()
+                if ix is None:
+                    session.add(
+                        UserContentInteraction(
+                            user_id=current_user.id,
+                            content_item_id=row.id,
+                            saved=True,
+                            saved_at=datetime.now(UTC),
+                            explicit_rating=1,
+                            tags=item.tags or None,
+                        )
+                    )
+                elif item.tags:
+                    ix.tags = sorted(set(ix.tags or []) | set(item.tags))
+        except Exception as e:
+            errors.append({"row": index, "url": item.url[:200], "error": str(e)[:200]})
+            continue
         if is_new:
             created += 1
+        else:
+            existing += 1
     await session.flush()
-    return {"created": created, "origin": "import"}
+    return {
+        "kind": kind,
+        "origin": "import",
+        "created": created,
+        "already_had": existing,
+        "errors": errors,
+    }
+
+
+@router.post("/{source_id}/fix")
+async def fix_source(
+    source_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """One-click repair for a dead or failing feed (#212).
+
+    Re-runs feed autodiscovery on the site. If the site now advertises a
+    different feed (a moved or renamed feed is the usual cause), switch the
+    subscription to it, clear the failure state and re-attach it to the right
+    shared feed. Otherwise say so, so the UI can offer removal instead.
+    """
+    from urllib.parse import urlparse
+
+    from app.services.abuse import require_fetch_budget
+    from app.services.ingestion.feeds import sync_feeds
+
+    source = (
+        await session.execute(
+            select(Source).where(Source.id == source_id, Source.user_id == current_user.id)
+        )
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    if source.source_type == "newsletter":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Newsletters have no feed to fix"
+        )
+    await require_fetch_budget(session, current_user)
+
+    parts = urlparse(source.url)
+    site_root = f"{parts.scheme}://{parts.netloc}/" if parts.scheme and parts.netloc else None
+    candidates = [source.url] + ([site_root] if site_root and site_root != source.url else [])
+    found = None
+    for page in candidates:
+        found = await _autodiscover_feed(page)
+        if found and found != source.feed_url:
+            break
+        found = None
+    if not found:
+        return {"status": "no_new_feed", "feed_url": source.feed_url, "suggestion": "remove"}
+
+    source.feed_url = found
+    source.source_type = "rss"
+    source.feed_id = None  # re-attached to the shared feed for the new URL below
+    source.is_active = True
+    source.feed_status = "healthy"
+    source.fetch_error_count = 0
+    source.failure_since = None
+    source.last_error = None
+    source.last_error_at = None
+    source.dead_notice_pending = False
+    source.next_poll_at = None
+    await session.flush()
+    await sync_feeds(session, user_id=current_user.id)
+    _fetch_new_sources_soon(current_user.id)
+    return {"status": "fixed", "feed_url": found}
 
 
 @router.put("/{source_id}", response_model=SourceRead)

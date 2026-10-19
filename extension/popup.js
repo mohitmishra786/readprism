@@ -76,12 +76,26 @@ async function saveRate(rating) {
 document.getElementById("save-good").addEventListener("click", () => saveRate(1));
 document.getElementById("save-bad").addEventListener("click", () => saveRate(-1));
 
-// If the content script detected a feed for this page, offer subscribing to
-// the FEED (not the HTML page).
+// Detect a feed on this page now that the user opened the popup (#214):
+// activeTab grants this one tab, so no content script runs on every site.
+async function detectFeed(tab) {
+  if (!tab?.id || !/^https?:/.test(tab.url || "")) return null;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["detect-feed.js"],
+    });
+    return result?.result || null;
+  } catch (_e) {
+    return null; // e.g. the browser's own pages, or access not granted
+  }
+}
+
+// If a feed was found, offer subscribing to the FEED (not the HTML page).
 (async () => {
   const tab = await currentTab();
   if (!tab?.url) return;
-  ask("detect-feed", { tab }).then((feedUrl) => {
+  detectFeed(tab).then((feedUrl) => {
     if (!feedUrl) return;
     const btn = document.getElementById("add-feed");
     btn.hidden = false;

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth import get_current_user
 from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
@@ -160,6 +161,17 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
         local_part = recipient.split("@")[0]
         if local_part.startswith("user-"):
             user_id_str = local_part[5:]
+        else:
+            # The personal address shown in the app: u.<token>@domain (#151).
+            from app.services.ingestion.newsletter_parse import recipient_token
+
+            address_token = recipient_token(recipient)
+            if address_token:
+                found = await session.execute(
+                    select(User.id).where(User.newsletter_token == address_token)
+                )
+                owner_id = found.scalar_one_or_none()
+                user_id_str = str(owner_id) if owner_id else None
 
     from app.services.email_verification import may_receive_newsletters
 
@@ -171,6 +183,10 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
     if not allowed:
         logger.warning(f"Inbound newsletter dropped: {why}")
         return {"status": "ignored", "reason": why}
+    from app.services.newsletter_address import record_if_test
+
+    if await record_if_test(user_id_str, subject):
+        return {"status": "test_received"}
 
     await process_inbound_email(
         sender=sender,
@@ -250,6 +266,10 @@ async def inbound_provider(
     if not allowed:
         logger.warning(f"Inbound newsletter dropped: {why}")
         return {"status": "ignored", "reason": why}
+    from app.services.newsletter_address import record_if_test
+
+    if await record_if_test(owner, parsed.subject):
+        return {"status": "test_received"}
     await process_inbound_email(
         sender=parsed.sender,
         subject=parsed.subject,
@@ -265,3 +285,64 @@ async def inbound_provider(
         "list_unsubscribe": parsed.list_unsubscribe,
         "view_in_browser": parsed.view_in_browser,
     }
+
+
+# ---------------------------------------------------------------- your address
+
+
+@router.get("/address")
+async def my_newsletter_address(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """The user's personal inbound address, created on first use (#151)."""
+    from app.services import newsletter_address as na
+    from app.services.email_verification import is_verified
+
+    token = await na.ensure_token(current_user, session)
+    return {
+        "address": na.address_for(token),
+        "inbound_configured": na.inbound_configured(),
+        "email_verified": is_verified(current_user),
+    }
+
+
+@router.post("/address/test", status_code=status.HTTP_202_ACCEPTED)
+async def send_address_test(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Mail a marker to the user's address; poll GET /address/test to see it arrive."""
+    from app.services import newsletter_address as na
+    from app.utils.cache import cache_set_nx
+    from app.utils.email import send_email
+
+    if not na.inbound_configured():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Inbound newsletters are not set up on this instance yet.",
+        )
+    if not await cache_set_nx(f"newsletter-test-sent:{current_user.id}", 1, ttl_seconds=60):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="One test a minute, please."
+        )
+    token = await na.ensure_token(current_user, session)
+    nonce = await na.start_test(current_user.id)
+    sent = await send_email(
+        to=na.address_for(token),
+        subject=f"{na.TEST_SUBJECT_PREFIX}{nonce}",
+        html_body="<p>This is a ReadPrism test of your newsletter address.</p>",
+    )
+    if not sent:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Couldn't send the test email (check SMTP settings).",
+        )
+    return {"status": "sent"}
+
+
+@router.get("/address/test")
+async def address_test_status(current_user: User = Depends(get_current_user)) -> dict:
+    from app.services.newsletter_address import test_status
+
+    return await test_status(current_user.id)

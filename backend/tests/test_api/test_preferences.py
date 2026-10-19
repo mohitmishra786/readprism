@@ -61,3 +61,43 @@ async def test_setting_time_explicitly_locks_it(client: AsyncClient, test_user_d
     # The learned-histogram job never moves an explicit time after that.
     resp = await client.put("/api/v1/preferences", json={"send_time_auto": True}, headers=headers)
     assert resp.json()["send_time_locked"] is False
+
+
+@pytest.mark.asyncio
+async def test_onboarding_time_choice_persists_and_locks_the_send_time(client, test_user_data):
+    """#201: the final onboarding step's payload pins the time; the learner skips it."""
+    from unittest.mock import patch
+
+    from app.models.user import User
+    from tests.conftest import TestingSessionLocal
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    resp = await client.put(
+        "/api/v1/preferences",
+        json={
+            "digest_frequency": "daily",
+            "digest_time_morning": "06:30:00",
+            "timezone": "Asia/Kolkata",
+        },
+        headers=headers,
+    )
+    body = resp.json()
+    assert resp.status_code == 200
+    assert body["digest_time_morning"] == "06:30:00" and body["timezone"] == "Asia/Kolkata"
+    assert body["send_time_locked"] is True
+
+    from sqlalchemy import select
+
+    from app.workers.tasks.build_digest import _learn_send_times_async
+
+    async with TestingSessionLocal() as s:
+        user = (
+            await s.execute(select(User).where(User.email == test_user_data["email"]))
+        ).scalar_one()
+        user.onboarding_complete = True
+        await s.commit()
+    with patch("app.database.AsyncSessionLocal", TestingSessionLocal):
+        await _learn_send_times_async()
+    again = (await client.get("/api/v1/preferences", headers=headers)).json()
+    assert again["digest_time_morning"] == "06:30:00"

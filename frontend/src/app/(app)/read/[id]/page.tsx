@@ -22,6 +22,8 @@ import { sanitizeHtml } from "../../../../lib/sanitize";
 import type { ContentItemFull } from "../../../../lib/types";
 import { FeedbackBar } from "../../../../components/digest/FeedbackBar";
 import { SummaryLabel } from "../../../../components/SummaryLabel";
+import { NoTextFallback } from "../../../../components/reader/NoTextFallback";
+import { GotItToast } from "../../../../components/reader/GotItToast";
 
 export default function ReaderPage() {
   const params = useParams<{ id: string }>();
@@ -40,7 +42,11 @@ export default function ReaderPage() {
   const { snapshot, sentinelRef } = useReadingTelemetry({
     contentItemId: id,
     readingTimeMinutes: item?.reading_time_minutes ?? null,
+    // Scroll depth only counts once the article body is rendered (#193).
+    ready: Boolean(item?.full_text),
   });
+  // Post-read toast (#228): derived from reachedEnd, shown once per read.
+  const [toastClosed, setToastClosed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -195,34 +201,7 @@ export default function ReaderPage() {
   // No body to show: either none was extracted, or this instance's display
   // policy withholds page-extracted text (#177). Offer the summary + original.
   if (!item.full_text) {
-    const summary = item.summary_detailed || item.summary_brief;
-    return (
-      <div className="mx-auto max-w-prose py-12">
-        <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
-        {summary && (
-          <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600">
-            <SummaryLabel source={item.summary_source} />
-            {summary}
-          </p>
-        )}
-        <p className="mt-4 text-stone-500">
-          {item.full_text_withheld
-            ? `Read the full article on ${safeHostname(item.url)}.`
-            : "The full article text isn’t available for in-app reading."}
-        </p>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary mt-6"
-        >
-          Open original at {safeHostname(item.url)} →
-        </a>
-        <div className="mt-8">
-          <FeedbackBar contentItemId={item.id} />
-        </div>
-      </div>
-    );
+    return <NoTextFallback item={item} />;
   }
 
   return (
@@ -301,6 +280,13 @@ export default function ReaderPage() {
 
       {/* Reached-end sentinel — intersecting floors completion at 0.95 */}
       <div ref={sentinelRef} aria-hidden style={{ height: 1 }} />
+      {snapshot.reachedEnd && !toastClosed && item.topic_clusters?.[0] && (
+        <GotItToast
+          topic={item.topic_clusters[0]}
+          activeTimeMs={snapshot.activeTimeMs}
+          onClose={() => setToastClosed(true)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="mt-12 border-t border-stone-200 pt-6">

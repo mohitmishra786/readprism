@@ -143,12 +143,32 @@ async def record_interaction(
         await _apply_reason_effects(content, body.explicit_rating_reason, current_user.id, session)
         await session.flush()
 
+    # A bare outbound click carries no reading signal: without completion or
+    # time it would be learned as a bounce. Wait for the return answer (#157).
+    if body.opened_externally and not _carries_signal(body):
+        return UserContentInteractionRead.model_validate(interaction)
+
     # Enqueue interest graph update
     from app.workers.tasks.update_interest_graph import update_interest_graph_for_interaction
 
     update_interest_graph_for_interaction.delay(str(interaction.id))
 
     return UserContentInteractionRead.model_validate(interaction)
+
+
+def _carries_signal(body: UserContentInteractionCreate) -> bool:
+    return any(
+        (
+            body.read_completion_pct is not None,
+            body.time_on_page_seconds is not None,
+            body.active_time_seconds is not None,
+            body.scroll_depth_pct is not None,
+            body.reached_end,
+            body.explicit_rating is not None,
+            body.saved,
+            body.skipped,
+        )
+    )
 
 
 async def _apply_reason_effects(

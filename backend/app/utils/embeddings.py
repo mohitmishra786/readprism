@@ -25,6 +25,38 @@ def is_hash_embeddings() -> bool:
         return True
 
 
+HASH_EMBEDDER_NAME = "lexical-hash"
+
+
+def active_embedder() -> dict:
+    """What actually produces vectors on this instance (#195).
+
+    The configured EMBEDDING_MODEL is only used when sentence-transformers is
+    installed; the lite image silently falls back to the hash embedder, so the
+    settings page must report the active one, not the configured one.
+    """
+    if is_hash_embeddings():
+        return {
+            "name": HASH_EMBEDDER_NAME,
+            "is_hash": True,
+            "quality_note": (
+                "Lexical hash fallback: topics match on shared words only, so "
+                "related articles that use different words rank lower."
+            ),
+            "how_to_upgrade": (
+                "Run the standard image (not :latest-lite) to use the "
+                f"{settings.embedding_model} model; existing items are re-embedded "
+                "as they are next scored."
+            ),
+        }
+    return {
+        "name": settings.embedding_model,
+        "is_hash": False,
+        "quality_note": "Semantic embeddings: related topics match even with different wording.",
+        "how_to_upgrade": None,
+    }
+
+
 class EmbeddingService:
     def __init__(self, model_name: str, device: str = "cpu") -> None:
         try:

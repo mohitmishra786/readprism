@@ -84,6 +84,42 @@ async def _select_serendipity_candidates(
     return list(result.scalars().all())
 
 
+# Quiet day (#142): when the user's feeds produced nothing new in the window,
+# catch up on unread items from their own feeds instead of an empty digest.
+QUIET_FALLBACK_WINDOW = timedelta(days=14)
+QUIET_FALLBACK_LABEL = "Your sources were quiet: catching up from the last two weeks"
+
+
+async def _quiet_day_fallback(
+    user: User, source_ids: list, feed_ids: list, session: AsyncSession
+) -> list[ContentItem]:
+    """Unread, never-digested items from the user's own feeds, newest first."""
+    from app.services.feed_identity import from_user_feeds, visible_item_filter
+
+    already_digested = (
+        select(DigestItem.content_item_id)
+        .join(Digest, Digest.id == DigestItem.digest_id)
+        .where(Digest.user_id == user.id)
+    )
+    opened = select(UserContentInteraction.content_item_id).where(
+        UserContentInteraction.user_id == user.id,
+        UserContentInteraction.opened_at.isnot(None),
+    )
+    result = await session.execute(
+        select(ContentItem)
+        .where(
+            from_user_feeds(source_ids, feed_ids),
+            ContentItem.fetched_at >= datetime.now(UTC) - QUIET_FALLBACK_WINDOW,
+            visible_item_filter(user.id),
+            ContentItem.id.notin_(already_digested),
+            ContentItem.id.notin_(opened),
+        )
+        .order_by(ContentItem.fetched_at.desc())
+        .limit(120)
+    )
+    return [item for item in result.scalars().all() if item.rankable]
+
+
 async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Determine time window
     if user.digest_frequency == "weekly":
@@ -133,6 +169,20 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     from app.services.ingestion.backfill import cap_per_source
 
     content_items = cap_per_source(content_items, get_settings().digest_per_source_cap)
+
+    quiet_fallback_ids: set = set()
+    if not content_items and (source_ids or feed_ids):
+        fallback = await _quiet_day_fallback(user, source_ids, feed_ids, session)
+        if wanted_langs:
+            fallback = [
+                item
+                for item in fallback
+                if item.language is None or str(item.language).lower() in wanted_langs
+            ]
+        content_items = cap_per_source(fallback, get_settings().digest_per_source_cap)
+        quiet_fallback_ids = {item.id for item in content_items}
+        if content_items:
+            logger.info(f"Quiet day for {user.id}: {len(content_items)} catch-up items")
 
     # Serendipity candidates: interest-adjacent discovery, not recent-random.
     serendipity_count = max(5, math.ceil(len(content_items) * 0.10))
@@ -263,6 +313,8 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
             clean_breakdown = {k: v for k, v in breakdown.items() if not k.startswith("_")}
             if getattr(item, "discovered_via", None):
                 clean_breakdown["discovered_via"] = item.discovered_via
+            if item.id in quiet_fallback_ids:
+                clean_breakdown["fallback_reason"] = QUIET_FALLBACK_LABEL
             numeric = {
                 key: float(value)
                 for key, value in clean_breakdown.items()

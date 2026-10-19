@@ -9,7 +9,12 @@
  * Non-goals: we do NOT cache article bodies or API responses here — the in-app
  * reader fetches content live, and the ranking signals need fresh data.
  */
-const CACHE_VERSION = "readprism-v1";
+const CACHE_VERSION = "readprism-v2";
+const OFFLINE_ARTICLE_HTML =
+  '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+  '<title>Offline</title><body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem">' +
+  "<h1>You're offline</h1><p>This article isn't saved for offline reading. Articles you " +
+  'opened while online stay readable. <a href="/digest">Back to your digest</a></p></body>';
 const APP_SHELL = ["/", "/digest", "/feed", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -48,13 +53,16 @@ self.addEventListener("fetch", (event) => {
       fetch(request)
         .then((response) => {
           if (response.ok) {
-            // waitUntil keeps the worker alive until the cache write lands;
-            // otherwise the worker can stop with the write pending and the
-            // article stays unavailable offline (CodeRabbit).
+            // Clone now, before the page reads the body: cloning inside the
+            // async callback below threw "body already used" (swallowed by
+            // the catch), so API responses were never cached and offline
+            // reading never worked (#216). waitUntil keeps the worker alive
+            // until the cache write lands (CodeRabbit).
+            const copy = response.clone();
             event.waitUntil(
               caches
                 .open(CACHE_VERSION)
-                .then((cache) => cache.put(request, response.clone()))
+                .then((cache) => cache.put(request, copy))
                 .catch(() => {})
             );
           }
@@ -87,7 +95,20 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((r) => r || caches.match("/digest")))
+        .catch(() =>
+          caches.match(request).then((r) => {
+            if (r) return r;
+            // An article never opened online: say so plainly rather than
+            // render the cached digest at an article URL (#216).
+            if (url.pathname.startsWith("/read/")) {
+              return new Response(OFFLINE_ARTICLE_HTML, {
+                status: 503,
+                headers: { "Content-Type": "text/html; charset=utf-8" },
+              });
+            }
+            return caches.match("/digest");
+          })
+        )
     );
     return;
   }

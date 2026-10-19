@@ -1,0 +1,418 @@
+[
+  {
+    "id": "go-01",
+    "source": "go",
+    "url": "https://go.dev/blog/wire",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-02",
+    "source": "go",
+    "url": "https://go.dev/blog/why-generics",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-03",
+    "source": "go",
+    "url": "https://go.dev/blog/when-generics",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-04",
+    "source": "go",
+    "url": "https://go.dev/blog/wasmexport",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-05",
+    "source": "go",
+    "url": "https://go.dev/blog/wasi",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-06",
+    "source": "go",
+    "url": "https://go.dev/blog/vuln",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-07",
+    "source": "go",
+    "url": "https://go.dev/blog/vscode-go",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-08",
+    "source": "go",
+    "url": "https://go.dev/blog/versioning-proposal",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-09",
+    "source": "go",
+    "url": "https://go.dev/blog/v2-go-modules",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-10",
+    "source": "go",
+    "url": "https://go.dev/blog/using-go-modules",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-11",
+    "source": "go",
+    "url": "https://go.dev/blog/unique",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-12",
+    "source": "go",
+    "url": "https://go.dev/blog/type-inference",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "go-13",
+    "source": "go",
+    "url": "https://go.dev/blog/type-construction-and-cycle-detection",
+    "license": "BSD-3-Clause",
+    "license_url": "https://github.com/golang/website/blob/master/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-01",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2018/07/27/what-is-rust-2018/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-02",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2026/01/14/what-does-it-take-to-ship-rust-in-safety-critical/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-03",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2025/12/19/what-do-people-love-about-rust/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-04",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2020/09/14/wg-prio-call-for-contributors/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-05",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2025/09/03/welcoming-the-rust-innovation-lab/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-06",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2024/09/24/webassembly-targets-change-in-default-target-features/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-07",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2024/11/26/wasip2-tier-2/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-08",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2025/04/04/vision-doc-survey/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-09",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2026/06/25/vision-doc-journeys-to-learning-rust/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-10",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2024/04/09/updates-to-rusts-wasi-targets/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-11",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2019/09/18/upcoming-docsrs-changes/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-12",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2024/06/26/types-team-update/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "rust-13",
+    "source": "rust",
+    "url": "https://blog.rust-lang.org/2023/01/20/types-announcement/",
+    "license": "MIT OR Apache-2.0",
+    "license_url": "https://github.com/rust-lang/blog.rust-lang.org",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-01",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/03/20/running-agents-on-kubernetes-with-agent-sandbox/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-02",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/03/09/announcing-ai-gateway-wg/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-03",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/01/21/introducing-checkpoint-restore-wg/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-04",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/04/22/breaking-changes-in-selinux-volume-labeling/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-05",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/05/15/ccm-new-metric-route-sync-total/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-06",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/01/19/clientcmd-apiserver-access/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-07",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/09/14/csi-changed-block-tracking-beta/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-08",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/01/07/kubernetes-v1-35-csi-sa-tokens-secrets-field-beta/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-09",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/07/14/custom-metrics-exporter-kubernetes/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-10",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/05/05/kubernetes-v1-36-declarative-validation-ga/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-11",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/05/14/kubernetes-v1-36-deprecation-and-removal-of-service-externalips/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-12",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/05/07/kubernetes-v1-36-dra-136-updates/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "kubernetes-13",
+    "source": "kubernetes",
+    "url": "https://kubernetes.io/blog/2026/07/08/announcing-etcd-3.7/",
+    "license": "CC BY 4.0",
+    "license_url": "https://github.com/kubernetes/website/blob/main/LICENSE",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-01",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Garbage_collection_(computer_science)",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-02",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/B-tree",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-03",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Just-in-time_compilation",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-04",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Transport_Layer_Security",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-05",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Raft_(algorithm)",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-06",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Bloom_filter",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-07",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Unicode",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-08",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Write-ahead_logging",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-09",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Vector_database",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-10",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Content_delivery_network",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-11",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/Rust_(programming_language)",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-12",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/PostgreSQL",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  },
+  {
+    "id": "wikipedia-13",
+    "source": "wikipedia",
+    "url": "https://en.wikipedia.org/wiki/WebAssembly",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://en.wikipedia.org/wiki/Wikipedia:Copyrights",
+    "fetched": "2026-10-19"
+  }
+]

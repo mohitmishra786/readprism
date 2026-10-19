@@ -136,3 +136,24 @@ async def test_llm_status_reports_embedding_model(client: AsyncClient, test_user
     assert body["embedding_model"] == "all-MiniLM-L6-v2"
     assert "embedding_is_hash" in body
     assert isinstance(body["embedding_is_hash"], bool)
+
+
+@pytest.mark.asyncio
+async def test_llm_status_reports_the_active_embedder_not_the_configured_one(
+    client: AsyncClient, test_user_data
+):
+    """#195: on the lite image the hash fallback runs even though EMBEDDING_MODEL
+    names MiniLM; the settings page must say so and explain how to upgrade."""
+    from unittest.mock import patch
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    with patch("app.utils.embeddings.is_hash_embeddings", return_value=True):
+        body = (await client.get("/api/v1/metrics/llm-status", headers=headers)).json()
+    assert body["embedding_model"] == "lexical-hash" and body["embedding_is_hash"] is True
+    assert "shared words" in body["embedding_quality_note"]
+    assert "all-MiniLM-L6-v2" in body["embedding_upgrade_hint"]
+
+    with patch("app.utils.embeddings.is_hash_embeddings", return_value=False):
+        body = (await client.get("/api/v1/metrics/llm-status", headers=headers)).json()
+    assert body["embedding_model"] == "all-MiniLM-L6-v2" and body["embedding_upgrade_hint"] is None

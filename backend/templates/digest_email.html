@@ -1,87 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+{#- Email design pass (#217): table layout with inline styles (Outlook's Word
+    engine ignores most div/CSS layout), one 600px column, explicit
+    light+dark colour schemes, and a preheader for the inbox preview. The
+    <style> block only adds what inline styles can't: dark mode and the
+    narrow-screen tweaks, both progressive enhancements. -#}
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <title>Your ReadPrism Digest</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #111827; }
-  h1 { font-size: 1.4rem; color: #1d4ed8; }
-  h2 { font-size: 1rem; color: #374151; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-top: 32px; }
-  .item { margin-bottom: 20px; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; }
-  .item-title { font-weight: 600; font-size: 1rem; margin-bottom: 6px; }
-  .item-title a { color: #1d4ed8; text-decoration: none; }
-  .item-meta { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
-  .item-brief { font-size: 14px; color: #374151; line-height: 1.6; }
-  .why { font-size: 11px; color: #6b7280; margin-top: 8px; font-style: italic; }
-  .actions { margin-top: 10px; }
-  .actions a { display: inline-block; font-size: 12px; color: #374151; text-decoration: none;
-               border: 1px solid #e5e7eb; border-radius: 14px; padding: 4px 12px; margin-right: 6px; }
-  .discovery { background: #f0f9ff; }
-  .discovery-badge { display: inline-block; font-size: 11px; background: #bfdbfe; color: #1e40af; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px; }
-  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #9ca3af; }
+  :root { color-scheme: light dark; supported-color-schemes: light dark; }
+  @media (prefers-color-scheme: dark) {
+    .rp-body, .rp-bg { background: #0c0a09 !important; }
+    .rp-card { background: #1c1917 !important; border-color: #292524 !important; }
+    .rp-text, .rp-title a { color: #f5f5f4 !important; }
+    .rp-muted { color: #a8a29e !important; }
+    .rp-section { color: #d6d3d1 !important; border-color: #292524 !important; }
+    .rp-btn { background: #292524 !important; color: #f5f5f4 !important; border-color: #44403c !important; }
+    .rp-read { background: #e7e5e4 !important; color: #1c1917 !important; }
+    .rp-badge { background: #422006 !important; color: #fcd34d !important; }
+    .rp-ai { background: #292524 !important; color: #a8a29e !important; }
+    .rp-link { color: #93c5fd !important; }
+  }
   @media (max-width: 480px) {
-    body { padding: 12px; }
-    .item { padding: 12px; }
-    .actions a { margin-top: 4px; }
+    .rp-container { width: 100% !important; }
+    .rp-pad { padding: 14px !important; }
+    .rp-act { display: inline-block !important; padding: 0 6px 8px 0 !important; }
   }
 </style>
 </head>
-<body>
-<h1>ReadPrism Digest</h1>
-<p style="color:#6b7280;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</p>
+<body class="rp-body" style="margin:0;padding:0;background:#f5f5f4;">
+<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">{{ digest.total_items }} reads ranked for you{% if lead_title %}: {{ lead_title }}{% endif %}&#8199;&#65279;&#847;&#8199;&#65279;&#847;</div>
+<table role="presentation" class="rp-bg" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f5f5f4;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" class="rp-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
+  <tr><td style="padding:0 4px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <div class="rp-text" style="font-size:22px;font-weight:700;color:#1c1917;">ReadPrism</div>
+    <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:2px;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</div>
+  </td></tr>
 
 {% for section_name in ["lead", "creator", "deep_reads", "more", "discovery"] %}
   {% set items = sections.get(section_name, []) %}
   {% if items %}
-    <h2>
-      {% if section_name == "lead" %}Top Reads
-      {% elif section_name == "creator" %}From Your Creators
-      {% elif section_name == "deep_reads" %}Deep Reads
-      {% elif section_name == "more" %}More From Your Feeds
-      {% else %}Discover
-      {% endif %}
-    </h2>
+  <tr><td class="rp-section" style="padding:18px 4px 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#57534e;">
+    {% if section_name == "lead" %}Top reads{% elif section_name == "creator" %}From your creators{% elif section_name == "deep_reads" %}Deep reads{% elif section_name == "more" %}More from your feeds{% else %}Discover{% endif %}
+  </td></tr>
     {% for item_data in items %}
-      {% set content = item_data.content %}
-      <div class="item {% if section_name == 'discovery' %}discovery{% endif %}">
+    {% set content = item_data.content %}
+  <tr><td style="padding:0 0 12px;">
+    <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
+      <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         {% if section_name == "discovery" %}
-          <span class="discovery-badge">Outside your usual sources</span><br>
+        <div style="margin:0 0 8px;"><span class="rp-badge" style="display:inline-block;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 9px;">Outside your usual sources{% if item_data.discovered_via %} · via {{ item_data.discovered_via }}{% endif %}</span></div>
         {% endif %}
-        <div class="item-title">
-          <a href="{{ item_data.open_url }}">{{ content.title }}</a>
-        </div>
-        <div class="item-meta">
-          {% if content.author %}{{ content.author }} · {% endif %}
-          {% if content.reading_time_minutes %}{{ content.reading_time_minutes }} min read{% endif %}
-        </div>
+        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="{{ item_data.open_url }}" style="color:#1c1917;text-decoration:none;">{{ content.title }}</a></div>
+        <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">{% if content.author %}{{ content.author }}{% endif %}{% if content.author and content.reading_time_minutes %} · {% endif %}{% if content.reading_time_minutes %}{{ content.reading_time_minutes }} min read{% endif %}</div>
         {% if content.summary_brief %}
-          <div class="item-brief">{% if content.summary_source == "llm" %}<span style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px">AI summary</span>{% endif %}{{ content.summary_brief }}</div>
+        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;">{% if content.summary_source == "llm" %}<span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px;">AI summary</span>{% endif %}{{ content.summary_brief }}</div>
         {% endif %}
         {% if item_data.why_ranked %}
-          <div class="why">Ranked because: {{ item_data.why_ranked | join(", ") }}</div>
+        <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: {{ item_data.why_ranked | join(", ") }}</div>
         {% endif %}
-        <div class="actions">
-          <a href="{{ item_data.up_url }}">👍 Useful</a>
-          <a href="{{ item_data.down_url }}">👎 Not for me</a>
-          <a href="{{ item_data.save_url }}">💾 Save</a>
-        </div>
-      </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="{{ item_data.open_url }}" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in ReadPrism</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.up_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">👍 Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.down_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">👎 Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="{{ item_data.save_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+        </tr></table>
+      </td></tr>
+    </table>
+  </td></tr>
     {% endfor %}
   {% endif %}
 {% endfor %}
 
-<div class="footer">
-  {% if dead_sources %}
-  <p>These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.</p>
-  {% endif %}
-  <p>You received this because you have a ReadPrism account.
-     <a href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
-     <a href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a>
-  </p>
-  <p>Links open in ReadPrism first so it can learn from what you read and rate.
-     This email contains no tracking pixel.</p>
-  {% if physical_address %}<p>{{ physical_address }}</p>{% endif %}
-</div>
+  <tr><td class="rp-muted" style="padding:24px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#a8a29e;">
+    {% if dead_sources %}
+    <p style="margin:0 0 10px;">These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.
+      <a class="rp-link" href="{{ sources_url }}" style="color:#1d4ed8;">Fix them in one click</a> (ReadPrism looks for the site's new feed).</p>
+    {% endif %}
+    <p style="margin:0 0 10px;">You received this because you have a ReadPrism account.
+      <a class="rp-link" href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
+      <a class="rp-link" href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a></p>
+    <p style="margin:0 0 10px;">Links open in ReadPrism first so it can learn from what you read and rate. This email contains no tracking pixel.</p>
+    {% if physical_address %}<p style="margin:0;">{{ physical_address }}</p>{% endif %}
+  </td></tr>
+</table>
+</td></tr>
+</table>
 </body>
 </html>
