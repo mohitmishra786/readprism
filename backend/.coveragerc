@@ -1,0 +1,13 @@
+# Coverage for the backend (#145, #189).
+[run]
+source = app
+# SQLAlchemy's async layer runs code after each await inside greenlets; without
+# this, coverage silently misses most DB-touching lines (e.g. it reported
+# api/feedback.py at 37% while its tests exercised the whole endpoint).
+concurrency = greenlet, thread
+omit =
+    app/migrate.py
+    app/mcp_server.py
+
+[report]
+skip_empty = true
