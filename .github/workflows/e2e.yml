@@ -6,7 +6,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    paths: ["frontend/**", ".github/workflows/e2e.yml"]
+    paths: ["frontend/**", "extension/**", ".github/workflows/e2e.yml"]
   workflow_dispatch: {}
 
 permissions:
@@ -40,3 +40,27 @@ jobs:
       - name: Run e2e (axe 0 serious, PWA surface)
         working-directory: frontend
         run: npx playwright test
+
+  extension:
+    # The MV3 extension in a real Chromium against a stub API (#215).
+    name: Extension e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run extension e2e (detect feed, save & rate, no access without a grant)
+        working-directory: frontend
+        run: npx playwright test -c playwright.extension.config.ts
