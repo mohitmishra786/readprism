@@ -157,6 +157,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             unsubscribe_url=unsub_url,
             physical_address=settings.email_physical_address,
             dead_sources=await _pending_dead_sources(user.id, session),
+            sources_url=f"{settings.frontend_url.rstrip('/')}/sources",
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")

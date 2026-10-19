@@ -48,6 +48,7 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("POST", "/api/v1/sources/discover-suggestions/{suggestion_id}/dismiss", None),
     ("PUT", "/api/v1/sources/{source_id}", {"name": "pwned"}),
     ("DELETE", "/api/v1/sources/{source_id}", None),
+    ("POST", "/api/v1/sources/{source_id}/fix", None),
     ("DELETE", "/api/v1/tokens/{token_id}", None),
 ]
 

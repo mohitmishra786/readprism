@@ -73,7 +73,8 @@
 
 <div class="footer">
   {% if dead_sources %}
-  <p>These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.</p>
+  <p>These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.
+    <a href="{{ sources_url }}">Fix them in one click</a> (ReadPrism looks for the site's new feed).</p>
   {% endif %}
   <p>You received this because you have a ReadPrism account.
      <a href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·

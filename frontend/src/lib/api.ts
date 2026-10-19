@@ -230,6 +230,12 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    /** One-click repair of a dead/failing feed (#212). */
+    fix: (id: string) =>
+      request<{ status: 'fixed' | 'no_new_feed'; feed_url: string | null; suggestion?: string }>(
+        `/sources/${id}/fix`,
+        { method: 'POST' },
+      ),
     delete: (id: string) =>
       request<void>(`/sources/${id}`, { method: 'DELETE' }),
     importOpml: (file: File) => {

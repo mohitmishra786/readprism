@@ -481,6 +481,66 @@ async def import_saved(
     return {"created": created, "origin": "import"}
 
 
+@router.post("/{source_id}/fix")
+async def fix_source(
+    source_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """One-click repair for a dead or failing feed (#212).
+
+    Re-runs feed autodiscovery on the site. If the site now advertises a
+    different feed (a moved or renamed feed is the usual cause), switch the
+    subscription to it, clear the failure state and re-attach it to the right
+    shared feed. Otherwise say so, so the UI can offer removal instead.
+    """
+    from urllib.parse import urlparse
+
+    from app.services.abuse import require_fetch_budget
+    from app.services.ingestion.feeds import sync_feeds
+
+    source = (
+        await session.execute(
+            select(Source).where(Source.id == source_id, Source.user_id == current_user.id)
+        )
+    ).scalar_one_or_none()
+    if source is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+    if source.source_type == "newsletter":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Newsletters have no feed to fix"
+        )
+    await require_fetch_budget(session, current_user)
+
+    parts = urlparse(source.url)
+    site_root = f"{parts.scheme}://{parts.netloc}/" if parts.scheme and parts.netloc else None
+    candidates = [source.url] + ([site_root] if site_root and site_root != source.url else [])
+    found = None
+    for page in candidates:
+        found = await _autodiscover_feed(page)
+        if found and found != source.feed_url:
+            break
+        found = None
+    if not found:
+        return {"status": "no_new_feed", "feed_url": source.feed_url, "suggestion": "remove"}
+
+    source.feed_url = found
+    source.source_type = "rss"
+    source.feed_id = None  # re-attached to the shared feed for the new URL below
+    source.is_active = True
+    source.feed_status = "healthy"
+    source.fetch_error_count = 0
+    source.failure_since = None
+    source.last_error = None
+    source.last_error_at = None
+    source.dead_notice_pending = False
+    source.next_poll_at = None
+    await session.flush()
+    await sync_feeds(session, user_id=current_user.id)
+    _fetch_new_sources_soon(current_user.id)
+    return {"status": "fixed", "feed_url": found}
+
+
 @router.put("/{source_id}", response_model=SourceRead)
 async def update_source(
     source_id: uuid.UUID,
