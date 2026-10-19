@@ -8,7 +8,6 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
-from app.config import get_settings
 from app.database import get_db
 from app.models.content import ContentItem
 from app.models.source import Source
@@ -50,13 +49,11 @@ async def _vector_ids(
     filters_sql: str,
     params: dict,
     limit: int,
+    *,
+    model_name: str,
+    model_dim: int,
 ) -> list[str]:
-    # Same-model guard: only rows embedded by the active spec participate.
-    from app.services.embeddings.registry import active_spec
-
-    spec = active_spec(
-        model=get_settings().embedding_model, cutover=get_settings().embedding_cutover_enabled
-    )
+    # Same-model guard: only rows embedded by the query's embedder participate.
     sql = text(
         f"""
         SELECT ci.id::text
@@ -73,8 +70,8 @@ async def _vector_ids(
         {
             **params,
             "vec": str(query_embedding),
-            "model_name": spec.name,
-            "model_dim": spec.dim,
+            "model_name": model_name,
+            "model_dim": model_dim,
             "limit": limit,
         },
     )
@@ -153,17 +150,22 @@ async def search(
     vector_list: list[str] = []
     if source_ids or feed_ids:
         try:
-            from app.services.embeddings.registry import (
-                active_spec,
-                encode_with_spec,
-            )
+            # The query must come from the same embedder as the items
+            # (#311): MiniLM on the standard image, the hash fallback on lite.
+            # A hash query against MiniLM item vectors ranked at random.
+            from app.utils.embeddings import get_embedding_service
 
-            spec = active_spec(
-                model=get_settings().embedding_model,
-                cutover=get_settings().embedding_cutover_enabled,
+            embedder = get_embedding_service()
+            query_vec = await embedder.encode_single(q)
+            vector_list = await _vector_ids(
+                session,
+                query_vec,
+                filters_sql,
+                params,
+                depth,
+                model_name=embedder.model_name,
+                model_dim=embedder.dimension,
             )
-            query_vec = encode_with_spec(q, spec, query=True)
-            vector_list = await _vector_ids(session, query_vec, filters_sql, params, depth)
         except Exception as e:
             logger.warning(f"Vector leg skipped (non-fatal): {e}")
 

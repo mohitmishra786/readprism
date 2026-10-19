@@ -61,20 +61,18 @@ async def _seed(prefix: str, items: int, feeds: int) -> str:
     from sqlalchemy import insert, text
 
     from app.api.auth import _create_access_token
-    from app.config import get_settings
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem
     from app.models.feed import Feed
     from app.models.source import Source
     from app.models.user import User
-    from app.services.embeddings.registry import active_spec, encode_with_spec
+    from app.utils.embeddings import get_embedding_service
 
-    s = get_settings()
-    spec = active_spec(model=s.embedding_model, cutover=s.embedding_cutover_enabled)
+    embedder = get_embedding_service()  # the item embedder, as in production (#311)
     rng = random.Random(prefix)
     # One embedding per distinct title keeps seeding fast; items reuse them.
     titles = [" ".join(rng.sample(WORDS, 5)) for _ in range(400)]
-    vectors = [list(map(float, encode_with_spec(t, spec))) for t in titles]
+    vectors = [list(map(float, v)) for v in embedder.encode(titles)]
     now = datetime.now(UTC)
     async with AsyncSessionLocal() as session:
         user = User(email=f"{prefix}@bench.invalid", hashed_password="x", onboarding_complete=True)
@@ -109,8 +107,8 @@ async def _seed(prefix: str, items: int, feeds: int) -> str:
                     "summary_source": "extractive",
                     "topic_clusters": [titles[t].split()[0]],
                     "embedding": vectors[t],
-                    "embedding_model": spec.name,
-                    "embedding_dim": spec.dim,
+                    "embedding_model": embedder.model_name,
+                    "embedding_dim": embedder.dimension,
                     "fetched_at": now - timedelta(minutes=i),
                     "word_count": 800,
                     "extraction_method": "feed",
@@ -165,8 +163,12 @@ async def _run(args: argparse.Namespace) -> None:
             for q in QUERIES[:3]:  # warm-up: model load, plan cache
                 await client.get("/api/v1/search", params={"q": q}, headers=headers)
             times, hits = [], []
-            for _ in range(args.rounds):
-                for q in QUERIES:
+            for r in range(args.rounds):
+                for i, base in enumerate(QUERIES):
+                    # Unique text per call: query vectors are cached, and real
+                    # users mostly type new queries, so measure the uncached
+                    # path including model inference (#311).
+                    q = f"{base} {WORDS[(r * len(QUERIES) + i) % len(WORDS)]}"
                     t = time.perf_counter()
                     resp = await client.get("/api/v1/search", params={"q": q}, headers=headers)
                     times.append((time.perf_counter() - t) * 1000)
