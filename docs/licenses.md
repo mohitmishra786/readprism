@@ -43,6 +43,7 @@ every production frontend package.
 | click-repl | 0.4.1 | MIT |
 | cloudpickle | 3.1.2 | BSD-3-Clause |
 | courlan | 1.4.0 | UNKNOWN (classifier) |
+| coverage | 7.16.2 | Apache-2.0 |
 | cryptography | 50.0.2 | UNKNOWN (classifier) |
 | cuda-bindings | 13.4.4 | UNKNOWN (classifier) |
 | cuda-pathfinder | 1.8.3 | UNKNOWN (classifier) |
@@ -64,10 +65,10 @@ every production frontend package.
 | hf-xet | 1.7.0 | Apache Software License |
 | htmldate | 1.11.0 | UNKNOWN (classifier) |
 | httpcore | 1.0.9 | BSD License |
-| httpcore2 | 2.14.0 | BSD License |
+| httpcore2 | 2.15.1 | BSD License |
 | httptools | 0.9.0 | UNKNOWN (classifier) |
 | httpx | 0.28.1 | BSD-3-Clause |
-| httpx2 | 2.14.0 | BSD License |
+| httpx2 | 2.15.1 | BSD License |
 | huggingface_hub | 2.2.0 | Apache-2.0 |
 | idna | 3.20 | UNKNOWN (classifier) |
 | iniconfig | 2.3.1 | UNKNOWN (classifier) |
@@ -126,6 +127,7 @@ every production frontend package.
 | PyJWT | 2.15.1 | UNKNOWN (classifier) |
 | pytest | 9.1.1 | UNKNOWN (classifier) |
 | pytest-asyncio | 1.4.0 | UNKNOWN (classifier) |
+| pytest-cov | 7.1.0 | MIT License |
 | python-dateutil | 2.9.0.post0 | Dual License |
 | python-discovery | 1.2.0 | MIT License |
 | python-dotenv | 1.2.3 | BSD-3-Clause |
@@ -157,7 +159,7 @@ every production frontend package.
 | torch | 2.14.1 | UNKNOWN (classifier) |
 | tqdm | 4.70.1 | MPL-2.0 AND MIT |
 | trafilatura | 1.12.2 | Apache-2.0 |
-| transformers | 5.20.1 | Apache 2.0 License |
+| transformers | 5.20.2 | Apache 2.0 License |
 | triton | 3.8.0 | MIT |
 | truststore | 0.10.5 | UNKNOWN (classifier) |
 | typer | 0.27.3 | UNKNOWN (classifier) |
@@ -172,7 +174,7 @@ every production frontend package.
 | vine | 5.1.0 | BSD |
 | virtualenv | 21.2.0 | MIT License |
 | watchfiles | 1.3.0 | MIT |
-| websockets | 17.2 | UNKNOWN (classifier) |
+| websockets | 17.3 | UNKNOWN (classifier) |
 
 ## Frontend (npm) — production
 
@@ -290,5 +292,5 @@ every production frontend package.
 ## Notes
 
 - `pip-licenses` reports the licenses as declared in package metadata;
-  counts by family: UNKNOWN (classifier) ×68, MIT ×18, MIT License ×11, BSD-3-Clause ×9, BSD License ×7, LicenseRef-NVIDIA-Proprietary ×7
+  counts by family: UNKNOWN (classifier) ×68, MIT ×18, MIT License ×12, BSD-3-Clause ×9, BSD License ×7, Apache-2.0 ×7
 
