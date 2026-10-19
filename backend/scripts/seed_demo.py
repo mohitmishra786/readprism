@@ -1,15 +1,26 @@
-"""Seed a demo persona so a fresh instance is instantly explorable (RL-03).
+"""Seed the demo persona so a fresh instance is instantly explorable (RL-03, #158).
 
-Offline: sources come from the starter packs, items are synthesized locally
-(hash embeddings), a digest is built through the real builder.
+Offline and reproducible. The persona, publications and ~30 articles in
+app/data/demo/articles.json are fictional and written for ReadPrism (CC0;
+nothing third-party). The script:
+
+1. creates the persona with three interests and seven demo publications;
+2. embeds every article with this instance's embedder (MiniLM on the
+   standard image, the hash fallback on lite);
+3. replays two weeks of reading (finished, skimmed, skipped, saved, rated)
+   through the real interest-graph updater, so interests and source trust
+   are learned, not hard-coded;
+4. builds today's digest with the real builder.
 
     make demo   # or: cd backend && PYTHONPATH=. python3 scripts/seed_demo.py
+
+Idempotent: re-running replaces the previous demo data.
 """
 
 from __future__ import annotations
 
 import asyncio
-import hashlib
+import json
 import secrets
 import sys
 from datetime import UTC, datetime, timedelta
@@ -17,120 +28,180 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
+
+DATA = Path(__file__).resolve().parents[1] / "app" / "data" / "demo" / "articles.json"
+DEMO_HOST = "demo.readprism.local"
+
+# How each kind of past read is recorded: completion, seconds on page, extras.
+READS = {
+    "finished": {"read_completion_pct": 0.96, "time_on_page_seconds": 260, "reached_end": True},
+    "saved": {
+        "read_completion_pct": 0.92,
+        "time_on_page_seconds": 300,
+        "reached_end": True,
+        "saved": True,
+    },
+    "skimmed": {"read_completion_pct": 0.35, "time_on_page_seconds": 50},
+    "skipped": {"read_completion_pct": 0.02, "time_on_page_seconds": 3, "skipped": True},
+}
+
+
+def feed_url(slug: str) -> str:
+    return f"https://{slug}.{DEMO_HOST}/feed"
+
+
+async def seed(session, *, password: str) -> dict:
+    """Seed into `session`; returns a summary. Callers commit."""
+    from app.api.auth import _hash_password
+    from app.models.content import ContentItem, UserContentInteraction
+    from app.models.digest import Digest
+    from app.models.interest_graph import InterestNode
+    from app.models.source import Source
+    from app.models.user import User
+    from app.services.digest.builder import build_digest
+    from app.services.interest_graph.updater import update_from_interaction
+    from app.utils.embeddings import get_embedding_service
+
+    data = json.loads(DATA.read_text())
+    persona = data["persona"]
+    embedder = get_embedding_service()
+
+    user = (
+        await session.execute(select(User).where(User.email == persona["email"]))
+    ).scalar_one_or_none()
+    if user is None:
+        user = User(email=persona["email"], hashed_password="", onboarding_complete=True)
+        session.add(user)
+    # bcrypt in both branches: a plaintext password can never log in.
+    user.hashed_password = _hash_password(password)
+    user.display_name = persona["name"]
+    user.interest_text = persona["about"]
+    user.onboarding_complete = True
+    user.email_verified_at = user.email_verified_at or datetime.now(UTC)
+    await session.flush()
+
+    # Idempotent: drop the previous demo world for this persona.
+    await session.execute(delete(Digest).where(Digest.user_id == user.id))
+    await session.execute(
+        delete(UserContentInteraction).where(UserContentInteraction.user_id == user.id)
+    )
+    await session.execute(delete(InterestNode).where(InterestNode.user_id == user.id))
+    await session.execute(delete(Source).where(Source.user_id == user.id))
+    await session.execute(
+        delete(ContentItem).where(ContentItem.url.like(f"https://%.{DEMO_HOST}/%"))
+    )
+    await session.flush()
+
+    for interest in persona["interests"]:
+        session.add(
+            InterestNode(
+                user_id=user.id,
+                topic_label=interest["topic"],
+                topic_embedding=await embedder.encode_single(interest["topic"]),
+                weight=interest["weight"],
+            )
+        )
+
+    sources = {}
+    for pub in data["publications"]:
+        src = Source(
+            user_id=user.id,
+            url=f"https://{pub['slug']}.{DEMO_HOST}/",
+            feed_url=feed_url(pub["slug"]),
+            name=pub["name"],
+            source_type="rss",
+            trust_weight=0.5,
+            initial_backfill_done=True,
+        )
+        session.add(src)
+        sources[pub["slug"]] = (src, pub["topic"])
+    await session.flush()
+
+    now = datetime.now(UTC)
+    history: list[tuple[ContentItem, dict]] = []
+    fresh = 0
+    for index, art in enumerate(data["articles"]):
+        src, topic = sources[art["pub"]]
+        body = "\n\n".join(art["body"])
+        when = (
+            now - timedelta(days=art["days_ago"], hours=index % 5)
+            if "days_ago" in art
+            else now - timedelta(hours=art["age_hours"])
+        )
+        words = len(body.split())
+        item = ContentItem(
+            source_id=src.id,
+            url=f"https://{art['pub']}.{DEMO_HOST}/{index:02d}",
+            title=art["title"],
+            author=art["author"],
+            summary_brief=art["summary"],
+            summary_source="extractive",
+            full_text=body,
+            topic_clusters=[topic],
+            embedding=await embedder.encode_single(f"{art['title']}. {art['summary']} {body}"),
+            embedding_model=embedder.model_name,
+            embedding_dim=embedder.dimension,
+            word_count=words,
+            reading_time_minutes=max(1, round(words / 220)),
+            content_depth_score=0.7 if words > 120 else 0.5,
+            has_citations=False,
+            extraction_method="feed",
+            published_at=when,
+            fetched_at=when,
+        )
+        session.add(item)
+        if "read" in art:
+            history.append((item, art))
+        else:
+            fresh += 1
+    await session.flush()
+
+    # Two weeks of reading, learned through the real updater.
+    for item, art in history:
+        record = dict(READS[art["read"]])
+        if "rating" in art:
+            record["explicit_rating"] = art["rating"]
+        opened = item.fetched_at + timedelta(hours=2)
+        ix = UserContentInteraction(
+            user_id=user.id,
+            content_item_id=item.id,
+            opened_at=None if record.get("skipped") else opened,
+            saved_at=opened if record.get("saved") else None,
+            saved_read_at=opened if record.get("saved") else None,
+            **record,
+        )
+        session.add(ix)
+        await session.flush()
+        await update_from_interaction(ix, item, session)
+    await session.flush()
+
+    digest = await build_digest(user, session)
+    return {
+        "email": persona["email"],
+        "digest_items": digest.total_items,
+        "history": len(history),
+        "fresh": fresh,
+        "digest_id": digest.id,
+    }
 
 
 async def main() -> None:
-    from app.api.auth import _hash_password
     from app.database import AsyncSessionLocal
-    from app.models.content import ContentItem
-    from app.models.source import Source
-    from app.models.user import User
-    from app.services.cold_start.starter_packs import list_starter_packs
-    from app.services.digest.builder import build_digest
 
     password = secrets.token_urlsafe(12)
     async with AsyncSessionLocal() as session:
-        email = "demo@readprism.local"
-        existing = await session.execute(select(User).where(User.email == email))
-        user = existing.scalar_one_or_none()
-        # bcrypt hash in BOTH branches — a plaintext password can never log in
-        # (CodeRabbit).
-        if user is None:
-            user = User(
-                email=email, hashed_password=_hash_password(password), onboarding_complete=True
-            )
-            session.add(user)
-            await session.flush()
-        else:
-            user.hashed_password = _hash_password(password)
-            await session.flush()
-
-        # Idempotent: clear previous synthetic items (and their digests).
-        from sqlalchemy import delete
-
-        from app.models.digest import Digest, DigestItem
-
-        old_items = (
-            (
-                await session.execute(
-                    select(ContentItem).where(
-                        ContentItem.url.like("https://demo.readprism.local/%")
-                    )
-                )
-            )
-            .scalars()
-            .all()
-        )
-        if old_items:
-            old_ids = [item.id for item in old_items]
-            await session.execute(delete(DigestItem).where(DigestItem.content_item_id.in_(old_ids)))
-            await session.execute(delete(ContentItem).where(ContentItem.id.in_(old_ids)))
-            await session.execute(delete(Digest).where(Digest.user_id == user.id))
-            await session.flush()
-
-        # Sources: first feed of five starter packs; three synthetic items each.
-        packs = list_starter_packs()[:5]
-        existing_sources = {
-            row[0]
-            for row in (
-                await session.execute(select(Source.url).where(Source.user_id == user.id))
-            ).fetchall()
-        }
-        now = datetime.now(UTC)
-        items = []
-        for pack in packs:
-            feed = pack.feeds[0]
-            if feed["url"] not in existing_sources:
-                src = Source(
-                    user_id=user.id,
-                    url=feed["url"],
-                    name=feed["name"],
-                    feed_url=feed["url"],
-                    source_type="rss",
-                    trust_weight=0.45,
-                )
-                session.add(src)
-                await session.flush()
-                existing_sources.add(feed["url"])
-            else:
-                src = (
-                    await session.execute(
-                        select(Source).where(Source.user_id == user.id, Source.url == feed["url"])
-                    )
-                ).scalar_one()
-            for i in range(3):
-                items.append(
-                    ContentItem(
-                        source_id=src.id,
-                        url=f"https://demo.readprism.local/{pack.id}/{i}",
-                        title=f"{pack.title} demo story {i + 1}",
-                        summary_brief=f"A synthetic {pack.title.lower()} story for the demo digest.",
-                        topic_clusters=[pack.id.replace("-", " ")],
-                        fetched_at=now - timedelta(hours=i),
-                        word_count=800,
-                        reading_time_minutes=4,
-                        embedding=_hash_vec(f"{pack.id}-{i}"),
-                    )
-                )
-        session.add_all(items)
-        await session.flush()
-        digest = await build_digest(user, session)
+        summary = await seed(session, password=password)
         await session.commit()
-
-        print("Demo persona seeded (RL-03):")
-        print(f"  email:    {email}")
-        print(f"  password: {password}")
-        print(f"  digest:   {digest.total_items} items (in-app)")
-        print("  log in at the frontend and open /digest")
-
-
-def _hash_vec(seed: str, dim: int = 384) -> list[float]:
-    """Deterministic unit vector — stable demo embeddings, no model needed."""
-    raw = hashlib.sha256(seed.encode()).digest()
-    vec = [(raw[i % len(raw)] / 255.0) - 0.5 for i in range(dim)]
-    norm = sum(v * v for v in vec) ** 0.5 or 1.0
-    return [v / norm for v in vec]
+    print("Demo persona seeded (RL-03, #158):")
+    print(f"  email:    {summary['email']}")
+    print(f"  password: {password}")
+    print(
+        f"  reading:  {summary['history']} articles read over two weeks; "
+        f"{summary['fresh']} new today"
+    )
+    print(f"  digest:   {summary['digest_items']} items (in-app)")
+    print("  log in at the frontend and open /digest")
 
 
 if __name__ == "__main__":

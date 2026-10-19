@@ -43,7 +43,7 @@ open http://localhost:3001    # create your account and onboard
 **Operations**:
 - `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
   verified round-trip in CI.
-- `make demo` — seed a synthetic demo persona.
+- `make demo` — seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for ReadPrism and released CC0 (`backend/app/data/demo/articles.json`).
 - `make starter-pack-check` — verify starter-pack feed liveness (>=90%).
 
 ## Screenshots
