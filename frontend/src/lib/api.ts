@@ -203,6 +203,19 @@ export const api = {
       request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
   },
 
+  // Personal newsletter address and its live test (#151).
+  newsletter: {
+    address: () =>
+      request<{ address: string; inbound_configured: boolean; email_verified: boolean }>(
+        '/newsletter/address',
+      ),
+    sendTest: () => request<{ status: string }>('/newsletter/address/test', { method: 'POST' }),
+    testStatus: () =>
+      request<{ status: 'none' | 'waiting' | 'received'; sent_at?: string; received_at?: string }>(
+        '/newsletter/address/test',
+      ),
+  },
+
   // Hosted billing (#173). Self-hosted instances report plan "selfhost".
   billing: {
     state: () => request<BillingState>('/billing'),

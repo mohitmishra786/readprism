@@ -5,6 +5,7 @@ import { InterestInput } from "./InterestInput";
 import { SampleArticles, type SampleRating } from "./SampleArticles";
 import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
 import { ImportPanel } from "./ImportPanel";
+import { NewsletterAddressCard } from "../NewsletterAddressCard";
 import { api } from "../../lib/api";
 
 // Steps are addressed by name so new steps don't shift every index.
@@ -14,6 +15,7 @@ const STEPS = [
   "Starter Packs",
   "Sample Articles",
   "Add Sources",
+  "Newsletters",
   "Add Creators",
   "Digest Preferences",
 ] as const;
@@ -255,6 +257,16 @@ export function OnboardingWizard() {
               {s}
             </div>
           ))}
+        </div>
+      )}
+
+      {current === "Newsletters" && (
+        <div>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
+            Newsletters go in your digest too. <strong>Optional</strong>: the address is
+            also in Preferences.
+          </p>
+          <NewsletterAddressCard />
         </div>
       )}
 

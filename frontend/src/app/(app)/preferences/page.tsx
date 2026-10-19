@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
+import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -424,6 +425,11 @@ export default function PreferencesPage() {
           </div>
         </section>
       )}
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Newsletters</h2>
+        <NewsletterAddressCard />
+      </section>
 
       <PlanSection />
 
