@@ -160,6 +160,9 @@ class Settings(BaseSettings):
     content_per_source_cap: int = 500
     source_backfill_limit: int = 20
     digest_per_source_cap: int = 3
+    # How many candidates a digest build ranks: the newest items, at most
+    # DIGEST_PER_SOURCE_CAP per feed (#313). The ranker handles 1,000 in ~170 ms.
+    digest_candidate_limit: int = 1000
     # A digest with fewer rankable items than this is "not worth an email":
     # still built for in-app, but delivery is skipped (UX-03).
     digest_min_items: int = 3

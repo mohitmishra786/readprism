@@ -130,9 +130,17 @@ user's feeds was bound as its own SQL parameter, and past asyncpg's 32,767
 limit (here 200 feeds x 1,000 users) every digest build failed. Fixed in
 the same change (ids bound as one array).
 
-Note: the builder fetches at most 200 items from the window with no
-ordering, so with more than 200 fresh items it ranks an arbitrary subset.
-Follow-up, not changed here.
+Candidate window (#313): builds used to rank an arbitrary 200 window items
+(no ordering). They now rank the newest items, at most
+`DIGEST_PER_SOURCE_CAP` per feed, up to `DIGEST_CANDIDATE_LIMIT` (1,000).
+Story clustering was pure-Python and took ~12 s at 1,000 candidates; it is
+now one matrix product per item. Same machine, 50 users, 400 feeds x 3
+items (1,000 candidates after the per-feed cap):
+
+| Builder | Candidates ranked | p50 | p95 |
+|---|---|---|---|
+| Before (#313) | 200, arbitrary | 808 ms | 907 ms |
+| After | 1,000, newest per feed | 429 ms | 476 ms |
 
 ## Hybrid search at 100,000 items (#231, #311)
 
