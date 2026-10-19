@@ -55,6 +55,12 @@ export interface UseReadingTelemetryOptions {
   readingTimeMinutes?: number | null;
   /** Optional callback invoked after every successful flush. */
   onFlushed?: (snapshot: ReadingSnapshot) => void;
+  /**
+   * True once the article body is rendered. Until then the page is only a
+   * loading shell that "fits in the viewport", which used to count as 100%
+   * scrolled on every open (#193). Defaults to true.
+   */
+  ready?: boolean;
 }
 
 interface InternalState {
@@ -111,7 +117,9 @@ export function useReadingTelemetry({
   contentItemId,
   readingTimeMinutes,
   onFlushed,
+  ready = true,
 }: UseReadingTelemetryOptions) {
+  const readyRef = useRef(ready);
   const stateRef = useRef<InternalState>({
     scrollDepthPct: 0,
     activeTimeMs: 0,
@@ -225,6 +233,8 @@ export function useReadingTelemetry({
   // --- Scroll depth tracking ------------------------------------------------
   const handleScroll = useCallback(() => {
     if (typeof window === "undefined") return;
+    // Measure only the real article, never the loading shell (#193).
+    if (!readyRef.current) return;
     const s = stateRef.current;
     const scrollTop = window.scrollY || document.documentElement.scrollTop;
     const viewportH = window.innerHeight;
@@ -240,6 +250,17 @@ export function useReadingTelemetry({
       s.scrollDepthPct = depth;
     }
   }, []);
+
+  // Take the first measurement once the article is on screen.
+  useEffect(() => {
+    readyRef.current = ready;
+    if (!ready || typeof window === "undefined") return;
+    const frame = window.requestAnimationFrame(() => {
+      handleScroll();
+      setSnapshot(buildSnapshot());
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [ready, handleScroll, buildSnapshot]);
 
   // rAF-throttled scroll handler.
   const rafRef = useRef<number | null>(null);

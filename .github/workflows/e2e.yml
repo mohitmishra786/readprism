@@ -6,7 +6,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-    paths: ["frontend/**", "extension/**", ".github/workflows/e2e.yml"]
+    paths: ["frontend/**", "extension/**", "backend/**", "docker-compose*.yml", ".github/workflows/e2e.yml"]
   workflow_dispatch: {}
 
 permissions:
@@ -64,3 +64,54 @@ jobs:
       - name: Run extension e2e (detect feed, save & rate, no access without a grant)
         working-directory: frontend
         run: npx playwright test -c playwright.extension.config.ts
+
+  reader-telemetry:
+    # A real reader session against the compose backend (#193): browser
+    # telemetry must land as the right values in user_content_interactions.
+    name: Reader telemetry e2e (compose)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.build.yml
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Environment for a throwaway test stack
+        run: |
+          ./scripts/init_env.sh
+          sed -i 's/^REGISTRATION_MODE=.*/REGISTRATION_MODE=open/' .env
+      - name: Start Postgres, Redis and the API (lite image)
+        run: |
+          docker compose build --build-arg LITE=1 backend
+          docker compose up -d db redis backend
+          for i in $(seq 1 60); do
+            docker compose ps backend | grep -q healthy && exit 0
+            sleep 5
+          done
+          docker compose logs backend; exit 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build and serve the frontend on FRONTEND_URL's port
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+        run: |
+          npm ci
+          npm run build
+          npx next start -p 3001 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3001 >/dev/null && break; sleep 2; done
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run reader telemetry e2e
+        working-directory: frontend
+        env:
+          E2E_COMPOSE_DIR: ${{ github.workspace }}
+        run: npx playwright test -c playwright.stack.config.ts
+      - name: Backend logs on failure
+        if: failure()
+        run: docker compose logs backend --tail 200

@@ -42,6 +42,8 @@ export default function ReaderPage() {
   const { snapshot, sentinelRef } = useReadingTelemetry({
     contentItemId: id,
     readingTimeMinutes: item?.reading_time_minutes ?? null,
+    // Scroll depth only counts once the article body is rendered (#193).
+    ready: Boolean(item?.full_text),
   });
   // Post-read toast (#228): derived from reachedEnd, shown once per read.
   const [toastClosed, setToastClosed] = useState(false);
