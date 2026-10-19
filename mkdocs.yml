@@ -17,6 +17,7 @@ nav:
   - Privacy: PRIVACY.md
   - Benchmarks: benchmarks.md
   - Email client check: email-clients.md
+  - Replay evaluation protocol: eval/replay-protocol.md
   - Roadmap & progress: PROGRESS.md
   - ADRs: adr/index.md
 markdown_extensions:
