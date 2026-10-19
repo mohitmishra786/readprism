@@ -111,7 +111,8 @@ export interface DigestItem {
   position: number;
   section: string;
   prs_score: number;
-  signal_breakdown: Record<string, number | string>;
+  /** Features, contributions, no_data, explanation… as stored by the ranker. */
+  signal_breakdown: Record<string, unknown>;
   content: ContentItem | null;
 }
 
@@ -131,7 +132,8 @@ export interface Digest {
 export interface FeedItem {
   content: ContentItem;
   prs_score: number | null;
-  signal_breakdown: Record<string, number | string>;
+  /** Features, contributions, no_data, explanation… as stored by the ranker. */
+  signal_breakdown: Record<string, unknown>;
 }
 
 export interface InterestGraphNode {
