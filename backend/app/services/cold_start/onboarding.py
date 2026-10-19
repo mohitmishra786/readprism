@@ -96,6 +96,22 @@ async def process_onboarding(
 
 
 def _fallback_topic_extract(text: str) -> list[str]:
+    """Topics from interest text without an LLM: the curated taxonomy first
+    (#196), then any keyword phrases it did not recognise."""
+    from app.services.cold_start.taxonomy import MAX_TOPICS, expand
+
+    topics = expand(text)
+    known = {t.lower() for t in topics}
+    for phrase in _keyword_topics(text):
+        if len(topics) >= MAX_TOPICS:
+            break
+        if phrase not in known and not any(phrase in k or k in phrase for k in known):
+            topics.append(phrase)
+            known.add(phrase)
+    return topics
+
+
+def _keyword_topics(text: str) -> list[str]:
     """Extract topic phrases from interest text without an LLM.
 
     Captures both capitalized phrases (proper nouns) and significant lowercase
