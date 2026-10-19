@@ -346,6 +346,8 @@ export const api = {
         openai_fallback_enabled: boolean;
         embedding_model?: string;
         embedding_is_hash?: boolean;
+        embedding_quality_note?: string;
+        embedding_upgrade_hint?: string | null;
       }>('/metrics/llm-status'),
   },
 
