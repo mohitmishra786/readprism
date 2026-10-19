@@ -437,7 +437,7 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
-    interestGraph: () => request<InterestGraph>('/preferences/interest-graph'),
+    interestGraph: (limit = 50) => request<InterestGraph>(`/preferences/interest-graph?limit=${limit}`),
   },
 
   metrics: {

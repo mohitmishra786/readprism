@@ -140,6 +140,9 @@ export interface InterestGraphNode {
   label: string;
   weight: number;
   is_core: boolean;
+  last_reinforced_at?: string | null;
+  reinforcement_count?: number;
+  suppressed_until?: string | null;
 }
 
 export interface InterestGraphEdge {

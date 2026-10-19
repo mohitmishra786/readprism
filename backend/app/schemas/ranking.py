@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel
 
@@ -32,6 +33,10 @@ class InterestGraphNode(BaseModel):
     label: str
     weight: float
     is_core: bool
+    # For the interest map (#179): recency highlight and mute state.
+    last_reinforced_at: datetime | None = None
+    reinforcement_count: int = 0
+    suppressed_until: datetime | None = None
 
 
 class InterestGraphEdge(BaseModel):
