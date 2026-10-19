@@ -29,5 +29,17 @@ The popup/background scripts call your ReadPrism instance's REST API directly:
 - `POST /api/v1/sources` for sources
 - `POST /api/v1/creators` for creators
 
-The token is stored in `chrome.storage.sync` and sent only to your configured
-server via the `Authorization: Bearer` header.
+The token is stored in `chrome.storage.local` (never synced) and sent only to
+your configured server via the `Authorization: Bearer` header.
+
+## Permissions
+
+The extension does not ask for access to every site (#214):
+
+- **Your ReadPrism server only.** When you save the server URL in the options,
+  the browser asks you to allow that one origin (`optional_host_permissions`).
+  `http://localhost:8000` is allowed by default for self-hosting.
+- **The current tab, when you click.** Feed detection runs only when you open
+  the popup, using `activeTab` + `scripting`. Nothing runs on pages you merely
+  visit.
+- `contextMenus` for the right-click items and `storage` for your settings.

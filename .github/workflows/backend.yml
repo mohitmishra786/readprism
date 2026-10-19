@@ -63,6 +63,7 @@ jobs:
           python -m pytest -q -p no:cacheprovider
           tests/test_utils/test_production_defaults.py
           tests/test_utils/test_renderer_isolation.py
+          tests/test_utils/test_extension_manifest.py
 
   typecheck:
     name: Typecheck (mypy)
