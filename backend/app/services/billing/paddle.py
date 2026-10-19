@@ -103,10 +103,14 @@ async def checkout_url(user, interval: str) -> str | None:
     price = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
     if not price or not s.billing_api_key:
         return None
-    payload = {
+    payload: dict = {
         "items": [{"price_id": price, "quantity": 1}],
         "custom_data": {"user_id": str(user.id)},
     }
+    from app.services.billing import academic_discount_for
+
+    if discount := academic_discount_for(user):
+        payload["discount_id"] = discount  # academic discount (#250)
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(f"{_api()}/transactions", json=payload, headers=_headers())
         resp.raise_for_status()

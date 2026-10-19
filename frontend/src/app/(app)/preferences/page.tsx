@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
 import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
+import { CitationExport } from "../../../components/CitationExport";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -429,6 +430,11 @@ export default function PreferencesPage() {
       <section style={{ marginTop: 40 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Newsletters</h2>
         <NewsletterAddressCard />
+      </section>
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Export saved articles</h2>
+        <CitationExport />
       </section>
 
       <PlanSection />

@@ -155,6 +155,26 @@ async function request<T>(
  * telemetry uses a keepalive fetch instead: the browser finishes the request
  * even after the page goes away (UX-05).
  */
+/**
+ * Download a file from the API with the session cookie (#250): fetches it as
+ * a blob, refreshing an expired session once, then saves it under `filename`.
+ */
+export async function downloadFile(path: string, filename: string, _retried = false): Promise<void> {
+  const res = await fetch(`${V1}${path}`, { credentials: 'include', headers: buildHeaders({}, false) });
+  if (res.status === 401 && !_retried && (await tryRefresh())) {
+    return downloadFile(path, filename, true);
+  }
+  if (!res.ok) throw new Error(`Download failed (HTTP ${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function keepalivePost(path: string, payload: Record<string, unknown>): void {
   try {
     void fetch(`${V1}${path}`, {

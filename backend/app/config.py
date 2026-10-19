@@ -243,6 +243,14 @@ class Settings(BaseSettings):
     billing_team_price_ids: str = ""
     billing_trial_days: int = 30
     billing_past_due_grace_days: int = 3
+    # Academic discount (#250): applied at checkout for a verified email on an
+    # academic domain. Paddle: a discount id (dsc_...); Lemon Squeezy: a
+    # discount code. Empty = no academic discount.
+    billing_academic_discount: str = ""
+    billing_academic_domains: str = (
+        ".edu,.ac.uk,.ac.jp,.ac.in,.ac.nz,.ac.za,.ac.il,.ac.kr,.ac.at,.edu.au,.edu.cn,"
+        ".edu.sg,.edu.br,.edu.mx,.edu.tr,.edu.hk,.uni-heidelberg.de,.ethz.ch,.epfl.ch"
+    )
     # Abuse controls on hosted (#169). 0 disables a limit.
     hosted_fetch_budget_per_hour: int = 300  # feed polls + on-demand fetches per account
     hosted_host_polls_per_hour: int = 120  # polls of one host across all accounts

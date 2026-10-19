@@ -55,6 +55,11 @@ export function PlanSection() {
     <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Plan</h2>
       <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>{describe(state)}</p>
+      {state.billing_enabled && state.academic_discount && !paying && (
+        <p style={{ fontSize: 14, marginBottom: 12 }} role="status">
+          🎓 Academic discount: your university email qualifies, and the discount is applied at checkout.
+        </p>
+      )}
       {state.billing_enabled && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {!paying && (

@@ -80,7 +80,12 @@ async def checkout_url(user, interval: str) -> str | None:
     base = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
     if not base:
         return None
-    query = urlencode({"checkout[email]": user.email, "checkout[custom][user_id]": str(user.id)})
+    params = {"checkout[email]": user.email, "checkout[custom][user_id]": str(user.id)}
+    from app.services.billing import academic_discount_for
+
+    if discount := academic_discount_for(user):
+        params["checkout[discount_code]"] = discount  # academic discount (#250)
+    query = urlencode(params)
     return f"{base}{'&' if '?' in base else '?'}{query}"
 
 

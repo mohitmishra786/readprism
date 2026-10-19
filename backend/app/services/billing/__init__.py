@@ -189,3 +189,20 @@ def provider(name: str | None = None):
     providers = {"lemonsqueezy": lemonsqueezy, "paddle": paddle}
     chosen = (name or get_settings().billing_provider or "").strip().lower()
     return providers.get(chosen)
+
+
+def academic_eligible(user: User) -> bool:
+    """Verified email on an academic domain (#250). Suffixes match whole
+    labels, so 'mit.edu' qualifies and 'edu.example.com' does not."""
+    if user.email_verified_at is None or "@" not in (user.email or ""):
+        return False
+    domain = user.email.rsplit("@", 1)[1].lower().strip(".")
+    suffixes = [x.strip().lower() for x in get_settings().billing_academic_domains.split(",")]
+    return any(
+        suffix and (domain.endswith(suffix) or domain == suffix.lstrip(".")) for suffix in suffixes
+    )
+
+
+def academic_discount_for(user: User) -> str | None:
+    discount = get_settings().billing_academic_discount
+    return discount if discount and academic_eligible(user) else None

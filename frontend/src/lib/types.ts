@@ -163,6 +163,8 @@ export interface Token {
 export interface BillingState {
   plan: "selfhost" | "trial" | "pro" | "team" | "free";
   billing_enabled: boolean;
+  /** Academic discount applies at checkout (verified academic email, #250). */
+  academic_discount?: boolean;
   status: string | null;
   trial_ends_at: string | null;
   trial_days_left: number | null;

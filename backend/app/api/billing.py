@@ -37,6 +37,8 @@ async def billing_state(user: User = Depends(get_current_user)) -> dict:
     return {
         "plan": plan,
         "billing_enabled": billing.billing_enabled(),
+        # Shown before checkout so the reader knows it will apply (#250).
+        "academic_discount": bool(billing.academic_discount_for(user)),
         "status": user.billing_status,
         "trial_ends_at": user.trial_ends_at,
         "trial_days_left": trial_days_left,
