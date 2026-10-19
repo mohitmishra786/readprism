@@ -57,6 +57,30 @@ def page_type_of(html: str) -> str:
     return "unknown"
 
 
+# MediaWiki's citation apparatus (#319): the reference list and the inline
+# [1] markers. Extracted as text they made Wikipedia articles ~35% citations.
+# Generic footnotes and data tables are content and stay.
+_CITATION_SELECTORS = (
+    ".mw-references-wrap",
+    "ol.references",
+    ".reflist",
+    "sup.reference",
+    ".mw-cite-backlink",
+)
+_CITATION_HINTS = ("mw-references-wrap", 'class="reference"', "reflist", "mw-cite-backlink")
+
+
+def strip_citations(html: str) -> str:
+    """Remove MediaWiki reference lists and citation markers, if present."""
+    if not html or not any(hint in html for hint in _CITATION_HINTS):
+        return html
+    soup = BeautifulSoup(html, "html.parser")
+    for selector in _CITATION_SELECTORS:
+        for element in soup.select(selector):
+            element.decompose()
+    return str(soup)
+
+
 def extract_html(
     html: str,
     url: str = "",
@@ -65,6 +89,8 @@ def extract_html(
     rendered_html: str | None = None,
 ) -> Extraction:
     kind = page_type_of(html or rendered_html or "")
+    html = strip_citations(html)
+    rendered_html = strip_citations(rendered_html) if rendered_html else rendered_html
     feed = (feed_text or "").strip()
     if len(feed.split()) >= MIN_FEED_WORDS:
         return Extraction(feed, "feed", 0.95, "article" if kind == "unknown" else kind)
