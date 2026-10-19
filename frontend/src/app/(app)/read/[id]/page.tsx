@@ -23,6 +23,7 @@ import type { ContentItemFull } from "../../../../lib/types";
 import { FeedbackBar } from "../../../../components/digest/FeedbackBar";
 import { SummaryLabel } from "../../../../components/SummaryLabel";
 import { NoTextFallback } from "../../../../components/reader/NoTextFallback";
+import { GotItToast } from "../../../../components/reader/GotItToast";
 
 export default function ReaderPage() {
   const params = useParams<{ id: string }>();
@@ -42,6 +43,8 @@ export default function ReaderPage() {
     contentItemId: id,
     readingTimeMinutes: item?.reading_time_minutes ?? null,
   });
+  // Post-read toast (#228): derived from reachedEnd, shown once per read.
+  const [toastClosed, setToastClosed] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -275,6 +278,13 @@ export default function ReaderPage() {
 
       {/* Reached-end sentinel — intersecting floors completion at 0.95 */}
       <div ref={sentinelRef} aria-hidden style={{ height: 1 }} />
+      {snapshot.reachedEnd && !toastClosed && item.topic_clusters?.[0] && (
+        <GotItToast
+          topic={item.topic_clusters[0]}
+          activeTimeMs={snapshot.activeTimeMs}
+          onClose={() => setToastClosed(true)}
+        />
+      )}
 
       {/* Footer */}
       <footer className="mt-12 border-t border-stone-200 pt-6">
