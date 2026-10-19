@@ -64,6 +64,24 @@ Idle RSS measured 2026-09-24: db ~78 MiB, redis ~20 MiB. Backend full image
 includes torch (CUDA wheels on arm ≈ 454 MB extra); `:latest-lite` image
 skips torch/sentence-transformers entirely (RL-01).
 
+## Lighthouse (#216)
+
+Lighthouse 12 on a production build (`next start`) against the compose API,
+Apple M4 / 16 GB, headless Chromium, 2026-10-20. Reproduce with
+`frontend/scripts/lighthouse.sh <content_id>`. Lighthouse 12 dropped its PWA
+category; offline reading is covered by the `e2e-stack/offline-pwa.spec.ts`
+test instead.
+
+| Page | Performance | Accessibility | Best practices | SEO |
+|---|---|---|---|---|
+| Landing `/` | 66 | 100 | 79 | 100 |
+| Reader `/read/<id>` (signed in) | 81 | 95 | 96 | 66 |
+
+Below the 90 target: landing performance (LCP 4.7 s, total blocking time
+470 ms) and best practices (Google Fonts sets third-party cookies); reader
+performance (LCP 4.2 s) and SEO (a private, signed-in page without a meta
+description). Tracked as follow-ups, not fixed here.
+
 ## Not yet measured (named)
 
 - Search p95 latency at 100k items (budget: < 300 ms) — load benchmark

@@ -1,53 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import path from "node:path";
+import { insertArticle, signIn, sql } from "./stack";
 
 // Reading telemetry end to end (#193): a real reader session in the browser
 // must land as the right values in user_content_interactions.
-const API = process.env.E2E_API_URL || "http://localhost:8000";
-const COMPOSE_DIR = process.env.E2E_COMPOSE_DIR || path.resolve(__dirname, "../..");
-
-function sql(query: string): string {
-  return execFileSync(
-    "docker",
-    ["compose", "exec", "-T", "db", "psql", "-U", "readprism", "-d", "readprism", "-tA", "-c", query],
-    { cwd: COMPOSE_DIR, encoding: "utf8" },
-  ).trim();
-}
-
-function article(): string {
-  const para =
-    "Compilers lower loops into simpler control flow, then schedule instructions " +
-    "so the processor stays busy. Each pass keeps the program's meaning while making " +
-    "it cheaper to run, and the order of passes matters as much as the passes themselves.";
-  return Array.from({ length: 60 }, (_, i) => `Paragraph ${i + 1}. ${para}`).join("\n\n");
-}
-
-async function signIn(page: Page): Promise<string> {
-  const email = `e2e-${Date.now()}@example.com`;
-  const password = "E2e-Password-123!";
-  const reg = await page.request.post(`${API}/api/v1/auth/register`, { data: { email, password } });
-  expect(reg.ok(), await reg.text()).toBeTruthy();
-  // Browser session: httpOnly cookies on the API host (#103).
-  const login = await page.request.post(`${API}/api/v1/auth/login`, {
-    data: { email, password },
-    headers: { "X-Auth-Mode": "cookie" },
-  });
-  expect(login.ok()).toBeTruthy();
-  return email;
-}
-
-function insertArticle(): string {
-  const text = article().replace(/'/g, "''");
-  return sql(
-    `INSERT INTO content_items (id, url, title, full_text, word_count, reading_time_minutes, ` +
-      `topic_clusters, extraction_method, fetched_at, rankable, paywalled, origin, ` +
-      `has_citations, summarization_cached) VALUES ` +
-      `(gen_random_uuid(), 'https://e2e.example/${Date.now()}', 'How compilers lower loops', ` +
-      `'${text}', 2400, 1, '["compilers"]'::jsonb, 'feed', now(), true, false, 'followed', ` +
-      `false, false) RETURNING id`,
-  ).split("\n")[0];
-}
 
 async function readThrough(page: Page) {
   // Active reading: small mouse moves while scrolling down in steps.

@@ -1,4 +1,10 @@
-import { clearSession, getCsrfToken, setCsrfToken } from './auth';
+import {
+  clearSession,
+  getCsrfToken,
+  rememberSessionSeen,
+  sessionSeenOffline,
+  setCsrfToken,
+} from './auth';
 import type {
   BillingState,
   ImportResult,
@@ -25,6 +31,8 @@ export interface SessionState {
   authenticated: boolean;
   refreshable: boolean;
   csrf_token: string | null;
+  /** True when the server was unreachable and the cached app is shown (#216). */
+  offline?: boolean;
 }
 
 /**
@@ -50,8 +58,13 @@ export async function loadSession(): Promise<SessionState> {
     const res = await fetch(`${V1}/auth/session`, { credentials: 'include' });
     const state = (await res.json()) as SessionState;
     setCsrfToken(state.csrf_token);
+    rememberSessionSeen(state.authenticated);
     return state;
   } catch {
+    // Offline on a device that was signed in: show the cached app (#216).
+    if (sessionSeenOffline()) {
+      return { authenticated: true, refreshable: false, csrf_token: null, offline: true };
+    }
     return { authenticated: false, refreshable: false, csrf_token: null };
   }
 }
