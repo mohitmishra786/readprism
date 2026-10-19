@@ -43,14 +43,16 @@ Collected 2026-10-20 with `backend/scripts/collect_real_pages.py`; scored by
 | Go blog | 13 | 0.970 | 0.997 | 0.983 |
 | Rust blog | 13 | 0.995 | 0.999 | 0.997 |
 | Kubernetes blog | 13 | 0.992 | 0.994 | 0.993 |
-| Wikipedia | 13 | 0.641 | 0.997 | 0.774 |
-| **All** | **52** | **0.899** | **0.997** | **0.937** |
+| Wikipedia | 13 | 0.860 | 0.997 | 0.922 |
+| **All** | **52** | **0.954** | **0.997** | **0.974** |
 
-Nothing a reader needs is lost (recall ≥ 0.99 everywhere). On Wikipedia the
-extractor also keeps reference lists and data tables, which the plain-text
-ground truth leaves out, so precision drops; that's a known gap, not fixed
-here. The sample covers three static-site generators and MediaWiki, not yet
-WordPress, Ghost or Substack.
+Nothing a reader needs is lost (recall ≥ 0.99 everywhere). Wikipedia was
+0.641 precision / 0.774 F1 until #319, because MediaWiki reference lists and
+`[1]` citation markers were extracted as article text; they are now removed
+before extraction (generic footnotes and data tables are kept). The rest of
+the Wikipedia gap is data tables: real content, but the plain-text ground
+truth leaves them out. The sample covers three static-site generators and
+MediaWiki, not yet WordPress, Ghost or Substack.
 
 ## Retrieval / embedding decision (IQ-02)
 
