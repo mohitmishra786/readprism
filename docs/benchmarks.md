@@ -134,6 +134,19 @@ Note: the builder fetches at most 200 items from the window with no
 ordering, so with more than 200 fresh items it ranks an arbitrary subset.
 Follow-up, not changed here.
 
-## Not yet measured (named)
+## Hybrid search at 100,000 items (#231)
 
-- Search p95 latency at 100k items (budget: < 300 ms), #231.
+`backend/scripts/bench_search.py` on the same setup: one user's archive of
+100,000 items in 300 feeds, `GET /api/v1/search` called in process (ASGI)
+for 20 mixed queries x 5 rounds after a warm-up. Budget: p95 < 300 ms.
+
+| Measure | Result |
+|---|---|
+| p50 | 29 ms |
+| p95 | **52 ms** |
+| max | 69 ms |
+
+Both legs ran (Postgres FTS on `search_tsv` and the pgvector HNSW leg),
+fused with RRF; every query returned a full page of 20. Query vectors come
+from `encode_with_spec`, which today is the lexical hash embedder even when
+MiniLM is installed, so semantic model inference is not in these numbers.
