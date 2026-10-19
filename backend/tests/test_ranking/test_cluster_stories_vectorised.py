@@ -86,5 +86,7 @@ def test_fast_at_1000_candidates():
     ]
     start = time.perf_counter()
     clusters = cluster_stories(items)
-    assert time.perf_counter() - start < 1.0  # was ~12 s
+    # ~0.1 s on a laptop; the old pure-Python version took ~12 s. A loose
+    # bound keeps this meaningful without failing on a busy machine.
+    assert time.perf_counter() - start < 4.0
     assert len(clusters) == 1000  # random vectors: no stories
