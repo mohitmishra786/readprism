@@ -17,7 +17,9 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import and_, false, func, or_, select, true
+from sqlalchemy import all_, and_, any_, bindparam, false, func, or_, select, true
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.content import ContentItem
@@ -81,22 +83,32 @@ async def user_feed_ids(session: AsyncSession, user_id: uuid.UUID) -> list[uuid.
     return [row[0] for row in result.all() if row[0] is not None]
 
 
+def _uuid_array(ids: list[uuid.UUID]):
+    """One array parameter instead of one parameter per id (#192).
+
+    equivalent_source_ids grows with every subscriber of the user's feeds;
+    bound as IN (...), a few hundred users sharing starter-pack feeds pushed
+    it past asyncpg's 32,767-parameter limit and digest builds failed.
+    """
+    return bindparam(None, list(ids), type_=ARRAY(PG_UUID(as_uuid=True)), unique=True)
+
+
 def from_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
     """Items filed under any equivalent source row, or tagged with one of the
     user's feeds (survives deletion of the subscriber row that stored them)."""
     return or_(
-        ContentItem.source_id.in_(source_ids) if source_ids else false(),
-        ContentItem.feed_id.in_(feed_ids) if feed_ids else false(),
+        ContentItem.source_id == any_(_uuid_array(source_ids)) if source_ids else false(),
+        ContentItem.feed_id == any_(_uuid_array(feed_ids)) if feed_ids else false(),
     )
 
 
 def outside_user_feeds(source_ids: list[uuid.UUID], feed_ids: list[uuid.UUID]):
     """Negation of from_user_feeds that treats NULLs as 'outside'."""
     return and_(
-        or_(ContentItem.source_id.is_(None), ContentItem.source_id.notin_(source_ids))
+        or_(ContentItem.source_id.is_(None), ContentItem.source_id != all_(_uuid_array(source_ids)))
         if source_ids
         else true(),
-        or_(ContentItem.feed_id.is_(None), ContentItem.feed_id.notin_(feed_ids))
+        or_(ContentItem.feed_id.is_(None), ContentItem.feed_id != all_(_uuid_array(feed_ids)))
         if feed_ids
         else true(),
     )

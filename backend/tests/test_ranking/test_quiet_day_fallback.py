@@ -100,3 +100,19 @@ async def test_no_fallback_when_there_is_new_content(db_session):
         .scalars()
         .first()
     )
+
+
+@pytest.mark.asyncio
+async def test_feed_filters_bind_one_parameter_however_many_subscribers(db_session):
+    """#192: 40k equivalent source ids must not become 40k SQL parameters."""
+    from sqlalchemy.dialects import postgresql
+
+    from app.services.feed_identity import from_user_feeds, outside_user_feeds
+
+    ids = [uuid.uuid4() for _ in range(40_000)]
+    for clause in (from_user_feeds(ids, ids[:5]), outside_user_feeds(ids, ids[:5])):
+        compiled = select(ContentItem.id).where(clause).compile(dialect=postgresql.dialect())
+        assert len(compiled.params) == 2
+    # And it runs: asyncpg rejects more than 32,767 parameters.
+    rows = await db_session.execute(select(ContentItem.id).where(from_user_feeds(ids, ids[:5])))
+    assert rows.all() == []

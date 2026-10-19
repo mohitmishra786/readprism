@@ -105,9 +105,35 @@ Below the 90 target: landing performance (LCP 4.7 s, total blocking time
 performance (LCP 4.2 s) and SEO (a private, signed-in page without a meta
 description). Tracked as follow-ups, not fixed here.
 
+## Digest build at 1,000 candidates and 1,000 users (#192)
+
+`backend/scripts/bench_digest_build.py` on a throwaway database: 1,000 fresh
+items across 200 shared feeds (384-d embeddings around 24 topic centres),
+1,000 onboarded users following every feed with 6 interests each. In
+process, sequential, no Celery. Apple M4 / 16 GB, Postgres 16 + pgvector in
+Docker, 2026-10-20.
+
+| Measure | Result |
+|---|---|
+| `rank()` on 1,000 candidates, one user | p50 166 ms, max 300 ms (5 runs) |
+| Full `build_digest()` per user (x1,000) | p50 1.61 s, p95 3.18 s, max 4.82 s |
+| 1,000 builds, one process | 30.5 min total |
+
+The ranker is a small share of a build; most of the time is the queries and
+writes around it (impressions, stories, preferences). p95 is just over the
+3 s budget; part of the run overlapped another local test run, so treat the
+tail as approximate. Daily builds spread over each user's send time and the
+digest workers, so 1,000 users is ~30 min of single-worker time per day.
+
+The first 1,000-user run crashed: every subscriber's source row for the
+user's feeds was bound as its own SQL parameter, and past asyncpg's 32,767
+limit (here 200 feeds x 1,000 users) every digest build failed. Fixed in
+the same change (ids bound as one array).
+
+Note: the builder fetches at most 200 items from the window with no
+ordering, so with more than 200 fresh items it ranks an arbitrary subset.
+Follow-up, not changed here.
+
 ## Not yet measured (named)
 
-- Search p95 latency at 100k items (budget: < 300 ms) — load benchmark
-  pending (RL-06 follow-up).
-- Digest build wall-time at 1,000 candidates against a loaded DB (budget:
-  < 3 s).
+- Search p95 latency at 100k items (budget: < 300 ms), #231.
