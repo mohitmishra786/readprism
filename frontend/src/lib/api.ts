@@ -237,6 +237,19 @@ export const api = {
       request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
   },
 
+  // Opt-in Web Push digest alerts (#266).
+  push: {
+    publicKey: () => request<{ public_key: string }>('/push/public-key'),
+    subscribe: (sub: PushSubscriptionJSON) =>
+      request<{ status: string }>('/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
+    unsubscribe: (endpoint: string) =>
+      request<{ status: string }>('/push/unsubscribe', {
+        method: 'POST',
+        body: JSON.stringify({ endpoint }),
+      }),
+    test: () => request<{ sent: number; gone: number; failed: number }>('/push/test', { method: 'POST' }),
+  },
+
   // Personal newsletter address and its live test (#151).
   newsletter: {
     address: () =>

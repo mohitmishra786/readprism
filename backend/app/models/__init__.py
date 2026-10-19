@@ -13,6 +13,7 @@ from app.models.digest import (
 from app.models.feed import Feed
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
+from app.models.push import PushSubscription
 from app.models.source import Source
 from app.models.user import User
 
@@ -40,4 +41,5 @@ __all__ = [
     "DigestFeedbackPrompt",
     "RankerWeightRevision",
     "UserMetaWeights",
+    "PushSubscription",
 ]

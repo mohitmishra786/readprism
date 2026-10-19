@@ -5,6 +5,7 @@ import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
 import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
 import { CitationExport } from "../../../components/CitationExport";
+import { PushAlerts } from "../../../components/PushAlerts";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -430,6 +431,11 @@ export default function PreferencesPage() {
       <section style={{ marginTop: 40 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Newsletters</h2>
         <NewsletterAddressCard />
+      </section>
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Digest alerts</h2>
+        <PushAlerts />
       </section>
 
       <section style={{ marginTop: 40 }}>

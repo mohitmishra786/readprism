@@ -16,6 +16,8 @@ pgvector==0.5.0
 # Auth
 bcrypt==4.3.0
 pyjwt==2.15.1
+# Web Push encryption (RFC 8291) and VAPID ES256 signing (#266).
+cryptography==50.0.2
 
 # Settings
 pydantic==2.13.5

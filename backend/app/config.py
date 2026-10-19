@@ -243,6 +243,11 @@ class Settings(BaseSettings):
     billing_team_price_ids: str = ""
     billing_trial_days: int = 30
     billing_past_due_grace_days: int = 3
+    # Web Push digest alerts (#266). Opt-in per device; off unless all three
+    # are set. Generate a key pair with scripts/generate_vapid_keys.py.
+    vapid_public_key: str = ""  # base64url, uncompressed P-256 point
+    vapid_private_key: str = ""  # base64url, 32-byte P-256 private key
+    vapid_subject: str = ""  # "mailto:ops@example.com" or an https URL
     # Academic discount (#250): applied at checkout for a verified email on an
     # academic domain. Paddle: a discount id (dsc_...); Lemon Squeezy: a
     # discount code. Empty = no academic discount.
