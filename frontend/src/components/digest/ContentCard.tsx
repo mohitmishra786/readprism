@@ -90,6 +90,11 @@ export function ContentCard({
         aria-hidden
       />
 
+      {typeof signalBreakdown?.fallback_reason === "string" && (
+        <span className="mb-3 mr-2 inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+          Catch-up · from your feeds this fortnight
+        </span>
+      )}
       {isDiscovery && (
         <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
