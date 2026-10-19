@@ -9,7 +9,7 @@ const ok = vi.hoisted(() => () => Promise.resolve(null));
 vi.mock("../src/lib/api", () => ({
   api: {
     feedback: { getInteraction: ok, interaction: ok, adjustInterests: ok },
-    digest: { prompts: () => Promise.resolve([]), answerPrompt: ok, dismissPrompt: ok, markOpened: ok },
+    digest: { prompts: () => Promise.resolve([]), answerPrompt: ok, dismissPrompt: ok, markOpened: ok, emerging: () => Promise.resolve([]) },
   },
 }));
 

@@ -358,6 +358,11 @@ export const api = {
 
   digest: {
     latest: () => request<Digest>('/digest/latest'),
+    /** Topics with a burst of coverage across sources this week (#218). */
+    emerging: () =>
+      request<{ topic: string; recent_sources: number; baseline_mean: number; z: number }[]>(
+        '/digest/emerging',
+      ),
     history: (page?: number) => request<Digest[]>(`/digest/history?page=${page || 1}`),
     generate: () =>
       request<{ status: string; message: string }>('/digest/generate', { method: 'POST' }),

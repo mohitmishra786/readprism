@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import type { Digest, DigestItem } from "../../lib/types";
 import { DigestSection } from "./DigestSection";
 import { api } from "../../lib/api";
+import { EmergingTopics } from "./EmergingTopics";
 
 const SECTION_ORDER = ["lead", "creator", "deep_reads", "more", "discovery"];
 
@@ -147,6 +148,8 @@ export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
           · {digest.total_items} items
         </p>
       </header>
+
+      <EmergingTopics />
 
       {quietDay && (
         <div
