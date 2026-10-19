@@ -1,8 +1,35 @@
 import { headers } from "next/headers";
 import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono, Playfair_Display, Source_Serif_4 } from "next/font/google";
 import "../styles/globals.css";
 import { ServiceWorkerRegister } from "../components/ServiceWorkerRegister";
 import { InstallPrompt } from "../components/InstallPrompt";
+
+// Fonts are downloaded at build time and served from this origin (next/font):
+// no render-blocking third-party stylesheet, no request to Google per visit.
+// Source Serif 4 is the successor of Source Serif Pro.
+const sans = Inter({ subsets: ["latin"], variable: "--nf-sans", display: "swap" });
+// Only the landing page's families are preloaded; the reader's serif and the
+// code font load when a page uses them.
+const serif = Source_Serif_4({
+  subsets: ["latin"],
+  preload: false,
+  style: ["normal", "italic"],
+  variable: "--nf-serif",
+  display: "swap",
+});
+const display = Playfair_Display({
+  subsets: ["latin"],
+  style: ["italic"],
+  variable: "--nf-display",
+  display: "swap",
+});
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--nf-mono",
+  display: "swap",
+  preload: false,
+});
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
 
@@ -76,19 +103,10 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@1,400;1,500;1,600&family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="en"
+      className={`${sans.variable} ${serif.variable} ${display.variable} ${mono.variable}`}
+    >
       <body>
         <script
           type="application/ld+json"

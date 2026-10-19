@@ -87,23 +87,34 @@ Idle RSS measured 2026-09-24: db ~78 MiB, redis ~20 MiB. Backend full image
 includes torch (CUDA wheels on arm ≈ 454 MB extra); `:latest-lite` image
 skips torch/sentence-transformers entirely (RL-01).
 
-## Lighthouse (#216)
+## Lighthouse (#216, #315)
 
-Lighthouse 12 on a production build (`next start`) against the compose API,
-Apple M4 / 16 GB, headless Chromium, 2026-10-20. Reproduce with
-`frontend/scripts/lighthouse.sh <content_id>`. Lighthouse 12 dropped its PWA
-category; offline reading is covered by the `e2e-stack/offline-pwa.spec.ts`
-test instead.
+Lighthouse 12 (simulated mobile) on a production build (`next start`)
+against the compose API, Apple M4 / 16 GB, headless Chromium, 2026-10-20.
+Ranges are over 2–3 runs. Landing is measured as an anonymous visitor (signed-in users are
+redirected to their digest). Reproduce with `frontend/scripts/lighthouse.sh
+<content_id>`. Lighthouse 12 has no PWA category; offline reading is
+covered by `e2e-stack/offline-pwa.spec.ts`.
 
 | Page | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Landing `/` | 66 | 100 | 79 | 100 |
-| Reader `/read/<id>` (signed in) | 81 | 95 | 96 | 66 |
+| Landing `/`, before #315 | 81–84 | 100 | 79 | 100 |
+| Landing `/`, after #315 | **89–91** | 100 | **100** | 100 |
+| Reader `/read/<id>` (signed in) | 86–87 | 95 | 96 | 66 |
 
-Below the 90 target: landing performance (LCP 4.7 s, total blocking time
-470 ms) and best practices (Google Fonts sets third-party cookies); reader
-performance (LCP 4.2 s) and SEO (a private, signed-in page without a meta
-description). Tracked as follow-ups, not fixed here.
+#315 removed every third-party request from the landing page (fonts
+self-hosted with `next/font`; hero images served from this origin as WebP;
+the proxy had been sending a 4.3 MB PNG) and made the headline paint with
+the first frame instead of after its fade-in delay.
+
+Reader, not counted as defects or tracked elsewhere:
+- SEO 66 is `is-crawlable`: `/read/` is disallowed in `robots.txt` on
+  purpose (private, signed-in pages).
+- Accessibility 95: in OS dark mode the article text is near-invisible, #316.
+- Best practices 96: a fresh test account has no digest yet, so the reader's
+  next/previous lookup (`/digest/latest`) logs a 404.
+- Performance: real paint is ~150 ms; the simulated LCP counts the article
+  being rendered client-side after its API call.
 
 ## Digest build at 1,000 candidates and 1,000 users (#192)
 

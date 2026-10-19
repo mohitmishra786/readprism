@@ -42,10 +42,11 @@
   --color-spectrum-emerald: #10b981;
 
   /* Font families (font-serif, font-sans, font-playfair, font-mono) */
-  --font-serif: "Source Serif Pro", Georgia, Cambria, serif;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-playfair: "Playfair Display", serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* --nf-* are the self-hosted next/font families set on <html> (layout.tsx). */
+  --font-serif: var(--nf-serif), "Source Serif Pro", Georgia, Cambria, serif;
+  --font-sans: var(--nf-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-playfair: var(--nf-display), "Playfair Display", serif;
+  --font-mono: var(--nf-mono), "JetBrains Mono", ui-monospace, monospace;
 
   /* Editorial font sizes (text-article, text-deck) */
   --text-article: 1.125rem;
@@ -380,7 +381,7 @@
     margin: 1.5em 0;
   }
   .prose-reader code {
-    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 0.9em;
     background: var(--bg-sunken);
     padding: 0.15em 0.4em;
@@ -459,12 +460,15 @@
 
 /* Display/wordmark accent for the hero (paired with the `font-playfair` token). */
 .font-playfair {
-  font-family: "Playfair Display", serif;
+  font-family: var(--font-playfair);
 }
 
+/* The headline is the page's largest paint: it starts faintly visible (not
+   opacity 0) and applies its first frame during the delay, so it paints with
+   the first frame instead of after the delay and all the JavaScript. */
 @keyframes heroReveal {
   0% {
-    opacity: 0;
+    opacity: 0.15;
     transform: translateY(28px);
     filter: blur(12px);
   }
@@ -500,6 +504,7 @@
 .hero-reveal {
   animation-name: heroReveal;
   animation-duration: 1.1s;
+  animation-fill-mode: both;
 }
 .hero-fade {
   animation-name: heroFadeUp;

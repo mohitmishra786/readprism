@@ -15,10 +15,10 @@ export function middleware(request: NextRequest) {
   const csp = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
-    // Google Fonts are loaded by <link> in the root layout.
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    // Fonts are self-hosted by next/font; no third-party style or font hosts.
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https: data:",
-    "font-src 'self' data: https://fonts.gstatic.com",
+    "font-src 'self' data:",
     `connect-src 'self' ${apiOrigin} https:`,
     "object-src 'none'",
     "base-uri 'self'",
