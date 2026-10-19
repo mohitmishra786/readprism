@@ -60,6 +60,9 @@ class UserContentInteractionCreate(BaseModel):
     explicit_rating_reason: str | None = None
     saved: bool = False
     skipped: bool = False
+    # The reader left for the original site (#157): records the open but
+    # teaches nothing until they say how far they got.
+    opened_externally: bool = False
 
 
 class UserContentInteractionRead(BaseModel):

@@ -22,6 +22,7 @@ import { sanitizeHtml } from "../../../../lib/sanitize";
 import type { ContentItemFull } from "../../../../lib/types";
 import { FeedbackBar } from "../../../../components/digest/FeedbackBar";
 import { SummaryLabel } from "../../../../components/SummaryLabel";
+import { NoTextFallback } from "../../../../components/reader/NoTextFallback";
 
 export default function ReaderPage() {
   const params = useParams<{ id: string }>();
@@ -195,34 +196,7 @@ export default function ReaderPage() {
   // No body to show: either none was extracted, or this instance's display
   // policy withholds page-extracted text (#177). Offer the summary + original.
   if (!item.full_text) {
-    const summary = item.summary_detailed || item.summary_brief;
-    return (
-      <div className="mx-auto max-w-prose py-12">
-        <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
-        {summary && (
-          <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600">
-            <SummaryLabel source={item.summary_source} />
-            {summary}
-          </p>
-        )}
-        <p className="mt-4 text-stone-500">
-          {item.full_text_withheld
-            ? `Read the full article on ${safeHostname(item.url)}.`
-            : "The full article text isn’t available for in-app reading."}
-        </p>
-        <a
-          href={item.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn-primary mt-6"
-        >
-          Open original at {safeHostname(item.url)} →
-        </a>
-        <div className="mt-8">
-          <FeedbackBar contentItemId={item.id} />
-        </div>
-      </div>
-    );
+    return <NoTextFallback item={item} />;
   }
 
   return (

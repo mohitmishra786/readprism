@@ -311,6 +311,7 @@ export const api = {
       explicit_rating_reason?: string;
       saved?: boolean;
       skipped?: boolean;
+      opened_externally?: boolean;
     }) =>
       request<unknown>('/feedback/interaction', {
         method: 'POST',
