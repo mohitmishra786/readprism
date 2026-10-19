@@ -34,7 +34,7 @@ class SourceRead(BaseModel):
     last_error_at: datetime | None = None
     last_error: str | None = None
     fetch_error_count: int
-    health: str  # healthy | degraded | failing | dead
+    health: str  # healthy | degraded | failing | platform_outage | dead
     items_per_week: int = 0
     topics: list
     priority: str

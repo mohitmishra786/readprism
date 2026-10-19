@@ -157,6 +157,41 @@ def politeness_delay(
     return max(0.0, 1.0 - (now - last_request_at).total_seconds())
 
 
+# YouTube's channel feeds (#240): an undocumented endpoint with multi-hour
+# outages that answer 404/410/5xx for every channel at once. Errors there
+# mean "platform outage", never a dead feed from a burst: retries are capped
+# so channels recover soon after YouTube does, and a channel is only treated
+# as gone after YOUTUBE_DEAD_AFTER_DAYS of continuous failure.
+PLATFORM_OUTAGE = "platform_outage"
+_YOUTUBE_MAX_BACKOFF = 3 * 60 * 60
+
+
+def is_youtube_feed(url: str | None) -> bool:
+    from urllib.parse import urlparse
+
+    parts = urlparse(url or "")
+    host = parts.netloc.lower().removeprefix("www.").removeprefix("m.")
+    return host == "youtube.com" and parts.path.rstrip("/") == "/feeds/videos.xml"
+
+
+def _youtube_error(state: ScheduleState, now: datetime) -> tuple[ScheduleState, datetime]:
+    from app.config import get_settings
+
+    errors = state.consecutive_errors + 1
+    since = state.failure_since or now
+    dead_after = timedelta(days=get_settings().youtube_dead_after_days)
+    status = "dead" if now - since >= dead_after else PLATFORM_OUTAGE
+    delay = min(_ERROR_BASE * (2**errors), _YOUTUBE_MAX_BACKOFF)
+    nxt = ScheduleState(
+        interval_seconds=state.interval_seconds,
+        consecutive_errors=errors,
+        recent_gaps=list(state.recent_gaps),
+        status=status,
+        failure_since=since,
+    )
+    return nxt, now + timedelta(seconds=delay)
+
+
 def apply_poll_result(
     source: object,
     *,
@@ -182,7 +217,9 @@ def apply_poll_result(
         status=previous,
         failure_since=getattr(source, "failure_since", None),
     )
-    if gone:
+    if (error or gone) and is_youtube_feed(url):
+        nxt, when = _youtube_error(state, now)
+    elif gone:
         nxt, when = on_error(state, now, gone=True)
     elif error and retry_after:
         nxt, when = on_rate_limited(state, now, retry_after)

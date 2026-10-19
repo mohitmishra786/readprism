@@ -36,7 +36,7 @@ export interface Source {
   last_error_at: string | null;
   last_error: string | null;
   fetch_error_count: number;
-  health: "healthy" | "degraded" | "failing" | "dead";
+  health: "healthy" | "degraded" | "failing" | "platform_outage" | "dead";
   items_per_week: number;
   topics: string[];
   priority: string;

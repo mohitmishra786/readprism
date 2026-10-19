@@ -74,18 +74,24 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 </span>
                 {s.health !== "healthy" && (
                   <span
-                    title={s.last_error || "This source is having trouble updating."}
+                    title={
+                      s.health === "platform_outage"
+                        ? "YouTube's feed service is having an outage. ReadPrism keeps retrying; nothing to fix on your side."
+                        : s.last_error || "This source is having trouble updating."
+                    }
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                      s.health === "degraded"
+                      s.health === "degraded" || s.health === "platform_outage"
                         ? "bg-amber-100 text-amber-700"
                         : "bg-rose-100 text-rose-700"
                     }`}
                   >
                     {s.health === "degraded"
                       ? "Fetch issues"
-                      : s.health === "failing"
-                        ? "Not updating"
-                        : "Turned off"}
+                      : s.health === "platform_outage"
+                        ? "Platform outage"
+                        : s.health === "failing"
+                          ? "Not updating"
+                          : "Turned off"}
                   </span>
                 )}
               </div>

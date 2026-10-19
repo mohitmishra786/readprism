@@ -140,6 +140,9 @@ class Settings(BaseSettings):
     # Reject webhook posts whose signed timestamp is older than this (replay guard).
     newsletter_webhook_max_age_seconds: int = 900  # 15 minutes
 
+    # YouTube channel feeds (#240): errors are a platform outage; a channel is
+    # only treated as gone after this many days of continuous failure.
+    youtube_dead_after_days: int = 30
     # Gentle win-back (#238): one email per stage, by days since the last
     # opened digest: a top-3 digest, then 'pause or go weekly?', then a final
     # note pointing at data export. Never more than one per min-gap days.
