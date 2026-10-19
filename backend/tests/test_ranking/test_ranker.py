@@ -344,3 +344,46 @@ async def test_subscribing_to_a_pack_seeds_an_embedded_interest(client, db_sessi
         )
     ).scalar_one()
     assert node.weight >= 0.4 and node.topic_embedding is not None
+
+
+# ------------------------------------------------- explanation faithfulness
+
+
+def _only_signal_with_weight(name: str) -> dict[str, float]:
+    """Weights that make `name` the dominant contribution, so _explain cites it."""
+    return {s: (0.9 if s == name else 0.1 / (len(SIGNALS) - 1)) for s in SIGNALS}
+
+
+def test_rated_up_claim_needs_an_item_similar_to_a_rated_up_one():
+    """#321: an unrelated item was still 'similar to articles you rated up'."""
+    rated_up, rated_down = unit(1, 0, 0), unit(0, 1, 0)
+    st = state(
+        weights=_only_signal_with_weight("explicit_feedback"),
+        history=[hist(rated_up, rating=1), hist(rated_down, rating=-1)],
+    )
+    unrelated = item(unit(0, 0, 1))
+    close_to_up = item(unit(1, 0.05, 0))
+    close_to_down = item(unit(0.05, 1, 0))
+    by_title = {}
+    for name, ci in (("unrelated", unrelated), ("up", close_to_up), ("down", close_to_down)):
+        by_title[name] = score_candidates(st, [ci])[0].explanation.lower()
+    assert "rated up" in by_title["up"]
+    assert "rated up" not in by_title["unrelated"]
+    assert "rated up" not in by_title["down"]
+
+
+def test_fresh_angle_claim_needs_novelty():
+    """#321: novelty's phrase was used without the novelty check passing."""
+    recent = [hist(unit(1, 0, 0), completion=0.9, days_ago=1) for _ in range(4)]
+    st = state(weights=_only_signal_with_weight("novelty"), history=recent)
+    # Cosine 0.75 to recent reading: novelty 0.25, below the 0.35 target, but
+    # the novelty feature is still high (0.71), so it is the top contribution.
+    close = score_candidates(st, [item(unit(1, 0.882, 0))])[0]
+    assert close.features["novelty"] > 0.5 and "novelty" not in close.no_data
+    assert "fresh angle" not in close.explanation.lower()
+
+
+def test_discovery_claim_needs_finished_discoveries():
+    st = state(weights=_only_signal_with_weight("suggestion"))
+    explanation = score_candidates(st, [item(unit(1, 0, 0), origin="discovery")])[0].explanation
+    assert "like ones you finished before" not in explanation
