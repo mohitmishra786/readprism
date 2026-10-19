@@ -266,7 +266,9 @@
   .btn-primary {
     @apply btn;
     background: var(--accent);
-    color: var(--text-inverse);
+    /* Not --text-inverse: dark mode flips that to near-black, but the blue
+       stays the same, so dark-mode buttons were 3.4:1 (#316). */
+    color: #ffffff;
   }
   .btn-primary:hover {
     background: var(--accent-hover);
@@ -343,11 +345,15 @@
 
 @layer utilities {
   /* Article body typography for the in-app reader */
+  /* Reading surfaces (#316): each surface sets the article's colours as
+     variables; the article reads only these. The default surface follows the
+     OS light/dark tokens. Previously the article hard-coded light-theme text
+     colours, which also beat the Dark surface's own (same layer, later). */
   .prose-reader {
     font-family: var(--font-serif);
     font-size: 1.18rem;
     line-height: 1.8;
-    color: #292524;
+    color: var(--reader-text, var(--text));
     max-width: 42rem;
   }
   .prose-reader p {
@@ -355,7 +361,7 @@
   }
   .prose-reader p:first-of-type {
     font-size: 1.25rem;
-    color: #1c1917;
+    color: inherit;
   }
   .prose-reader h2 {
     font-size: 1.5rem;
@@ -368,7 +374,7 @@
     margin-bottom: 0.5em;
   }
   .prose-reader a {
-    color: var(--accent);
+    color: var(--reader-link, var(--accent));
     text-decoration: underline;
     text-underline-offset: 2px;
   }
@@ -376,7 +382,7 @@
     border-left: 3px solid var(--accent);
     padding-left: 1.25rem;
     font-style: italic;
-    color: var(--text-secondary);
+    color: var(--reader-muted, var(--text-secondary));
     margin: 1.5em 0;
   }
   .prose-reader code {
@@ -417,7 +423,7 @@
   }
   .prose-reader figcaption {
     font-size: 0.85rem;
-    color: var(--text-tertiary);
+    color: var(--reader-muted, var(--text-tertiary));
     text-align: center;
     margin-top: 0.5em;
     font-family: var(--font-sans);
@@ -517,6 +523,26 @@
 }
 
 /* Reader theme variants (UX-05) — scoped to the article surface only. */
+/* Reading surfaces (#316). */
+.reader-surface-sepia {
+  background: #f4ecd8;
+  --reader-text: #292524;
+  --reader-muted: #57534e;
+  --reader-link: #1d4ed8;
+}
+.reader-surface-dark {
+  background: #1c1917;
+  --reader-text: #f5f5f4;
+  --reader-muted: #d6d3d1;
+  --reader-link: #93c5fd;
+}
+@media (prefers-color-scheme: dark) {
+  /* Default surface on a dark OS: tokens give the text; links need lighter blue. */
+  .prose-reader:not(.reader-surface-sepia):not(.reader-surface-dark) {
+    --reader-link: #93c5fd;
+  }
+}
+
 .prose-reader.prose-dark a {
   color: #93c5fd;
 }

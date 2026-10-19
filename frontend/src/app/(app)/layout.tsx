@@ -74,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               await api.auth.logout().catch(() => {});
               router.replace("/login");
             }}
-            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900 dark:hover:text-stone-100"
+            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
           >
             Sign out
           </button>
