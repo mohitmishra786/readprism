@@ -40,6 +40,7 @@ class UserRead(BaseModel):
     email_verified: bool = True
     fetch_paused_until: datetime | None = None
     collaborative_opt_out: bool = False
+    weekly_email: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -57,6 +58,7 @@ class UserUpdate(BaseModel):
     preferred_languages: list[str] | None = None
     timezone: str | None = None
     collaborative_opt_out: bool | None = None
+    weekly_email: bool | None = None
 
 
 class Token(BaseModel):

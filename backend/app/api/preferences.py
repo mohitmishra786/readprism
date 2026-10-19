@@ -61,6 +61,8 @@ async def update_preferences(
         current_user.timezone = body.timezone
     if body.collaborative_opt_out is not None:
         current_user.collaborative_opt_out = body.collaborative_opt_out
+    if body.weekly_email is not None:
+        current_user.weekly_email = body.weekly_email
     await session.flush()
     return UserRead.model_validate(current_user)
 

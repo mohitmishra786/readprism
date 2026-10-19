@@ -434,6 +434,27 @@ export default function PreferencesPage() {
       </section>
 
       <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Weekly summary</h2>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(user.weekly_email)}
+            onChange={async (e) => {
+              const updated = await api.preferences.update({ weekly_email: e.target.checked }).catch(() => null);
+              if (updated) {
+                setUser(updated);
+                setInitial(updated);
+              }
+            }}
+          />
+          <span>
+            Email me once a week with what ReadPrism learned: topics rising and fading, and the
+            source I finish most, each with a one-click undo.
+          </span>
+        </label>
+      </section>
+
+      <section style={{ marginTop: 40 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Digest alerts</h2>
         <PushAlerts />
       </section>

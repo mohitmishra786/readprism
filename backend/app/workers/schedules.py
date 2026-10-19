@@ -51,4 +51,8 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.reengagement.send_reengagement_emails",
             "schedule": crontab(hour=16, minute=0),  # daily at 16:00 UTC
         },
+        "weekly-learning-emails": {
+            "task": "app.workers.tasks.weekly_learning.send_weekly_learning_emails",
+            "schedule": crontab(hour=9, minute=0, day_of_week="sun"),  # Sundays 09:00 UTC (#184)
+        },
     }

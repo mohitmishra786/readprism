@@ -51,6 +51,11 @@ class User(Base):
     collaborative_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    # Weekly "What I learned about you" email (#184): opt-in, off by default.
+    weekly_email: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    weekly_email_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Hosted billing (#173). `tier` is what was bought; app.services.billing
     # .effective_plan() combines it with these dates.
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

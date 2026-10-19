@@ -62,3 +62,54 @@ def verify_action(
     if int(exp) < int(now if now is not None else time.time()):
         return False
     return hmac.compare_digest(_signature(user_id, item_id, action, int(exp)), sig)
+
+
+# Topic actions from the weekly email (#184): "less like this" / "keep it".
+TOPIC_ACTIONS = ("less", "more")
+
+
+def _topic_signature(user_id: uuid.UUID | str, topic: str, action: str, exp: int) -> str:
+    message = f"topic-action:{user_id}:{topic}:{action}:{exp}".encode()
+    return hmac.new(
+        key=get_settings().secret_key.encode(), msg=message, digestmod=hashlib.sha256
+    ).hexdigest()
+
+
+def topic_action_url(
+    user_id: uuid.UUID | str,
+    topic: str,
+    action: str,
+    *,
+    ttl_seconds: int = 14 * 24 * 3600,
+    now: float | None = None,
+) -> str:
+    from urllib.parse import urlencode
+
+    if action not in TOPIC_ACTIONS:
+        raise ValueError(f"unknown topic action: {action}")
+    exp = int((now if now is not None else time.time()) + ttl_seconds)
+    query = urlencode(
+        {
+            "uid": str(user_id),
+            "topic": topic,
+            "exp": exp,
+            "sig": _topic_signature(user_id, topic, action, exp),
+        }
+    )
+    return f"{get_settings().public_api_url.rstrip('/')}/api/v1/digest/t/{action}?{query}"
+
+
+def verify_topic_action(
+    user_id: uuid.UUID | str,
+    topic: str,
+    action: str,
+    exp: int,
+    sig: str,
+    *,
+    now: float | None = None,
+) -> bool:
+    if action not in TOPIC_ACTIONS or not sig:
+        return False
+    if int(exp) < int(now if now is not None else time.time()):
+        return False
+    return hmac.compare_digest(_topic_signature(user_id, topic, action, int(exp)), sig)

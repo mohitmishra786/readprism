@@ -19,6 +19,8 @@ export interface User {
   fetch_paused_until?: string | null;
   /** Keep my reading out of other readers' collaborative warmup counts (#210). */
   collaborative_opt_out?: boolean;
+  /** Weekly 'What I learned about you' email (#184), opt-in. */
+  weekly_email?: boolean;
 }
 
 export interface Source {
