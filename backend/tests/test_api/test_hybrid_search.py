@@ -137,18 +137,94 @@ async def test_vector_leg_participates_with_matching_model(
         title="Totally unusual title xyzzy",
         fetched_at=datetime.now(UTC),
     )
-    item.embedding_model = "hash-mini"  # set below via registry name instead
-    await db_session.flush()
+    # Embedded the way compute_embeddings does it: by the item embedder (#311).
+    from app.utils.embeddings import get_embedding_service
 
-    from app.services.embeddings.registry import active_spec, encode_with_spec
-
-    spec = active_spec(model="all-MiniLM-L6-v2", cutover=False)
-    item.embedding_model = spec.name
-    item.embedding_dim = spec.dim
-    item.embedding = encode_with_spec("Totally unusual title xyzzy", spec, query=False)
+    embedder = get_embedding_service()
+    item.embedding_model = embedder.model_name
+    item.embedding_dim = embedder.dimension
+    item.embedding = await embedder.encode_single("Totally unusual title xyzzy")
     db_session.add(item)
     await db_session.commit()
 
     result = await client.get("/api/v1/search", params={"q": "xyzzy"}, headers=headers)
     assert result.status_code == 200
     assert any(h["title"] == "Totally unusual title xyzzy" for h in result.json()["hits"])
+
+
+@pytest.mark.asyncio
+async def test_query_is_embedded_by_the_item_embedder(client, test_user_data, db_session):
+    """#311: the vector leg's query comes from the same embedder as the items."""
+    from unittest.mock import AsyncMock, patch
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+    from app.models.source import Source
+
+    db_session.add(Source(user_id=user.id, url="https://q.example/feed"))
+    await db_session.commit()
+
+    from app.utils.embeddings import get_embedding_service
+
+    embedder = get_embedding_service()
+    with (
+        patch.object(embedder, "encode_single", AsyncMock(return_value=[0.0] * 384)) as encode,
+        patch(
+            "app.services.embeddings.registry.encode_with_spec",
+            side_effect=AssertionError("hash query embedder must not be used"),
+        ),
+    ):
+        resp = await client.get("/api/v1/search", params={"q": "vacuum"}, headers=headers)
+    assert resp.status_code == 200
+    encode.assert_awaited_once_with("vacuum")
+
+
+@pytest.mark.asyncio
+async def test_paraphrase_finds_the_article_through_the_vector_leg(
+    client, test_user_data, db_session
+):
+    """#311 with the real model: no shared words, so only the semantic leg can match."""
+    from app.utils.embeddings import get_embedding_service, is_hash_embeddings
+
+    if is_hash_embeddings():
+        pytest.skip("needs sentence-transformers (standard image)")
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+    from app.models.source import Source
+
+    src = Source(user_id=user.id, url="https://para.example/feed")
+    db_session.add(src)
+    await db_session.flush()
+    embedder = get_embedding_service()
+    titles = [
+        "How PostgreSQL vacuum reclaims dead tuples and prevents wraparound",
+        "A beginner's guide to growing tomatoes in raised garden beds",
+        "Raft consensus: leader election and log replication explained",
+        "The history of Renaissance painting in Florence",
+    ]
+    for i, title in enumerate(titles):
+        db_session.add(
+            ContentItem(
+                source_id=src.id,
+                url=f"https://para.example/{i}",
+                title=title,
+                fetched_at=datetime.now(UTC),
+                embedding=await embedder.encode_single(title),
+                embedding_model=embedder.model_name,
+                embedding_dim=embedder.dimension,
+            )
+        )
+    await db_session.commit()
+
+    for query, expected in [
+        ("cleaning up old row versions in a database", titles[0]),
+        ("how servers agree on a shared log", titles[2]),
+    ]:
+        hits = (await client.get("/api/v1/search", params={"q": query}, headers=headers)).json()
+        assert hits["hits"] and hits["hits"][0]["title"] == expected, (query, hits["hits"][:2])
