@@ -134,9 +134,13 @@ async def rate_calibration_item(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
 
-    # Reinforce/suppress every cluster node the item belongs to.
+    # Reinforce/suppress every cluster node the item belongs to. The wizard
+    # asks for ratings before onboarding has created the user's nodes (#149),
+    # so a thumbs-up on a topic without a node creates it at the weight a
+    # confirmed onboarding topic gets; a thumbs-down only lowers existing ones.
     delta = 0.25 if body.rating == 1 else -0.25
     updated = 0
+    created = 0
     for label in item.topic_clusters or []:
         node_result = await session.execute(
             select(InterestNode).where(
@@ -146,12 +150,26 @@ async def rate_calibration_item(
         )
         node = node_result.scalar_one_or_none()
         if node is None:
+            if body.rating != 1:
+                continue
+            from app.utils.embeddings import get_embedding_service
+
+            embedding = await get_embedding_service().encode_single(label)
+            session.add(
+                InterestNode(
+                    user_id=current_user.id,
+                    topic_label=label,
+                    topic_embedding=embedding,
+                    weight=0.6,
+                )
+            )
+            created += 1
             continue
         node.weight = max(0.0, min(1.0, node.weight + delta))
         updated += 1
 
     await session.flush()
-    return {"status": "ok", "clusters_updated": updated}
+    return {"status": "ok", "clusters_updated": updated, "clusters_created": created}
 
 
 @router.post("", status_code=status.HTTP_200_OK)

@@ -425,6 +425,14 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    /** Up to 8–12 diverse headlines from the user's new sources (#149). */
+    calibration: (limit = 8) =>
+      request<CalibrationItem[]>(`/onboarding/calibration?limit=${limit}`),
+    rateCalibration: (id: string, rating: 1 | -1) =>
+      request<{ status: string; clusters_updated: number; clusters_created: number }>(
+        `/onboarding/calibration/${id}`,
+        { method: 'POST', body: JSON.stringify({ rating }) },
+      ),
     /** Start the first-digest flow (idempotent) and return its status (#102). */
     startFirstDigest: () =>
       request<FirstDigestStatus & { started: boolean }>('/onboarding/first-digest', {
@@ -433,6 +441,14 @@ export const api = {
     firstDigestStatus: () => request<FirstDigestStatus>('/onboarding/first-digest/status'),
   },
 };
+
+export interface CalibrationItem {
+  id: string;
+  title: string;
+  url: string;
+  topic_clusters: string[];
+  reading_time_minutes: number | null;
+}
 
 export interface FirstDigestStatus {
   sources_total: number;

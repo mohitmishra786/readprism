@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InterestInput } from "./InterestInput";
-import { SampleArticles, type SampleRating } from "./SampleArticles";
+import { CalibrationStep } from "./CalibrationStep";
 import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
 import { ImportPanel } from "./ImportPanel";
 import { NewsletterAddressCard } from "../NewsletterAddressCard";
@@ -13,10 +13,10 @@ const STEPS = [
   "Interests",
   "Confirm Topics",
   "Starter Packs",
-  "Sample Articles",
   "Add Sources",
   "Newsletters",
   "Add Creators",
+  "Rate Headlines",
   "Digest Preferences",
 ] as const;
 type StepName = (typeof STEPS)[number];
@@ -32,7 +32,6 @@ export function OnboardingWizard() {
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
   const [expanding, setExpanding] = useState(false);
-  const [sampleRatings, setSampleRatings] = useState<SampleRating[]>([]);
   const [sourceUrl, setSourceUrl] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [creatorInput, setCreatorInput] = useState("");
@@ -96,11 +95,8 @@ export function OnboardingWizard() {
       // 1. Submit interest text and sample ratings to the onboarding endpoint
       await api.onboarding.complete({
         interest_text: interestText,
-        sample_ratings: sampleRatings.map((r) => ({
-          article_url: r.article_url,
-          title: r.title,
-          rating: r.rating,
-        })),
+        // Real headlines are rated in the "Rate Headlines" step (#149).
+        sample_ratings: [],
         source_opml: null,
         confirmed_topics: topics.length > 0 ? topics : undefined,
       });
@@ -223,9 +219,7 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {current === "Sample Articles" && (
-        <SampleArticles ratings={sampleRatings} onRate={setSampleRatings} />
-      )}
+      {current === "Rate Headlines" && <CalibrationStep />}
 
       {current === "Add Sources" && (
         <div>
