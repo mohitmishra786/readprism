@@ -152,4 +152,21 @@ jobs:
             -e SECRET_KEY="ci-test-secret-key-for-jwt-signing-only" \
             -e GROQ_API_KEY="" \
             -e OPENAI_FALLBACK_ENABLED="false" \
-            backend python -m pytest tests/ -v
+            backend python -m pytest tests/ -v \
+              --cov --cov-report=term --cov-report=json:/tmp/coverage.json \
+              --cov-fail-under=84
+
+      # Per-module floors for the hot paths (#189): a drop in the ranker or
+      # ingest can't hide inside a healthy total.
+      - name: Coverage floors
+        run: |
+          docker compose exec -T backend python scripts/check_coverage.py /tmp/coverage.json
+          docker compose cp backend:/tmp/coverage.json coverage.json
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: coverage.json
+          if-no-files-found: ignore

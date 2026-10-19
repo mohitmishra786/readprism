@@ -58,6 +58,7 @@ sentry-sdk==2.71.0
 # pytest-asyncio==1.4.0 requires pytest>=8.4,<10 (supports pytest 9).
 pytest==9.1.1
 pytest-asyncio==1.4.0
+pytest-cov==7.1.0
 respx==0.23.1
 httpx==0.28.1
 
