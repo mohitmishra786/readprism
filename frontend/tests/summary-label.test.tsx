@@ -8,10 +8,16 @@ describe("SummaryLabel", () => {
     render(<SummaryLabel source="llm" />);
     expect(screen.getByText("AI summary")).toBeInTheDocument();
   });
-  it("shows nothing for extractive or unknown summaries", () => {
-    const { container } = render(<SummaryLabel source="extractive" />);
-    expect(container).toBeEmptyDOMElement();
-    const none = render(<SummaryLabel source={null} />);
-    expect(none.container).toBeEmptyDOMElement();
+  it("labels extractive summaries as a quick summary (#261)", () => {
+    render(<SummaryLabel source="extractive" />);
+    expect(screen.getByText("Quick summary")).toBeInTheDocument();
+    expect(screen.queryByText("AI summary")).not.toBeInTheDocument();
+  });
+  it("shows nothing when the source is unknown", () => {
+    for (const source of [null, undefined, "feed"]) {
+      const { container, unmount } = render(<SummaryLabel source={source} />);
+      expect(container).toBeEmptyDOMElement();
+      unmount();
+    }
   });
 });
