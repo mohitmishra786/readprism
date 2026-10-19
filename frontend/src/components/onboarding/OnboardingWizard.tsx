@@ -3,13 +3,27 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InterestInput } from "./InterestInput";
 import { SampleArticles, type SampleRating } from "./SampleArticles";
+import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
 import { api } from "../../lib/api";
 
-const STEPS = ["Interests", "Confirm Topics", "Sample Articles", "Add Sources", "Add Creators", "Digest Preferences"];
+// Steps are addressed by name so new steps don't shift every index.
+const STEPS = [
+  "Interests",
+  "Confirm Topics",
+  "Starter Packs",
+  "Sample Articles",
+  "Add Sources",
+  "Add Creators",
+  "Digest Preferences",
+] as const;
+type StepName = (typeof STEPS)[number];
 
 export function OnboardingWizard() {
   const router = useRouter();
   const [step, setStep] = useState(0);
+  const current: StepName = STEPS[step];
+  const [packIds, setPackIds] = useState<string[]>([]);
+  const [subscribing, setSubscribing] = useState(false);
   const [interestText, setInterestText] = useState("");
   const [topics, setTopics] = useState<string[]>([]);
   const [topicInput, setTopicInput] = useState("");
@@ -22,7 +36,17 @@ export function OnboardingWizard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const next = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const advance = () => setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = async () => {
+    // Leaving the pack step subscribes the chosen packs (#152).
+    if (current === "Starter Packs" && packIds.length) {
+      setSubscribing(true);
+      await subscribePacks(packIds);
+      setPackIds([]);
+      setSubscribing(false);
+    }
+    advance();
+  };
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
   // Step 0 -> 1 runs interest expansion (LLM with keyword fallback) so the
@@ -124,11 +148,11 @@ export function OnboardingWizard() {
         </div>
       </div>
 
-      {step === 0 && (
+      {current === "Interests" && (
         <InterestInput value={interestText} onChange={setInterestText} />
       )}
 
-      {step === 1 && (
+      {current === "Confirm Topics" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             We expanded your interests into these topics. They seed your first
@@ -185,11 +209,21 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 2 && (
+      {current === "Starter Packs" && (
+        <div>
+          <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
+            Pick a few starter packs to follow. The ones matching your topics are
+            pre-selected. <strong>Optional</strong>: you can add more from Sources later.
+          </p>
+          <StarterPackPicker topics={topics} selected={packIds} onChange={setPackIds} />
+        </div>
+      )}
+
+      {current === "Sample Articles" && (
         <SampleArticles ratings={sampleRatings} onRate={setSampleRatings} />
       )}
 
-      {step === 3 && (
+      {current === "Add Sources" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add websites or RSS feeds you follow.{" "}
@@ -220,7 +254,7 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 4 && (
+      {current === "Add Creators" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             Add creators you follow (name or URL). <strong>Optional</strong> —
@@ -236,7 +270,7 @@ export function OnboardingWizard() {
         </div>
       )}
 
-      {step === 5 && (
+      {current === "Digest Preferences" && (
         <div>
           <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>Digest frequency</label>
           <select
@@ -271,7 +305,7 @@ export function OnboardingWizard() {
         {step < STEPS.length - 1 ? (
           <button
             onClick={step === 0 ? expandAndContinue : next}
-            disabled={expanding}
+            disabled={expanding || subscribing}
             style={{
               padding: "10px 20px",
               background: "#2563eb",
@@ -284,10 +318,14 @@ export function OnboardingWizard() {
           >
             {expanding
               ? "Finding your topics…"
-              : /* Optional steps (sources/creators) read as "Skip" when empty */
-                (step === 3 && sources.length === 0) || (step === 4 && !creatorInput)
-                ? "Skip for now"
-                : "Continue"}
+              : subscribing
+                ? "Subscribing…"
+                : /* Optional steps read as "Skip" when nothing was chosen */
+                  (current === "Starter Packs" && packIds.length === 0) ||
+                    (current === "Add Sources" && sources.length === 0) ||
+                    (current === "Add Creators" && !creatorInput)
+                  ? "Skip for now"
+                  : "Continue"}
           </button>
         ) : (
           <button

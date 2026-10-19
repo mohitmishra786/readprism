@@ -169,3 +169,15 @@ export interface BillingState {
   plan_expires_at: string | null;
   can_manage: boolean;
 }
+
+/** A curated starter pack of feeds (#152). */
+export interface StarterPack {
+  id: string;
+  title: string;
+  feed_count: number;
+  feeds: { name: string; url: string }[];
+  /** Matches the user's confirmed topics; pre-selected in the picker. */
+  suggested: boolean;
+  /** How many of the pack's feeds the user already follows. */
+  subscribed: number;
+}

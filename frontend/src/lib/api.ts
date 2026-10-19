@@ -1,6 +1,7 @@
 import { clearSession, getCsrfToken, setCsrfToken } from './auth';
 import type {
   BillingState,
+  StarterPack,
   ContentItem,
   ContentItemFull,
   Creator,
@@ -230,6 +231,15 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    starterPacks: (topics: string[] = []) =>
+      request<StarterPack[]>(
+        `/sources/starter-packs${topics.length ? `?topics=${encodeURIComponent(topics.join(","))}` : ""}`,
+      ),
+    subscribePack: (id: string) =>
+      request<{ status: string; subscribed: number; already_had: number }>(
+        `/sources/starter-packs/${id}/subscribe`,
+        { method: 'POST' },
+      ),
     /** One-click repair of a dead/failing feed (#212). */
     fix: (id: string) =>
       request<{ status: 'fixed' | 'no_new_feed'; feed_url: string | null; suggestion?: string }>(

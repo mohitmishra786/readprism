@@ -76,3 +76,23 @@ def expand(text: str) -> list[str]:
             if name not in ordered:
                 ordered.append(name)
     return ordered[:MAX_TOPICS]
+
+
+def packs_for_topics(topics: list[str]) -> list[str]:
+    """Starter-pack ids for confirmed topics, best match first (#152).
+
+    A topic counts for its pack when it is a taxonomy label or expands to
+    taxonomy topics; packs are ranked by how many topics point at them.
+    """
+    by_label = {t["label"].lower(): t["pack"] for t in _topics()}
+    votes: dict[str, int] = {}
+    for topic in topics:
+        label = topic.strip().lower()
+        packs = (
+            [by_label[label]]
+            if label in by_label
+            else [by_label[m.lower()] for m in expand(topic)[:3] if m.lower() in by_label]
+        )
+        for pack in packs:
+            votes[pack] = votes.get(pack, 0) + 1
+    return [pack for pack, _ in sorted(votes.items(), key=lambda kv: (-kv[1], kv[0]))]

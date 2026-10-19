@@ -76,17 +76,35 @@ def _fetch_new_sources_soon(user_id) -> None:
 
 @router.get("/starter-packs")
 async def list_packs(
+    topics: str = "",
+    session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    """CS-02: curated topic bundles (10-25 feeds each) for one-click subscribe."""
-    from app.services.cold_start.starter_packs import list_starter_packs
+    """CS-02: curated topic bundles (10-25 feeds each) for one-click subscribe.
 
+    `topics` (comma-separated) marks the packs matching the user's interests
+    as suggested so the picker can pre-select them (#152); `subscribed` says
+    how many of a pack's feeds the user already follows.
+    """
+    from app.services.cold_start.starter_packs import list_starter_packs
+    from app.services.cold_start.taxonomy import packs_for_topics
+
+    wanted = [t for t in (part.strip() for part in topics.split(",")) if t]
+    suggested = packs_for_topics(wanted)[:4] if wanted else []
+    followed = {
+        row[0]
+        for row in (
+            await session.execute(select(Source.url).where(Source.user_id == current_user.id))
+        ).all()
+    }
     return [
         {
             "id": pack.id,
             "title": pack.title,
             "feed_count": len(pack.feeds),
             "feeds": [{"name": f["name"], "url": f["url"]} for f in pack.feeds],
+            "suggested": pack.id in suggested,
+            "subscribed": sum(1 for f in pack.feeds if f["url"] in followed),
         }
         for pack in list_starter_packs()
     ]
