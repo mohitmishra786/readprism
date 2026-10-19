@@ -140,10 +140,14 @@ class Settings(BaseSettings):
     # Reject webhook posts whose signed timestamp is older than this (replay guard).
     newsletter_webhook_max_age_seconds: int = 900  # 15 minutes
 
-    # Win-back: email users who haven't opened a digest in this many days (once
-    # per re-engagement cooldown) to bring lapsed readers back (audit 10-5).
-    reengagement_inactivity_days: int = 14
-    reengagement_cooldown_days: int = 30
+    # Gentle win-back (#238): one email per stage, by days since the last
+    # opened digest: a top-3 digest, then 'pause or go weekly?', then a final
+    # note pointing at data export. Never more than one per min-gap days.
+    reengagement_stage_days: str = "3,10,30"
+    reengagement_min_gap_days: int = 3
+    # Also switch digest emails off at the final stage. Off by default: the
+    # final email only stops the nudges (open question in #238).
+    reengagement_pause_digest_at_final: bool = False
 
     # Content retention: after this many days, the stored full article text is
     # pruned to a short excerpt (keeping summary + link). Limits how long we hold

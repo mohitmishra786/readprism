@@ -51,6 +51,11 @@ class User(Base):
     collaborative_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    # Win-back stage reached since the last opened digest (#238): 0 = none.
+    reengagement_stage: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    reengagement_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Weekly "What I learned about you" email (#184): opt-in, off by default.
     weekly_email: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     weekly_email_sent_at: Mapped[datetime | None] = mapped_column(

@@ -340,6 +340,55 @@ async def topic_action_submit(
     )
 
 
+@router.get("/u/{action}")
+async def user_action_link(
+    action: str, uid: str = Query(...), exp: int = Query(...), sig: str = Query(...)
+) -> Response:
+    """Win-back 'Switch to weekly' (#238): inert confirmation on GET."""
+    import html
+
+    from app.utils.signed_links import verify_user_action
+
+    if not verify_user_action(uid, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    target = html.escape(
+        f"/api/v1/digest/u/{action}?uid={uuid.UUID(uid)}&exp={int(exp)}&sig={sig}", quote=True
+    )
+    return HTMLResponse(
+        f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
+<form method="post" action="{target}" id="confirm"><p>Switch to one digest a week?</p>
+<button type="submit">Switch to weekly</button></form>
+<script>document.getElementById("confirm").submit();</script></body></html>"""
+    )
+
+
+@router.post("/u/{action}")
+async def user_action_submit(
+    action: str,
+    uid: str = Query(...),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    from app.utils.signed_links import verify_user_action
+
+    if not verify_user_action(uid, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    user = await session.get(User, uuid.UUID(uid))
+    if user is not None and action == "weekly":
+        user.digest_frequency = "weekly"
+        await session.commit()
+    return RedirectResponse(
+        url=f"{get_settings().frontend_url.rstrip('/')}/preferences", status_code=303
+    )
+
+
 async def _apply_weekly_unsubscribe(uid: str, token: str, session: AsyncSession) -> bool:
     from app.utils.unsubscribe import verify_weekly_unsubscribe_token
 
