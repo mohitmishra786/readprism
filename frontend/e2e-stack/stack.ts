@@ -53,3 +53,16 @@ export function insertArticle(): string {
   ).split("\n")[0];
 }
 
+
+/**
+ * The row a just-answered request wrote. The API's transaction can commit a
+ * moment after the response is sent, so poll briefly instead of reading once.
+ */
+export async function sqlRow(query: string, timeoutMs = 10_000): Promise<string> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const row = sql(query);
+    if (row || Date.now() > deadline) return row;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+}

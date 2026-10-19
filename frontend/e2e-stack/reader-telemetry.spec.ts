@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { insertArticle, signIn, sql } from "./stack";
+import { insertArticle, signIn, sqlRow } from "./stack";
 
 // Reading telemetry end to end (#193): a real reader session in the browser
 // must land as the right values in user_content_interactions.
@@ -37,7 +37,7 @@ test("a full read lands as a completed interaction with real telemetry", async (
   await flushed;
   await page.close({ runBeforeUnload: true });
 
-  const row = sql(
+  const row = await sqlRow(
     `SELECT i.reached_end, i.read_completion_pct, i.scroll_depth_pct, i.active_time_seconds, ` +
       `i.opened_at IS NOT NULL FROM user_content_interactions i JOIN users u ON u.id = i.user_id ` +
       `WHERE u.email = '${email}' AND i.content_item_id = '${itemId}'`,
@@ -64,7 +64,7 @@ test("a glance and leave is recorded as a bounce, not a read", async ({ page }) 
   });
   await flushed;
 
-  const row = sql(
+  const row = await sqlRow(
     `SELECT coalesce(i.reached_end, false), coalesce(i.read_completion_pct, 0) FROM user_content_interactions i ` +
       `JOIN users u ON u.id = i.user_id WHERE u.email = '${email}' AND i.content_item_id = '${itemId}'`,
   );
