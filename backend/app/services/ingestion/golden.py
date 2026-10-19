@@ -8,6 +8,7 @@ refuse them.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 
 from app.services.ingestion.extract import extract_html
 
@@ -107,3 +108,44 @@ def evaluate() -> dict:
         "snippet_recall": sum(recalls) / count,
         "methods": sorted(methods),
     }
+
+
+# --------------------------------------------------------------- real pages
+# Real published pages with ground truth from each post's own Markdown source
+# (#230); collected by scripts/collect_real_pages.py, licences in the manifest.
+REAL_PAGES = Path(__file__).resolve().parents[3] / "tests" / "fixtures" / "real_pages"
+
+
+def _words(text: str) -> set[str]:
+    import re
+
+    return set(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def evaluate_real(root: Path = REAL_PAGES) -> dict:
+    """Word precision, recall and F1 per source over the real-page fixtures."""
+    import gzip
+    import json
+
+    per_source: dict[str, list[tuple[float, float, float]]] = {}
+    for page in json.loads((root / "manifest.json").read_text()):
+        html = gzip.decompress((root / f"{page['id']}.html.gz").read_bytes()).decode()
+        expected = _words(gzip.decompress((root / f"{page['id']}.txt.gz").read_bytes()).decode())
+        got = _words(extract_html(html, page["url"]).text)
+        overlap = len(expected & got)
+        precision = overlap / len(got) if got else 0.0
+        recall = overlap / len(expected) if expected else 1.0
+        f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+        per_source.setdefault(page["source"], []).append((precision, recall, f1))
+
+    def summary(rows: list[tuple[float, float, float]]) -> dict:
+        n = len(rows)
+        return {
+            "pages": n,
+            "precision": sum(r[0] for r in rows) / n,
+            "recall": sum(r[1] for r in rows) / n,
+            "word_f1": sum(r[2] for r in rows) / n,
+        }
+
+    every = [row for rows in per_source.values() for row in rows]
+    return {"overall": summary(every), "by_source": {s: summary(r) for s, r in per_source.items()}}
