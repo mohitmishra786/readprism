@@ -50,6 +50,7 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("DELETE", "/api/v1/sources/{source_id}", None),
     ("POST", "/api/v1/sources/{source_id}/fix", None),
     ("GET", "/api/v1/sources/import-jobs/{import_job_id}", None),
+    ("GET", "/api/v1/search/why/{private_content_id}", None),
     ("DELETE", "/api/v1/tokens/{token_id}", None),
 ]
 

@@ -192,3 +192,17 @@ export interface ImportResult {
   job_id?: string;
   errors: { row?: number; url: string; error: string }[];
 }
+
+/** Live score and explanation for one item (#267). */
+export interface WhyNotSeen {
+  content_id: string;
+  title: string;
+  score: number;
+  explanation: string;
+  why_topics: string | null;
+  verdict: "shown" | "not_an_article" | "not_followed" | "ranked_below_cutoff" | "no_digest_yet" | "outside_window";
+  message: string;
+  latest_digest_cutoff: number | null;
+  contributions: { signal: string; feature: number; weight: number; contribution: number; has_data: boolean }[];
+  raise_it: { signal: string; how: string }[];
+}

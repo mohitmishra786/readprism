@@ -7,6 +7,7 @@ import {
 } from './auth';
 import type {
   BillingState,
+  WhyNotSeen,
   ImportResult,
   StarterPack,
   ContentItem,
@@ -420,6 +421,8 @@ export const api = {
       request<{ query: string; hits: ContentItem[]; limit: number; offset: number }>(
         `/search?q=${encodeURIComponent(q)}&limit=${limit || 20}&offset=${offset || 0}`
       ),
+    /** "Why didn't I see this?" for any item (#267). */
+    why: (contentId: string) => request<WhyNotSeen>(`/search/why/${contentId}`),
   },
 
   onboarding: {

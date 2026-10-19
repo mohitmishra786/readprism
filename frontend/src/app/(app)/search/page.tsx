@@ -3,6 +3,7 @@ import { useState } from "react";
 import { api } from "../../../lib/api";
 import { sanitizeHtml } from "../../../lib/sanitize";
 import type { ContentItem } from "../../../lib/types";
+import { WhyNotSeen } from "../../../components/WhyNotSeen";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -86,6 +87,7 @@ export default function SearchPage() {
                     }}
                   />
                 )}
+                <WhyNotSeen contentId={item.id} />
               </div>
             ))
           )}

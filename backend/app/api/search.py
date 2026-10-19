@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -203,3 +203,20 @@ async def search(
         "offset": offset,
         "has_more": offset + limit < len(fused),
     }
+
+
+@router.get("/why/{content_id}")
+async def why_not_seen(
+    content_id: uuid.UUID,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """'Why didn't I see this?' (#267): the item's live score for this user,
+    each signal's contribution in the digest's wording, whether and when it
+    was in a digest (and if not, why not), and what would raise it."""
+    from app.services.ranking.why_not import explain_item_id
+
+    result = await explain_item_id(current_user, content_id, session)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
+    return result
