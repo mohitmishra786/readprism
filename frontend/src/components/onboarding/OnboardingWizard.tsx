@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { InterestInput } from "./InterestInput";
 import { CalibrationStep } from "./CalibrationStep";
+import { detectedTimezone, digestPreferencesPayload } from "./digestPrefs";
+import { useInstallPrompt } from "../../lib/useInstallPrompt";
 import { StarterPackPicker, subscribePacks } from "../sources/StarterPackPicker";
 import { ImportPanel } from "./ImportPanel";
 import { NewsletterAddressCard } from "../NewsletterAddressCard";
@@ -35,7 +37,12 @@ export function OnboardingWizard() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [sources, setSources] = useState<string[]>([]);
   const [creatorInput, setCreatorInput] = useState("");
-  const [digestFreq, setDigestFreq] = useState("daily");
+  const [digestFreq, setDigestFreq] = useState<"daily" | "twice_daily" | "weekly">("daily");
+  const [digestTime, setDigestTime] = useState("07:00");
+  const [emailOn, setEmailOn] = useState(true);
+  const [timezone] = useState(detectedTimezone);
+  const installer = useInstallPrompt();
+  const [installed, setInstalled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -110,7 +117,10 @@ export function OnboardingWizard() {
       }
 
       // 3. Update preferences
-      await api.preferences.update({ digest_frequency: digestFreq });
+      // Time + timezone + email choice (#201); an explicit time locks the send time.
+      await api.preferences.update(
+        digestPreferencesPayload({ frequency: digestFreq, emailOn, time: digestTime, timezone }),
+      );
 
       // 4. Fetch the new sources now and build the first digest once articles
       // are in (#102). The digest page shows live progress until it exists.
@@ -285,13 +295,48 @@ export function OnboardingWizard() {
           <label style={{ display: "block", fontWeight: 500, marginBottom: 8 }}>Digest frequency</label>
           <select
             value={digestFreq}
-            onChange={(e) => setDigestFreq(e.target.value)}
+            onChange={(e) => setDigestFreq(e.target.value as typeof digestFreq)}
+            disabled={!emailOn}
             style={{ width: "100%", padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
           >
             <option value="daily">Daily</option>
             <option value="twice_daily">Twice daily</option>
             <option value="weekly">Weekly</option>
           </select>
+
+          <label style={{ display: "block", fontWeight: 500, margin: "16px 0 8px" }} htmlFor="digest-time">
+            Delivery time
+          </label>
+          <input
+            id="digest-time"
+            type="time"
+            value={digestTime}
+            onChange={(e) => setDigestTime(e.target.value)}
+            style={{ padding: "8px 12px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+          />
+          <p style={{ fontSize: 13, color: "var(--text-tertiary)", marginTop: 4 }}>
+            Your time zone: {timezone}
+          </p>
+
+          <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 16, fontSize: 14 }}>
+            <input type="checkbox" checked={emailOn} onChange={(e) => setEmailOn(e.target.checked)} />
+            Email me the digest (otherwise read it in the app)
+          </label>
+
+          {installer.available && !installed && (
+            <div style={{ marginTop: 20, padding: 12, border: "1px solid var(--border)", borderRadius: 8 }}>
+              <p style={{ fontSize: 14, marginBottom: 8 }}>
+                Add ReadPrism to your home screen to open your digest in one tap.
+              </p>
+              <button
+                type="button"
+                onClick={async () => setInstalled(await installer.install())}
+                style={{ padding: "6px 14px", border: "1px solid var(--border-strong)", borderRadius: 6 }}
+              >
+                Add to home screen
+              </button>
+            </div>
+          )}
         </div>
       )}
 
