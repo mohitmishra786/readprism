@@ -1,9 +1,11 @@
-# ReadPrism Privacy Policy
+# Privacy policy
 
-*Last updated: 2026-07-21. This is a baseline policy template for the ReadPrism
-software; it is not legal advice. Operators of a hosted ReadPrism instance should
-have it reviewed by counsel and adapt it to their jurisdiction before collecting
-user data.*
+*Last updated: 2026-07-21.*
+
+!!! info "A template, not legal advice"
+    This is a baseline policy for the ReadPrism software. Operators of a
+    hosted instance should have it reviewed by counsel and adapt it to their
+    jurisdiction before collecting user data.
 
 ReadPrism is a personalized reading tool. To rank content for you, it processes
 data about what you read and how you read it. This document explains what is

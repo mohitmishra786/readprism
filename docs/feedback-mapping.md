@@ -1,9 +1,12 @@
-# Feedback → signal mapping (UX-06)
+# Feedback mapping
 
-Every feedback control maps to documented learning effects. The code source
-of truth is `backend/app/services/ranking/feedback_map.py`
-(`REASON_EFFECTS`); this page is the human-readable table. Tests:
-`backend/tests/test_api/test_feedback_reasons.py`.
+<p class="lead">What happens to your ranking when you press a button. Every
+feedback control has a documented, tested effect.</p>
+
+The code is the source of truth: `REASON_EFFECTS` in
+`backend/app/services/ranking/feedback_map.py`, tested by
+`backend/tests/test_api/test_feedback_reasons.py`. This page is the readable
+version.
 
 ## Reason tags (thumbs-down → "Why?")
 
@@ -34,9 +37,10 @@ cluster delta targets the item's **top cluster**, defined as
 | Mute source | Sources page | `PATCH /sources/{id} {is_active: false}` |
 | Boost / suppress cluster | Preferences → interest graph | `POST /feedback/adjust-interests {action: boost \| suppress}` |
 
-**Known gap (tracked in PROGRESS):** card-level "More like this / Less like
-this" quick actions are not yet in the card UI; the mechanism
-(`adjust-interests`) exists and is used by the interest-graph page.
+!!! note "Not on the cards yet"
+    "More like this" and "Less like this" buttons aren't on digest cards yet.
+    The mechanism (`adjust-interests`) exists and the interest-graph page
+    uses it.
 
 ## What each signal sees
 

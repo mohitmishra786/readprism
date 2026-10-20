@@ -1,4 +1,4 @@
-# Offline replay: pre-registered protocol (#200)
+# Replay evaluation
 
 Fixed before any owner data is run, so the numbers can't be tuned after the fact.
 

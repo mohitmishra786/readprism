@@ -1,39 +1,41 @@
-# Upgrading a self-hosted instance
+# Upgrading
 
-Every upgrade follows the same four steps. Version-specific notes follow.
+<p class="lead">Every upgrade follows the same four steps. Version-specific
+notes follow.</p>
 
 ## The steps
 
 1. **Back up and rehearse the restore.**
 
-   ```bash
-   ./scripts/backup.sh /var/backups/readprism
-   ./scripts/restore_drill.sh   # restores into a throwaway DB, checks counts, drops it
-   ```
+    ```bash
+    ./scripts/backup.sh /var/backups/readprism
+    ./scripts/restore_drill.sh   # restores into a throwaway DB, checks counts, drops it
+    ```
 
-   Don't skip the drill: it is how you know the rollback below will work. See
-   [Backups & restore](DEPLOYMENT.md#backups-restore).
+    !!! tip "Don't skip the drill"
+        It is how you know the rollback below will work. See
+        [Backups & restore](DEPLOYMENT.md#backups-restore).
 
 2. **Read the notes for every version you are crossing** (below, and the
-   [release notes](releases/)). They list required `.env` changes.
+    [release notes](releases/)). They list required `.env` changes.
 
 3. **Pull and restart.**
 
-   ```bash
-   git pull                               # compose files, scripts, docs
-   # Pin a version (recommended) or use latest:
-   #   READPRISM_VERSION=v0.2.0 in .env
-   docker compose pull
-   docker compose up -d
-   docker compose logs -f backend         # watch for "migrate: database is at head"
-   ```
+    ```bash
+    git pull                               # compose files, scripts, docs
+    # Pin a version (recommended) or use latest:
+    #   READPRISM_VERSION=v0.2.0 in .env
+    docker compose pull
+    docker compose up -d
+    docker compose logs -f backend         # watch for "migrate: database is at head"
+    ```
 
-   The backend applies database migrations on start, under a lock, so it is
-   safe with several containers. To run them yourself as a separate step, set
-   `AUTO_MIGRATE=false` and run `docker compose exec backend python -m app.migrate`.
+    The backend applies database migrations on start, under a lock, so it is
+    safe with several containers. To run them yourself as a separate step, set
+    `AUTO_MIGRATE=false` and run `docker compose exec backend python -m app.migrate`.
 
 4. **Check.** `curl -s localhost:8000/health` should report `"status":"ok"`.
-   Open the app, sign in, and load your digest.
+    Open the app, sign in, and load your digest.
 
 ## Rolling back
 

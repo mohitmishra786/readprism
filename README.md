@@ -12,7 +12,7 @@ What makes it different:
 
 **Who it's for:** built for developers and heavy readers who follow 50+ technical feeds — people who want an explainable, behavioral ranking engine that gets better the more they read. ReadPrism supports both single-tenant self-hosting and multi-tenant hosted operations.
 
-The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md). The running system is described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. The documentation site is built from [`docs/`](docs/index.md): start with [Install & run](docs/DEPLOYMENT.md) or [Architecture](docs/ARCHITECTURE.md). Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ---
 
@@ -21,7 +21,7 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 ReadPrism operates in two deployment modes controlled by `DEPLOYMENT_MODE` (`selfhost` or `hosted`):
 
 - **Self-Hosted (`DEPLOYMENT_MODE=selfhost`, default)**: Single-tenant deployment with no quota or plan gates. All ingested content is readable in full text within the in-app reader (`READER_FULL_TEXT=auto`), email verification defaults to off (`EMAIL_VERIFICATION=auto`), and registration is closed after setup by default (`REGISTRATION_MODE=closed`) to protect your instance.
-- **Hosted (`DEPLOYMENT_MODE=hosted`)**: Multi-tenant offering with free-tier source/creator limits (`FREE_MAX_SOURCES`, `FREE_MAX_CREATORS`, `HOSTED_FREE_DIGEST_REGEN_MINUTES`), mandatory email verification (`EMAIL_VERIFICATION=auto`), domain-level signup rate limits (`SIGNUP_PER_DOMAIN_PER_HOUR`), tenant fetch abuse controls (`HOSTED_FETCH_BUDGET_PER_HOUR`), reader full-text syndication safeguards (`READER_FULL_TEXT=auto`), and subscription billing via Lemon Squeezy or Paddle (`BILLING_PROVIDER`).
+- **Hosted (`DEPLOYMENT_MODE=hosted`)**: Multi-tenant offering with Reader and Pro plans, a 30-day trial and per-plan quotas ([docs/HOSTING.md](docs/HOSTING.md)), mandatory email verification (`EMAIL_VERIFICATION=auto`), domain-level signup rate limits (`SIGNUP_PER_DOMAIN_PER_HOUR`), tenant fetch abuse controls (`HOSTED_FETCH_BUDGET_PER_HOUR`), reader full-text syndication safeguards (`READER_FULL_TEXT=auto`), and subscription billing via Lemon Squeezy or Paddle (`BILLING_PROVIDER`).
 
 ---
 
@@ -57,13 +57,13 @@ open http://localhost:3001    # create your account and onboard
 
 ## What It Does
 
-- **Unified ingestion** — RSS/Atom feeds, robust web scraping (trafilatura + Playwright fallback), newsletter forwarding, and creator tracking across Substack, YouTube, Medium, Reddit, podcasts (via iTunes lookup), and any blog with RSS autodiscovery.
+- **Unified ingestion** — RSS/Atom feeds, robust web scraping (trafilatura + Playwright fallback), newsletter forwarding, and creator tracking across Substack, YouTube, Medium, Bluesky, Mastodon, GitHub, podcasts (via iTunes lookup), and any blog with RSS autodiscovery.
 - **Personalized Relevance Score (PRS)** — Eight signal dimensions combined with per-user learned weights rank every item before it reaches your digest.
 - **Real reading telemetry** — An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end — feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
 - **Daily digest** — Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
 - **Interest graph** — Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
 - **Cold start handling** — Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) suggests articles at least 20 readers finished (k-anonymous, opt-out in Preferences) once the instance has 100 active readers (inert on single-user and family instances).
-- **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (Twitter/X and LinkedIn have no public feed and are clearly marked).
+- **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (X, LinkedIn and Reddit have no usable public feed and are clearly marked).
 
 ---
 
@@ -145,72 +145,62 @@ Navigate to [http://localhost:3001](http://localhost:3001) and create an account
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Next.js Frontend (port 3001)                                   │
-│  Digest reader · Source/creator management · Onboarding wizard  │
-└─────────────────────┬───────────────────────────────────────────┘
-                      │ REST /api/v1
-┌─────────────────────▼───────────────────────────────────────────┐
-│  FastAPI Backend (port 8000)                                    │
-│  Auth · Sources · Creators · Content · Digest · Feedback        │
-└──────┬──────────────┬──────────────────────────────────────────-┘
-       │              │
-       │              │ SQLAlchemy async
-┌──────▼──────┐  ┌────▼──────────────────────────────────────────┐
-│   Redis     │  │   PostgreSQL + pgvector                        │
-│  Cache      │  │   Users · Sources · Creators · ContentItems    │
-│  Celery     │  │   InterestNodes · InterestEdges · Digests      │
-│  broker     │  │   UserContentInteractions                      │
-└──────┬──────┘  └────────────────────────────────────────────────┘
-       │
-┌──────▼──────────────────────────────────────────────────────────┐
-│  Celery Workers                                                 │
-│  Ingest feeds (30 min) · Compute embeddings · Build digest      │
-│  Deliver digest · Update interest graph · Apply decay (2 AM)    │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    accTitle: ReadPrism components
+    accDescr: The web app and extension call the API. The API and the scheduler queue work in Redis, workers pick it up, fetch the web, and everything durable is stored in Postgres.
+
+    web["Web app"] --> api["API"]
+    ext["Browser extension"] --> api
+    api -->|queues jobs| redis[("Redis")]
+    beat["Scheduler"] -->|queues jobs| redis
+    redis -->|delivers jobs| workers["Workers"]
+    workers -->|fetch| internet(["Feeds and websites"])
+    api --> pg[("Postgres + pgvector")]
+    workers --> pg
 ```
 
-### Intelligence pipeline (per ingested item)
+| Piece | What it does |
+|---|---|
+| Web app (port 3001) | Next.js reader, digest, sources and settings |
+| API (port 8000) | FastAPI, everything under `/api/v1` |
+| Workers | Celery, one queue each: `scrape`, `embed`, `digest` |
+| Scheduler | Celery beat: polls, digests, emails, upkeep |
+| Postgres + pgvector | Users, feeds, items, vectors, digests |
+| Redis | Task broker, cache, rate limits |
 
-1. Content extraction and cleaning
-2. Semantic embedding via `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional, local — no API cost)
-3. PRS computation against all users following that source (8 signals in parallel)
-4. Deduplication by semantic similarity across items already in the user's queue
-5. Summarization via the configured OpenAI-compatible model (Groq `openai/gpt-oss-120b` by default), cached in Redis. If the model is down or no key is set, an extractive summary is stored instead (`summary_source=extractive`).
+**How an item flows:** a feed is fetched once for all its subscribers,
+duplicates are dropped, the item is stored and embedded locally
+(`all-MiniLM-L6-v2`, no API cost). When a digest is built, the ranker scores
+candidates for that reader, and a model summary is written only for the items
+shown (on the fast model; without a key, an extract is used). More, with
+diagrams: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
 ## Ranking Engine
 
-Every piece of content receives a **Personalized Relevance Score (PRS)** computed as a weighted sum of eight signal dimensions. The weights are learned per-user via per-user gradient descent on prediction accuracy (the meta-learning layer in `services/ranking/meta_weights.py`).
+Every candidate gets eight signal scores between 0 and 1. Each is multiplied
+by your personal weight, and the products add up to its **Personalized
+Relevance Score (PRS)**. The largest products become the plain-language reason
+shown next to the item, so the explanation always matches the math.
 
-```
-PRS = w1·SemanticAlignment + w2·ReadingDepth + w3·SuggestionSignal
-    + w4·ExplicitFeedback + w5·SourceTrust + w6·ContentQuality
-    + w7·TemporalContext + w8·NoveltyAdjustment
+| Signal | What it measures |
+|---|---|
+| `semantic` | Closeness to the topics in your interest graph |
+| `reading_depth` | How far you read similar articles (scroll depth and active time from the in-app reader) |
+| `suggestion` | How often you accept discovery picks like it |
+| `explicit_feedback` | Thumbs, saves and reason tags |
+| `source_trust` | How your reading of this source has gone |
+| `content_quality` | Length, citations and depth |
+| `temporal_context` | Freshness over three horizons, less for repeats of one event |
+| `novelty` | Distance from what you read in the last 30 days |
 
-where Σwᵢ = 1.0, all wᵢ learned per user
-```
-
-### Signal dimensions
-
-| # | Signal | What it measures |
-|---|---|---|
-| 1 | **Semantic Alignment** | Cosine similarity between content embedding and user's interest vector |
-| 2 | **Reading Depth** | Scroll depth, active reading time vs estimated reading time, reached-end, re-reads — captured by the in-app reader (`useReadingTelemetry`) |
-| 3 | **Suggestion Signal** | Boosted weight when content is read from a source the user didn't follow |
-| 4 | **Explicit Feedback** | Thumbs up/down, tagged reasons (too basic, too tangential, etc.), saves |
-| 5 | **Source Trust** | Per-source (and per-creator-per-topic) trust weight learned from behavior |
-| 6 | **Content Quality** | Article length, citation presence, vocabulary complexity, originality |
-| 7 | **Temporal Context** | Three-scale model: long-term interests, medium-term focus (2–4 weeks), session saturation |
-| 8 | **Novelty** | Configurable serendipity percentage (default 15%) for discovery outside established clusters |
-
-New users start with equal weights, slightly biased toward semantic alignment and explicit feedback. The meta-learning layer adjusts weights as behavioral history accumulates.
-
-### Interest graph
-
-Your interest model is a directed weighted graph stored in PostgreSQL. Nodes are topic embeddings; edges represent co-occurrence in reading sessions. Node weights decay exponentially over time (core interests have longer half-lives). The graph enables transitive relevance — content at the intersection of two strongly connected topics scores highly even if you've never engaged with that exact subtopic before.
+Weights are learned per reader from pairs in the same digest (the item you
+opened against the one you skipped). A signal with no evidence stays neutral
+and isn't used in the explanation. Your interests form a weighted topic graph
+that decays over time, so ranking follows what you read now. Details:
+[docs/signals.md](docs/signals.md).
 
 ---
 

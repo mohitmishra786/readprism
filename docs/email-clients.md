@@ -1,4 +1,4 @@
-# Digest email: client check (#217)
+# Email client check
 
 The digest email is checked automatically on every change (snapshot, table
 layout and inline styles, dark-mode CSS, and rendering in Chromium and
