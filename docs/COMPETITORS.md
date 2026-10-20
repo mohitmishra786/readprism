@@ -1,9 +1,9 @@
 # Competitive Landscape (refreshed, July 2026)
 
 *The spec's original competitor table is stale in three ways: it omits NewsBlur
-(the closest analog), omits the 2025–26 AI-native entrants, and understates
-Inoreader (which now has an AI layer). This is the current, accurate version —
-publish this, not the spec table, to avoid being corrected in public (audit
+(the closest analog), omits the 2025 to 2026 AI-native entrants, and understates
+Inoreader (which now has an AI layer). This is the current, accurate version.
+Publish this, not the spec table, to avoid being corrected in public (audit
 02-1). Prices verified July 2026.*
 
 | Product | Price (Jul 2026) | AI / personalization | vs Weirling |
@@ -18,21 +18,21 @@ publish this, not the spec table, to avoid being corrected in public (audit
 | **Brief Digest / Daigest / TheReader.AI** | ~$2.99/mo Pro, free tiers | AI summaries/clustering/briefings | Cheaper; summaries not behavioral ranking |
 | **auto-news (OSS)** | Free, self-hosted | LLM-filtered aggregation | The self-hosted OSS competitor class |
 
-**Mailbrew** is free/dormant (maintenance mode since 2023) — drop it from any
+**Mailbrew** is free/dormant (maintenance mode since 2023): drop it from any
 active-competitor comparison.
 
 ## What is uniquely true
 
 No one does **reading-telemetry-driven ranking + per-user learned weights +
 self-hosting** together. Each piece individually now has a competitor; the
-combination is still open. Market that true, provable version — not "no one does
+combination is still open. Market that true, provable version, not "no one does
 this."
 
 ## Price positioning (audit 02-3)
 
 Weirling Pro at **$4.99/mo** sits between the budget AI-digest entrants (Brief
 Digest $2.99) and the incumbents (Inoreader ~$7.50, Feedly Pro+ ~$99/yr). Don't
-race Brief Digest to the bottom — you can't win a price war while giving away LLM
+race Brief Digest to the bottom: you can't win a price war while giving away LLM
 inference. **Justify $4.99 on capability** (behavioral, explainable ranking + the
 full engine free), not on being cheapest. Heavy/niche users self-host with their
 own Groq key (see [UNIT_ECONOMICS.md](UNIT_ECONOMICS.md)).

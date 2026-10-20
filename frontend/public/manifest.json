@@ -1,7 +1,7 @@
 {
   "name": "Weirling",
   "short_name": "Weirling",
-  "description": "Personalized content intelligence \u2014 your sources and creators, ranked by personal relevance.",
+  "description": "Personalized content intelligence: your sources and creators, ranked by personal relevance.",
   "start_url": "/digest",
   "scope": "/",
   "display": "standalone",

@@ -603,7 +603,7 @@ async def _mark_surfaced_in_digest(
 _EARLY_PROMPTS: list[dict] = [
     {
         "type": "depth_level",
-        "text": "Was today's content the right depth — or would you prefer more in-depth analysis?",
+        "text": "Was today's content the right depth, or would you prefer more in-depth analysis?",
     },
     {
         "type": "topic_accuracy",

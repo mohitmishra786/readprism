@@ -25,7 +25,7 @@ def send_email_sync(
     settings = get_settings()
 
     if not settings.zoho_password:
-        logger.warning("ZOHO_PASSWORD not configured — email not sent")
+        logger.warning("ZOHO_PASSWORD not configured: email not sent")
         return False
 
     try:

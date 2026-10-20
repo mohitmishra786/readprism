@@ -174,7 +174,7 @@ def _confirmation_page(
         f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Weirling — {label}</title>
+<title>Weirling: {label}</title>
 <style>
  body {{ font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
         align-items: center; justify-content: center; background: #f8fafc; margin: 0; }}

@@ -1,4 +1,4 @@
-# ADR 0003 — safe_fetch is the user-URL client
+# ADR 0003: safe_fetch is the user-URL client
 
 - **Status:** Accepted
 - **Date:** 2026-09-24

@@ -2,15 +2,15 @@
 
 **The reading app that ranks by how you actually read.**
 
-Weirling is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read.
+Weirling is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance: a behavioral, explainable ranking engine that gets sharper the more you read.
 
 What makes it different:
 
-- **Behavioral, not keyword** — learns from real scroll depth and active reading time, not rules you maintain by hand (vs Feedly Leo).
-- **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
-- **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
+- **Behavioral, not keyword**: learns from real scroll depth and active reading time, not rules you maintain by hand (vs Feedly Leo).
+- **Explainable**: every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
+- **Honest and open**: the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
-**Who it's for:** built for developers and heavy readers who follow 50+ technical feeds — people who want an explainable, behavioral ranking engine that gets better the more they read. Weirling supports both single-tenant self-hosting and multi-tenant hosted operations.
+**Who it's for:** built for developers and heavy readers who follow 50+ technical feeds: people who want an explainable, behavioral ranking engine that gets better the more they read. Weirling supports both single-tenant self-hosting and multi-tenant hosted operations.
 
 The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. The documentation site is built from [`docs/`](docs/index.md): start with [Install & run](docs/DEPLOYMENT.md) or [Architecture](docs/ARCHITECTURE.md). Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -36,15 +36,14 @@ open http://localhost:3001    # create your account and onboard
 **Profiles**:
 - **Default (`docker compose up -d`)**: ~2.5 GB RAM. Runs the standard 8 services with local MiniLM embeddings (`sentence-transformers/all-MiniLM-L6-v2`, 384-dimensional), Postgres FTS + pgvector search, and dedicated Celery solo workers.
 - **Lite (`make up-lite`)**: ~1.0 GB RAM. Runs the torch-free `:latest-lite` image (built with `LITE=1`), so embeddings fall back to the deterministic lexical hash embedder (same 384-d column, weaker semantic matching). Search runs via Postgres FTS + pgvector. Ideal for low-memory VPS instances.
-- **Full (`docker compose --profile full up -d`)**: ~3.5 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites) and an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services). Search itself is Postgres FTS + pgvector — no separate search service. SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
+- **Full (`docker compose --profile full up -d`)**: ~3.5 GB RAM. Adds Browserless (headless Chrome pool in an isolated sandbox for rendering JS-heavy sites) and an egress proxy (Squid: the only route Browserless has to the internet, so a rendered page can't reach internal services). Search itself is Postgres FTS + pgvector; no separate search service. SSRF protection for every fetch is in the app (`safe_fetch` validates and pins IPs).
 - **Bridge (`docker compose --profile bridge up -d`)**: Adds an RSSHub service to bridge closed platforms lacking RSS feeds.
 - **Build from source (`make up-build`)**: builds the images from your checkout instead of pulling them from GHCR (`docker-compose.build.yml`; no source mounts).
 
 **Operations**:
-- `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
-  verified round-trip in CI.
-- `make demo` — seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for Weirling and released CC0 (`backend/app/data/demo/articles.json`).
-- `make starter-pack-check` — verify starter-pack feed liveness (>=90%).
+- `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz`: verified round-trip in CI.
+- `make demo`: seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for Weirling and released CC0 (`backend/app/data/demo/articles.json`).
+- `make starter-pack-check`: verify starter-pack feed liveness (>=90%).
 
 ## Screenshots
 
@@ -60,13 +59,13 @@ open http://localhost:3001    # create your account and onboard
 
 ## What It Does
 
-- **Unified ingestion** — RSS/Atom feeds, robust web scraping (trafilatura + Playwright fallback), newsletter forwarding, and creator tracking across Substack, YouTube, Medium, Bluesky, Mastodon, GitHub, podcasts (via iTunes lookup), and any blog with RSS autodiscovery.
-- **Personalized Relevance Score (PRS)** — Eight signal dimensions combined with per-user learned weights rank every item before it reaches your digest.
-- **Real reading telemetry** — An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end — feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
-- **Daily digest** — Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
-- **Interest graph** — Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
-- **Cold start handling** — Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) suggests articles at least 20 readers finished (k-anonymous, opt-out in Preferences) once the instance has 100 active readers (inert on single-user and family instances).
-- **Honest platform tiers** — Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (X, LinkedIn and Reddit have no usable public feed and are clearly marked).
+- **Unified ingestion**: RSS/Atom feeds, robust web scraping (trafilatura + Playwright fallback), newsletter forwarding, and creator tracking across Substack, YouTube, Medium, Bluesky, Mastodon, GitHub, podcasts (via iTunes lookup), and any blog with RSS autodiscovery.
+- **Personalized Relevance Score (PRS)**: Eight signal dimensions combined with per-user learned weights rank every item before it reaches your digest.
+- **Real reading telemetry**: An in-app reader captures genuine scroll depth, active reading time (paused on idle/hidden), and reached-end, feeding the behavioral signals (`reading_depth`, `temporal_context`, `suggestion`, `novelty`) with real data instead of a tab-switch heuristic.
+- **Daily digest**: Sectioned into lead items, creator updates, deep reads, and discovery content, delivered by email and readable in-app.
+- **Interest graph**: Your reading history is stored as a directed weighted graph of topics, not a flat keyword list, enabling transitive relevance and explainable rankings.
+- **Cold start handling**: Onboarding extracts high-quality initial signal immediately via topic priors, seed sources, and starter packs. Exploration slots ensure continuous serendipity. For multi-user setups, collaborative filtering warmup (`COLD_START_COLLABORATIVE_ENABLED`) suggests articles at least 20 readers finished (k-anonymous, opt-out in Preferences) once the instance has 100 active readers (inert on single-user and family instances).
+- **Honest platform tiers**: Each tracked platform is shown as fully tracked / best-effort / unsupported, so you know what will and won't surface (X, LinkedIn and Reddit have no usable public feed and are clearly marked).
 
 ---
 
@@ -124,10 +123,10 @@ This starts eight services by default:
 | `db` | 5432 | PostgreSQL 16 with pgvector extension |
 | `redis` | 6379 | Cache and Celery broker |
 | `backend` | 8000 | FastAPI application server |
-| `worker-scrape` | — | Celery solo worker for fetching and scraping feeds (`scrape` queue) |
-| `worker-embed` | — | Celery solo worker for computing semantic embeddings (`embed` queue) |
-| `worker-digest` | — | Celery solo worker for compiling and delivering digests (`digest`, `celery` queues) |
-| `beat` | — | Celery beat scheduler for periodic tasks |
+| `worker-scrape` | None | Celery solo worker for fetching and scraping feeds (`scrape` queue) |
+| `worker-embed` | None | Celery solo worker for computing semantic embeddings (`embed` queue) |
+| `worker-digest` | None | Celery solo worker for compiling and delivering digests (`digest`, `celery` queues) |
+| `beat` | None | Celery beat scheduler for periodic tasks |
 | `frontend` | 3001 | Next.js web application |
 
 Additional services are enabled with profiles:
@@ -226,11 +225,11 @@ pytest tests/ -v
 ### Local Celery (without Docker)
 
 ```bash
-# Terminal 1 — worker
+# Terminal 1: worker
 cd backend
 celery -A app.workers.celery_app worker --loglevel=info
 
-# Terminal 2 — beat scheduler
+# Terminal 2: beat scheduler
 celery -A app.workers.celery_app beat --loglevel=info
 ```
 
@@ -410,7 +409,7 @@ readprism/
 
 ## Legal & Privacy
 
-- [Privacy Policy](docs/PRIVACY.md) — what's collected, retention, and your export/erasure controls
+- [Privacy Policy](docs/PRIVACY.md): what's collected, retention, and your export/erasure controls
 - [Terms of Service](docs/TERMS.md)
 - [Third-party services & compliance](docs/THIRD_PARTY_SERVICES.md)
 - [Security policy](SECURITY.md) · [Contributing (+ CLA)](CONTRIBUTING.md)

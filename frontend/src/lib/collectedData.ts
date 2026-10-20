@@ -33,7 +33,7 @@ export const COLLECTED: CollectedTable[] = [
       { field: "was_suggested", what: "Whether it was a discovery pick from outside your sources.", why: "To learn which discoveries you like." },
       { field: "surfaced_in_digest", what: "Whether your digest showed it.", why: "To tell digest reading from browsing." },
       { field: "opened_at", what: "When you first opened it.", why: "Reading habits, such as the best time to send your digest." },
-      { field: "read_completion_pct", what: "How much of it you read (0–100%).", why: "The main signal: finished articles teach the ranking most." },
+      { field: "read_completion_pct", what: "How much of it you read (0 to 100%).", why: "The main signal: finished articles teach the ranking most." },
       { field: "time_on_page_seconds", what: "Seconds the reader page was open.", why: "A rough reading-time signal for older clients." },
       { field: "scroll_depth_pct", what: "How far down you scrolled.", why: "Part of the completion estimate. Cleared after 90 days." },
       { field: "active_time_seconds", what: "Seconds you were actively reading (not idle, tab visible).", why: "Part of the completion estimate. Cleared after 90 days." },

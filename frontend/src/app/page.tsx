@@ -292,7 +292,7 @@ export default function RootPage() {
         {/* 4. Bottom-left paragraph */}
         <div className="hidden sm:block absolute bottom-14 left-10 md:left-14 max-w-[260px] z-50 hero-anim hero-fade" style={{ animationDelay: "0.7s" }}>
           <p className="text-sm text-white/80 leading-relaxed">
-            Every signal — scroll depth, source trust, the topics you return to —
+            Every signal (scroll depth, source trust, the topics you return to)
             feeds a model that learns what&apos;s worth your attention. Not
             chronology. Not popularity. Relevance.
           </p>
@@ -305,7 +305,7 @@ export default function RootPage() {
         >
           <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
             Tap “Why this?” on any item to see exactly which of the eight signals
-            drove its ranking — and how strongly. One score, and it&apos;s yours.
+            drove its ranking, and how strongly. One score, and it&apos;s yours.
           </p>
           <a
             href="/register"

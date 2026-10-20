@@ -1,7 +1,7 @@
 # Weirling browser extension
 
 A Manifest V3 browser extension for one-click addition of the current page to
-Weirling — as a **source** (any publication/blog/feed) or as a **creator**
+Weirling: as a **source** (any publication/blog/feed) or as a **creator**
 (Substack/YouTube/Medium/Reddit/blog).
 
 ## Install (developer mode)

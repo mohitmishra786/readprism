@@ -301,7 +301,7 @@ export default function PreferencesPage() {
               <option value="daily">Daily</option>
               <option value="twice_daily">Twice daily</option>
               <option value="weekly">Weekly (we’ll keep it short)</option>
-              <option value="in_app_only">Email off — read in-app only</option>
+              <option value="in_app_only">Email off (read in-app only)</option>
             </select>
             <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
               Lighter reader? Weekly bundles the best of your week; “email off”

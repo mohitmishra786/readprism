@@ -78,7 +78,7 @@ MediaWiki, not yet WordPress, Ghost or Substack.
 ## First-digest quality gate (CS-05)
 
 CI (pytest `test_first_digest_gate.py`, 5 personas × real builder):
-≥ 5 items, ≥ 3 clusters, ≥ 1 discovery, 0 duplicates, ≥ 80% summaries —
+≥ 5 items, ≥ 3 clusters, ≥ 1 discovery, 0 duplicates, ≥ 80% summaries:
 all pass.
 
 ## Resource profile (compose)
@@ -96,16 +96,16 @@ skips torch/sentence-transformers entirely (RL-01).
 
 Lighthouse 12 (simulated mobile) on a production build (`next start`)
 against the compose API, Apple M4 / 16 GB, headless Chromium, 2026-10-20.
-Ranges are over 2–3 runs. Landing is measured as an anonymous visitor (signed-in users are
+Ranges are over 2 to 3 runs. Landing is measured as an anonymous visitor (signed-in users are
 redirected to their digest). Reproduce with `frontend/scripts/lighthouse.sh
 <content_id>`. Lighthouse 12 has no PWA category; offline reading is
 covered by `e2e-stack/offline-pwa.spec.ts`.
 
 | Page | Performance | Accessibility | Best practices | SEO |
 |---|---|---|---|---|
-| Landing `/`, before #315 | 81–84 | 100 | 79 | 100 |
-| Landing `/`, after #315 | **89–91** | 100 | **100** | 100 |
-| Reader `/read/<id>` (signed in) | 86–87 | 95 | 96 | 66 |
+| Landing `/`, before #315 | 81 to 84 | 100 | 79 | 100 |
+| Landing `/`, after #315 | **89 to 91** | 100 | **100** | 100 |
+| Reader `/read/<id>` (signed in) | 86 to 87 | 95 | 96 | 66 |
 
 #315 removed every third-party request from the landing page (fonts
 self-hosted with `next/font`; hero images served from this origin as WebP;

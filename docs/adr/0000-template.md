@@ -1,4 +1,4 @@
-# ADR NNNN — Title
+# ADR NNNN: Title
 
 - **Status:** Proposed | Accepted | Superseded by ADR-NNNN
 - **Date:** YYYY-MM-DD
@@ -10,8 +10,8 @@ What problem forced a decision, and which constraints matter.
 
 ## Options
 
-1. Option — consequence
-2. Option — consequence
+1. Option: consequence
+2. Option: consequence
 
 ## Decision
 

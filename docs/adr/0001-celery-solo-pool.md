@@ -1,4 +1,4 @@
-# ADR 0001 — Celery runs with `--pool=solo`
+# ADR 0001: Celery runs with `--pool=solo`
 
 - **Status:** Accepted
 - **Date:** 2026-07-21
@@ -51,7 +51,7 @@ Pick one, in rough order of effort:
 
 ## Warning to future contributors
 
-Do **not** simply remove `--pool=solo` to "add concurrency" — doing so
+Do **not** simply remove `--pool=solo` to "add concurrency"; doing so
 reintroduces the cross-loop bug. Address the engine-per-process concern first
 (option 2) or use option 1.
 
