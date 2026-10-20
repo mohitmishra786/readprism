@@ -100,7 +100,11 @@ async def _ingest_all_feeds_async(user_id: uuid.UUID | None = None) -> dict:
         else:
             feed_query = feed_query.where(
                 or_(Feed.next_poll_at.is_(None), Feed.next_poll_at <= now)
-            ).order_by(_pro_followed(now).desc(), Feed.next_poll_at.asc().nulls_first())
+            )
+            pro_first = _pro_followed(now)
+            if pro_first is not None:  # hosted only (#246)
+                feed_query = feed_query.order_by(pro_first.desc())
+            feed_query = feed_query.order_by(Feed.next_poll_at.asc().nulls_first())
             newsletter_query = newsletter_query.where(
                 or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now)
             )
@@ -166,8 +170,9 @@ async def _ingest_feed(feed, session, rng: random.Random) -> list[uuid.UUID]:
 
 def _pro_followed(now: datetime):
     """SQL: the feed has an active subscriber with Pro features (#246).
-    Always false on self-host, where every feed is treated the same."""
-    from sqlalchemy import and_, exists, false, or_
+    None on self-host, where every feed is treated the same (and a constant
+    in ORDER BY is a Postgres error)."""
+    from sqlalchemy import and_, exists, or_
 
     from app.models.feed import Feed
     from app.models.source import Source
@@ -176,7 +181,7 @@ def _pro_followed(now: datetime):
     from app.services.billing import PAID_TIERS
 
     if not entitlements.is_hosted():
-        return false()
+        return None
     paid_pro = and_(
         User.tier.in_([t for t in PAID_TIERS if t in entitlements.PRO_PLANS]),
         or_(User.plan_expires_at.is_(None), User.plan_expires_at > now),
