@@ -64,8 +64,7 @@ unchanged; there is nothing to migrate.
 
 - **Images** are now `ghcr.io/mohitmishra786/weirling/weirling-backend`
   (and `-frontend`, `-aio`). Pull the new compose files with `git pull` to
-  use them. The old `readprism-*` images keep receiving updates until v0.4,
-  so an install that hasn't pulled yet doesn't fall behind.
+  use them. The old `readprism-*` image names are no longer published.
 - **`WEIRLING_VERSION`** pins the image version; `READPRISM_VERSION` is still
   read.
 - **The repository** moves to `github.com/mohitmishra786/weirling`; GitHub
