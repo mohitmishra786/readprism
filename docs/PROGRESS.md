@@ -46,6 +46,7 @@ Last commit on `main`: `b534bae` (PR #268 stack merge: vectorized ranker, pairwi
 | D-13 | **Relicense AGPL-3.0 → MIT** by explicit owner decision (2026-10-02). LICENSE, README, package metadata and docs switched in one commit. Owner asserts authority over all copyright holders. | Owner call (D-12); maximizes self-hoster/fork adoption. | 2026-10-02 |
 | D-14 | **EC-07 = sidecar mode**: import subscriptions + read state from Miniflux/FreshRSS; no Reader/Fever façade for v0.1.0 (ADR 0007). | Owner call; smallest reversible interop. | 2026-10-02 |
 | D-15 | Phase 6 includes the shared Playwright CI pipeline. Delivered (v1): axe 0-serious on home/login + PWA manifest/SW surface checks. Named follow-ups on the same pipeline: offline-PWA, telemetry and extension browser e2e against a compose stack. | Owner call. | 2026-10-02 |
+| D-16 | **Hybrid: hosted and self-hosted, one codebase** (supersedes D-10). `DEPLOYMENT_MODE=selfhost` is free and complete; `hosted` is the paid managed service with a trial, quotas and billing. Aimed at mainstream readers, not only self-hosting developers. RL-09 reopened as a pointer to the hosted epics (#91, #92, #93). The feature freeze "until the core-loop epic closes" ended when #82 closed (2026-10-20). | Owner call (2026-10-18). Hosting also supplies the reader population that discovery and collaborative cold start need. | 2026-10-18 |
 
 _(Agent appends new decisions below; ADR file for anything architectural.)_
 
@@ -56,7 +57,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 | ID | Question | Assumed default until answered | Status |
 |----|----------|-------------------------------|--------|
 | OQ-01 | README (snapshot) says MIT, repo metadata says AGPL-3.0. Which is intended? | — | **closed 2026-10-02: owner chose MIT (D-13).** |
-| OQ-02 | Is a hosted offering planned in the next 6 months? | No — self-host only (D-10). | open |
+| OQ-02 | Is a hosted offering planned in the next 6 months? | No — self-host only (D-10). | **closed 2026-10-18: yes, hybrid (D-16).** |
 | OQ-03 | Preferred default LLM provider for out-of-box setup (Groq free tier vs local Ollama vs OpenRouter)? | Groq (existing env vars), with Ollama documented. | open |
 | OQ-04 | Is the existing `extension/` intended to be MV3 Chrome+Firefox? | Audit first (P0-04), then decide at EC-02. | open |
 
@@ -171,7 +172,7 @@ _(Agent appends new decisions below; ADR file for anything architectural.)_
 - **RL-06** [DONE] (P2·S) Benchmarks page — Evidence: `docs/benchmarks.md` — ranking NDCG table, extraction gate, retrieval MRR, pack liveness, first-digest gate, profile sizing, each with its repro command. Two named unmeasured rows (search p95 @100k, digest build @1k loaded).
 - **RL-07** [DONE] (P1·S) v0.1.0 release — Evidence: tag `v0.1.0` pushed and [GitHub Release published](https://github.com/mohitmishra786/readprism/releases/tag/v0.1.0) (2026-10-18). GHCR images verified live: `ghcr.io/mohitmishra786/readprism/readprism-backend:{0.1.0, 0.1.0-lite, latest, latest-lite}` and `readprism-frontend:{0.1.0, latest}` (publish workflow green). Fresh-VM ≤10-min timing check remains the owner's optional post-release validation.
 - **RL-08** [DONE] (P2·S) Licensing hygiene — Evidence: **relicensed MIT** (D-13, owner call): LICENSE replaced, README/LAUNCH/package metadata aligned. Dependency license report: all Python deps permissive-style (BSD/Apache/MIT/PSF) except `pgvector` (PostgreSQL licence, permissive); npm tree MIT-dominant with permissive toolchain — full machine-generated report `docs/licenses.md` deferred (named).
-- **RL-09** [DROPPED] (P3·–) Hosted-option prerequisites (multi-tenant isolation, billing, quotas, abuse controls) — backlog only until pull exists (D-10). Evidence: decision D-10.
+- **RL-09** [DONE] (P3·–) Hosted-option prerequisites (multi-tenant isolation, billing, quotas, abuse controls). Reopened by D-16 (was DROPPED under D-10); delivered through the hosted epics #91, #92, #93 (verification, abuse limits, plans and quotas, billing, deletion).
 
 ---
 
