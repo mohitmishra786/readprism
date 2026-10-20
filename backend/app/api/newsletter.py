@@ -148,7 +148,7 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
     if not signing_key:
         if settings.app_env == "development":
             logger.warning(
-                "MAILGUN_WEBHOOK_SIGNING_KEY is unset — accepting inbound webhook "
+                "MAILGUN_WEBHOOK_SIGNING_KEY is unset: accepting inbound webhook "
                 "WITHOUT verification (development only). Set it before deploying."
             )
         else:

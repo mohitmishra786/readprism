@@ -30,7 +30,7 @@ export const SUBPROCESSORS: Subprocessor[] = [
     dataSent: "Recipient email + digest content",
     location: "United States / EU",
     termsNotes:
-      "Transactional/user-requested email only — no cold or bulk marketing. Include a working unsubscribe (implemented) and, for bulk sending, a physical address and SPF/DKIM/DMARC on a sending subdomain.",
+      "Transactional/user-requested email only: no cold or bulk marketing. Include a working unsubscribe (implemented) and, for bulk sending, a physical address and SPF/DKIM/DMARC on a sending subdomain.",
   },
   {
     service: "Lemon Squeezy / Paddle",

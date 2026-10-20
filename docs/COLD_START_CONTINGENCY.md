@@ -2,7 +2,7 @@
 
 *Pre-written so a weak week-1 doesn't cause decision paralysis (audit 16-8). The
 cold-start problem is the product's top risk: every behavioural signal needs
-5–20 interactions to activate, so the first week is the thinnest exactly when
+5 to 20 interactions to activate, so the first week is the thinnest exactly when
 users decide to stay.*
 
 ## Trigger
@@ -17,12 +17,12 @@ majority of users**, or the `/metrics/cold-start-funnel` activation rate is low.
    high-quality set per interest cluster, so day-1 ranking has strong seeds even
    before behavioural signal exists.
 2. **Set expectations honestly in-product.** Show the "gathering your first
-   reads" state (already built) and a "not fully personalized yet — improving as
+   reads" state (already built) and a "not fully personalized yet, improving as
    you read" banner for the first N days. This buys patience instead of a
    "it's just a random feed" verdict.
 3. **Editorial week-1 digest.** For the first week, hand-curate or lightly
    editorialize the digest (concierge-style) while the model warms, then hand off
-   to the engine. Expensive in founder time; only if 1–2 aren't enough.
+   to the engine. Expensive in founder time; only if 1 or 2 aren't enough.
 4. **Re-examine the ranking core.** If suggestion-read rate stays ~0 after the
    above, re-check the semantic per-cluster/bridge scoring (05-2/05-4) and the
    serendipity selection (04-1) with the ranking-eval harness
@@ -30,7 +30,7 @@ majority of users**, or the `/metrics/cold-start-funnel` activation rate is low.
 
 ## What NOT to do
 
-- Don't market to the knowledge-worker/revenue ICP during a weak cold start —
+- Don't market to the knowledge-worker/revenue ICP during a weak cold start:
   every bounce burns a scarce paid-segment user.
 - Don't add more onboarding steps to "collect more signal"; that fights the
   low-burden goal. Improve seed quality instead.

@@ -106,7 +106,7 @@ function FirstDigestBanner({ onDismiss }: { onDismiss: () => void }) {
       </div>
       <p className="text-sm leading-relaxed text-prism-900/80 dark:text-stone-300">
         Items below are <strong>ranked by personal relevance</strong>, not chronological.
-        The ranking learns from what you read fully, what you skip, and what you rate —
+        The ranking learns from what you read fully, what you skip, and what you rate,
         so it gets noticeably sharper over the next few weeks. Tap{" "}
         <em>“Why this?”</em> on any item to see why it ranked where it did.
       </p>

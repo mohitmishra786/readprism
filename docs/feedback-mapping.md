@@ -12,12 +12,12 @@ version.
 
 | Tag | Label y | Confidence | Cluster weight | Source trust | Notes |
 |---|---|---|---|---|---|
-| `too_basic` | 0.35 | 0.8 | −0.10 | — | Also raises the depth expectation for the cluster (carried by the label; A4) |
-| `already_knew` | 0.35 | 0.8 | −0.10 | — | Same behavior as `too_basic` |
-| `off_topic` | 0.0 | 1.0 | −0.20 | — | Strongest cluster weakening (A4: "weaken that cluster link") |
-| `too_tangential` | 0.0 | 1.0 | −0.20 | — | Legacy spelling of `off_topic`; same effect |
-| `wrong_depth` | 0.45 | 0.6 | — | — | Calibration only: depth preference, not interest |
-| `clickbait` | 0.20 | 0.8 | — | −0.10 | Source-quality failure, not an interest miss |
+| `too_basic` | 0.35 | 0.8 | −0.10 | None | Also raises the depth expectation for the cluster (carried by the label; A4) |
+| `already_knew` | 0.35 | 0.8 | −0.10 | None | Same behavior as `too_basic` |
+| `off_topic` | 0.0 | 1.0 | −0.20 | None | Strongest cluster weakening (A4: "weaken that cluster link") |
+| `too_tangential` | 0.0 | 1.0 | −0.20 | None | Legacy spelling of `off_topic`; same effect |
+| `wrong_depth` | 0.45 | 0.6 | None | None | Calibration only: depth preference, not interest |
+| `clickbait` | 0.20 | 0.8 | None | −0.10 | Source-quality failure, not an interest miss |
 
 Behavior labels feed pairwise weight learning (A5); the cluster/source
 effects are applied immediately when the tag is recorded
@@ -44,9 +44,9 @@ cluster delta targets the item's **top cluster**, defined as
 
 ## What each signal sees
 
-- `explicit_feedback` (signal 4) — similarity-weighted mean of previously
+- `explicit_feedback` (signal 4): similarity-weighted mean of previously
   rated items, plus the depth/tangency adjustments.
-- Interest-graph node weights — changed by the cluster deltas above and by
+- Interest-graph node weights: changed by the cluster deltas above and by
   direct controls; the graph drives the semantic signal's medoid weighting.
-- `source_trust` (signal 5) — Beta posterior over per-source behavior; the
+- `source_trust` (signal 5): Beta posterior over per-source behavior; the
   clickbait delta nudges its prior (`sources.trust_weight`).

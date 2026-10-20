@@ -1,8 +1,8 @@
-# Media & Screenshots — capture guide
+# Media & Screenshots: capture guide
 
 *The README is the best-indexed, most-shared asset and currently has no visuals
 (audit 11-2). This is the shot list; capture into `docs/media/` and reference
-from the README + a 60–90s demo for launch channels (audit 12-5).*
+from the README + a 60 to 90s demo for launch channels (audit 12-5).*
 
 ## Set up a realistic demo account
 
@@ -53,7 +53,7 @@ To refresh all 5 screenshots:
    DEMO_EMAIL="<email>" DEMO_PASSWORD="<password>" BASE_URL="http://localhost:3000" npx tsx scripts/capture-screenshots.ts
    ```
 
-## Demo GIF / video (60–90s, audit 12-5)
+## Demo GIF / video (60 to 90s, audit 12-5)
 
 Storyboard: onboarding (interests + sample ratings) → first digest →
 open a card → "Why this?" → interest graph. Keep it under 90s, no audio needed.

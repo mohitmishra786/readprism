@@ -23,7 +23,7 @@ The full, configurable table is `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`
 
 - **LLM inference (Groq / provider):** primary model for synthesis and fast model
   for summaries (e.g. `openai/gpt-oss-120b` and `openai/gpt-oss-20b`). Typical
-  rates: ~$0.075–0.15 / M input tokens, ~$0.30–0.60 / M output tokens.
+  rates: ~$0.075 to $0.15 / M input tokens, ~$0.30 to $0.60 / M output tokens.
 - **Email delivery (Resend / SMTP):** free tier covers initial volume (~3,000/mo,
   100/day); paid tiers (e.g. $20/mo for 50k emails) behave as a **step cost**,
   not a linear per-user expense. Unverified accounts receive no digest emails.
@@ -76,7 +76,7 @@ Per paying subscriber:
 
 Where:
 - **Variable cost per user:**
-  - LLM tokens for opened items not already cached: capped by daily quotas (200/day on Reader, 1,000/day on Pro). For typical daily reading (5–15 articles read/day), this represents pennies per user per month.
+  - LLM tokens for opened items not already cached: capped by daily quotas (200/day on Reader, 1,000/day on Pro). For typical daily reading (5 to 15 articles read/day), this represents pennies per user per month.
   - Email step cost allocation.
 - **Allocated fixed cost:** server hosting (e.g. Hetzner cloud node), domain, and
   off-box backup storage amortized across active users.

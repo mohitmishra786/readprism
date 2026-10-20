@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "../../../components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Weirling vs Feedly — behavioral ranking vs keyword rules",
+  title: "Weirling vs Feedly: behavioral ranking vs keyword rules",
   description:
     "How Weirling compares to Feedly: behavioral, explainable ranking that learns from how you actually read vs Feedly Leo's keyword/topic rules. Open source and self-hostable.",
   alternates: { canonical: "/vs/feedly" },
@@ -19,7 +19,7 @@ export default function VsFeedly() {
           { dimension: "Ranking basis", competitor: "Leo: keyword/topic rules, train-by-example (Pro+)", weirling: "8 behavioral signals + per-user learned weights" },
           { dimension: "Explainability", competitor: "Prioritization, limited reasoning", weirling: "Per-item why-ranked + named interest-graph connections" },
           { dimension: "Pricing", competitor: "Free / Pro $6.99 / Pro+ ~$99/yr", weirling: "Full engine free; $4.99/mo Pro (planned)" },
-          { dimension: "Self-hosting", competitor: "No", weirling: "Yes — Docker Compose, MIT" },
+          { dimension: "Self-hosting", competitor: "No", weirling: "Yes (Docker Compose, MIT)" },
         ],
         differsBecause: [
           "Behavioral, not keyword: Weirling learns from scroll depth and active reading time, not rules you maintain by hand.",

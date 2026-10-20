@@ -239,7 +239,7 @@ class LLMSummarizer:
             f"{interest_text[:2000]}\n\n"
             "Expand this into 8 to 15 specific subtopics they would want in a "
             "personalized daily digest (concrete areas, technologies, or "
-            "themes — not generic labels). "
+            "themes, not generic labels). "
             'Return a JSON object {"topics": ["..."]}.'
         )
         data = await self._llm().complete_json(

@@ -141,7 +141,7 @@ async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
             if resp.status_code == 200:
                 return resp.text, False
             if resp.status_code in (403, 429, 503):
-                logger.debug(f"HTTP {resp.status_code} on {url} — site blocked our bot")
+                logger.debug(f"HTTP {resp.status_code} on {url}: site blocked our bot")
                 return None, True
         except UnsafeURLError as e:
             logger.warning(f"Blocked fetch for unsafe URL {url}: {e}")
@@ -293,7 +293,7 @@ async def scrape_page(url: str) -> RawContentItem | None:
     #    headless browser (audit 08-2); still fall back for genuine JS rendering.
     if not html_content:
         if was_blocked and settings.scraper_respect_blocks:
-            logger.info(f"Respecting {url} block — not escalating to headless browser")
+            logger.info(f"Respecting {url} block: not escalating to headless browser")
             return None
         result = await _fetch_with_playwright(url)
         if isinstance(result, tuple):

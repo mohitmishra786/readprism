@@ -167,7 +167,7 @@ export function OnboardingWizard() {
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
             We expanded your interests into these topics. They seed your first
-            digest — remove any that are wrong and add what&apos;s missing.
+            digest: remove any that are wrong and add what&apos;s missing.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
             {topics.map((t) => (
@@ -196,7 +196,7 @@ export function OnboardingWizard() {
             ))}
             {topics.length === 0 && (
               <p style={{ fontSize: 14 }}>
-                No topics extracted — add a few yourself below.
+                No topics extracted. Add a few yourself below.
               </p>
             )}
           </div>
@@ -278,7 +278,7 @@ export function OnboardingWizard() {
       {current === "Add Creators" && (
         <div>
           <p style={{ color: "var(--text-tertiary)", marginBottom: 16 }}>
-            Add creators you follow (name or URL). <strong>Optional</strong> —
+            Add creators you follow (name or URL). <strong>Optional</strong>:
             skip and add later from the Creators page.
           </p>
           <input

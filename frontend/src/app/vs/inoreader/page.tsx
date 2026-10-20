@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ComparisonPage } from "../../../components/marketing/ComparisonPage";
 
 export const metadata: Metadata = {
-  title: "Weirling vs Inoreader — behavioral ranking vs AI summaries",
+  title: "Weirling vs Inoreader: behavioral ranking vs AI summaries",
   description:
     "How Weirling compares to Inoreader: Inoreader added an AI layer (Intelligence + bring-your-own-AI in 2026) but still no behavioral ranking. Weirling ranks by how you actually read.",
   alternates: { canonical: "/vs/inoreader" },
@@ -19,7 +19,7 @@ export default function VsInoreader() {
           { dimension: "AI features", competitor: "Intelligence: summaries, smart tags, BYO OpenAI/Anthropic/Mistral key", weirling: "Summaries + a behavioral ranking engine" },
           { dimension: "Ranking basis", competitor: "Filtering/rules; no behavioral ranking", weirling: "8 behavioral signals + per-user learned weights" },
           { dimension: "Pricing", competitor: "Free (150 feeds, ads) / Pro ~$7.50/mo annual", weirling: "Full engine free; $4.99/mo Pro (planned)" },
-          { dimension: "Self-hosting", competitor: "No", weirling: "Yes — Docker Compose, MIT" },
+          { dimension: "Self-hosting", competitor: "No", weirling: "Yes (Docker Compose, MIT)" },
         ],
         differsBecause: [
           "Inoreader's AI summarizes and tags; Weirling additionally re-orders your digest by learned personal relevance.",

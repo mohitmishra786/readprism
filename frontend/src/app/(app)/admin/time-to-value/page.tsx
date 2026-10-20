@@ -51,7 +51,7 @@ export default function TimeToValuePage() {
             </dt>
             <dd className="mt-1 text-xl font-semibold">
               {ttv.median_hours_signup_to_first_digest === null
-                ? "—"
+                ? "No data yet"
                 : `${ttv.median_hours_signup_to_first_digest} h`}
             </dd>
           </div>
@@ -61,7 +61,7 @@ export default function TimeToValuePage() {
             </dt>
             <dd className="mt-1 text-xl font-semibold">
               {ttv.median_hours_first_digest_to_first_read === null
-                ? "—"
+                ? "No data yet"
                 : `${ttv.median_hours_first_digest_to_first_read} h`}
             </dd>
           </div>
