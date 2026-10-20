@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
+  "engines": {
+    "node": ">=22.22.2"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

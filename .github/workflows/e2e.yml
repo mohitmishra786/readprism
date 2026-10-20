@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "26"  # match frontend/Dockerfile; vitest 5 + jsdom 30 need >= 22.12
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install
@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "26"  # match frontend/Dockerfile; vitest 5 + jsdom 30 need >= 22.12
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Install
@@ -92,7 +92,7 @@ jobs:
           docker compose logs backend; exit 1
       - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "26"  # match frontend/Dockerfile; vitest 5 + jsdom 30 need >= 22.12
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
       - name: Build and serve the frontend on FRONTEND_URL's port
