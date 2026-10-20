@@ -6,8 +6,9 @@
 <meta name="x-apple-disable-message-reformatting">
 {#- Email design pass (#217): table layout with inline styles (Outlook's Word
     engine ignores most div/CSS layout), one 600px column, explicit
-    light+dark colour schemes, and a preheader for the inbox preview. The
-    <style> block only adds what inline styles can't: dark mode and the
+    light+dark colour schemes, Weirling look with copper accents and Playfair Display
+    serif header, 44px tap targets, and a preheader for inbox preview. The
+    <style> block only adds what inline styles can't: dark mode and
     narrow-screen tweaks, both progressive enhancements. -#}
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
@@ -15,16 +16,16 @@
 <style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
-    .rp-body, .rp-bg { background: #0c0a09 !important; }
-    .rp-card { background: #1c1917 !important; border-color: #292524 !important; }
+    .rp-body, .rp-bg { background: #0a0a0a !important; }
+    .rp-card { background: #171717 !important; border-color: #262626 !important; }
     .rp-text, .rp-title a { color: #f5f5f4 !important; }
-    .rp-muted { color: #a8a29e !important; }
-    .rp-section { color: #d6d3d1 !important; border-color: #292524 !important; }
-    .rp-btn { background: #292524 !important; color: #f5f5f4 !important; border-color: #44403c !important; }
-    .rp-read { background: #e7e5e4 !important; color: #1c1917 !important; }
-    .rp-badge { background: #422006 !important; color: #fcd34d !important; }
-    .rp-ai { background: #292524 !important; color: #a8a29e !important; }
-    .rp-link { color: #93c5fd !important; }
+    .rp-muted { color: #a3a3a3 !important; }
+    .rp-section { color: #d4d4d4 !important; border-color: #262626 !important; }
+    .rp-btn { background: #262626 !important; color: #f5f5f4 !important; border-color: #404040 !important; }
+    .rp-read { background: #f08a24 !important; color: #0a0a0a !important; }
+    .rp-badge { background: #451a03 !important; color: #fcd34d !important; }
+    .rp-ai { background: #262626 !important; color: #a3a3a3 !important; }
+    .rp-link { color: #f08a24 !important; }
   }
   @media (max-width: 480px) {
     .rp-container { width: 100% !important; }
@@ -39,8 +40,19 @@
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" class="rp-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
   <tr><td style="padding:0 4px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <div class="rp-text" style="font-size:22px;font-weight:700;color:#1c1917;">Weirling</div>
-    <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:2px;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        {% if logo_url %}
+        <td style="vertical-align:middle;padding-right:10px;">
+          <img src="{{ logo_url }}" width="28" height="28" alt="Weirling" style="display:block;width:28px;height:28px;border:0;outline:none;text-decoration:none;">
+        </td>
+        {% endif %}
+        <td style="vertical-align:middle;">
+          <span class="rp-text" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-style:italic;font-size:24px;font-weight:700;color:#1c1917;line-height:28px;">Weirling</span>
+        </td>
+      </tr>
+    </table>
+    <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:6px;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</div>
   </td></tr>
 
 {% for section_name in ["lead", "creator", "deep_reads", "more", "discovery"] %}
@@ -55,21 +67,21 @@
     <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
       <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         {% if section_name == "discovery" %}
-        <div style="margin:0 0 8px;"><span class="rp-badge" style="display:inline-block;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 9px;">Outside your usual sources{% if item_data.discovered_via %} · via {{ item_data.discovered_via }}{% endif %}</span></div>
+        <div style="margin:0 0 8px;"><span class="rp-badge" style="display:inline-block;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border-radius:10px;padding:3px 10px;">Outside your usual sources{% if item_data.discovered_via %} · via {{ item_data.discovered_via }}{% endif %}</span></div>
         {% endif %}
-        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="{{ item_data.open_url }}" style="color:#1c1917;text-decoration:none;">{{ content.title }}</a></div>
+        <div class="rp-title" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;line-height:1.35;font-weight:700;margin:0 0 4px;"><a href="{{ item_data.open_url }}" style="color:#1c1917;text-decoration:none;">{{ content.title }}</a></div>
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">{% if content.author %}{{ content.author }}{% endif %}{% if content.author and content.reading_time_minutes %} · {% endif %}{% if content.reading_time_minutes %}{{ content.reading_time_minutes }} min read{% endif %}</div>
         {% if content.summary_brief %}
-        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;">{% if content.summary_source == "llm" %}<span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px;">AI summary</span>{% endif %}{{ content.summary_brief }}</div>
+        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;">{% if content.summary_source == "llm" %}<span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:2px 5px;margin-right:6px;">AI summary</span>{% endif %}{{ content.summary_brief }}</div>
         {% endif %}
         {% if item_data.why_ranked %}
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: {{ item_data.why_ranked | join(", ") }}</div>
         {% endif %}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="{{ item_data.open_url }}" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.up_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.down_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
-          <td class="rp-act"><a class="rp-btn" href="{{ item_data.save_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="{{ item_data.open_url }}" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 16px;box-sizing:border-box;font-size:13px;font-weight:600;color:#ffffff;background:#b45309;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Read in Weirling</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.up_url }}" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.down_url }}" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="{{ item_data.save_url }}" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Save</a></td>
         </tr></table>
       </td></tr>
     </table>
@@ -81,11 +93,11 @@
   <tr><td class="rp-muted" style="padding:24px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#a8a29e;">
     {% if dead_sources %}
     <p style="margin:0 0 10px;">These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.
-      <a class="rp-link" href="{{ sources_url }}" style="color:#1d4ed8;">Fix them in one click</a> (Weirling looks for the site's new feed).</p>
+      <a class="rp-link" href="{{ sources_url }}" style="color:#b45309;text-decoration:none;">Fix them in one click</a> (Weirling looks for the site's new feed).</p>
     {% endif %}
     <p style="margin:0 0 10px;">You received this because you have a Weirling account.
-      <a class="rp-link" href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
-      <a class="rp-link" href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a></p>
+      <a class="rp-link" href="{{ preferences_url }}" style="color:#b45309;text-decoration:none;">Manage preferences</a> ·
+      <a class="rp-link" href="{{ unsubscribe_url }}" style="color:#b45309;text-decoration:none;">Unsubscribe</a></p>
     <p style="margin:0 0 10px;">Links open in Weirling first so it can learn from what you read and rate. This email contains no tracking pixel.</p>
     {% if physical_address %}<p style="margin:0;">{{ physical_address }}</p>{% endif %}
   </td></tr>

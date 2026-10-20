@@ -75,6 +75,15 @@ def context() -> dict:
         "dead_sources": ["Old Blog"],
         "sources_url": "https://rp.example/sources",
         "lead_title": "How compilers lower loops",
+        "logo_url": (
+            "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABg0lEQVR4nOyXP06EQBSH"
+            "3zALAkew0MZCuy1NDJTa7gUsbOy8ADQ2EI+wsfUC2hlbKCy5gsaYbG8CFfjeRDaEaJg/hmn2SzYPdovfN8PsDG8BA3zfv2"
+            "SMrfDyFOs+/CNd131iecX62DTNQ/89+wk+dBznHi/PYR5e2ra9RpE3IRAEQYkjPoMZwZko67qOOI7+Ckd/AzODAz7gnL9z"
+            "z/Pu8P4ILIAS/gLrEuyxZGEYdmARByyzAAPSNBU1yzLQRVuAwpMk2d7rSnDXdW9BkXF4FEW0oqEoClBFWWAcbiqhJEDB/XMn"
+            "aNrLshThuhLSAhQ8DM/zXHwojEJ1JaQExtNOwcNFZyIxKTAVbiphfSOanAHZkcnOlLKAjIRuuLRAL0HEcbyV6O91wwnl0/Cv"
+            "jUgnnFDeCcePwyRcS+A3Cd1wQvs0HAaaHMe7NyIS2IA9NiRQgT0qEliDPdaiNcOF+IzlAmYEW7MnbM1WQgC7o2Nskyr8b+/B"
+            "DGD4F5YTFPhgwx9stOffAAAA//+FGy1iAAAABklEQVQDALAoxcJeqbI7AAAAAElFTkSuQmCC"
+        ),
     }
 
 
@@ -94,6 +103,34 @@ def test_supports_light_and_dark_mode():
     html = render()
     assert '<meta name="color-scheme" content="light dark">' in html
     assert "@media (prefers-color-scheme: dark)" in html
+
+
+def test_color_scheme_meta_tags_present():
+    html = render()
+    assert '<meta name="color-scheme" content="light dark">' in html
+    assert '<meta name="supported-color-schemes" content="light dark">' in html
+
+
+def test_no_blue_colors_in_rendered_html():
+    html = render()
+    assert "#1d4ed8" not in html
+    assert "#2563eb" not in html
+    assert "#93c5fd" not in html
+
+
+def test_every_action_link_preserved():
+    html = render()
+    hrefs = set(re.findall(r'href="([^"]*)"', html))
+    for n in range(1, 5):
+        for action in ("open", "up", "down", "save"):
+            expected = f"https://rp.example/api/v1/digest/e/{action}/item{n}?sig=s"
+            assert expected in hrefs, f"Missing action link: {expected}"
+    for expected in (
+        "https://rp.example/preferences",
+        "https://rp.example/unsubscribe?t=x",
+        "https://rp.example/sources",
+    ):
+        assert expected in hrefs, f"Missing footer link: {expected}"
 
 
 def test_layout_survives_clients_without_css_layout():
