@@ -58,6 +58,7 @@ celery_app = Celery(
         "app.workers.tasks.import_jobs",
         "app.workers.tasks.weekly_learning",
         "app.workers.tasks.alerts",
+        "app.workers.tasks.demo",
     ],
 )
 
@@ -80,6 +81,7 @@ celery_app.conf.task_routes = {
     "app.workers.tasks.weekly_learning.*": {"queue": "digest"},
     # Scheduled on scrape and digest explicitly (see the beat schedule).
     "app.workers.tasks.alerts.*": {"queue": "digest"},
+    "app.workers.tasks.demo.*": {"queue": "digest"},
 }
 
 celery_app.conf.update(

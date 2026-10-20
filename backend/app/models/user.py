@@ -99,3 +99,10 @@ class User(Base):
         from app.services.email_verification import is_verified
 
         return is_verified(self)
+
+    @property
+    def is_demo(self) -> bool:
+        """True when this account is the seeded demo persona (#229)."""
+        from app.config import get_settings
+
+        return self.email == get_settings().demo_user_email

@@ -11,8 +11,11 @@ type Problem = { key: string; message: string; hint: string };
 
 const NOTICE =
   "border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200";
+const DEMO_NOTICE =
+  "border-b border-sky-200 bg-sky-50 px-4 py-2 text-center text-sm text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200";
 
 // Account-level notices under the header:
+// - demo mode notice (#229): exploring the read-only demo persona;
 // - email confirmation pending (#175): digests are readable here but not
 //   emailed until then;
 // - hosted fetch budget used up (#169): feed fetching resumes at a time;
@@ -21,6 +24,7 @@ const NOTICE =
 export function AccountNotices() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [email, setEmail] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [pausedUntil, setPausedUntil] = useState<Date | null>(null);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
@@ -29,6 +33,7 @@ export function AccountNotices() {
       .me()
       .then((user) => {
         if (user.email_verified === false) setEmail(user.email);
+        if (user.is_demo || user.email === "demo@readprism.local") setIsDemo(true);
         const until = user.fetch_paused_until ? new Date(user.fetch_paused_until) : null;
         if (until && until.getTime() > Date.now()) setPausedUntil(until);
       })
@@ -48,6 +53,11 @@ export function AccountNotices() {
 
   return (
     <>
+      {isDemo && (
+        <div role="status" className={DEMO_NOTICE}>
+          You are exploring the ReadPrism demo. It is read-only and resets nightly.
+        </div>
+      )}
       {problems.length > 0 && (
         <div role="alert" className={HEALTH}>
           <p className="font-medium">This ReadPrism instance needs attention:</p>

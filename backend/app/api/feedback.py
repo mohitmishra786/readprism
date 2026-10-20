@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.content import UserContentInteractionCreate, UserContentInteractionRead
 from app.schemas.ranking import InterestAdjustment
 from app.services.interest_graph.graph import InterestGraphManager
+from app.utils.cache import cache_get, cache_set
 from app.utils.logging import get_logger
 from app.utils.ratelimit import RateLimiter
 
@@ -37,6 +38,7 @@ feedback_rate_limit = RateLimiter(
 )
 async def record_interaction(
     body: UserContentInteractionCreate,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserContentInteractionRead:
@@ -47,6 +49,63 @@ async def record_interaction(
     content = content_result.scalar_one_or_none()
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
+
+    settings = get_settings()
+    is_demo = current_user.email == settings.demo_user_email or getattr(
+        request.state, "is_demo", False
+    )
+    if is_demo:
+        session_id = (
+            getattr(request.state, "session_id", None)
+            or request.headers.get("x-session-id")
+            or "demo_session"
+        )
+        sandbox_key = f"demo_sandbox:{session_id}:interaction:{body.content_item_id}"
+        existing = await cache_get(sandbox_key) or {}
+        now_dt = datetime.now(UTC)
+        now_str = now_dt.isoformat()
+
+        read_completion_pct = (
+            body.read_completion_pct
+            if body.read_completion_pct is not None
+            else existing.get("read_completion_pct")
+        )
+        time_on_page_seconds = (
+            body.time_on_page_seconds
+            if body.time_on_page_seconds is not None
+            else existing.get("time_on_page_seconds")
+        )
+        explicit_rating = (
+            body.explicit_rating
+            if body.explicit_rating is not None
+            else existing.get("explicit_rating")
+        )
+        explicit_rating_reason = (
+            body.explicit_rating_reason
+            if body.explicit_rating_reason is not None
+            else existing.get("explicit_rating_reason")
+        )
+        saved = bool(body.saved or existing.get("saved", False))
+        skipped = bool(body.skipped or existing.get("skipped", False))
+
+        item_id = existing.get("id") or str(uuid.uuid4())
+        data = {
+            "id": item_id,
+            "user_id": str(current_user.id),
+            "content_item_id": str(body.content_item_id),
+            "prs_score": existing.get("prs_score"),
+            "was_suggested": existing.get("was_suggested", False),
+            "surfaced_in_digest": existing.get("surfaced_in_digest", False),
+            "read_completion_pct": read_completion_pct,
+            "time_on_page_seconds": time_on_page_seconds,
+            "explicit_rating": explicit_rating,
+            "explicit_rating_reason": explicit_rating_reason,
+            "saved": saved,
+            "skipped": skipped,
+            "created_at": existing.get("created_at") or now_str,
+        }
+        await cache_set(sandbox_key, data, ttl_seconds=86400)
+        return UserContentInteractionRead.model_validate(data)
 
     # Upsert interaction
     existing_result = await session.execute(
@@ -210,10 +269,26 @@ async def _apply_reason_effects(
 @router.get("/interaction/{content_id}", response_model=UserContentInteractionRead | None)
 async def get_interaction(
     content_id: uuid.UUID,
+    request: Request,
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserContentInteractionRead | None:
     """Return the current user's interaction record for a content item, if any."""
+    settings = get_settings()
+    is_demo = current_user.email == settings.demo_user_email or getattr(
+        request.state, "is_demo", False
+    )
+    if is_demo:
+        session_id = (
+            getattr(request.state, "session_id", None)
+            or request.headers.get("x-session-id")
+            or "demo_session"
+        )
+        sandbox_key = f"demo_sandbox:{session_id}:interaction:{content_id}"
+        sandboxed = await cache_get(sandbox_key)
+        if sandboxed:
+            return UserContentInteractionRead.model_validate(sandboxed)
+
     result = await session.execute(
         select(UserContentInteraction).where(
             UserContentInteraction.user_id == current_user.id,

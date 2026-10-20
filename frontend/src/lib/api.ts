@@ -238,11 +238,17 @@ export const api = {
         invite_required: boolean;
         first_account?: boolean;
         hosted?: boolean;
+        demo_mode?: boolean;
       }>('/auth/registration'),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
+      }).then(rememberCsrf),
+    /** Sign into the public demo persona (#229). */
+    demo: () =>
+      request<Token>('/auth/demo', {
+        method: 'POST',
       }).then(rememberCsrf),
     me: () => request<User>('/auth/me'),
     /** Revokes the refresh cookie server-side and clears all session cookies. */
