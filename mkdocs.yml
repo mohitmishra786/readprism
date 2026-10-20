@@ -55,6 +55,7 @@ nav:
   - Trust:
       - Security model: security.md
       - Privacy: PRIVACY.md
+      - DPDP compliance checklist: compliance/dpdp-checklist.md
   - Quality:
       - Benchmarks: benchmarks.md
       - Email client check: email-clients.md
