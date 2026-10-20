@@ -35,6 +35,10 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             Privacy &amp; cookies
           </a>
           {" · "}
+          <a href="/terms" className="underline hover:text-prism-700">
+            Terms
+          </a>
+          {" · "}
           <a href="/subprocessors" className="underline hover:text-prism-700">
             Subprocessors
           </a>
