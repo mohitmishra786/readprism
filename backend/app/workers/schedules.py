@@ -47,6 +47,24 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.heartbeat.beat_heartbeat",
             "schedule": 60,  # every minute — drives the beat liveness healthcheck
         },
+        "worker-heartbeat-scrape": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("scrape",),
+            "options": {"queue": "scrape"},
+        },
+        "worker-heartbeat-embed": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("embed",),
+            "options": {"queue": "embed"},
+        },
+        "worker-heartbeat-digest": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("digest",),
+            "options": {"queue": "digest"},
+        },
         "reengagement-emails": {
             "task": "app.workers.tasks.reengagement.send_reengagement_emails",
             "schedule": crontab(hour=16, minute=0),  # daily at 16:00 UTC

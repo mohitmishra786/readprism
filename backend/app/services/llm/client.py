@@ -87,6 +87,22 @@ def _is_model_missing(status_code: int, body: str) -> bool:
     )
 
 
+def _reason(status_code: int) -> str:
+    if status_code in (401, 403):
+        return f"HTTP {status_code}: the API key was rejected"
+    return f"HTTP {status_code}"
+
+
+async def _record(ok: bool, reason: str = "") -> None:
+    """Last outcome for the owner's health banner (#234). Never the key."""
+    try:
+        from app.services.instance_health import record_llm_outcome
+
+        await record_llm_outcome(ok, reason)
+    except Exception:  # never let telemetry break a completion
+        pass
+
+
 class LLMClient:
     """One OpenAI-compatible endpoint. Construct a second instance for a fallback provider."""
 
@@ -201,6 +217,7 @@ class LLMClient:
             except (httpx.TimeoutException, httpx.TransportError) as e:
                 logger.warning("LLM transport error (attempt %s): %s", attempt + 1, e)
                 if attempt + 1 == _MAX_ATTEMPTS:
+                    await _record(False, "provider unreachable")
                     return None
                 await self._backoff(attempt, None)
                 continue
@@ -208,23 +225,28 @@ class LLMClient:
             if resp.status_code == 200:
                 try:
                     data = resp.json()
-                    return str(data["choices"][0]["message"].get("content") or "")
+                    text = str(data["choices"][0]["message"].get("content") or "")
                 except (KeyError, IndexError, TypeError, ValueError) as e:
                     logger.warning("LLM response was not a chat completion: %s", e)
                     return None
+                await _record(True)
+                return text
 
             body = resp.text[:500]
             if _is_model_missing(resp.status_code, body):
                 self._trip(model, body)
+                await _record(False, f"model {model} not available")
                 return None
             if resp.status_code == 429 or resp.status_code >= 500:
                 last_status = resp.status_code
                 logger.warning("LLM HTTP %s (attempt %s)", resp.status_code, attempt + 1)
                 if attempt + 1 == _MAX_ATTEMPTS:
+                    await _record(False, f"HTTP {resp.status_code}")
                     return None
                 await self._backoff(attempt, resp.headers.get("retry-after"))
                 continue
             logger.error("LLM request failed with HTTP %s: %s", resp.status_code, body)
+            await _record(False, _reason(resp.status_code))
             return None
         logger.error("LLM request failed after retries (last HTTP %s)", last_status)
         return None

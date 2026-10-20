@@ -459,6 +459,11 @@ export const api = {
         embedding_quality_note?: string;
         embedding_upgrade_hint?: string | null;
       }>('/metrics/llm-status'),
+    /** Problems for the instance owner's banner (#234); empty for everyone else. */
+    instanceHealth: () =>
+      request<{ owner: boolean; problems: { key: string; message: string; hint: string }[] }>(
+        '/metrics/instance-health'
+      ),
   },
 
   search: {

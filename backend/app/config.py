@@ -276,6 +276,13 @@ class Settings(BaseSettings):
     # SLO (#239): a scheduled digest is on time when it is delivered within
     # this many seconds of being due.
     digest_on_time_seconds: int = 900
+    # Instance health banner for the owner (#234). A worker queue whose
+    # heartbeat is older than this many minutes is reported as down; feeds
+    # count as stalled when nothing was fetched for this many hours; a queue
+    # with more waiting jobs than this is reported as backed up.
+    health_worker_stale_minutes: int = 30
+    health_ingest_stale_hours: int = 6
+    health_queue_backlog: int = 1000
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True

@@ -68,6 +68,14 @@ delivered within `DIGEST_ON_TIME_SECONDS`. Targets and the load test
   once-a-minute heartbeat task writing a short-TTL Redis key; a stalled beat
   (which would silently stop all ingestion/digests) turns the container
   unhealthy. Wire your orchestrator/alerting to container health.
+- **In-app health banner (#234):** the instance owner (the first account)
+  sees a red banner when the scheduler or a worker queue stopped (each queue
+  runs a heartbeat every 5 minutes; reported after
+  `HEALTH_WORKER_STALE_MINUTES`, default 30), a queue has more than
+  `HEALTH_QUEUE_BACKLOG` jobs waiting, feeds produced nothing for
+  `HEALTH_INGEST_STALE_HOURS` (default 6), or the last LLM call failed. The
+  data is at `GET /api/v1/metrics/instance-health`; other accounts get an
+  empty list.
 - **Ranking quality:** `python scripts/ranking_eval.py --days 30` prints
   per-cohort read-prediction AUC.
 

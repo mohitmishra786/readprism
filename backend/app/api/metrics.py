@@ -72,6 +72,23 @@ async def llm_status(
     }
 
 
+@router.get("/instance-health")
+async def instance_health(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    """Problems for the owner's banner (#234): workers, beat, ingestion, LLM.
+
+    Only the instance owner (first account) gets problems; everyone else gets
+    an empty list, so readers on a shared instance aren't alarmed.
+    """
+    from app.services import instance_health as health
+
+    if not await health.is_instance_owner(session, current_user):
+        return {"owner": False, "problems": []}
+    return {"owner": True, "problems": await health.check(session)}
+
+
 @router.get("/interleaving", dependencies=[Depends(require_metrics_token)])
 async def interleaving_metrics(days: int = 7, session: AsyncSession = Depends(get_db)) -> dict:
     """PRS vs newest-first win rate from interleaved digests (#130)."""
