@@ -470,7 +470,7 @@ export default function PreferencesPage() {
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
         <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
           Download a portable copy of everything ReadPrism stores about you, or
-          permanently delete your account.
+          permanently delete your account. <a href="/privacy" style={{ textDecoration: "underline" }}>What we collect and why</a>.
         </p>
         <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginBottom: 16 }}>
           <input

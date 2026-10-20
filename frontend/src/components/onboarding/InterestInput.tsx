@@ -29,6 +29,13 @@ export function InterestInput({ value, onChange }: InterestInputProps) {
       <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 4 }}>
         Be specific. The more detail you provide, the better your first digest will be.
       </p>
+      <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }}>
+        ReadPrism learns from what you read. See{" "}
+        <a href="/privacy" target="_blank" rel="noopener" style={{ textDecoration: "underline" }}>
+          exactly what it records and why
+        </a>
+        .
+      </p>
     </div>
   );
 }
