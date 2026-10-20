@@ -160,6 +160,13 @@ async def semantic_dedup(
     """
     from datetime import datetime, timedelta
 
+    from app.config import get_settings
+    from app.services.embeddings.registry import active_spec
+
+    active = active_spec(
+        model=get_settings().embedding_model,
+        cutover=get_settings().embedding_cutover_enabled,
+    )
     cutoff = datetime.now(UTC) - timedelta(hours=window_hours)
     try:
         result = await session.execute(
@@ -170,6 +177,7 @@ async def semantic_dedup(
                 WHERE fetched_at >= :cutoff
                   AND id != :item_id
                   AND embedding IS NOT NULL
+                  AND (embedding_model = :model OR embedding_model = :short_model OR embedding_model IS NULL)
                   AND (owner_user_id IS NULL OR owner_user_id = :owner)
                 ORDER BY dist ASC
                 LIMIT 1
@@ -179,6 +187,8 @@ async def semantic_dedup(
                 "emb": str(embedding),
                 "cutoff": cutoff,
                 "item_id": str(item_id),
+                "model": active.name,
+                "short_model": active.name.split("/")[-1],
                 "owner": str(owner_user_id) if owner_user_id else None,
             },
         )

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,32 @@ async def require_metrics_token(x_metrics_token: str | None = Header(default=Non
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid metrics token"
         )
+
+
+async def require_owner_or_metrics_token(
+    request: Request,
+    x_metrics_token: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_db),
+) -> None:
+    """Allow either instance owner session or metrics token."""
+    s = get_settings()
+    if s.metrics_token and x_metrics_token == s.metrics_token:
+        return
+    if not s.metrics_token and s.app_env == "development":
+        return
+    from app.api.auth import get_current_user
+    from app.services import instance_health as health
+
+    try:
+        user = await get_current_user(request=request, token=None, session=session)
+        if await health.is_instance_owner(session, user):
+            return
+    except HTTPException:
+        pass
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Owner login or metrics token required",
+    )
 
 
 class RankingEvalRead(BaseModel):
@@ -262,3 +288,45 @@ async def ingestion_metrics(session: AsyncSession = Depends(get_db)) -> dict:
         ]
     )
     return report
+
+
+@router.get("/embeddings")
+async def embeddings_metrics(
+    request: Request,
+    x_metrics_token: str | None = Header(default=None),
+    session: AsyncSession = Depends(get_db),
+) -> dict:
+    """Visibility into active embedding model and online re-embed progress (#244)."""
+    await require_owner_or_metrics_token(request, x_metrics_token=x_metrics_token, session=session)
+    from sqlalchemy import func
+
+    from app.models.content import ContentItem
+    from app.services.embeddings.reembed import get_reembed_cursor
+    from app.services.embeddings.registry import active_spec
+
+    s = get_settings()
+    active = active_spec(
+        model=s.embedding_model,
+        cutover=s.embedding_cutover_enabled,
+    )
+    result = await session.execute(
+        select(ContentItem.embedding_model, func.count(ContentItem.id))
+        .where(ContentItem.embedding.is_not(None))
+        .group_by(ContentItem.embedding_model)
+    )
+    counts = {row[0] or "unspecified": int(row[1]) for row in result.all()}
+    total_embedded = sum(counts.values())
+    active_count = counts.get(active.name, 0)
+    percent_done = (
+        round((active_count / total_embedded * 100.0), 2) if total_embedded > 0 else 100.0
+    )
+
+    return {
+        "active_model": active.name,
+        "active_dim": active.dim,
+        "cutover_enabled": s.embedding_cutover_enabled,
+        "counts_by_model": counts,
+        "total_embedded": total_embedded,
+        "percent_done": percent_done,
+        "cursor": await get_reembed_cursor(),
+    }

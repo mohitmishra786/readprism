@@ -203,6 +203,31 @@ docker compose up -d --scale worker-digest=4 --scale worker-embed=2
 queue, the runtime per task and the share of digests delivered on time.
 Targets and the load test (`scripts/load_test_digests.py`) are in ADR 0001.
 
+## Switching the embedding model
+
+Weirling defaults to `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions).
+To switch to `BAAI/bge-small-en-v1.5` (also 384 dimensions, with higher retrieval accuracy):
+
+1. Set `EMBEDDING_MODEL=BAAI/bge-small-en-v1.5` in `.env` and restart containers.
+2. Trigger the online re-embed worker task:
+   ```bash
+   docker compose exec worker-embed celery -A app.workers.celery_app call app.workers.tasks.compute_embeddings.reembed_outdated_items
+   ```
+   Or run the standalone re-embed script with pause controls:
+   ```bash
+   docker compose exec api python scripts/reembed_benchmark.py
+   ```
+3. Monitor progress via the metrics endpoint:
+   ```bash
+   curl -H "X-Metrics-Token: $METRICS_TOKEN" http://localhost:8000/api/v1/metrics/embeddings
+   ```
+   During migration, `same_model` filtering ensures candidate scoring never mixes vectors from different models.
+4. Once `percent_done` reaches 100%, enable cutover in `.env`:
+   ```bash
+   EMBEDDING_CUTOVER_ENABLED=true
+   ```
+   Restart containers to activate `bge-small` as the primary search and ranking model.
+
 ## Monitoring
 
 | What | How | Default |

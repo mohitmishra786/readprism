@@ -43,6 +43,7 @@ import numpy as np
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.source import Source
@@ -245,10 +246,20 @@ async def load_state(user: User, session: AsyncSession) -> UserRankingState:
         for s in (await session.execute(select(Source).where(Source.id.in_(missing)))).scalars():
             source_feed_key[s.id] = _feed_key(s)
 
+    from app.services.embeddings.registry import active_spec, same_model
+
+    active = active_spec(
+        model=get_settings().embedding_model,
+        cutover=get_settings().embedding_cutover_enabled,
+    )
     history = [
         HistoryRow(
             content_id=c.id,
-            vector=_vec(getattr(c, "embedding", None)),
+            vector=_vec(getattr(c, "embedding", None))
+            if same_model(
+                getattr(c, "embedding_model", None), getattr(c, "embedding_dim", None), active
+            )
+            else None,
             feed_key=source_feed_key.get(c.source_id) if c.source_id else None,
             words=int(c.word_count or 0),
             completion=ix.read_completion_pct,
@@ -392,7 +403,20 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
     if not candidates:
         return []
     now = state.now
-    vecs = [_vec(getattr(c, "embedding", None)) for c in candidates]
+    from app.services.embeddings.registry import active_spec, same_model
+
+    active = active_spec(
+        model=get_settings().embedding_model,
+        cutover=get_settings().embedding_cutover_enabled,
+    )
+    vecs = [
+        _vec(getattr(c, "embedding", None))
+        if same_model(
+            getattr(c, "embedding_model", None), getattr(c, "embedding_dim", None), active
+        )
+        else None
+        for c in candidates
+    ]
     dim = next((v.shape[0] for v in vecs if v is not None), None)
 
     hist = state.history

@@ -176,8 +176,11 @@ class Settings(BaseSettings):
     # Embeddings (local sentence-transformers)
     embedding_model: str = "all-MiniLM-L6-v2"
     embedding_device: str = "cpu"
-    # Leave false until the golden retrieval ADR says nomic beat MiniLM.
+    # Activates the configured EMBEDDING_MODEL (e.g. bge-small-en-v1.5) when true (#244).
     embedding_cutover_enabled: bool = False
+    # Online re-embed batch size and pause between batches for rate limiting (#244).
+    embedding_reembed_batch: int = 200
+    embedding_reembed_pause_seconds: float = 0.0
     ranking_exploration_enabled: bool = False
     # Team-draft interleave PRS with newest-first in every digest and log teams,
     # to measure the PRS win rate (#130). For the beta; off by default.

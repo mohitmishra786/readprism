@@ -5,7 +5,7 @@ import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select, true
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -58,15 +58,34 @@ async def _select_serendipity_candidates(
 
         base_filters.append(outside_user_feeds(source_ids, feed_ids or []))
 
+    from app.services.embeddings.registry import MINILM, active_spec
+
+    active = active_spec(
+        model=get_settings().embedding_model,
+        cutover=get_settings().embedding_cutover_enabled,
+    )
     interest_vec = await InterestGraphManager().build_user_interest_vector(user.id, session)
     if interest_vec is not None:
         vec = interest_vec.tolist()
         distance = ContentItem.embedding.cosine_distance(vec)
+        model_cond = (
+            or_(
+                ContentItem.embedding_model == active.name,
+                ContentItem.embedding_model == active.name.split("/")[-1],
+            )
+            if active.name != MINILM
+            else or_(
+                ContentItem.embedding_model == active.name,
+                ContentItem.embedding_model == active.name.split("/")[-1],
+                ContentItem.embedding_model.is_(None),
+            )
+        )
         result = await session.execute(
             select(ContentItem)
             .where(
                 *base_filters,
                 ContentItem.embedding.isnot(None),
+                model_cond,
                 distance >= SERENDIPITY_MIN_DISTANCE,
                 distance <= SERENDIPITY_MAX_DISTANCE,
             )
