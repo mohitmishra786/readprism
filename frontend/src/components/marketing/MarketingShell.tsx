@@ -30,6 +30,10 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           >
             Source on GitHub
           </a>
+          {" · "}
+          <a href="/privacy#cookies" className="underline hover:text-prism-700">
+            Privacy &amp; cookies
+          </a>
         </p>
       </footer>
     </div>

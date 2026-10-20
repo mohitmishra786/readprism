@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { COLLECTED } from "../../lib/collectedData";
+import { BROWSER_STORAGE } from "../../lib/cookies";
 
 export const metadata = {
   title: "What we collect and why",
@@ -69,6 +70,37 @@ export default function PrivacyPage() {
           <li><strong>What was learned:</strong> your interest map (topics and weights) and how much you trust each source.</li>
           <li><strong>Articles:</strong> the full text of an article is shortened to an excerpt after 90 days.</li>
         </ul>
+      </section>
+      <section className="mt-10" aria-labelledby="cookies">
+        <h2 id="cookies" className="text-xl font-semibold">Cookies and browser storage</h2>
+        <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
+          ReadPrism uses only what it needs to sign you in, keep your account safe and remember your
+          settings. There are no analytics, advertising or tracking cookies, and nothing from other
+          companies, so there is nothing to consent to and no banner.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <caption className="sr-only">Cookies and browser storage</caption>
+            <thead>
+              <tr className="border-b border-stone-200 dark:border-stone-700">
+                <th scope="col" className="py-1 pr-3">Name</th>
+                <th scope="col" className="py-1 pr-3">Type</th>
+                <th scope="col" className="py-1 pr-3">Why</th>
+                <th scope="col" className="py-1">How long</th>
+              </tr>
+            </thead>
+            <tbody>
+              {BROWSER_STORAGE.map((c) => (
+                <tr key={c.name} className="border-b border-stone-100 align-top dark:border-stone-800">
+                  <td className="py-1 pr-3 font-mono text-xs">{c.name}</td>
+                  <td className="py-1 pr-3">{c.kind}</td>
+                  <td className="py-1 pr-3">{c.purpose}</td>
+                  <td className="py-1">{c.lifetime}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   );

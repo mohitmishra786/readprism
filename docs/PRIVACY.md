@@ -39,6 +39,22 @@ We do **not** sell personal data, and we do not use it for advertising.
   are used, never one person's history, and private items never qualify.
   You can leave the counts in Preferences → Your Data.
 
+## Cookies and browser storage
+
+ReadPrism sets only essential cookies, so it shows no consent banner:
+
+| Name | Purpose | Lifetime |
+|---|---|---|
+| `rp_access` | Session (access token), httpOnly | `ACCESS_TOKEN_EXPIRE_MINUTES` |
+| `rp_refresh` | Session renewal, httpOnly, path `/api/v1/auth` | `REFRESH_TOKEN_EXPIRE_DAYS` |
+| `rp_csrf` | Double-submit CSRF protection, httpOnly | `REFRESH_TOKEN_EXPIRE_DAYS` |
+
+The web app also keeps a few settings in local storage (reader text size and
+theme, a dismissed install hint, a "signed in on this device" flag for offline
+use) and an offline cache of pages you opened. No analytics, advertising or
+third-party cookies are used. The full list is on the in-app `/privacy` page
+and is checked against the code in CI.
+
 ## Why we process it (legal bases)
 
 - To provide the service you asked for (ranking, digests) — performance of a
