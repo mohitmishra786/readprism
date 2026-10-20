@@ -133,3 +133,21 @@ async def test_magic_link_request_and_verify(client: AsyncClient, monkeypatch):
 async def test_magic_link_verify_rejects_garbage(client: AsyncClient):
     resp = await client.post("/api/v1/auth/magic-link/verify", json={"token": "not-a-token"})
     assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_accepts_local_demo_address(client: AsyncClient, db_session):
+    """#159: the seeded demo persona (demo@weirling.local) got a 422 at login."""
+    from app.api.auth import _hash_password
+    from app.models.user import User
+
+    db_session.add(
+        User(email="demo@weirling.local", hashed_password=_hash_password("Demo-pass-123"))
+    )
+    await db_session.commit()
+    resp = await client.post(
+        "/api/v1/auth/login", json={"email": "demo@weirling.local", "password": "Demo-pass-123"}
+    )
+    assert resp.status_code == 200
+    bad = await client.post("/api/v1/auth/login", json={"email": "x" * 400, "password": "p"})
+    assert bad.status_code == 422

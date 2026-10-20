@@ -70,12 +70,12 @@ export default function ProductMetricsPage() {
 
   return (
     <section>
-      <h1 className="font-serif text-2xl text-stone-900 dark:text-stone-100">Product metrics</h1>
+      <h1 className="font-playfair text-2xl text-stone-900 dark:text-stone-100">Product metrics</h1>
       <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
         From this instance&apos;s own records; nothing leaves the server. Only you, the owner, can
         see this.
       </p>
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-300">{error}</p>}
       {data && !data.enabled && (
         <p className="mt-6 text-sm text-stone-600 dark:text-stone-300" role="status">
           Event recording is off on this instance (PRODUCT_METRICS). Feed health and the ranking

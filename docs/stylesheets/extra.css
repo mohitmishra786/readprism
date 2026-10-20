@@ -1,5 +1,40 @@
 /* Weirling docs: readable line length, calmer tables, roomy diagrams. */
 
+/* Same look as the app and landing page (#159): near-black, copper accent. */
+[data-md-color-scheme="slate"] {
+  --md-hue: 0;
+  --md-default-bg-color: #0a0a0a;
+  --md-default-fg-color: rgba(245, 245, 244, 0.92);
+  --md-default-fg-color--light: rgba(245, 245, 244, 0.68);
+  --md-default-fg-color--lighter: rgba(245, 245, 244, 0.4);
+  --md-default-fg-color--lightest: rgba(245, 245, 244, 0.12);
+  --md-code-bg-color: #151515;
+  --md-footer-bg-color: #000000;
+  --md-footer-bg-color--dark: #000000;
+  --md-typeset-a-color: #f08a24;
+}
+:root,
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: #000000;
+  --md-primary-fg-color--light: #151515;
+  --md-primary-fg-color--dark: #000000;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: rgba(255, 255, 255, 0.7);
+}
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: #f08a24;
+  --md-accent-fg-color--transparent: rgba(240, 138, 36, 0.12);
+  --md-accent-bg-color: #ffffff;
+}
+.md-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.md-header__topic:first-child,
+.md-typeset h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+}
+
 :root {
   --md-text-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --md-code-font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
@@ -74,19 +109,4 @@
 /* Grid cards on the home page. */
 .md-typeset .grid.cards > ul > li {
   border-radius: 8px;
-}
-
-/* Brand colour: the app icon's blue. */
-:root,
-[data-md-color-scheme="default"] {
-  --md-primary-fg-color: #1d4ed8;
-  --md-primary-fg-color--light: #3b82f6;
-  --md-primary-fg-color--dark: #1e3a8a;
-}
-
-[data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #1e3a8a;
-  --md-primary-fg-color--light: #3b82f6;
-  --md-primary-fg-color--dark: #172554;
-  --md-typeset-a-color: #93c5fd;
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { hasSession } from "../lib/api";
+import { Logo } from "../components/ui/Logo";
 
 // Atmospheric hero imagery the spotlight reveals, served from this origin:
 // the hotlinked image proxy set a third-party cookie, told it about every
@@ -179,18 +180,7 @@ export default function RootPage() {
       {/* ===== Navigation (fixed, over hero) ===== */}
       <nav className="fixed top-0 left-0 right-0 z-[100] flex items-center justify-between p-4 sm:p-5">
         {/* Left: prism logo + wordmark */}
-        <Link href="/" className="flex items-center gap-2">
-          <svg
-            width="26"
-            height="26"
-            viewBox="0 0 256 256"
-            fill="#ffffff"
-            aria-hidden="true"
-          >
-            <path d="M 128 0 L 256 128 L 128 256 L 0 128 Z M 128 64 L 64 128 L 128 192 L 192 128 Z" />
-          </svg>
-          <span className="text-white text-2xl font-playfair italic">Weirling</span>
-        </Link>
+        <Logo />
 
         {/* Center pill (desktop) */}
         <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 rounded-full px-2 py-2 items-center gap-1">
@@ -291,7 +281,7 @@ export default function RootPage() {
               Everything you follow,
             </span>
             <span
-              className="block font-normal text-5xl sm:text-7xl md:text-8xl -mt-1 hero-anim hero-reveal"
+              className="block font-serif font-normal not-italic text-5xl sm:text-7xl md:text-8xl -mt-1 hero-anim hero-reveal"
               style={{ letterSpacing: "-0.08em", animationDelay: "0.42s" }}
             >
               ranked for you.

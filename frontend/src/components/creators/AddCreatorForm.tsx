@@ -8,9 +8,9 @@ interface AddCreatorFormProps {
 }
 
 const TIER_LEGEND: Record<string, { label: string; className: string }> = {
-  fully_tracked: { label: "fully tracked", className: "text-emerald-700" },
-  best_effort: { label: "best effort", className: "text-amber-700" },
-  unsupported: { label: "not supported", className: "text-rose-700" },
+  fully_tracked: { label: "fully tracked", className: "text-emerald-700 dark:text-emerald-300" },
+  best_effort: { label: "best effort", className: "text-amber-700 dark:text-amber-300" },
+  unsupported: { label: "not supported", className: "text-rose-700 dark:text-rose-300" },
 };
 
 export function AddCreatorForm({ onAdded }: AddCreatorFormProps) {
@@ -67,7 +67,7 @@ export function AddCreatorForm({ onAdded }: AddCreatorFormProps) {
       </div>
 
       {grouped.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500 dark:text-stone-400">
           {grouped.map((g) => (
             <span key={g.tier}>
               <span className={`font-semibold ${TIER_LEGEND[g.tier].className}`}>
@@ -79,7 +79,7 @@ export function AddCreatorForm({ onAdded }: AddCreatorFormProps) {
         </div>
       )}
 
-      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{error}</p>}
       {warning && <p className="mt-2 text-sm text-amber-600">{warning}</p>}
     </form>
   );

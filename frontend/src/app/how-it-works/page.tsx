@@ -12,7 +12,7 @@ export default function HowItWorks() {
   return (
     <MarketingShell>
       <article className="prose-reader">
-        <h1 className="font-serif text-3xl font-bold">
+        <h1 className="font-playfair text-3xl font-bold">
           How Weirling ranks your reading
         </h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">
@@ -23,7 +23,7 @@ export default function HowItWorks() {
           read.
         </p>
 
-        <h2 className="mt-8 font-serif text-2xl font-semibold">The eight signals</h2>
+        <h2 className="mt-8 font-playfair text-2xl font-semibold">The eight signals</h2>
         <ol className="mt-3 list-decimal space-y-2 pl-6">
           <li>
             <strong>Semantic alignment</strong> — cosine similarity between the
@@ -61,7 +61,7 @@ export default function HowItWorks() {
           </li>
         </ol>
 
-        <h2 className="mt-8 font-serif text-2xl font-semibold">
+        <h2 className="mt-8 font-playfair text-2xl font-semibold">
           Per-user learned weights
         </h2>
         <p className="mt-3">
@@ -72,7 +72,7 @@ export default function HowItWorks() {
           can&apos;t inflate them by predicting its own inputs.
         </p>
 
-        <h2 className="mt-8 font-serif text-2xl font-semibold">
+        <h2 className="mt-8 font-playfair text-2xl font-semibold">
           Explainable, not a black box
         </h2>
         <p className="mt-3">
@@ -83,7 +83,7 @@ export default function HowItWorks() {
           read-prediction AUC per cohort.
         </p>
 
-        <h2 className="mt-8 font-serif text-2xl font-semibold">Open and honest</h2>
+        <h2 className="mt-8 font-playfair text-2xl font-semibold">Open and honest</h2>
         <p className="mt-3">
           The full ranking engine is free, the code is open source and
           self-hostable (Docker Compose), and platforms without a public feed
@@ -91,7 +91,7 @@ export default function HowItWorks() {
           failing.
         </p>
         <p className="mt-6">
-          <a href="/register" className="text-prism-700 underline">
+          <a href="/register" className="text-prism-700 underline dark:text-prism-300">
             Try it →
           </a>
         </p>

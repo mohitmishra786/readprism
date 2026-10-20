@@ -31,7 +31,7 @@ export function CitationExport() {
       <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
         In Zotero: File → Import… and choose the file.
       </p>
-      {error && <p className="mt-2 text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-red-600 dark:text-red-300">{error}</p>}
     </div>
   );
 }

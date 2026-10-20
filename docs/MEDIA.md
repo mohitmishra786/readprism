@@ -19,14 +19,39 @@ shots.
 
 ## Shot list (screenshots)
 
-1. **Daily digest** (`/digest`) — sectioned lead/creator/deep-reads/discovery,
-   showing the PRS score chips. The hero image.
-2. **Why-ranked tooltip** — open a card's "Why this?" showing the signal
-   contributions and the "connects your interest in X and Y" line.
-3. **Interest graph** (`/preferences`) — the SVG graph + tag cloud ("watch it
-   learn").
-4. **In-app reader** (`/read/[id]`) — editorial typography + scroll progress.
-5. **Source health** (`/sources`) — a source with a "Fetch issues" badge.
+Captured at 1280x800 in `docs/media/`. The app has one look, the landing
+page's dark theme, so there is one set:
+
+1. **Daily digest** (`/digest`): ranked sections with score chips. [`media/digest.png`](media/digest.png)
+2. **Why-ranked explanation**: a card's "Why this?" panel with the signal breakdown. [`media/why-this.png`](media/why-this.png)
+3. **Interest graph** (`/interests`): learned topics and weights. [`media/interests.png`](media/interests.png)
+4. **In-app reader** (`/read/[id]`): summary standfirst and reading controls. [`media/reader.png`](media/reader.png)
+5. **Source management** (`/sources`): followed feeds with relevance and health. [`media/sources.png`](media/sources.png)
+
+## Refreshing the screenshots
+
+To refresh all 5 screenshots:
+
+1. Start the stack and seed the demo account:
+   ```bash
+   make env                      # only if .env doesn't exist yet
+   docker compose up -d --build  # or `make up-lite` to use published images
+   docker compose exec backend python scripts/seed_demo.py
+   ```
+   Note the demo email and password printed by the seed script. Wait until `curl -fsS http://localhost:3000/login` and `curl -fsS http://localhost:8000/health` both succeed.
+
+2. Install the capture tools (once):
+   ```bash
+   cd frontend && npm ci && npx playwright install chromium
+   ```
+   Also install `pngquant` (`brew install pngquant` or `apt install pngquant`):
+   the script uses it to keep each image under 300 KB and stops if it is
+   missing when a screenshot is larger.
+
+3. Run the Playwright capture script (from `frontend/`):
+   ```bash
+   DEMO_EMAIL="<email>" DEMO_PASSWORD="<password>" BASE_URL="http://localhost:3000" npx tsx scripts/capture-screenshots.ts
+   ```
 
 ## Demo GIF / video (60–90s, audit 12-5)
 

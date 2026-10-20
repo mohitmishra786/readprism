@@ -143,7 +143,8 @@ async def export_webhook(
     import asyncio
     import json as _json
 
-    from app.utils.ssrf import safe_fetch
+    from app.utils.logging import sanitize_log
+    from app.utils.ssrf import UnsafeURLError, safe_fetch
 
     if not body.url.lower().startswith("https://"):
         raise HTTPException(
@@ -174,8 +175,14 @@ async def export_webhook(
                         delivered += 1
                     else:
                         errors.append(f"{file['filename']}: HTTP {resp.status_code}")
-                except Exception as e:
+                except UnsafeURLError as e:
+                    # Our own validation message: says what's wrong with the URL.
                     errors.append(f"{file['filename']}: {e}")
+                except Exception as e:
+                    # Never echo arbitrary exception text to the client
+                    # (CodeQL py/stack-trace-exposure); log it instead.
+                    logger.warning(f"Webhook export failed: {sanitize_log(e)}")
+                    errors.append(f"{file['filename']}: delivery failed")
     except TimeoutError:
         errors.append(f"webhook deadline ({WEBHOOK_DEADLINE_SECONDS}s) exceeded")
     return {"delivered": delivered, "total": len(files), "errors": errors[:5]}

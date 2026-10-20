@@ -183,7 +183,7 @@ export function PlanSection() {
           )}
         </div>
       )}
-      {error && <p style={{ color: "#dc2626", fontSize: 14, marginTop: 12 }}>{error}</p>}
+      {error && <p style={{ color: "#f87171", fontSize: 14, marginTop: 12 }}>{error}</p>}
     </section>
   );
 }

@@ -37,31 +37,31 @@ export default function IngestionAdminPage() {
 
   return (
     <section>
-      <h1 className="font-serif text-2xl text-stone-900 dark:text-stone-100">Ingestion</h1>
+      <h1 className="font-playfair text-2xl text-stone-900 dark:text-stone-100">Ingestion</h1>
       <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
         Fetch success, extraction method, and how long items wait to be scored.
       </p>
-      {error && <p className="mt-4 text-sm text-stone-500">Metrics unavailable ({error}).</p>}
+      {error && <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">Metrics unavailable ({error}).</p>}
       {report && (
         <dl className="mt-6 grid gap-3 text-sm">
           <div>
-            <dt className="text-stone-500">Sources</dt>
+            <dt className="text-stone-500 dark:text-stone-400">Sources</dt>
             <dd className="font-mono text-stone-900 dark:text-stone-100">{report.sources}</dd>
           </div>
           <div>
-            <dt className="text-stone-500">Fetch success</dt>
+            <dt className="text-stone-500 dark:text-stone-400">Fetch success</dt>
             <dd className="font-mono text-stone-900 dark:text-stone-100">
               {(report.fetch_success_rate * 100).toFixed(1)}%
             </dd>
           </div>
           <div>
-            <dt className="text-stone-500">Extraction success</dt>
+            <dt className="text-stone-500 dark:text-stone-400">Extraction success</dt>
             <dd className="font-mono text-stone-900 dark:text-stone-100">
               {(report.extraction_success_rate * 100).toFixed(1)}%
             </dd>
           </div>
           <div>
-            <dt className="text-stone-500">Methods</dt>
+            <dt className="text-stone-500 dark:text-stone-400">Methods</dt>
             <dd className="font-mono text-stone-900 dark:text-stone-100">
               {Object.entries(report.extraction_by_method)
                 .map(([method, count]) => `${method}: ${count}`)
@@ -69,7 +69,7 @@ export default function IngestionAdminPage() {
             </dd>
           </div>
           <div>
-            <dt className="text-stone-500">Ingest to scored, median seconds</dt>
+            <dt className="text-stone-500 dark:text-stone-400">Ingest to scored, median seconds</dt>
             <dd className="font-mono text-stone-900 dark:text-stone-100">
               {report.ingest_to_scored_p50_seconds ?? "n/a"}
             </dd>

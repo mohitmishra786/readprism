@@ -113,6 +113,9 @@ async def seed(session, *, password: str) -> dict:
             source_type="rss",
             trust_weight=0.5,
             initial_backfill_done=True,
+            # The articles below are its fetched items; without this every
+            # source showed "No successful fetch yet" (#159 screenshots).
+            last_fetched_at=datetime.now(UTC) - timedelta(minutes=40),
         )
         session.add(src)
         sources[pub["slug"]] = (src, pub["topic"])

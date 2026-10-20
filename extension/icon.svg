@@ -1,9 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="96" fill="#1d4ed8"/>
-  <!-- Prism: a triangle suggesting light-splitting / ranking -->
-  <polygon points="256,120 376,360 136,360" fill="none" stroke="#ffffff" stroke-width="20" stroke-linejoin="round"/>
-  <!-- Ranked bars beneath, evoking a relevance-ranked feed -->
-  <rect x="160" y="392" width="192" height="14" rx="7" fill="#bfdbfe"/>
-  <rect x="190" y="416" width="132" height="14" rx="7" fill="#93c5fd"/>
-  <rect x="220" y="440" width="72" height="14" rx="7" fill="#60a5fa"/>
+  <rect width="512" height="512" rx="96" fill="#0a0a0a"/>
+  <!-- The Weirling diamond, as on the landing page -->
+  <path transform="translate(128 128)" fill="#ffffff" d="M 128 0 L 256 128 L 128 256 L 0 128 Z M 128 64 L 64 128 L 128 192 L 192 128 Z"/>
 </svg>

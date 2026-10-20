@@ -162,3 +162,24 @@ async def test_opening_an_item_queues_one_llm_summary(client, db_session, llm_on
                 await client.get(f"/api/v1/content/{item.id}", headers=headers)
             ).status_code == 200
     delay.assert_called_once_with(str(item.id))
+
+
+def test_keyword_topics_ignore_leaked_html():
+    """#159: feeds with escaped markup made "noopener noreferrer" a topic."""
+    from app.services.summarization.extractive import keyword_topics
+
+    link = '<a href="https://example.com" rel="noopener noreferrer" target="_blank">x</a>'
+    escaped = "&lt;a href=&quot;https://example.com&quot; rel=&quot;noopener noreferrer&quot;&gt;"
+    body = (f"Vector databases index embeddings. {link} " * 3) + escaped * 3
+    topics = keyword_topics("Vector databases", body)
+    assert topics and not any(
+        w in t for t in topics for w in ("noopener", "noreferrer", "href", "rel")
+    )
+    assert "vector databases" in topics
+
+
+def test_stored_html_topics_never_emerge():
+    from app.services.digest.emerging import detect_emerging
+
+    found = detect_emerging({"rel noopener": 5, "vector search": 5}, {})
+    assert [t.topic for t in found] == ["vector search"]

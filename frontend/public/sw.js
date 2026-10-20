@@ -15,7 +15,21 @@ const OFFLINE_ARTICLE_HTML =
   '<title>Offline</title><body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem">' +
   "<h1>You're offline</h1><p>This article isn't saved for offline reading. Articles you " +
   'opened while online stay readable. <a href="/digest">Back to your digest</a></p></body>';
+const OFFLINE_PAGE_HTML =
+  '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+  '<title>Offline</title><body style="font-family:system-ui;max-width:32rem;margin:4rem auto;padding:0 1rem;background:#0a0a0a;color:#f5f5f4">' +
+  "<h1>Can't reach Weirling</h1><p>You're offline or the server isn't responding. " +
+  '<a style="color:#f59e0b" href="">Try again</a></p></body>';
 const APP_SHELL = ["/", "/digest", "/feed", "/manifest.json"];
+
+// respondWith(undefined) is a hard browser error ("Returned response is
+// null" in Safari), so every path must end in a real Response (#159).
+function offlinePage() {
+  return new Response(OFFLINE_PAGE_HTML, {
+    status: 503,
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -106,7 +120,7 @@ self.addEventListener("fetch", (event) => {
                 headers: { "Content-Type": "text/html; charset=utf-8" },
               });
             }
-            return caches.match("/digest");
+            return caches.match("/digest").then((shell) => shell || offlinePage());
           })
         )
     );
@@ -126,7 +140,7 @@ self.addEventListener("fetch", (event) => {
             }
             return response;
           })
-          .catch(() => cached);
+          .catch(() => cached || Response.error());
         return cached || network;
       })
     );

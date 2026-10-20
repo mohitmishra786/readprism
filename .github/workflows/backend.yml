@@ -110,7 +110,7 @@ jobs:
         run: |
           echo "Waiting for Postgres to accept connections..."
           for i in $(seq 1 60); do
-            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' readprism-db-1 2>/dev/null || echo "starting")
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "$(docker compose ps -q db)" 2>/dev/null || echo "starting")
             echo "  attempt $i: db health = $HEALTH"
             if [ "$HEALTH" = "healthy" ]; then echo "DB is healthy"; exit 0; fi
             sleep 3
@@ -169,7 +169,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: coverage.json

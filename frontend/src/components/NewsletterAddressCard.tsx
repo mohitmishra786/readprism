@@ -54,18 +54,18 @@ export function NewsletterAddressCard() {
   };
 
   return (
-    <div className="rounded-lg border border-stone-200 p-4 text-sm">
+    <div className="rounded-lg border border-stone-200 p-4 text-sm dark:border-white/10">
       <p className="font-medium">Your newsletter address</p>
       <div className="mt-2 flex items-center gap-2">
         <code className="flex-1 truncate rounded bg-stone-100 px-2 py-1 dark:bg-stone-800">{info.address}</code>
-        <button type="button" onClick={copy} className="rounded border border-stone-300 px-2 py-1">
+        <button type="button" onClick={copy} className="rounded border border-stone-300 px-2 py-1 dark:border-white/20">
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <p className="mt-2 text-stone-500">
+      <p className="mt-2 text-stone-500 dark:text-stone-400">
         Subscribe new newsletters with this address, or forward the ones you already get.
       </p>
-      <details className="mt-2 text-stone-500">
+      <details className="mt-2 text-stone-500 dark:text-stone-400">
         <summary>Forward automatically from Gmail or Outlook</summary>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>
@@ -79,7 +79,7 @@ export function NewsletterAddressCard() {
         </ul>
       </details>
       {!info.email_verified && (
-        <p className="mt-2 text-amber-700">Confirm your email first: newsletters are held until you do.</p>
+        <p className="mt-2 text-amber-700 dark:text-amber-300">Confirm your email first: newsletters are held until you do.</p>
       )}
       {info.inbound_configured ? (
         <div className="mt-3 flex items-center gap-2">
@@ -87,11 +87,11 @@ export function NewsletterAddressCard() {
             type="button"
             disabled={test === "sending" || test === "waiting"}
             onClick={sendTest}
-            className="rounded border border-stone-300 px-3 py-1 disabled:opacity-50"
+            className="rounded border border-stone-300 px-3 py-1 disabled:opacity-50 dark:border-white/20"
           >
             Send a test
           </button>
-          <span role="status" className="text-stone-500">
+          <span role="status" className="text-stone-500 dark:text-stone-400">
             {test === "sending" && "Sending…"}
             {test === "waiting" && "Waiting for it to arrive…"}
             {test === "received" && `Received. Your address works. ${detail}`}
@@ -100,7 +100,7 @@ export function NewsletterAddressCard() {
           </span>
         </div>
       ) : (
-        <p className="mt-3 text-stone-500">
+        <p className="mt-3 text-stone-500 dark:text-stone-400">
           Inbound newsletters aren&apos;t set up on this instance yet (NEWSLETTER_DOMAIN and an
           inbound provider; see the deployment docs).
         </p>

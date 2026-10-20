@@ -138,3 +138,22 @@ async def test_secure_flag_follows_the_request_scheme(client: AsyncClient, monke
     monkeypatch.setattr(session_cookies.get_settings(), "cookie_secure", "true")
     forced = await client.post("/api/v1/auth/register", json=_creds(), headers=COOKIE_MODE)
     assert all("secure" in c.lower() for c in _set_cookie_headers(forced))
+
+
+@pytest.mark.asyncio
+async def test_session_for_a_deleted_account_is_signed_out(client: AsyncClient, db_session):
+    """#159: re-seeding the demo left a valid-looking token for a deleted user.
+    /auth/session said 'signed in' while every API call said 401, and the app
+    looped between /digest and /login."""
+    from sqlalchemy import delete
+
+    from app.models.user import User
+
+    creds = _creds()
+    await client.post("/api/v1/auth/register", json=creds, headers=COOKIE_MODE)
+    await db_session.execute(delete(User).where(User.email == creds["email"]))
+    await db_session.commit()
+
+    resp = await client.get("/api/v1/auth/session")
+    assert resp.json() == {"authenticated": False, "refreshable": False, "csrf_token": None}
+    assert any("rp_access=" in h for h in _set_cookie_headers(resp))  # cookies cleared

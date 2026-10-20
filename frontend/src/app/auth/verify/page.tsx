@@ -20,26 +20,26 @@ export default function VerifyEmailPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-      {state === "pending" && <p className="text-sm text-stone-500">Confirming your email…</p>}
+      {state === "pending" && <p className="text-sm text-stone-500 dark:text-stone-400">Confirming your email…</p>}
       {state === "ok" && (
         <>
-          <h1 className="font-serif text-xl font-semibold">Email confirmed</h1>
-          <p className="mt-2 max-w-sm text-sm text-stone-500">
+          <h1 className="font-playfair text-xl font-semibold">Email confirmed</h1>
+          <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
             Your digest will arrive by email from now on.
           </p>
-          <a href="/digest" className="mt-4 text-sm text-prism-700 underline">
+          <a href="/digest" className="mt-4 text-sm text-prism-700 underline dark:text-prism-300">
             Go to your digest
           </a>
         </>
       )}
       {state === "error" && (
         <>
-          <h1 className="font-serif text-xl font-semibold">Confirmation link problem</h1>
-          <p className="mt-2 max-w-sm text-sm text-stone-500">
+          <h1 className="font-playfair text-xl font-semibold">Confirmation link problem</h1>
+          <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
             This link is invalid or has expired. Sign in and use &ldquo;Resend the link&rdquo;
             to get a new one.
           </p>
-          <a href="/login" className="mt-4 text-sm text-prism-700 underline">
+          <a href="/login" className="mt-4 text-sm text-prism-700 underline dark:text-prism-300">
             Sign in
           </a>
         </>

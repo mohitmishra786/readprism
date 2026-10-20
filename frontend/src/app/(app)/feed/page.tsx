@@ -29,9 +29,9 @@ export default function FeedPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="eyebrow text-prism-700">Everything</div>
-        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Full Feed</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <div className="eyebrow text-prism-700 dark:text-prism-300">Everything</div>
+        <h1 className="mt-1 font-playfair text-3xl font-bold tracking-tight">Full Feed</h1>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           All ingested items, ranked by personal relevance.
         </p>
       </header>

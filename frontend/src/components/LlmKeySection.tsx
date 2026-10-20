@@ -121,7 +121,7 @@ export function LlmKeySection() {
         </div>
       )}
       {error && (
-        <p role="alert" style={{ color: "#dc2626", fontSize: 14, marginTop: 12 }}>
+        <p role="alert" style={{ color: "#f87171", fontSize: 14, marginTop: 12 }}>
           {error}
         </p>
       )}

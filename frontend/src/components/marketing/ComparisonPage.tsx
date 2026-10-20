@@ -18,7 +18,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
   return (
     <MarketingShell>
       <article className="prose-reader">
-        <h1 className="font-serif text-3xl font-bold">
+        <h1 className="font-playfair text-3xl font-bold">
           Weirling vs {data.competitor}
         </h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">{data.intro}</p>
@@ -44,7 +44,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
           </table>
         </div>
 
-        <h2 className="mt-8 font-serif text-2xl font-semibold">
+        <h2 className="mt-8 font-playfair text-2xl font-semibold">
           Where Weirling differs
         </h2>
         <ul className="mt-3 list-disc space-y-2 pl-6">
@@ -53,13 +53,13 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
           ))}
         </ul>
 
-        <p className="mt-6 text-sm text-stone-500">{data.fairnote}</p>
+        <p className="mt-6 text-sm text-stone-500 dark:text-stone-400">{data.fairnote}</p>
         <p className="mt-6">
-          <a href="/register" className="text-prism-700 underline">
+          <a href="/register" className="text-prism-700 underline dark:text-prism-300">
             Try Weirling →
           </a>{" "}
           ·{" "}
-          <a href="/how-it-works" className="text-prism-700 underline">
+          <a href="/how-it-works" className="text-prism-700 underline dark:text-prism-300">
             How the ranking works
           </a>
         </p>

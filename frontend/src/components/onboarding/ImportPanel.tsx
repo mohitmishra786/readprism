@@ -102,7 +102,7 @@ export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved
           onChange={(e) => e.target.files && void handle(e.target.files)}
         />
       </label>
-      <details className="mt-2 text-xs text-stone-500">
+      <details className="mt-2 text-xs text-stone-500 dark:text-stone-400">
         <summary>How to export</summary>
         <ul className="mt-1 list-disc space-y-1 pl-5">
           <li>Feedly: Settings → Organize Sources → Export OPML.</li>
@@ -117,12 +117,12 @@ export function ImportPanel({ onImported }: { onImported?: (feeds: number, saved
         </p>
       )}
       {failed.map((f) => (
-        <p key={f} className="mt-1 text-sm text-red-600">
+        <p key={f} className="mt-1 text-sm text-red-600 dark:text-red-300">
           {f}
         </p>
       ))}
       {errors.length > 0 && (
-        <details className="mt-2 text-xs text-amber-800">
+        <details className="mt-2 text-xs text-amber-800 dark:text-amber-200">
           <summary>{errors.length} row{errors.length === 1 ? "" : "s"} skipped</summary>
           <ul className="mt-1 space-y-0.5">
             {errors.slice(0, 50).map((e, i) => (

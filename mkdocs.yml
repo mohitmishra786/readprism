@@ -13,21 +13,11 @@ theme:
   favicon: assets/logo.svg
   icon:
     repo: fontawesome/brands/github
+  # One look with the app and landing page (#159): dark, copper accent.
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: custom
-      accent: deep purple
-      toggle:
-        icon: material/weather-night
-        name: Dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: custom
-      accent: deep purple
-      toggle:
-        icon: material/weather-sunny
-        name: Light mode
+    scheme: slate
+    primary: custom
+    accent: custom
   features:
     - navigation.sections
     - navigation.top

@@ -22,7 +22,7 @@ export function InstallPrompt() {
 
   return (
     <div
-      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-prism-200 bg-white px-4 py-3 shadow-lg dark:bg-stone-900"
+      className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-prism-200 bg-white px-4 py-3 shadow-lg dark:bg-stone-900 dark:border-prism-800"
       role="complementary"
       aria-label="Install Weirling"
     >
@@ -38,7 +38,7 @@ export function InstallPrompt() {
       <button
         onClick={dismiss}
         aria-label="Dismiss install prompt"
-        className="text-stone-400 hover:text-stone-700"
+        className="text-stone-400 hover:text-stone-700 dark:hover:text-white"
       >
         <X className="h-4 w-4" aria-hidden="true" />
       </button>

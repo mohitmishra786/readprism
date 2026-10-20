@@ -176,7 +176,7 @@ export default function ReaderPage() {
   if (error) {
     return (
       <div className="py-16 text-center">
-        <p className="text-red-600">{error}</p>
+        <p className="text-red-600 dark:text-red-300">{error}</p>
         <button
           onClick={() => router.back()}
           className="btn-secondary mt-4"
@@ -228,7 +228,8 @@ export default function ReaderPage() {
           A+
         </button>
         <button onClick={cycleTheme} className="btn-secondary px-2.5 py-1 capitalize">
-          {theme}
+          {/* "light" is the app's own (dark) surface since #159 */}
+          {theme === "light" ? "Default" : theme}
         </button>
         <span className="ml-auto hidden text-stone-500 sm:inline dark:text-stone-400">
           j/k next·prev · o original · s save · u helpful · d not helpful
@@ -236,7 +237,7 @@ export default function ReaderPage() {
       </div>
 
       {/* Article header */}
-      <header className="mb-8 border-b border-stone-200 pb-6">
+      <header className="mb-8 border-b border-stone-200 pb-6 dark:border-white/10">
         <h1 className={`font-serif text-3xl font-bold leading-tight tracking-tight md:text-4xl ${fontSizes[fontStep] === fontSizes[0] ? "md:text-3xl" : ""}`}>
           {item.title}
         </h1>
@@ -261,7 +262,7 @@ export default function ReaderPage() {
 
         {/* AI summary deck — the editorial "standfirst" */}
         {item.summary_detailed && (
-          <p className="deck mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg italic leading-relaxed text-stone-600">
+          <p className="deck mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg italic leading-relaxed text-stone-600 dark:text-stone-300">
             <SummaryLabel source={item.summary_source} fromTranscript={Boolean(item.transcript_url)} />
             {item.summary_detailed}
           </p>
@@ -286,7 +287,7 @@ export default function ReaderPage() {
       )}
 
       {/* Footer */}
-      <footer className="mt-12 border-t border-stone-200 pt-6">
+      <footer className="mt-12 border-t border-stone-200 pt-6 dark:border-white/10">
         <a
           href={item.url}
           target="_blank"

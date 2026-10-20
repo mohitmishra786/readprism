@@ -34,17 +34,17 @@ const TIER_STYLES: Record<
   { className: string; marker: LucideIcon; title: string }
 > = {
   fully_tracked: {
-    className: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    className: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
     marker: Check,
     title: "Reliably tracked — new posts ingested",
   },
   best_effort: {
-    className: "bg-amber-50 text-amber-700 ring-amber-200",
+    className: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300",
     marker: AlertTriangle,
     title: "Best effort — a feed may exist but isn't guaranteed",
   },
   unsupported: {
-    className: "bg-rose-50 text-rose-700 ring-rose-200",
+    className: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300",
     marker: X,
     title: "Not supported — this platform has no public feed",
   },

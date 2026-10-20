@@ -28,9 +28,9 @@ export default function SourcesPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="eyebrow text-prism-700">Ingestion</div>
-        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Sources</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <div className="eyebrow text-prism-700 dark:text-prism-300">Ingestion</div>
+        <h1 className="mt-1 font-playfair text-3xl font-bold tracking-tight">Sources</h1>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           Websites, blogs, and feeds you follow. RSS is detected automatically.
         </p>
       </header>
@@ -40,7 +40,7 @@ export default function SourcesPage() {
         <button
           type="button"
           onClick={() => setShowPacks((v) => !v)}
-          className="text-sm font-medium text-prism-700 underline"
+          className="text-sm font-medium text-prism-700 underline dark:text-prism-300"
         >
           {showPacks ? "Hide starter packs" : "Browse starter packs"}
         </button>
@@ -60,7 +60,7 @@ export default function SourcesPage() {
                 </button>
               }
             />
-            {packNote && <p className="mt-2 text-sm text-stone-500">{packNote}</p>}
+            {packNote && <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">{packNote}</p>}
           </div>
         )}
       </section>

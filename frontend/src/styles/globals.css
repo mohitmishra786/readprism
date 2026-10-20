@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* One look everywhere (#159): the app is dark like the landing page, whatever
+   the OS setting. `dark:` utilities follow the .dark class on <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ==========================================================================
    Weirling Design System
    Editorial magazine meets refined minimalism.
@@ -24,16 +28,16 @@
   --color-ink-900: #0f172a;
   --color-ink-950: #020617;
 
-  --color-prism-50: #eff6ff;
-  --color-prism-100: #dbeafe;
-  --color-prism-200: #bfdbfe;
-  --color-prism-300: #93c5fd;
-  --color-prism-400: #60a5fa;
-  --color-prism-500: #3b82f6;
-  --color-prism-600: #2563eb;
-  --color-prism-700: #1d4ed8;
-  --color-prism-800: #1e40af;
-  --color-prism-900: #1e3a8a;
+  --color-prism-50: #fef3e2;
+  --color-prism-100: #fde3bd;
+  --color-prism-200: #fbc77f;
+  --color-prism-300: #f8a94a;
+  --color-prism-400: #f08a24;
+  --color-prism-500: #d9700f;
+  --color-prism-600: #b45309;
+  --color-prism-700: #9a4207;
+  --color-prism-800: #7a3306;
+  --color-prism-900: #5c2605;
 
   --color-spectrum-violet: #7c3aed;
   --color-spectrum-cyan: #06b6d4;
@@ -99,7 +103,7 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: 9999px;
   padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
@@ -122,31 +126,25 @@
     --space-2xl: 4rem;
 
     /* Prism spectrum — the signature accent gradient */
-    --spectrum: linear-gradient(
-      100deg,
-      #2563eb 0%,
-      #7c3aed 35%,
-      #06b6d4 70%,
-      #10b981 100%
-    );
+    --spectrum: linear-gradient(100deg, #f5f5f4 0%, #f8a94a 55%, #b45309 100%);
 
     /* Surfaces */
-    --bg: #fafaf9;
-    --bg-elevated: #ffffff;
-    --bg-sunken: #f5f5f4;
-    --border: #e7e5e4;
-    --border-strong: #d6d3d1;
+    --bg: #0a0a0a;
+    --bg-elevated: #151515;
+    --bg-sunken: #101010;
+    --border: #262626;
+    --border-strong: #3a3a3a;
 
     /* Text */
-    --text: #1c1917;
-    --text-secondary: #57534e;
-    --text-tertiary: #78716c;
-    --text-inverse: #fafaf9;
+    --text: #f5f5f4;
+    --text-secondary: #b5b5b0;
+    --text-tertiary: #8a8a85;
+    --text-inverse: #0a0a0a;
 
     /* Accents */
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
-    --accent-soft: #eff6ff;
+    --accent: #b45309;
+    --accent-hover: #9a4207;
+    --accent-soft: #1f1408;
   }
 
   /* Dark mode (audit 09-1). The design system is already token-driven, so
@@ -155,30 +153,30 @@
      class allows a future manual toggle. */
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0c0a09;
-      --bg-elevated: #1c1917;
-      --bg-sunken: #171412;
-      --border: #292524;
-      --border-strong: #3f3a36;
+      --bg: #0a0a0a;
+      --bg-elevated: #151515;
+      --bg-sunken: #101010;
+      --border: #262626;
+      --border-strong: #3a3a3a;
       --text: #f5f5f4;
-      --text-secondary: #a8a29e;
-      --text-tertiary: #78716c;
-      --text-inverse: #1c1917;
-      --accent-soft: #172033;
+      --text-secondary: #b5b5b0;
+      --text-tertiary: #8a8a85;
+      --text-inverse: #0a0a0a;
+      --accent-soft: #1f1408;
     }
   }
 
   .dark {
-    --bg: #0c0a09;
-    --bg-elevated: #1c1917;
-    --bg-sunken: #171412;
-    --border: #292524;
-    --border-strong: #3f3a36;
+    --bg: #0a0a0a;
+    --bg-elevated: #151515;
+    --bg-sunken: #101010;
+    --border: #262626;
+    --border-strong: #3a3a3a;
     --text: #f5f5f4;
-    --text-secondary: #a8a29e;
-    --text-tertiary: #78716c;
-    --text-inverse: #1c1917;
-    --accent-soft: #172033;
+    --text-secondary: #b5b5b0;
+    --text-tertiary: #8a8a85;
+    --text-inverse: #0a0a0a;
+    --accent-soft: #1f1408;
   }
 
   * {
@@ -228,6 +226,8 @@
   }
 
   /* Editorial headings use serif for warmth + authority */
+  /* Page titles in the landing page's italic Playfair; h3 (article and card
+     titles) stays Source Serif, which reads better at small sizes. */
   h1,
   h2,
   h3 {
@@ -235,10 +235,25 @@
     letter-spacing: -0.02em;
     color: var(--text);
   }
+  h1,
+  h2 {
+    font-family: var(--font-playfair);
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  /* Small uppercase section labels ("All topics") stay in the sans. */
+  :is(h1, h2, h3).uppercase {
+    font-family: var(--font-sans);
+  }
 
   ::selection {
-    background-color: #bfdbfe;
-    color: #1e3a8a;
+    background-color: #7a3306;
+    color: #fff7ed;
+  }
+
+  html {
+    color-scheme: dark;
+    accent-color: var(--accent);
   }
 
   /* Refined focus rings */
@@ -274,17 +289,24 @@
   .btn-primary:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 4px 16px rgba(180, 83, 9, 0.3);
   }
   .btn-secondary {
-    @apply btn border bg-white text-stone-800;
+    @apply btn border;
+    background: transparent;
+    color: var(--text);
     border-color: var(--border-strong);
   }
   .btn-secondary:hover {
     background: var(--bg-sunken);
   }
   .btn-ghost {
-    @apply btn text-stone-600 hover:bg-stone-100;
+    @apply btn;
+    color: var(--text-secondary);
+  }
+  .btn-ghost:hover {
+    background: var(--bg-sunken);
+    color: var(--text);
   }
 
   /* ---- Cards ---- */
@@ -296,7 +318,7 @@
   }
   .card-hover:hover {
     border-color: var(--border-strong);
-    box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.6);
   }
 
   /* ---- Inputs ---- */
@@ -309,7 +331,7 @@
   .input:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.25);
   }
   .input::placeholder {
     color: var(--text-tertiary);
@@ -533,23 +555,23 @@
   background: #f4ecd8;
   --reader-text: #292524;
   --reader-muted: #57534e;
-  --reader-link: #1d4ed8;
+  --reader-link: #9a4207;
 }
 .reader-surface-dark {
   background: #1c1917;
   --reader-text: #f5f5f4;
   --reader-muted: #d6d3d1;
-  --reader-link: #93c5fd;
+  --reader-link: #f8a94a;
 }
 @media (prefers-color-scheme: dark) {
   /* Default surface on a dark OS: tokens give the text; links need lighter blue. */
   .prose-reader:not(.reader-surface-sepia):not(.reader-surface-dark) {
-    --reader-link: #93c5fd;
+    --reader-link: #f8a94a;
   }
 }
 
 .prose-reader.prose-dark a {
-  color: #93c5fd;
+  color: #f8a94a;
 }
 .prose-reader.prose-dark blockquote {
   color: #d6d3d1;

@@ -5,6 +5,7 @@ import type { Digest } from "../../../lib/types";
 import { DigestView } from "../../../components/digest/DigestView";
 import { OnboardingWizard } from "../../../components/onboarding/OnboardingWizard";
 import { FirstDigestProgress } from "../../../components/onboarding/FirstDigestProgress";
+import { LogoMark } from "../../../components/ui/Logo";
 
 export default function DigestPage() {
   const [digest, setDigest] = useState<Digest | null>(null);
@@ -100,11 +101,11 @@ export default function DigestPage() {
   if (!digest && !generating) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="prism-mark mb-4 text-5xl">◭</div>
-        <h2 className="font-serif text-2xl font-bold text-stone-900">
+        <div className="mb-4 text-white"><LogoMark size={44} /></div>
+        <h2 className="font-playfair text-2xl font-bold text-stone-900 dark:text-stone-100">
           No digest yet
         </h2>
-        <p className="mt-2 max-w-sm text-sm text-stone-500">
+        <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
           Generate your first personalized digest. We’ll rank everything from your
           sources by personal relevance.
         </p>
@@ -115,7 +116,7 @@ export default function DigestPage() {
         >
           Generate digest
         </button>
-        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-300">{error}</p>}
       </div>
     );
   }
@@ -124,12 +125,12 @@ export default function DigestPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
         <div className="relative mb-6 h-12 w-12">
-          <div className="absolute inset-0 animate-spin rounded-full border-2 border-stone-200 border-t-prism-600" />
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-stone-200 border-t-prism-600 dark:border-white/10" />
         </div>
-        <h2 className="font-serif text-xl font-semibold text-stone-900">
+        <h2 className="font-playfair text-xl font-semibold text-stone-900 dark:text-stone-100">
           Building your digest…
         </h2>
-        <p className="mt-2 max-w-sm text-sm text-stone-500">
+        <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
           Ranking items by personal relevance, deduplicating, and sectioning. This
           takes a few seconds.
         </p>

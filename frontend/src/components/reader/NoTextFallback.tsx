@@ -66,18 +66,18 @@ export function NoTextFallback({ item }: { item: ContentItemFull }) {
   return (
     <div className="mx-auto max-w-prose py-12">
       {item.paywalled && (
-        <span className="mb-3 inline-block rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+        <span className="mb-3 inline-block rounded bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600 dark:bg-white/[0.06] dark:text-stone-300">
           Paywalled
         </span>
       )}
       <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
       {summary && (
-        <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600">
+        <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600 dark:text-stone-300">
           <SummaryLabel source={item.summary_source} fromTranscript={Boolean(item.transcript_url)} />
           {summary}
         </p>
       )}
-      <p className="mt-4 text-stone-500">
+      <p className="mt-4 text-stone-500 dark:text-stone-400">
         {item.full_text_withheld
           ? `Read the full article on ${host}.`
           : item.paywalled
@@ -95,7 +95,7 @@ export function NoTextFallback({ item }: { item: ContentItemFull }) {
       </a>
 
       {asking && (
-        <div role="dialog" aria-label="Did you finish it?" className="mt-6 rounded-lg border border-stone-200 p-4">
+        <div role="dialog" aria-label="Did you finish it?" className="mt-6 rounded-lg border border-stone-200 p-4 dark:border-white/10">
           <p className="text-sm font-medium">Welcome back. Did you finish it?</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {ANSWERS.map((a) => (
@@ -103,7 +103,7 @@ export function NoTextFallback({ item }: { item: ContentItemFull }) {
                 key={a.label}
                 type="button"
                 onClick={() => answer(a)}
-                className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100"
+                className="rounded border border-stone-300 px-3 py-1 text-sm hover:bg-stone-100 dark:border-white/20 dark:hover:bg-white/10"
               >
                 {a.label}
               </button>
@@ -111,10 +111,10 @@ export function NoTextFallback({ item }: { item: ContentItemFull }) {
           </div>
         </div>
       )}
-      {answered && <p className="mt-4 text-sm text-stone-500">Thanks, noted: {answered.toLowerCase()}.</p>}
+      {answered && <p className="mt-4 text-sm text-stone-500 dark:text-stone-400">Thanks, noted: {answered.toLowerCase()}.</p>}
 
       <div className="mt-8">
-        <p className="mb-2 text-sm text-stone-500">
+        <p className="mb-2 text-sm text-stone-500 dark:text-stone-400">
           {item.paywalled ? "Rate the premise:" : "Rate it:"}
         </p>
         <FeedbackBar contentItemId={item.id} />
