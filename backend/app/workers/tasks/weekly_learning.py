@@ -63,7 +63,7 @@ async def _run(now: datetime | None = None) -> dict:
             )
             ok = await send_email(
                 to=user.email,
-                subject="What ReadPrism learned about you this week",
+                subject="What Weirling learned about you this week",
                 html_body=html_body,
                 text_body=text_body,
                 extra_headers={

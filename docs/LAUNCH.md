@@ -1,4 +1,4 @@
-# ReadPrism — Launch materials
+# Weirling — Launch materials
 
 Ready-to-use copy for launch posts. Keep it honest and specific; the HN/r/rss
 audience punishes hype and rewards technical substance.
@@ -7,16 +7,16 @@ audience punishes hype and rewards technical substance.
 
 ## Hacker News — title + body
 
-**Title:** Show HN: ReadPrism — an RSS/creator aggregator that ranks by personal relevance
+**Title:** Show HN: Weirling — an RSS/creator aggregator that ranks by personal relevance
 
 **Body:**
 
-Hi HN. I built ReadPrism because following 80 sources left me triaging 200 items
+Hi HN. I built Weirling because following 80 sources left me triaging 200 items
 a day, and every reader I tried was either a chronological firehose (Inoreader)
 or a keyword filter I had to babysit (Feedly Leo).
 
 The core idea: relevance is a relationship between content, a specific person,
-and time — not a property of content alone. So ReadPrism computes a
+and time — not a property of content alone. So Weirling computes a
 Personalized Relevance Score per item, per user, from eight signals:
 
 - Semantic alignment (sentence-transformer embeddings, not keywords)
@@ -40,13 +40,13 @@ I'm most curious about feedback on the cold-start problem — the hardest part o
 any personalization product. I seed curated starter sources + use collaborative
 warmup, but day-1 quality is the existential risk and I'd value thoughts.
 
-Repo: https://github.com/mohitmishra786/readprism
+Repo: https://github.com/mohitmishra786/weirling
 
 ---
 
 ## r/rss and r/selfhosted — shorter version
 
-**Title:** ReadPrism — a self-hostable RSS reader with behavioral ranking (not keyword filters)
+**Title:** Weirling — a self-hostable RSS reader with behavioral ranking (not keyword filters)
 
 **Body:**
 
@@ -72,7 +72,7 @@ the closest analog, though it's keyword/Bayes rather than behavioral+semantic).
 
 ## Positioning one-liner (for anywhere)
 
-> ReadPrism aggregates every source and creator you follow and ranks it by
+> Weirling aggregates every source and creator you follow and ranks it by
 > personal relevance — a learning engine that gets sharper the more you read.
 
 ## Three differentiation bullets (for comments/DMs)

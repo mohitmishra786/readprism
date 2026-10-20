@@ -1,8 +1,8 @@
 # Security model
 
-<p class="lead">The controls a self-hosted ReadPrism has today, as the code
+<p class="lead">The controls a self-hosted Weirling has today, as the code
 implements them. To report a vulnerability, see
-<a href="https://github.com/mohitmishra786/readprism/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+<a href="https://github.com/mohitmishra786/weirling/blob/main/SECURITY.md">SECURITY.md</a>.</p>
 
 | Area | Control |
 |---|---|

@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea for ReadPrism
+about: Suggest an idea for Weirling
 labels: enhancement
 ---
 **Problem to solve**

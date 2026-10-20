@@ -115,7 +115,7 @@ def test_every_item_has_read_rate_and_save_actions():
     for n in range(1, 5):
         for action in ("open", "up", "down", "save"):
             assert f"/e/{action}/item{n}?" in html
-    assert html.count(">Read in ReadPrism</a>") == 4
+    assert html.count(">Read in Weirling</a>") == 4
 
 
 def test_labels_ai_summaries_and_discovery_sources():

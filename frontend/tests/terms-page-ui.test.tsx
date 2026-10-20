@@ -12,7 +12,7 @@ vi.mock("../src/lib/api", () => ({ api: { billing: { state, checkout, portal: vi
 describe("Terms page and links (#178)", () => {
   it("renders Terms of Service with notice and all standard sections", () => {
     render(<TermsPage />);
-    expect(screen.getByRole("heading", { name: "ReadPrism Terms of Service", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Weirling Terms of Service", level: 1 })).toBeInTheDocument();
     expect(screen.getByText(/Template: not legal advice/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "The Service", level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Accounts", level: 2 })).toBeInTheDocument();

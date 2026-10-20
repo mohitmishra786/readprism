@@ -98,7 +98,7 @@ async def test_second_fetch_of_unchanged_feed_is_304_and_skips_parse():
     async def fake_fetch(url: str, **kwargs):
         calls["n"] += 1
         headers = kwargs.get("headers") or {}
-        assert headers.get("User-Agent", "").startswith("ReadPrism/1.0")
+        assert headers.get("User-Agent", "").startswith("Weirling/1.0")
         assert "br" in headers.get("Accept-Encoding", "")
         if headers.get("If-None-Match") == '"v1"' and headers.get("If-Modified-Since"):
             return httpx.Response(304, headers={"ETag": '"v1"'})

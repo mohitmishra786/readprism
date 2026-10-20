@@ -289,7 +289,7 @@ def report_markdown(result: dict, *, label: str) -> str:
         "| Ranker | NDCG@10 | Recall@5 |",
         "|---|---|---|",
     ]
-    names = {"prs": "PRS (ReadPrism)", "newest_first": "Newest first", "trust_only": "Trust only"}
+    names = {"prs": "PRS (Weirling)", "newest_first": "Newest first", "trust_only": "Trust only"}
     for key, name in names.items():
         row = result["rankers"][key]
         fmt = lambda v: "n/a" if v is None else f"{v:.3f}"  # noqa: E731

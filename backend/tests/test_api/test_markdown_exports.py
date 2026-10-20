@@ -39,12 +39,12 @@ def _interaction() -> UserContentInteraction:
 
 def test_logseq_golden_file():
     filename, body = _to_logseq(_saved_item(), _interaction())
-    assert filename.startswith("readprism/Postgres-Full-Text-Search-")
+    assert filename.startswith("weirling/Postgres-Full-Text-Search-")
     assert filename.endswith(".md")
     assert body.startswith("- ## Postgres Full-Text Search")
     assert "source:: https://golden.example/postgres" in body
     assert "author:: Ada" in body
-    assert "type:: readprism" in body
+    assert "type:: weirling" in body
     assert "[[databases]] [[postgres]]" in body
     assert "- > How tsvector works." in body
     assert "- Intro paragraph." in body and "- Second paragraph." in body
@@ -76,7 +76,7 @@ async def test_export_zip_and_logseq_endpoint(
     assert zip_resp.headers["content-type"] == "application/zip"
     with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as zf:
         names = zf.namelist()
-        assert len(names) == 1 and names[0].startswith("readprism/Postgres-Full-Text-Search-")
+        assert len(names) == 1 and names[0].startswith("weirling/Postgres-Full-Text-Search-")
         assert b"- ## Postgres Full-Text Search" in zf.read(names[0])
 
 
@@ -118,7 +118,7 @@ async def test_webhook_export_uses_safe_fetch(
     assert result.status_code == 200
     assert result.json()["delivered"] == 1
     payload = json.loads(delivered[0])
-    assert payload["filename"].startswith("readprism/")
+    assert payload["filename"].startswith("weirling/")
 
     # Cleartext webhook URLs are rejected outright (CWE-319, CodeRabbit).
     blocked = await client.post(

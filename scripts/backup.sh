@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ReadPrism backup/restore (RL-04).
+# Weirling backup/restore (RL-04).
 #
 # backup:  pg_dump (schema+data) + redis BGSAVE snapshot + .env (secrets!)
 #          into a single timestamped tarball.

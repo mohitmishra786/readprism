@@ -13,7 +13,7 @@ from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
 
 # Honest identity plus compression. httpx decodes gzip/deflate always, and
 # brotli when the brotli package is installed.
-_FEED_UA = "ReadPrism/1.0 (+https://readprism.app/bot)"
+_FEED_UA = "Weirling/1.0 (+https://weirling.com/bot)"
 _FEED_HEADERS = {
     "User-Agent": _FEED_UA,
     "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8",
@@ -178,7 +178,7 @@ async def _load_feed_bytes(
     except UnsafeXMLError as e:
         logger.warning("Rejected unsafe feed XML from %s: %s", sanitize_log(url), e)
         return None
-    permanent = resp.headers.get("x-readprism-permanent-url")
+    permanent = resp.headers.get("x-weirling-permanent-url")
     return _HttpFeed(resp.status_code, body, response_etag, response_modified, permanent)
 
 

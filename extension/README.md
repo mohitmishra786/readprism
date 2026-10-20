@@ -1,7 +1,7 @@
-# ReadPrism browser extension
+# Weirling browser extension
 
 A Manifest V3 browser extension for one-click addition of the current page to
-ReadPrism — as a **source** (any publication/blog/feed) or as a **creator**
+Weirling — as a **source** (any publication/blog/feed) or as a **creator**
 (Substack/YouTube/Medium/Reddit/blog).
 
 ## Install (developer mode)
@@ -13,19 +13,19 @@ ReadPrism — as a **source** (any publication/blog/feed) or as a **creator**
 ## Configure
 
 1. Click the extension icon → **Set API token / server**.
-2. Enter your ReadPrism server URL (default `http://localhost:8000` for self-hosted).
-3. Paste your ReadPrism access token (from your account settings).
+2. Enter your Weirling server URL (default `http://localhost:8000` for self-hosted).
+3. Paste your Weirling access token (from your account settings).
 
 ## Use
 
 - Click the extension icon on any page → **Add page as source** / **Add page as creator**.
-- Or right-click the page → **Add page as source/creator in ReadPrism**.
+- Or right-click the page → **Add page as source/creator in Weirling**.
 
 A green OK (or red !) badge on the icon confirms success or failure.
 
 ## How it works
 
-The popup/background scripts call your ReadPrism instance's REST API directly:
+The popup/background scripts call your Weirling instance's REST API directly:
 - `POST /api/v1/sources` for sources
 - `POST /api/v1/creators` for creators
 
@@ -36,7 +36,7 @@ your configured server via the `Authorization: Bearer` header.
 
 The extension does not ask for access to every site (#214):
 
-- **Your ReadPrism server only.** When you save the server URL in the options,
+- **Your Weirling server only.** When you save the server URL in the options,
   the browser asks you to allow that one origin (`optional_host_permissions`).
   `http://localhost:8000` is allowed by default for self-hosting.
 - **The current tab, when you click.** Feed detection runs only when you open

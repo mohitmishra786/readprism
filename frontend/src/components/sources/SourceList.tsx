@@ -77,7 +77,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                   <span
                     title={
                       s.health === "platform_outage"
-                        ? "YouTube's feed service is having an outage. ReadPrism keeps retrying; nothing to fix on your side."
+                        ? "YouTube's feed service is having an outage. Weirling keeps retrying; nothing to fix on your side."
                         : s.last_error || "This source is having trouble updating."
                     }
                     className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${

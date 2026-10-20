@@ -67,12 +67,12 @@ export function AccountNotices() {
     <>
       {isDemo && (
         <div role="status" className={DEMO_NOTICE}>
-          You are exploring the ReadPrism demo. It is read-only and resets nightly.
+          You are exploring the Weirling demo. It is read-only and resets nightly.
         </div>
       )}
       {problems.length > 0 && (
         <div role="alert" className={HEALTH}>
-          <p className="font-medium">This ReadPrism instance needs attention:</p>
+          <p className="font-medium">This Weirling instance needs attention:</p>
           <ul className="mt-1 list-disc pl-5">
             {problems.map((p) => (
               <li key={p.key}>

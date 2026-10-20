@@ -1,6 +1,6 @@
 # Architecture
 
-<p class="lead">ReadPrism collects your feeds, newsletters and creators, ranks what
+<p class="lead">Weirling collects your feeds, newsletters and creators, ranks what
 arrived for you, and delivers a short daily digest that explains each pick.
 This page shows how the pieces fit together.</p>
 
@@ -19,7 +19,7 @@ workers. Everything durable lives in Postgres.
 
 ```mermaid
 flowchart TB
-    accTitle: ReadPrism components
+    accTitle: Weirling components
     accDescr: The web app and extension call the API. The API and the scheduler queue work in Redis, workers pick it up, fetch the web, and everything durable is stored in Postgres.
 
     web["Web app"] --> api["API"]

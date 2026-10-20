@@ -139,7 +139,7 @@ export function OnboardingWizard() {
     <div style={{ maxWidth: 600, margin: "40px auto", padding: "0 16px" }}>
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontSize: "1.5rem", fontWeight: 700, marginBottom: 4 }}>
-          Welcome to ReadPrism
+          Welcome to Weirling
         </h1>
         <p style={{ color: "var(--text-tertiary)" }}>
           Step {step + 1} of {STEPS.length}: {STEPS[step]}
@@ -327,7 +327,7 @@ export function OnboardingWizard() {
           {installer.available && !installed && (
             <div style={{ marginTop: 20, padding: 12, border: "1px solid var(--border)", borderRadius: 8 }}>
               <p style={{ fontSize: 14, marginBottom: 8 }}>
-                Add ReadPrism to your home screen to open your digest in one tap.
+                Add Weirling to your home screen to open your digest in one tap.
               </p>
               <button
                 type="button"
@@ -397,7 +397,7 @@ export function OnboardingWizard() {
               opacity: loading ? 0.7 : 1,
             }}
           >
-            {loading ? "Setting up..." : "Start ReadPrism"}
+            {loading ? "Setting up..." : "Start Weirling"}
           </button>
         )}
       </div>

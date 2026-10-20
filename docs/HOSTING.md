@@ -1,6 +1,6 @@
 # Hosted service
 
-<p class="lead">How to run ReadPrism as a managed, multi-user service: plans,
+<p class="lead">How to run Weirling as a managed, multi-user service: plans,
 billing, abuse limits and account lifecycle.</p>
 
 Everything here applies only with `DEPLOYMENT_MODE=hosted`. A self-hosted

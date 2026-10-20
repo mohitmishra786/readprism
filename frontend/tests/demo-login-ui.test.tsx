@@ -58,14 +58,14 @@ describe("Demo mode UI (#229)", () => {
 
   it("shows demo notice in AccountNotices when user is the demo persona", async () => {
     api.auth.me.mockResolvedValue({
-      email: "demo@readprism.local",
+      email: "demo@weirling.local",
       email_verified: true,
       fetch_paused_until: null,
       is_demo: true,
     });
     render(<AccountNotices />);
     expect(
-      await screen.findByText(/You are exploring the ReadPrism demo. It is read-only and resets nightly./)
+      await screen.findByText(/You are exploring the Weirling demo. It is read-only and resets nightly./)
     ).toBeInTheDocument();
   });
 });

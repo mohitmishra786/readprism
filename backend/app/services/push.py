@@ -179,7 +179,7 @@ async def notify_user(session, user_id, payload: dict) -> dict:
 
 def digest_payload(total_items: int) -> dict:
     return {
-        "title": "Your ReadPrism digest is ready",
+        "title": "Your Weirling digest is ready",
         "body": f"{total_items} items ranked for you.",
         "url": "/digest",
         "tag": "readprism-digest",

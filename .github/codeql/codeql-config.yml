@@ -1,4 +1,4 @@
-name: "ReadPrism CodeQL config"
+name: "Weirling CodeQL config"
 
 # Analyze the deployed application code with the full security-and-quality
 # suite, but exclude non-runtime code that isn't part of the attack surface:

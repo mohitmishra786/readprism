@@ -18,9 +18,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.user import User
 
-TEST_SUBJECT_PREFIX = "ReadPrism address test "
+TEST_SUBJECT_PREFIX = "Weirling address test "
 TEST_TTL_SECONDS = 15 * 60
-_DEFAULT_DOMAIN = "newsletters.readprism.local"
+_DEFAULT_DOMAIN = "newsletters.weirling.local"
 
 
 def _test_key(user_id: uuid.UUID | str) -> str:

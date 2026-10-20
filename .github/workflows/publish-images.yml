@@ -27,7 +27,12 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository }}/readprism-backend
+          # Weirling rename (#340): full paths, so it works before and after the repo
+          # rename; the old name keeps updating until v0.4 for installs that have not
+          # pulled the new compose file.
+          images: |
+            ghcr.io/mohitmishra786/weirling/weirling-backend
+            ghcr.io/mohitmishra786/readprism/readprism-backend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
@@ -44,7 +49,12 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta_lite
         with:
-          images: ghcr.io/${{ github.repository }}/readprism-backend
+          # Weirling rename (#340): full paths, so it works before and after the repo
+          # rename; the old name keeps updating until v0.4 for installs that have not
+          # pulled the new compose file.
+          images: |
+            ghcr.io/mohitmishra786/weirling/weirling-backend
+            ghcr.io/mohitmishra786/readprism/readprism-backend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}-lite
@@ -59,7 +69,12 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta_front
         with:
-          images: ghcr.io/${{ github.repository }}/readprism-frontend
+          # Weirling rename (#340): full paths, so it works before and after the repo
+          # rename; the old name keeps updating until v0.4 for installs that have not
+          # pulled the new compose file.
+          images: |
+            ghcr.io/mohitmishra786/weirling/weirling-frontend
+            ghcr.io/mohitmishra786/readprism/readprism-frontend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
@@ -74,7 +89,12 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta_aio
         with:
-          images: ghcr.io/${{ github.repository }}/readprism-aio
+          # Weirling rename (#340): full paths, so it works before and after the repo
+          # rename; the old name keeps updating until v0.4 for installs that have not
+          # pulled the new compose file.
+          images: |
+            ghcr.io/mohitmishra786/weirling/weirling-aio
+            ghcr.io/mohitmishra786/readprism/readprism-aio
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}

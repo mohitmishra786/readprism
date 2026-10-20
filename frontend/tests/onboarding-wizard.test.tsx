@@ -80,7 +80,7 @@ describe("OnboardingWizard", () => {
     await userEvent.clear(time);
     await userEvent.type(time, "06:30");
     await userEvent.click(screen.getByLabelText(/Email me the digest/));
-    await userEvent.click(screen.getByRole("button", { name: "Start ReadPrism" }));
+    await userEvent.click(screen.getByRole("button", { name: "Start Weirling" }));
 
     expect(api.onboarding.complete).toHaveBeenCalledWith(
       expect.objectContaining({ confirmed_topics: ["Rust", "PostgreSQL"], sample_ratings: [] }),

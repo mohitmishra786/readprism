@@ -1,6 +1,6 @@
 """Plan entitlements: per-plan quotas on hosted (#109, #172).
 
-ReadPrism runs in one of two deployment modes (`DEPLOYMENT_MODE`):
+Weirling runs in one of two deployment modes (`DEPLOYMENT_MODE`):
 
 - `selfhost` (default): the instance owner's server. No plans, no quotas,
   never an "upgrade" message. Only a short guard against double-clicking

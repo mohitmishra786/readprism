@@ -2,7 +2,7 @@
 
 *Template: needs counsel review. Adapt to your jurisdiction, operational structure, and applicable data protection regulations before adopting.*
 
-This runbook establishes the operational procedure for detecting, containing, assessing, and notifying stakeholders of personal data breaches affecting ReadPrism instances.
+This runbook establishes the operational procedure for detecting, containing, assessing, and notifying stakeholders of personal data breaches affecting Weirling instances.
 
 ---
 
@@ -56,7 +56,7 @@ Assess the scope, nature, and severity of the compromised data:
    - Identity data: Email addresses, display names, bcrypt password hashes.
    - Private user content: Forwarded newsletters (`content_items` with `owner_user_id`), private RSS feeds.
    - Behavioral data: Reading history, scroll depth, active reading duration, topic weights, interest nodes.
-   - Billing & payment: Customer IDs, subscription state (note: credit cards are handled exclusively by Lemon Squeezy / Paddle and never touch ReadPrism).
+   - Billing & payment: Customer IDs, subscription state (note: credit cards are handled exclusively by Lemon Squeezy / Paddle and never touch Weirling).
 2. **Determine Exposure Volume:**
    - Query access logs to determine exact count of affected `user_id` records.
    - Determine whether data was exfiltrated or merely viewed/indexed.
@@ -142,11 +142,11 @@ Submitted by:
 ### Template B: Affected User Advisory Email
 
 ```text
-Subject: Important security notice regarding your ReadPrism account
+Subject: Important security notice regarding your Weirling account
 
 Dear [Name / Reader],
 
-We are writing to inform you of a security incident that may have affected information associated with your ReadPrism account on [Date / Time UTC].
+We are writing to inform you of a security incident that may have affected information associated with your Weirling account on [Date / Time UTC].
 
 What happened:
 On [Date], we identified [brief plain-language description: e.g. unauthorized access to a database backup / a vulnerability allowing unauthorized viewing of reading profiles]. We took immediate steps to contain the issue and secured the affected systems within [X hours].
@@ -154,7 +154,7 @@ On [Date], we identified [brief plain-language description: e.g. unauthorized ac
 What information was involved:
 Our investigation confirms that the following data associated with your account was accessed:
 - [List specific categories: e.g., your email address and reading list]
-- Note: Your password was stored as a salted bcrypt cryptographic hash and was not exposed in plaintext. Payment card information is handled entirely by our merchant of record ([Lemon Squeezy / Paddle]) and never touches ReadPrism servers.
+- Note: Your password was stored as a salted bcrypt cryptographic hash and was not exposed in plaintext. Payment card information is handled entirely by our merchant of record ([Lemon Squeezy / Paddle]) and never touches Weirling servers.
 
 What we have done:
 - Immediately rotated all server access credentials and invalidated all active sessions.
@@ -170,7 +170,7 @@ If you have questions or concerns, please contact our Grievance Officer directly
 
 Sincerely,
 [Name / Title]
-ReadPrism Team
+Weirling Team
 ```
 
 ---

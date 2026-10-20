@@ -27,7 +27,7 @@ async function axeViolations(page: import("@playwright/test").Page): Promise<Axe
 
 test("home page renders and has no serious axe violations", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveTitle(/ReadPrism/i);
+  await expect(page).toHaveTitle(/Weirling/i);
   await injectAxe(page);
   const results = await axeViolations(page);
   const serious = results.violations.filter((v) =>
@@ -52,7 +52,7 @@ test("login page has no serious axe violations", async ({ page }) => {
 
 test("privacy page lists the data and has no serious axe violations (#134)", async ({ page }) => {
   await page.goto("/privacy");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/What ReadPrism collects/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/What Weirling collects/);
   await expect(page.getByRole("cell", { name: "read_completion_pct" })).toBeVisible();
   await injectAxe(page);
   const results = await axeViolations(page);
@@ -64,7 +64,7 @@ test("PWA surface: manifest and service worker are served", async ({ request }) 
   const manifest = await request.get("/manifest.json");
   expect(manifest.ok()).toBeTruthy();
   const body = await manifest.json();
-  expect(body.name).toBe("ReadPrism");
+  expect(body.name).toBe("Weirling");
   expect(body.icons.length).toBeGreaterThan(0);
 
   const sw = await request.get("/sw.js");

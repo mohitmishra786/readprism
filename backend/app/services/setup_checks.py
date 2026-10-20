@@ -51,11 +51,9 @@ async def check_llm(*, base_url: str, api_key: str, model: str) -> tuple[bool, s
 
 
 def _send_smtp(*, host: str, port: int, username: str, password: str, to: str) -> tuple[bool, str]:
-    msg = MIMEText(
-        "This is a test from your ReadPrism setup screen. Email delivery works.", "plain"
-    )
-    msg["Subject"] = "ReadPrism test email"
-    msg["From"] = f"ReadPrism <{username}>"
+    msg = MIMEText("This is a test from your Weirling setup screen. Email delivery works.", "plain")
+    msg["Subject"] = "Weirling test email"
+    msg["From"] = f"Weirling <{username}>"
     msg["To"] = to
     try:
         with smtplib.SMTP(host, port, timeout=20) as server:

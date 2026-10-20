@@ -1,6 +1,6 @@
 # Decision records
 
-<p class="lead">Why ReadPrism is built the way it is. Each record states the
+<p class="lead">Why Weirling is built the way it is. Each record states the
 problem, the options considered and the decision, so a change of course can
 start from the same facts.</p>
 

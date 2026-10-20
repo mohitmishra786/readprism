@@ -107,6 +107,6 @@ async def send_test(
     counts = await push.notify_user(
         session,
         current_user.id,
-        {"title": "ReadPrism", "body": "Digest alerts are on for this device.", "url": "/digest"},
+        {"title": "Weirling", "body": "Digest alerts are on for this device.", "url": "/digest"},
     )
     return counts

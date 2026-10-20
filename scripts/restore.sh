@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore a ReadPrism backup tarball (RL-04). DESTRUCTIVE for the target DB.
+# Restore a Weirling backup tarball (RL-04). DESTRUCTIVE for the target DB.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

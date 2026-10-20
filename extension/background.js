@@ -1,4 +1,4 @@
-// ReadPrism extension background service worker.
+// Weirling extension background service worker.
 // Adds context-menu items for one-click source/creator addition.
 
 const API_BASE_DEFAULT = "http://localhost:8000";
@@ -18,7 +18,7 @@ async function addAsSource(tab) {
   const apiBase = await getApiBase();
   const token = await getToken();
   if (!token) {
-    return { ok: false, error: "No API token set. Open extension options to add your ReadPrism token." };
+    return { ok: false, error: "No API token set. Open extension options to add your Weirling token." };
   }
   const res = await fetch(`${apiBase}/api/v1/sources`, {
     method: "POST",
@@ -39,7 +39,7 @@ async function addAsCreator(tab) {
   const apiBase = await getApiBase();
   const token = await getToken();
   if (!token) {
-    return { ok: false, error: "No API token set. Open extension options to add your ReadPrism token." };
+    return { ok: false, error: "No API token set. Open extension options to add your Weirling token." };
   }
   const res = await fetch(`${apiBase}/api/v1/creators`, {
     method: "POST",
@@ -58,22 +58,22 @@ async function addAsCreator(tab) {
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
-    id: "readprism-add-source",
-    title: "Add page as source in ReadPrism",
+    id: "weirling-add-source",
+    title: "Add page as source in Weirling",
     contexts: ["page"],
   });
   chrome.contextMenus.create({
-    id: "readprism-add-creator",
-    title: "Add page as creator in ReadPrism",
+    id: "weirling-add-creator",
+    title: "Add page as creator in Weirling",
     contexts: ["page"],
   });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   let result;
-  if (info.menuItemId === "readprism-add-source") {
+  if (info.menuItemId === "weirling-add-source") {
     result = await addAsSource(tab);
-  } else if (info.menuItemId === "readprism-add-creator") {
+  } else if (info.menuItemId === "weirling-add-creator") {
     result = await addAsCreator(tab);
   } else {
     return;
@@ -110,7 +110,7 @@ async function saveAndRate(tab, rating) {
   const apiBase = await getApiBase();
   const token = await getToken();
   if (!token) {
-    return { ok: false, error: "No API token set. Open extension options to add your ReadPrism token." };
+    return { ok: false, error: "No API token set. Open extension options to add your Weirling token." };
   }
   const res = await fetch(`${apiBase}/api/v1/extension/save`, {
     method: "POST",

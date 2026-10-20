@@ -1,7 +1,7 @@
 apiVersion: 1
 providers:
-  - name: ReadPrism
-    folder: ReadPrism
+  - name: Weirling
+    folder: Weirling
     type: file
     options:
       path: /var/lib/grafana/dashboards

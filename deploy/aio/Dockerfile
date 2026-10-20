@@ -1,4 +1,4 @@
-# ReadPrism all-in-one image (#208): API, three queue workers, beat and the web
+# Weirling all-in-one image (#208): API, three queue workers, beat and the web
 # app in one container, supervised by s6-overlay. Pair it with Postgres and
 # Redis for a 3-container install: docker compose -f compose.aio.yml up -d
 #

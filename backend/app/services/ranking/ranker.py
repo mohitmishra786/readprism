@@ -630,7 +630,7 @@ def _explain(
     """Name the one or two strongest signals that actually had evidence (#143)."""
     learned = [name for name in have if name not in ("content_quality", "temporal_context")]
     if not learned:
-        return "New to ReadPrism: ranked by freshness and depth while it learns what you read"
+        return "New to Weirling: ranked by freshness and depth while it learns what you read"
     ordered = sorted(have, key=lambda name: contributions[name], reverse=True)
     parts: list[str] = []
     for name in ordered:

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from app.services.cold_start.starter_packs import list_starter_packs
 
-UA = "ReadPrism/1.0 (+https://readprism.app/bot) starter-pack-liveness"
+UA = "Weirling/1.0 (+https://weirling.com/bot) starter-pack-liveness"
 TIMEOUT = 15.0
 MIN_LIVE_RATIO = 0.90
 

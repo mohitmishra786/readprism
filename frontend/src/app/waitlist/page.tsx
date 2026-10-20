@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { MarketingShell } from "../../components/marketing/MarketingShell";
 
 export const metadata: Metadata = {
-  title: "Hosted ReadPrism — early access",
+  title: "Hosted Weirling — early access",
   description:
-    "A hosted ReadPrism (no self-hosting required) is planned for knowledge workers. Register interest and get notified when the beta opens.",
+    "A hosted Weirling (no self-hosting required) is planned for knowledge workers. Register interest and get notified when the beta opens.",
   alternates: { canonical: "/waitlist" },
 };
 
@@ -13,9 +13,9 @@ export default function Waitlist() {
   return (
     <MarketingShell>
       <article className="prose-reader">
-        <h1 className="font-serif text-3xl font-bold">Hosted ReadPrism — early access</h1>
+        <h1 className="font-serif text-3xl font-bold">Hosted Weirling — early access</h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">
-          ReadPrism is open source and self-hostable today. A fully-hosted option
+          Weirling is open source and self-hostable today. A fully-hosted option
           — no Docker, no server — is planned for people who want the behavioral
           ranking without running the stack. Want to know when the beta opens?
         </p>
@@ -23,7 +23,7 @@ export default function Waitlist() {
           <li>
             <strong>Get notified:</strong>{" "}
             <a
-              href="mailto:hello@readprism.app?subject=ReadPrism%20hosted%20beta%20waitlist"
+              href="mailto:hello@weirling.com?subject=Weirling%20hosted%20beta%20waitlist"
               className="text-prism-700 underline"
             >
               email us to join the waitlist
@@ -33,7 +33,7 @@ export default function Waitlist() {
           <li>
             <strong>Follow along:</strong>{" "}
             <a
-              href="https://github.com/mohitmishra786/readprism"
+              href="https://github.com/mohitmishra786/weirling"
               className="text-prism-700 underline"
             >
               star / watch the repo

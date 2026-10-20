@@ -168,7 +168,7 @@ export default function PreferencesPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "readprism-export.json";
+      a.download = "weirling-export.json";
       a.click();
       URL.revokeObjectURL(url);
     } catch {}
@@ -475,7 +475,7 @@ export default function PreferencesPage() {
             }}
           />
           <span>
-            Email me once a week with what ReadPrism learned: topics rising and fading, and the
+            Email me once a week with what Weirling learned: topics rising and fading, and the
             source I finish most, each with a one-click undo.
           </span>
         </label>
@@ -497,7 +497,7 @@ export default function PreferencesPage() {
       <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
         <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
-          Download a portable copy of everything ReadPrism stores about you, or
+          Download a portable copy of everything Weirling stores about you, or
           permanently delete your account. <a href="/privacy" style={{ textDecoration: "underline" }}>What we collect and why</a>.
           {" "}Running this instance? <a href="/admin/setup" style={{ textDecoration: "underline" }}>Instance setup</a> and{" "}
           <a href="/admin/metrics" style={{ textDecoration: "underline" }}>product metrics</a> (owner only).

@@ -2,18 +2,18 @@
 
 *Template: needs counsel review. Do not sign or execute without legal review by qualified counsel in your jurisdiction.*
 
-This Data Processing Addendum ("DPA") supplements the Terms of Service between **[Customer / Data Controller Name]** ("Controller") and **[ReadPrism Operator / Service Provider Legal Entity Name]** ("Processor").
+This Data Processing Addendum ("DPA") supplements the Terms of Service between **[Customer / Data Controller Name]** ("Controller") and **[Weirling Operator / Service Provider Legal Entity Name]** ("Processor").
 
 ---
 
 ## 1. Parties
 
 - **Data Controller:** [Company Name / Customer Name], with principal place of business at [Address], represented by [Name, Title]. Contact: [Email].
-- **Data Processor:** [ReadPrism Operator Legal Entity], with principal place of business at [Address], represented by [Name, Title]. Contact: [Email / Grievance Officer].
+- **Data Processor:** [Weirling Operator Legal Entity], with principal place of business at [Address], represented by [Name, Title]. Contact: [Email / Grievance Officer].
 
 ## 2. Subject matter
 
-The subject matter of the data processing under this DPA is the provision of the ReadPrism content aggregation, ranking, and personal reading digest service pursuant to the Terms of Service.
+The subject matter of the data processing under this DPA is the provision of the Weirling content aggregation, ranking, and personal reading digest service pursuant to the Terms of Service.
 
 ## 3. Processing duration
 
@@ -30,7 +30,7 @@ The personal data processed includes:
 
 ## 5. Subprocessors
 
-Controller grants general authorization to Processor to engage third-party subprocessors to support delivery of the Service. A current list of subprocessors is maintained at [/subprocessors](https://readprism.app/subprocessors) and in `docs/THIRD_PARTY_SERVICES.md`.
+Controller grants general authorization to Processor to engage third-party subprocessors to support delivery of the Service. A current list of subprocessors is maintained at [/subprocessors](https://weirling.com/subprocessors) and in `docs/THIRD_PARTY_SERVICES.md`.
 
 Processor shall:
 1. Impose data protection terms on any subprocessor no less protective than those in this DPA;

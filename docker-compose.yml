@@ -20,7 +20,7 @@ volumes:
 # Shared config for the queue-specific Celery workers (audit 07-2). `x-` keys are
 # ignored by Compose; the anchor is merged into each worker service below.
 x-worker-base: &worker-base
-  image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
+  image: ghcr.io/mohitmishra786/weirling/weirling-backend:${WEIRLING_VERSION:-${READPRISM_VERSION:-latest}}
   env_file:
     - .env
   environment:
@@ -96,7 +96,7 @@ services:
       - readprism_net
 
   backend:
-    image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
+    image: ghcr.io/mohitmishra786/weirling/weirling-backend:${WEIRLING_VERSION:-${READPRISM_VERSION:-latest}}
     env_file:
       - .env
     environment:
@@ -155,7 +155,7 @@ services:
       test: ["CMD-SHELL", "celery -A app.workers.celery_app inspect ping -d digest@$$HOSTNAME || exit 1"]
 
   beat:
-    image: ghcr.io/mohitmishra786/readprism/readprism-backend:${READPRISM_VERSION:-latest}
+    image: ghcr.io/mohitmishra786/weirling/weirling-backend:${WEIRLING_VERSION:-${READPRISM_VERSION:-latest}}
     env_file:
       - .env
     environment:
@@ -222,7 +222,7 @@ services:
   # Self-run metrics (#170), off by default:
   #   docker compose --profile monitoring up -d
   # Grafana on http://localhost:3002 (admin / GRAFANA_ADMIN_PASSWORD, default
-  # "admin"), dashboard "ReadPrism overview". Prometheus is not published.
+  # "admin"), dashboard "Weirling overview". Prometheus is not published.
   prometheus:
     image: prom/prometheus:v3.5.0
     profiles: ["monitoring"]
@@ -264,7 +264,7 @@ services:
       - readprism_net
 
   frontend:
-    image: ghcr.io/mohitmishra786/readprism/readprism-frontend:${READPRISM_VERSION:-latest}
+    image: ghcr.io/mohitmishra786/weirling/weirling-frontend:${WEIRLING_VERSION:-${READPRISM_VERSION:-latest}}
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
     ports:

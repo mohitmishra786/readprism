@@ -1,4 +1,4 @@
-# ReadPrism all-in-one (#208): three containers instead of eight.
+# Weirling all-in-one (#208): three containers instead of eight.
 #
 #   ./scripts/init_env.sh                      # once: .env with fresh secrets
 #   docker compose -f compose.aio.yml up -d
@@ -19,7 +19,7 @@ volumes:
 
 services:
   readprism:
-    image: ghcr.io/mohitmishra786/readprism/readprism-aio:${READPRISM_VERSION:-latest}
+    image: ghcr.io/mohitmishra786/weirling/weirling-aio:${WEIRLING_VERSION:-${READPRISM_VERSION:-latest}}
     build:
       context: .
       dockerfile: deploy/aio/Dockerfile

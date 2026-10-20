@@ -1,7 +1,7 @@
 """Email verification and per-domain signup limits (#175).
 
 On hosted instances an account must prove it owns its address before
-ReadPrism sends it anything but the verification link, and before inbound
+Weirling sends it anything but the verification link, and before inbound
 newsletters for it are accepted. Otherwise a stranger could sign up with
 someone else's address and point daily digests at them, which also burns the
 sender's reputation. Self-hosted instances skip this by default: the owner
@@ -126,16 +126,16 @@ async def send_verification_email(user: User) -> bool:
     html = (
         '<div style="font-family:sans-serif;max-width:480px;margin:0 auto">'
         '<h1 style="font-size:1.3rem;color:#1d4ed8">Confirm your email</h1>'
-        "<p>Confirm this address to start receiving your ReadPrism digest. "
+        "<p>Confirm this address to start receiving your Weirling digest. "
         f"The link expires in {s.email_verification_expire_hours} hours.</p>"
         f'<p><a href="{escape(link)}" style="display:inline-block;background:#1d4ed8;'
         'color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none">'
         "Confirm email</a></p>"
-        '<p style="font-size:12px;color:#6b7280">If you didn\'t create a ReadPrism '
+        '<p style="font-size:12px;color:#6b7280">If you didn\'t create a Weirling '
         "account, ignore this email and nothing more will be sent.</p>"
         "</div>"
     )
-    return await send_email(to=user.email, subject="Confirm your ReadPrism email", html_body=html)
+    return await send_email(to=user.email, subject="Confirm your Weirling email", html_body=html)
 
 
 def email_domain(email: str) -> str:

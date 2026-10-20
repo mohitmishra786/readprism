@@ -38,7 +38,7 @@ export const SUBPROCESSORS: Subprocessor[] = [
     dataSent: "Customer email, country, billing token",
     location: "United States / UK",
     termsNotes:
-      "Merchant of record processes payment data directly; card details never touch ReadPrism servers.",
+      "Merchant of record processes payment data directly; card details never touch Weirling servers.",
   },
   {
     service: "Browserless / Chrome",

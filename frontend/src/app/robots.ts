@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://weirling.com";
 
 // Audit 11-3: expose a crawlable robots policy. The authenticated app routes are
 // user-specific and shouldn't be indexed; the marketing/comparison pages should.

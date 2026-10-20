@@ -275,7 +275,7 @@ async def safe_fetch(
                     not in {"content-encoding", "content-length", "transfer-encoding"}
                 ]
                 if saw_redirect and all_permanent and current.rstrip("/") != url.rstrip("/"):
-                    forwarded.append(("x-readprism-permanent-url", current))
+                    forwarded.append(("x-weirling-permanent-url", current))
                 return httpx.Response(
                     status_code=resp.status_code,
                     headers=forwarded,

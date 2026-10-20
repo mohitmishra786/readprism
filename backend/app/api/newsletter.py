@@ -380,7 +380,7 @@ async def send_address_test(
     sent = await send_email(
         to=na.address_for(token),
         subject=f"{na.TEST_SUBJECT_PREFIX}{nonce}",
-        html_body="<p>This is a ReadPrism test of your newsletter address.</p>",
+        html_body="<p>This is a Weirling test of your newsletter address.</p>",
     )
     if not sent:
         raise HTTPException(

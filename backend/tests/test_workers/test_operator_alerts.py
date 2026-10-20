@@ -154,7 +154,7 @@ async def test_notifies_once_repeats_and_resolves(db_session, monkeypatch):
     ):
         done = await alerts.run(db_session, now=NOW + 14 * 3600, redis=redis)
     assert done["resolved"] == ["ingest_stall"]
-    assert notify.await_args.args[0] == "[ReadPrism] Resolved: ingest_stall"
+    assert notify.await_args.args[0] == "[Weirling] Resolved: ingest_stall"
     assert notify.await_count == 3
 
 
@@ -171,8 +171,8 @@ async def test_ntfy_delivery(monkeypatch):
         return httpx.Response(200)
 
     with patch("httpx.AsyncClient.post", fake_post):
-        assert await alerts._notify("[ReadPrism] x", "body") == 1
-    assert seen == {"url": "https://ntfy.example/rp", "body": b"body", "title": "[ReadPrism] x"}
+        assert await alerts._notify("[Weirling] x", "body") == 1
+    assert seen == {"url": "https://ntfy.example/rp", "body": b"body", "title": "[Weirling] x"}
 
 
 def test_alerts_are_scheduled_on_two_queues():

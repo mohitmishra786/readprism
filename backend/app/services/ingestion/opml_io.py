@@ -79,7 +79,7 @@ def plan_import(
     )
 
 
-def export_opml(feeds: list[OpmlFeed], title: str = "ReadPrism") -> str:
+def export_opml(feeds: list[OpmlFeed], title: str = "Weirling") -> str:
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<opml version="2.0">',

@@ -1,4 +1,4 @@
-// Everything ReadPrism stores in your browser (#211). All of it is essential
+// Everything Weirling stores in your browser (#211). All of it is essential
 // or a remembered setting: no analytics, advertising or tracking, so there is
 // no consent banner. backend/tests/test_utils/test_privacy_page.py checks
 // that every cookie the API sets and every localStorage key the app writes

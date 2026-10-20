@@ -22,7 +22,7 @@ init_sentry("api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    logger.info("ReadPrism API starting up...")
+    logger.info("Weirling API starting up...")
 
     # Initialize embedding model
     from app.utils.embeddings import get_embedding_service
@@ -75,7 +75,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     yield
 
-    logger.info("ReadPrism API shutting down...")
+    logger.info("Weirling API shutting down...")
     from app.database import engine
 
     await engine.dispose()
@@ -83,7 +83,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="ReadPrism API",
+        title="Weirling API",
         version="1.0.0",
         description="Personalized Content Intelligence Platform API",
         lifespan=lifespan,

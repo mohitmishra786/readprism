@@ -57,7 +57,7 @@ async def unsubscribe_get(
     if not ok:
         return HTMLResponse("<p>This unsubscribe link is invalid or expired.</p>", status_code=400)
     return HTMLResponse(
-        "<p>You've been unsubscribed from ReadPrism digest emails. "
+        "<p>You've been unsubscribed from Weirling digest emails. "
         "You can re-enable them anytime in your preferences.</p>"
     )
 
@@ -174,7 +174,7 @@ def _confirmation_page(
         f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReadPrism — {label}</title>
+<title>Weirling — {label}</title>
 <style>
  body {{ font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
         align-items: center; justify-content: center; background: #f8fafc; margin: 0; }}
@@ -322,7 +322,7 @@ def _topic_confirmation_page(action: str, uid: str, topic: str, exp: int, sig: s
     target = html.escape(f"/api/v1/digest/t/{action}?{query}", quote=True)
     return HTMLResponse(
         f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Weirling</title></head>
 <body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
 <form method="post" action="{target}" id="confirm">
 <p>{html.escape(label)} <strong>{html.escape(topic)}</strong>?</p><button type="submit">Confirm</button></form>
@@ -400,7 +400,7 @@ async def user_action_link(
     )
     return HTMLResponse(
         f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Weirling</title></head>
 <body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
 <form method="post" action="{target}" id="confirm"><p>Switch to one digest a week?</p>
 <button type="submit">Switch to weekly</button></form>

@@ -23,7 +23,7 @@ _RAISE = {
     "semantic": "Add or boost the topic {topic} in your interests",
     "reading_depth": "Finish a few articles of this length; depth is learned from what you complete",
     "suggestion": "Read discovery picks to the end; finished discoveries teach this signal",
-    "explicit_feedback": "Rate similar articles up (or this one) so ReadPrism knows you want them",
+    "explicit_feedback": "Rate similar articles up (or this one) so Weirling knows you want them",
     "source_trust": "Read and rate articles from this source; trust is learned per source",
     "content_quality": "Nothing to change: this is a property of the article (length, sources, depth)",
     "temporal_context": "Nothing to change: newer articles get a small freshness boost",

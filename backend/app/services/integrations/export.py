@@ -139,7 +139,7 @@ def _to_logseq(content: ContentItem, interaction: UserContentInteraction) -> tup
         f"source:: {content.url}",
         f"author:: {content.author or 'unknown'}",
         f"saved:: {saved_at}",
-        "type:: readprism",
+        "type:: weirling",
     ]
     if content.topic_clusters:
         props.append("topics:: " + " ".join(f"[[{t}]]" for t in content.topic_clusters[:5]))
@@ -162,11 +162,11 @@ def _to_logseq(content: ContentItem, interaction: UserContentInteraction) -> tup
     import hashlib
 
     uid = str(content.id)[:8] if content.id else hashlib.sha1(content.url.encode()).hexdigest()[:8]
-    return f"readprism/{_slugify(content.title)}-{uid}.md", "\n".join(lines) + "\n"
+    return f"weirling/{_slugify(content.title)}-{uid}.md", "\n".join(lines) + "\n"
 
 
 async def export_to_logseq(user_id: uuid.UUID, session: AsyncSession) -> list[dict]:
-    """Saved items as Logseq pages under a readprism/ folder (EC-05)."""
+    """Saved items as Logseq pages under a weirling/ folder (EC-05)."""
     items = await _get_saved_items(user_id, session)
     out: list[dict] = []
     for content, interaction in items:

@@ -184,7 +184,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     }
 
-    subject = f"Your ReadPrism Digest — {digest.generated_at.strftime('%B %d, %Y')}"
+    subject = f"Your Weirling Digest — {digest.generated_at.strftime('%B %d, %Y')}"
     success = await send_email(
         to=user.email,
         subject=subject,
@@ -209,7 +209,7 @@ def _fallback_html(user: User, sections: dict) -> str:
     # third-party content and would otherwise inject HTML into the email (XSS,
     # audit 06-7). The Jinja template autoescapes; this hand-built fallback must
     # do so explicitly.
-    parts = ["<h1>Your ReadPrism Digest</h1>"]
+    parts = ["<h1>Your Weirling Digest</h1>"]
     for section_name, items in sections.items():
         parts.append(f"<h2>{escape(section_name.replace('_', ' ').title())}</h2>")
         for item_data in items:
@@ -232,7 +232,7 @@ def _fallback_html(user: User, sections: dict) -> str:
 def _build_text_body(
     user: User, sections: dict, preferences_url: str = "", unsubscribe: str = ""
 ) -> str:
-    lines = ["Your ReadPrism Digest\n", "=" * 40]
+    lines = ["Your Weirling Digest\n", "=" * 40]
     for section_name, items in sections.items():
         lines.append(f"\n{section_name.upper().replace('_', ' ')}\n" + "-" * 30)
         for item_data in items:

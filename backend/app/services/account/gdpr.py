@@ -1,6 +1,6 @@
 """GDPR/CCPA account data export + erasure (audit 06-3).
 
-ReadPrism stores email, reading telemetry, an interest graph, learned weights
+Weirling stores email, reading telemetry, an interest graph, learned weights
 and interaction history — behavioural personal data. EU/California users have a
 right to a portable copy of it (Art. 20 / CCPA) and to erasure (Art. 17). These
 helpers back the `/account/export` and `DELETE /account` endpoints.
@@ -145,7 +145,7 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             # 2 (#200): adds digest_items and content metadata; additive.
             "format_version": 2,
             "note": (
-                "Portable copy of your ReadPrism personal data (GDPR Art. 20 / CCPA). "
+                "Portable copy of your Weirling personal data (GDPR Art. 20 / CCPA). "
                 "Derived embedding vectors and your password hash are excluded."
             ),
         },

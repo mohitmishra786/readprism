@@ -189,7 +189,7 @@ export default function RootPage() {
           >
             <path d="M 128 0 L 256 128 L 128 256 L 0 128 Z M 128 64 L 64 128 L 128 192 L 192 128 Z" />
           </svg>
-          <span className="text-white text-2xl font-playfair italic">ReadPrism</span>
+          <span className="text-white text-2xl font-playfair italic">Weirling</span>
         </Link>
 
         {/* Center pill (desktop) */}

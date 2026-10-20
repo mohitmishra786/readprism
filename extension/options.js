@@ -13,7 +13,7 @@ chrome.storage.sync.get({ apiBase: "http://localhost:8000" }, (cfg) => {
   apiBaseEl.value = cfg.apiBase;
 });
 
-// The extension may talk only to your own ReadPrism server (#214): saving
+// The extension may talk only to your own Weirling server (#214): saving
 // asks the browser for access to that one origin, nothing broader.
 function originPattern(apiBase) {
   try {
@@ -30,13 +30,13 @@ document.getElementById("save").addEventListener("click", async () => {
   const token = tokenEl.value.trim();
   const pattern = originPattern(apiBase);
   if (!pattern) {
-    savedEl.textContent = "Enter the full server URL, e.g. https://readprism.example.com";
+    savedEl.textContent = "Enter the full server URL, e.g. https://weirling.example.com";
     return;
   }
   // Must run inside the click (user gesture) for the browser to prompt.
   const granted = await chrome.permissions.request({ origins: [pattern] }).catch(() => false);
   if (!granted) {
-    savedEl.textContent = "ReadPrism needs access to your server to save pages. Not saved.";
+    savedEl.textContent = "Weirling needs access to your server to save pages. Not saved.";
     return;
   }
   // Persist apiBase (non-secret) to sync; token (secret) to local only.

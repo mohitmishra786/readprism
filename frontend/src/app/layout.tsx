@@ -31,22 +31,22 @@ const mono = JetBrains_Mono({
   preload: false,
 });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://weirling.com";
 
 // Positioning per audit 12-1: retire "Personalized Content Intelligence
 // Platform"; lead with the plain, provable value.
 const TAGLINE = "The reading app that ranks by how you actually read";
 const DESCRIPTION =
-  "ReadPrism aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read. Open source and self-hostable.";
+  "Weirling aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read. Open source and self-hostable.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `ReadPrism — ${TAGLINE}`,
-    template: "%s — ReadPrism",
+    default: `Weirling — ${TAGLINE}`,
+    template: "%s — Weirling",
   },
   description: DESCRIPTION,
-  applicationName: "ReadPrism",
+  applicationName: "Weirling",
   keywords: [
     "RSS reader",
     "self-hosted RSS reader",
@@ -57,18 +57,18 @@ export const metadata: Metadata = {
     "newsletter aggregator",
   ],
   manifest: "/manifest.json",
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "ReadPrism" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Weirling" },
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    siteName: "ReadPrism",
-    title: `ReadPrism — ${TAGLINE}`,
+    siteName: "Weirling",
+    title: `Weirling — ${TAGLINE}`,
     description: DESCRIPTION,
     url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: `ReadPrism — ${TAGLINE}`,
+    title: `Weirling — ${TAGLINE}`,
     description: DESCRIPTION,
   },
   icons: {
@@ -83,7 +83,7 @@ export const metadata: Metadata = {
 const STRUCTURED_DATA = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "ReadPrism",
+  name: "Weirling",
   applicationCategory: "News aggregator, RSS reader",
   operatingSystem: "Web, self-hostable (Docker)",
   description: DESCRIPTION,

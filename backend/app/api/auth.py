@@ -512,7 +512,7 @@ async def magic_link_request(
     link = f"{settings.frontend_url.rstrip('/')}/auth/magic?token={token}"
     html = (
         '<div style="font-family:sans-serif;max-width:480px;margin:0 auto">'
-        '<h1 style="font-size:1.3rem;color:#1d4ed8">Sign in to ReadPrism</h1>'
+        '<h1 style="font-size:1.3rem;color:#1d4ed8">Sign in to Weirling</h1>'
         f"<p>Click to sign in. This link expires in {settings.magic_link_expire_minutes} "
         "minutes and can be used once.</p>"
         f'<p><a href="{link}" style="display:inline-block;background:#1d4ed8;color:#fff;'
@@ -522,7 +522,7 @@ async def magic_link_request(
     )
     from app.utils.email import send_email
 
-    await send_email(to=email, subject="Your ReadPrism sign-in link", html_body=html)
+    await send_email(to=email, subject="Your Weirling sign-in link", html_body=html)
     return {"status": "sent"}
 
 

@@ -129,9 +129,9 @@ def render(
     esc = html.escape
     parts = [
         '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1c1917">',
-        '<h1 style="font-size:20px">What ReadPrism learned about you this week</h1>',
+        '<h1 style="font-size:20px">What Weirling learned about you this week</h1>',
     ]
-    text = ["What ReadPrism learned about you this week", ""]
+    text = ["What Weirling learned about you this week", ""]
     if learning.rising:
         parts.append('<h2 style="font-size:15px">Rising</h2><ul>')
         text.append("Rising:")
@@ -150,7 +150,7 @@ def render(
         link = links[(learning.fading, "more")]
         parts.append(
             f'<h2 style="font-size:15px">Fading</h2><p><strong>{esc(learning.fading)}</strong> is a strong '
-            f"interest you didn't read this week. ReadPrism will show it a little less unless you "
+            f"interest you didn't read this week. Weirling will show it a little less unless you "
             f'<a href="{esc(link, quote=True)}">keep it</a>.</p>'
         )
         text += [f"Fading: {learning.fading}. Keep it: {link}", ""]
@@ -161,7 +161,7 @@ def render(
         )
         text += [f"The source you finished most: {name} ({count} articles).", ""]
     parts.append(
-        f'<p><a href="{esc(frontend_url, quote=True)}/interests">See and edit everything ReadPrism has learned</a></p>'
+        f'<p><a href="{esc(frontend_url, quote=True)}/interests">See and edit everything Weirling has learned</a></p>'
         f'<p style="font-size:12px;color:#78716c">You get this because you turned on the weekly summary. '
         f'<a href="{esc(unsubscribe, quote=True)}" style="color:#78716c">Turn it off</a></p></div>'
     )

@@ -3,18 +3,18 @@
 *Last updated: 2026-07-21.*
 
 !!! info "A template, not legal advice"
-    This is a baseline policy for the ReadPrism software. Operators of a
+    This is a baseline policy for the Weirling software. Operators of a
     hosted instance should have it reviewed by counsel and adapt it to their
     jurisdiction before collecting user data.
 
-ReadPrism is a personalized reading tool. To rank content for you, it processes
+Weirling is a personalized reading tool. To rank content for you, it processes
 data about what you read and how you read it. This document explains what is
 collected, why, how long it is kept, and the controls you have.
 
 ## Who is the data controller
 
 For a **self-hosted** instance, the operator who runs it is the data controller.
-For any **hosted** ReadPrism service, the entity offering that service is the
+For any **hosted** Weirling service, the entity offering that service is the
 controller. This template refers to whoever runs the instance as "we".
 
 ## What we collect
@@ -23,7 +23,7 @@ controller. This template refers to whoever runs the instance as "we".
   your preferences (digest frequency, digest time, timezone, serendipity level,
   tier).
 - **Content you add:** the sources, creators, and OPML feeds you subscribe to,
-  and newsletters you forward to your ReadPrism inbox address.
+  and newsletters you forward to your Weirling inbox address.
 - **Reading telemetry:** for items you open in the in-app reader, we record
   scroll depth, active reading time, whether you reached the end, re-reads,
   completion percentage, saves, shares, skips, and explicit ratings/feedback.
@@ -45,7 +45,7 @@ controller. This template refers to whoever runs the instance as "we".
 We do **not** sell personal data, and we do not use it for advertising.
 
 - **Collaborative warmup (#210):** to give new readers a better first
-  digest, ReadPrism may suggest public articles that at least
+  digest, Weirling may suggest public articles that at least
   `COLLABORATIVE_K_ANONYMITY` readers (default 20) recently finished or
   upvoted, matched to the new reader's own topics. Only per-article counts
   are used, never one person's history, and private items never qualify.
@@ -53,7 +53,7 @@ We do **not** sell personal data, and we do not use it for advertising.
 
 ## Cookies and browser storage
 
-ReadPrism sets only essential cookies, so it shows no consent banner:
+Weirling sets only essential cookies, so it shows no consent banner:
 
 | Name | Purpose | Lifetime |
 |---|---|---|
@@ -104,7 +104,7 @@ never shown to other users, and is only readable by you.
 
 ## Third-party processors
 
-ReadPrism can send data to the third-party services below when configured. See
+Weirling can send data to the third-party services below when configured. See
 [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md) for details.
 
 - **Groq** (and optionally OpenAI): article text/titles are sent to generate
@@ -131,7 +131,7 @@ terms apply to the operator.
 
 Digest emails contain **no tracking pixel** and no per-recipient beacons.
 Links in the email (titles, rate/save) are signed with an expiring HMAC and
-route through your own ReadPrism instance, which records that you opened or
+route through your own Weirling instance, which records that you opened or
 rated an item so the ranking can learn — this is disclosed in the email
 footer. Signed links expire after 30 days.
 
@@ -142,7 +142,7 @@ restriction, objection, and to lodge a complaint with a supervisory authority.
 
 Passwords are hashed with bcrypt. The API authenticates the newsletter webhook,
 guards server-side fetches against SSRF, sanitizes ingested HTML, and rate-limits
-authentication. See [SECURITY.md](https://github.com/mohitmishra786/readprism/blob/main/SECURITY.md) to report a vulnerability.
+authentication. See [SECURITY.md](https://github.com/mohitmishra786/weirling/blob/main/SECURITY.md) to report a vulnerability.
 
 ## Changes
 

@@ -12,7 +12,7 @@ const GROUPS: { id: SetupField["group"]; title: string; intro: string }[] = [
     id: "llm",
     title: "AI summaries (LLM)",
     intro:
-      "Any OpenAI-compatible provider. Without a key ReadPrism still works, with extract summaries.",
+      "Any OpenAI-compatible provider. Without a key Weirling still works, with extract summaries.",
   },
   {
     id: "smtp",
@@ -112,7 +112,7 @@ export default function SetupPage() {
       <div>
         <h1 className="font-serif text-2xl text-stone-900 dark:text-stone-100">Instance setup</h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-          You own this ReadPrism instance. Settings saved here are encrypted on your server. Anything
+          You own this Weirling instance. Settings saved here are encrypted on your server. Anything
           set in <code>.env</code> takes precedence and is shown as locked.
         </p>
         {!config.can_store_secrets && (

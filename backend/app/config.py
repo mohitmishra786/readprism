@@ -198,7 +198,7 @@ class Settings(BaseSettings):
     email_physical_address: str = ""
 
     # Newsletter ingestion
-    newsletter_inbox_domain: str = "inbox.readprism.app"
+    newsletter_inbox_domain: str = "inbox.weirling.com"
     mailgun_api_key: str = ""
     mailgun_domain: str = ""
     # Dedicated Mailgun *Webhook Signing Key* (Settings → API Security), NOT the
@@ -255,11 +255,11 @@ class Settings(BaseSettings):
     # routed to a volatile per-session sandbox), and a nightly beat task re-seeds
     # the demo account.
     demo_mode: bool = False
-    demo_user_email: str = "demo@readprism.local"
+    demo_user_email: str = "demo@weirling.local"
     postmark_webhook_secret: str = ""
     resend_webhook_secret: str = ""
     cloudflare_email_webhook_secret: str = ""
-    newsletter_domain: str = "newsletters.readprism.local"
+    newsletter_domain: str = "newsletters.weirling.local"
 
     # Scraping
     browserless_url: str = "http://browserless:3000"
@@ -277,7 +277,7 @@ class Settings(BaseSettings):
     robots_fail_open: bool = False
     robots_cache_ttl_seconds: int = 86400  # cache robots.txt per host for 24h
     # Scraping posture (audit 08-2). Honest by default:
-    #  - identify as the ReadPrism bot (no browser-impersonation User-Agents), and
+    #  - identify as the Weirling bot (no browser-impersonation User-Agents), and
     #  - on an explicit block (403/429/503), back off instead of escalating to a
     #    headless browser to circumvent it.
     # The 2026 §1201 anti-circumvention landscape targets bypassing anti-bot

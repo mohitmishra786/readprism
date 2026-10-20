@@ -9,7 +9,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.mcp_server import ReadPrismMcpServer
+from app.mcp_server import WeirlingMcpServer
 
 
 def _client() -> AsyncClient:
@@ -18,11 +18,11 @@ def _client() -> AsyncClient:
 
 @pytest.mark.asyncio
 async def test_initialize_and_tools_list_readonly():
-    server = ReadPrismMcpServer("http://test", "rp_ro", client=_client())
+    server = WeirlingMcpServer("http://test", "rp_ro", client=_client())
     server.write_scope = False  # skip the probe; test the gating directly
 
     init = await server.handle({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
-    assert init["result"]["serverInfo"]["name"] == "readprism"
+    assert init["result"]["serverInfo"]["name"] == "weirling"
 
     listed = await server.handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
     names = [t["name"] for t in listed["result"]["tools"]]
@@ -33,7 +33,7 @@ async def test_initialize_and_tools_list_readonly():
 
 @pytest.mark.asyncio
 async def test_write_scope_lists_and_calls_write_tools():
-    server = ReadPrismMcpServer("http://test", "rp_rw", client=_client())
+    server = WeirlingMcpServer("http://test", "rp_rw", client=_client())
     server.write_scope = True
 
     listed = await server.handle({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
@@ -54,7 +54,7 @@ async def test_write_scope_lists_and_calls_write_tools():
 
 @pytest.mark.asyncio
 async def test_notifications_get_no_response_and_unknown_method_errors():
-    server = ReadPrismMcpServer("http://test", "rp_x", client=_client())
+    server = WeirlingMcpServer("http://test", "rp_x", client=_client())
     assert await server.handle({"jsonrpc": "2.0", "method": "notifications/initialized"}) is None
     err = await server.handle({"jsonrpc": "2.0", "id": 9, "method": "bogus"})
     assert err["error"]["code"] == -32601
@@ -73,7 +73,7 @@ async def test_scope_probe_via_403(client: AsyncClient, test_user_data: dict):
         base_url="http://test",
         headers={"Authorization": f"Bearer {token}"},
     )
-    server = ReadPrismMcpServer("http://test", token, client=api_client)
+    server = WeirlingMcpServer("http://test", token, client=api_client)
     await server.detect_scope()
     assert server.write_scope is False
     names = [
@@ -100,7 +100,7 @@ async def test_http_transport_serves_on_localhost():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
-    with patch.object(mcp_server.ReadPrismMcpServer, "detect_scope", AsyncMock()):
+    with patch.object(mcp_server.WeirlingMcpServer, "detect_scope", AsyncMock()):
         task = asyncio.create_task(mcp_server.serve("http://x", "rp_t", http=True, port=port))
         try:
             for _ in range(50):

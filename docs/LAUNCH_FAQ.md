@@ -8,7 +8,7 @@ humble, technical register HN rewards.*
 
 NewsBlur is the closest analog and genuinely good. The difference is *what the
 training is based on*: NewsBlur's Intelligence trains on like/dislike of
-keywords, authors, and tags (transparent, Bayes-style); ReadPrism learns from how
+keywords, authors, and tags (transparent, Bayes-style); Weirling learns from how
 you actually read — semantic embeddings plus real reading telemetry (scroll
 depth, active time) — and models interests as a decaying graph with transitive
 relevance, not flat per-feed classifiers. Less manual training, but it needs more
@@ -44,7 +44,7 @@ MIT (relicensed from AGPL-3.0 on 2026-10-02, decision D-13). Use, modify,
 self-host, and fork freely — keep the license notice. The moat is accumulated
 behavioral data (per-instance, not portable), not license restrictions.
 Contributions take a DCO sign-off
-([CONTRIBUTING.md](https://github.com/mohitmishra786/readprism/blob/main/CONTRIBUTING.md)).
+([CONTRIBUTING.md](https://github.com/mohitmishra786/weirling/blob/main/CONTRIBUTING.md)).
 
 ### Pricing?
 

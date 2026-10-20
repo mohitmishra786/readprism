@@ -1,8 +1,8 @@
-site_name: ReadPrism
+site_name: Weirling
 site_description: A personal reading digest that explains itself. Self-hosted or hosted, MIT.
-site_url: https://readprism.app
-repo_url: https://github.com/mohitmishra786/readprism
-repo_name: mohitmishra786/readprism
+site_url: https://weirling.com
+repo_url: https://github.com/mohitmishra786/weirling
+repo_name: mohitmishra786/weirling
 edit_uri: edit/main/docs/
 
 theme:
@@ -65,6 +65,7 @@ nav:
   - Project:
       - Roadmap: milestones.md
       - Release notes:
+          - v0.3.0: releases/v0.3.0.md
           - v0.2.0: releases/v0.2.0.md
           - Template: releases/TEMPLATE.md
       - Decision records: adr/index.md

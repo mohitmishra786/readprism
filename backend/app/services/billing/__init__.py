@@ -1,7 +1,7 @@
 """Hosted billing through a merchant of record (#173).
 
 A merchant of record (Lemon Squeezy or Paddle) sells the subscription, so the
-operator does not register for VAT/GST in every buyer's country. ReadPrism
+operator does not register for VAT/GST in every buyer's country. Weirling
 only reacts to the provider's signed webhooks:
 
 - `users.tier` is what was bought ("reader", "pro" or "team"); `plan_expires_at` is

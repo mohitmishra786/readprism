@@ -9,7 +9,7 @@ import fs from "node:fs";
 declare const chrome: any;
 
 // The extension's pre-granted origin is http://localhost:8000 (#214); the
-// stub plays the ReadPrism API there and serves a page with a feed link.
+// stub plays the Weirling API there and serves a page with a feed link.
 const API_PORT = 8000;
 const OTHER_PORT = 4568; // an origin the extension has no access to
 const EXTENSION = path.resolve(__dirname, "../../extension");

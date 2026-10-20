@@ -1,8 +1,8 @@
-# ReadPrism
+# Weirling
 
 **The reading app that ranks by how you actually read.**
 
-ReadPrism is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read.
+Weirling is a self-hostable reading tool that aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read.
 
 What makes it different:
 
@@ -10,7 +10,7 @@ What makes it different:
 - **Explainable** — every item shows why it ranked, and the interest graph names the topic connections (vs black-box feeds).
 - **Honest and open** — the full ranking engine is free, closed platforms are marked unsupported rather than silently failing, and the code is open source and self-hostable.
 
-**Who it's for:** built for developers and heavy readers who follow 50+ technical feeds — people who want an explainable, behavioral ranking engine that gets better the more they read. ReadPrism supports both single-tenant self-hosting and multi-tenant hosted operations.
+**Who it's for:** built for developers and heavy readers who follow 50+ technical feeds — people who want an explainable, behavioral ranking engine that gets better the more they read. Weirling supports both single-tenant self-hosting and multi-tenant hosted operations.
 
 The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.md). Where the code has moved on, [`spec/PCIP_Proposal_V2_addendum.md`](spec/PCIP_Proposal_V2_addendum.md) records the decision. The documentation site is built from [`docs/`](docs/index.md): start with [Install & run](docs/DEPLOYMENT.md) or [Architecture](docs/ARCHITECTURE.md). Work status is [`docs/PROGRESS.md`](docs/PROGRESS.md); the reasoning behind the backlog is [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
@@ -18,7 +18,7 @@ The product specification is [`spec/PCIP_Proposal_V2.md`](spec/PCIP_Proposal_V2.
 
 ## Hosted or Self-Host
 
-ReadPrism operates in two deployment modes controlled by `DEPLOYMENT_MODE` (`selfhost` or `hosted`):
+Weirling operates in two deployment modes controlled by `DEPLOYMENT_MODE` (`selfhost` or `hosted`):
 
 - **Self-Hosted (`DEPLOYMENT_MODE=selfhost`, default)**: Single-tenant deployment with no quota or plan gates. All ingested content is readable in full text within the in-app reader (`READER_FULL_TEXT=auto`), email verification defaults to off (`EMAIL_VERIFICATION=auto`), and registration is closed after setup by default (`REGISTRATION_MODE=closed`) to protect your instance.
 - **Hosted (`DEPLOYMENT_MODE=hosted`)**: Multi-tenant offering with Reader and Pro plans, a 30-day trial and per-plan quotas ([docs/HOSTING.md](docs/HOSTING.md)), mandatory email verification (`EMAIL_VERIFICATION=auto`), domain-level signup rate limits (`SIGNUP_PER_DOMAIN_PER_HOUR`), tenant fetch abuse controls (`HOSTED_FETCH_BUDGET_PER_HOUR`), reader full-text syndication safeguards (`READER_FULL_TEXT=auto`), and subscription billing via Lemon Squeezy or Paddle (`BILLING_PROVIDER`).
@@ -43,7 +43,7 @@ open http://localhost:3001    # create your account and onboard
 **Operations**:
 - `make backup` / `make restore FILE=backups/readprism-<ts>.tar.gz` —
   verified round-trip in CI.
-- `make demo` — seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for ReadPrism and released CC0 (`backend/app/data/demo/articles.json`).
+- `make demo` — seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for Weirling and released CC0 (`backend/app/data/demo/articles.json`).
 - `make starter-pack-check` — verify starter-pack feed liveness (>=90%).
 
 ## Screenshots
@@ -76,7 +76,7 @@ open http://localhost:3001    # create your account and onboard
   - ~1.0 GB RAM for the `lite` profile (hash embeddings)
   - ~2.5 GB RAM for the default self-host profile (MiniLM sentence-transformers)
   - ~3.5 GB RAM minimum for the `full` profile (MiniLM + Browserless)
-- **LLM API Key (Optional)**: Groq (default), OpenAI, or any OpenAI-compatible provider. If unset, ReadPrism automatically falls back to extractive summaries (`summary_source=extractive`) with zero API dependencies.
+- **LLM API Key (Optional)**: Groq (default), OpenAI, or any OpenAI-compatible provider. If unset, Weirling automatically falls back to extractive summaries (`summary_source=extractive`) with zero API dependencies.
 - **SMTP Credentials (Optional)**: Any standard SMTP provider (Zoho, Postmark, SendGrid, etc.) for daily email digest delivery. If omitted, digests are still compiled and accessible in-app.
 
 ---
@@ -86,8 +86,8 @@ open http://localhost:3001    # create your account and onboard
 ### 1. Clone and configure environment
 
 ```bash
-git clone https://github.com/mohitmishra786/readprism.git
-cd readprism
+git clone https://github.com/mohitmishra786/weirling.git
+cd weirling
 ./scripts/init_env.sh   # copies .env.example to .env and generates SECRET_KEY, REFRESH_SECRET_KEY, METRICS_TOKEN
 ```
 
@@ -147,7 +147,7 @@ Navigate to [http://localhost:3001](http://localhost:3001) and create an account
 
 ```mermaid
 flowchart TB
-    accTitle: ReadPrism components
+    accTitle: Weirling components
     accDescr: The web app and extension call the API. The API and the scheduler queue work in Redis, workers pick it up, fetch the web, and everything durable is stored in Postgres.
 
     web["Web app"] --> api["API"]
@@ -260,7 +260,7 @@ FastAPI generates interactive docs at:
 
 ## Key Environment Variables
 
-ReadPrism is configured via environment variables. Run `./scripts/init_env.sh` to generate a ready-to-use `.env` file with secure random keys.
+Weirling is configured via environment variables. Run `./scripts/init_env.sh` to generate a ready-to-use `.env` file with secure random keys.
 
 ### Core Application & Deployment
 

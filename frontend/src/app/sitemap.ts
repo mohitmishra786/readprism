@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://readprism.app";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://weirling.com";
 
 // Audit 11-3: sitemap of the public, indexable marketing/comparison routes.
 export default function sitemap(): MetadataRoute.Sitemap {

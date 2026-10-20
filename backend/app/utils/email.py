@@ -31,7 +31,7 @@ def send_email_sync(
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"ReadPrism <{settings.zoho_email}>"
+        msg["From"] = f"Weirling <{settings.zoho_email}>"
         msg["To"] = to
         if reply_to:
             msg["Reply-To"] = reply_to
