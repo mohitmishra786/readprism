@@ -317,6 +317,10 @@ class Settings(BaseSettings):
     # deleted this many days later, after a reminder sent
     # HOSTED_DELETE_REMINDER_DAYS before. 0 = never delete.
     hosted_paused_delete_days: int = 30
+    # Priority fetching for Pro (#246): a feed followed by a Pro reader is
+    # checked at least this often after a successful poll (adaptive polling can
+    # otherwise stretch to 24 h), and goes first in each polling run.
+    hosted_pro_max_poll_minutes: int = 60
     hosted_delete_reminder_days: int = 7
     # Hosted per-plan quotas (#172), keyed by effective plan. 0 = unlimited.
     # Defaults: DEFAULT_PLAN_QUOTAS above. HOSTED_PLAN_QUOTAS (JSON) is merged

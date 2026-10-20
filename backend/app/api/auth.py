@@ -167,6 +167,7 @@ async def get_current_user(
         request.state.auth_via = "api_token"
         _enforce_demo_read_only(request, user)
         _enforce_paused_read_only(request, user)
+        _enforce_api_access(request, user)
         return user
 
     payload = _decode_token(token, secret=_access_secret())
@@ -202,6 +203,23 @@ def _enforce_demo_read_only(request: Request, user: User) -> None:
     request.state.is_demo = user.is_demo
     if user.is_demo and request.method in MUTATING_METHODS and not _is_demo_allowed_write(request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The demo is read-only")
+
+
+# What the browser extension calls with its token. The extension works on
+# every plan; any other use of an API token (scripts, MCP) is Pro (#246).
+_EXTENSION_ROUTES = {
+    ("POST", "/api/v1/extension/save"),
+    ("POST", "/api/v1/sources"),
+    ("POST", "/api/v1/creators"),
+}
+
+
+def _enforce_api_access(request: Request, user: User) -> None:
+    from app.services import entitlements
+
+    if (request.method, request.url.path.rstrip("/")) in _EXTENSION_ROUTES:
+        return
+    entitlements.require_pro(user, "API and MCP access", verb="are")
 
 
 # What a paused hosted account may still change (#341): subscribe, sign out,

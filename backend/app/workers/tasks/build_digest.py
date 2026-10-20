@@ -161,8 +161,11 @@ async def _build_digest_async(user_id: uuid.UUID) -> dict:
 
 def _preferred_slots(user) -> list[time]:
     """Local times a digest should be sent for this user's frequency."""
+    from app.services.entitlements import pro_features
+
     slots = [user.digest_time_morning]
-    if getattr(user, "digest_frequency", "daily") == "twice_daily":
+    # Twice-daily is Pro (#246): after a downgrade it runs as daily.
+    if getattr(user, "digest_frequency", "daily") == "twice_daily" and pro_features(user):
         evening = (
             datetime.combine(datetime.min, user.digest_time_morning) + timedelta(hours=12)
         ).time()

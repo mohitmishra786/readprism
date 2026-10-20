@@ -32,6 +32,15 @@ async def update_preferences(
     if body.display_name is not None:
         current_user.display_name = body.display_name
     if body.digest_frequency is not None:
+        # Pro only to switch to it: the page resends the stored value on every
+        # save, and a downgraded reader must still be able to save the rest.
+        if (
+            body.digest_frequency == "twice_daily"
+            and current_user.digest_frequency != "twice_daily"
+        ):
+            from app.services.entitlements import require_pro
+
+            require_pro(current_user, "Twice-daily digests", verb="are")
         current_user.digest_frequency = body.digest_frequency
     if body.digest_time_morning is not None:
         current_user.digest_time_morning = body.digest_time_morning

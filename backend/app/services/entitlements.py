@@ -64,6 +64,31 @@ def is_paused(user: User) -> bool:
     return is_hosted() and _plan(user) == PAUSED
 
 
+# Plans with the Pro-only features (D-19, #246). The trial gets them too.
+PRO_PLANS = ("pro", "team", "trial")
+PRO_FEATURES = (
+    "Twice-daily digests",
+    "Story synthesis across sources",
+    "API and MCP access",
+    "Priority fetching",
+)
+PRO_ONLY_MESSAGE = "{feature} {verb} part of the Pro plan."
+
+
+def pro_features(user: User) -> bool:
+    """Twice-daily digests, story synthesis, API/MCP, priority fetching (#246).
+    Everything on self-host; on hosted, Pro, Team and the trial."""
+    return not is_hosted() or _plan(user) in PRO_PLANS
+
+
+def require_pro(user: User, feature: str, *, verb: str = "is") -> None:
+    if not pro_features(user):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail=PRO_ONLY_MESSAGE.format(feature=feature, verb=verb),
+        )
+
+
 def plan_quotas(plan: str) -> dict[str, int]:
     """The configured quotas of one plan; 0 = unlimited."""
     row = {q: 0 for q in QUOTAS}

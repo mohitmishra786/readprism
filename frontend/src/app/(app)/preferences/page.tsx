@@ -157,6 +157,7 @@ export default function PreferencesPage() {
   const [graph, setGraph] = useState<InterestGraph | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const exportData = async () => {
@@ -266,13 +267,18 @@ export default function PreferencesPage() {
           .map((s) => s.trim())
           .filter(Boolean);
       }
+      setSaveError("");
+      setSaved(false);
       const updated = await api.preferences.update(payload);
       setUser(updated);
       setInitial(updated);
       setLanguagesText((updated.preferred_languages || []).join(", "));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch {}
+    } catch (e) {
+      // e.g. "Twice-daily digests are part of the Pro plan." (#246)
+      setSaveError(e instanceof Error ? e.message : "Couldn't save your preferences.");
+    }
     setSaving(false);
   };
 
@@ -393,6 +399,11 @@ export default function PreferencesPage() {
         >
           {saving ? "Saving..." : saved ? "Saved!" : "Save preferences"}
         </button>
+        {saveError && (
+          <p role="alert" style={{ color: "#dc2626", fontSize: 14, marginTop: 8 }}>
+            {saveError}
+          </p>
+        )}
       </section>
 
       {graph && (

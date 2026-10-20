@@ -53,12 +53,20 @@ describe("plan quotas (#172)", () => {
       quotas: [],
       plans: [
         { plan: "reader", name: "Reader", intervals: ["month", "year"], quotas: q },
-        { plan: "pro", name: "Pro", intervals: ["year"], quotas: { ...q, sources: 2000 } },
+        {
+          plan: "pro",
+          name: "Pro",
+          intervals: ["year"],
+          quotas: { ...q, sources: 2000 },
+          features: ["Twice-daily digests", "API and MCP access"],
+        },
       ],
     });
     render(<PlanSection />);
     const pro = await screen.findByTestId("plan-pro");
     expect(within(pro).getByText("2,000 feeds")).toBeInTheDocument();
+    expect(within(pro).getByText("API and MCP access")).toBeInTheDocument(); // Pro-only (#246)
+    expect(within(screen.getByTestId("plan-reader")).queryByText("API and MCP access")).toBeNull();
     expect(within(screen.getByTestId("plan-reader")).getByText("500 feeds")).toBeInTheDocument();
     expect(within(pro).queryByRole("button", { name: "Pro monthly" })).toBeNull();
     await userEvent.click(within(pro).getByRole("button", { name: "Pro yearly" }));
