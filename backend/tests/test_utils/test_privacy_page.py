@@ -25,9 +25,10 @@ def _documented() -> dict[str, list[str]]:
 def test_every_telemetry_column_is_on_the_page_and_nothing_else():
     from app.models.content import UserContentInteraction
     from app.models.digest import Digest, DigestImpression
+    from app.models.product_event import ProductEvent
 
     documented = _documented()
-    for model in (UserContentInteraction, DigestImpression, Digest):
+    for model in (UserContentInteraction, DigestImpression, Digest, ProductEvent):
         columns = [c.name for c in model.__table__.columns]
         assert sorted(documented[model.__tablename__]) == sorted(columns), model.__tablename__
 

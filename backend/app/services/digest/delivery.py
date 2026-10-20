@@ -195,6 +195,9 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
 
     if success:
         digest.delivered_at = datetime.now(UTC)
+        from app.services.product_metrics import track
+
+        await track(session, user.id, "digest_sent", method="email")
         await _clear_dead_notices(user.id, session)
         await session.flush()
 

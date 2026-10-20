@@ -93,4 +93,19 @@ export const COLLECTED: CollectedTable[] = [
       { field: "updated_at", what: "When it last changed.", why: "Database bookkeeping." },
     ],
   },
+  {
+    table: "product_events",
+    title: "Product events (hosted service only)",
+    summary:
+      "On the hosted service, one row for each of these moments: signing up, finishing onboarding, adding sources, a digest being sent or opened, opening or finishing an article, rating, saving, answering 'how many of the top 5 did you want?', subscribing and cancelling. Self-hosted instances record none by default (PRODUCT_METRICS), and nothing is sent to any third party.",
+    retention:
+      "Kept while your account exists and deleted with it. Daily totals with no account attached are kept for trends.",
+    fields: [
+      { field: "id", what: "A random record number.", why: "Database bookkeeping." },
+      { field: "user_id", what: "Your account.", why: "Counting readers rather than clicks, and deleting your events with your account." },
+      { field: "event", what: "Which moment it was, e.g. digest opened.", why: "Measuring whether the product works: weekly satisfied readers, retention, time to a first good digest." },
+      { field: "props", what: "A small detail: the plan, a count, or your top-5 answer. Never article titles or text.", why: "Telling those measurements apart." },
+      { field: "created_at", what: "When it happened.", why: "Weekly and daily totals." },
+    ],
+  },
 ];

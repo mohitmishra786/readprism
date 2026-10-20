@@ -316,6 +316,9 @@ class Settings(BaseSettings):
     # paused (read-only, no fetching, no digests, export still works) and
     # deleted this many days later, after a reminder sent
     # HOSTED_DELETE_REMINDER_DAYS before. 0 = never delete.
+    # First-party product metrics (D-20, #131): "auto" = on for hosted, off
+    # for self-host; "on"/"off" force it. Nothing ever leaves the server.
+    product_metrics: str = "auto"
     hosted_paused_delete_days: int = 30
     # Priority fetching for Pro (#246): a feed followed by a Pro reader is
     # checked at least this often after a successful poll (adaptive polling can

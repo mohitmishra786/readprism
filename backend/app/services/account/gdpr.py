@@ -28,6 +28,7 @@ from app.models.creator_trust import CreatorTopicTrust
 from app.models.digest import Digest, DigestItem
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
+from app.models.product_event import ProductEvent
 from app.models.source import Source
 from app.models.user import User
 from app.utils.logging import get_logger
@@ -168,6 +169,10 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             session, select(UserMetaWeights).where(UserMetaWeights.user_id == uid)
         ),
         "digests": await _all(session, select(Digest).where(Digest.user_id == uid)),
+        # First-party product events (#131), disclosed in PRIVACY.md.
+        "product_events": await _all(
+            session, select(ProductEvent).where(ProductEvent.user_id == uid)
+        ),
         "digest_items": digest_items,
         "content": content,
     }

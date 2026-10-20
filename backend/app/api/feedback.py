@@ -112,6 +112,9 @@ async def record_interaction(
         )
     )
     interaction = existing_result.scalar_one_or_none()
+    from app.services import product_metrics
+
+    before = product_metrics.snapshot(interaction)
     # Reason effects must fire once per *stored* reason: a client retry (or a
     # later telemetry post repeating the reason) re-enters this upsert, and
     # blindly re-applying the mapped deltas would compound them (CodeRabbit).
@@ -198,6 +201,8 @@ async def record_interaction(
     if body.explicit_rating_reason is not None and body.explicit_rating_reason != previous_reason:
         await _apply_reason_effects(content, body.explicit_rating_reason, current_user.id, session)
         await session.flush()
+
+    await product_metrics.track_interaction(session, before, interaction)
 
     # A bare outbound click carries no reading signal: without completion or
     # time it would be learned as a bounce. Wait for the return answer (#157).

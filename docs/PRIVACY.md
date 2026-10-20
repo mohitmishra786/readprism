@@ -31,6 +31,16 @@ controller. This template refers to whoever runs the instance as "we".
 - **Derived data:** an interest graph (topics + weights), per-source and
   per-creator trust weights, learned ranking meta-weights, and content
   embeddings.
+- **Product events (hosted service only):** to know whether the product
+  works, we record when you sign up, finish onboarding, add sources, are
+  sent or open a digest, open or finish an article, rate or save one, answer
+  "how many of today's top 5 did you want?", subscribe, or cancel. Each event
+  is linked to your account and carries at most a small detail (a plan name,
+  a count, your top-5 answer), never article titles or text. They are used
+  only for aggregate measures (weekly satisfied readers, retention, time to a
+  first good digest), stay on our server, and use no third-party analytics.
+  Self-hosted instances record none unless the operator turns
+  `PRODUCT_METRICS` on.
 
 We do **not** sell personal data, and we do not use it for advertising.
 
@@ -81,6 +91,8 @@ and is checked against the code in CI.
 - **Full article text** we fetch is pruned to a short excerpt after
   `CONTENT_FULL_TEXT_RETENTION_DAYS` (default 90 days); we keep the summary,
   excerpt, and link, not an indefinite full copy.
+- **Product events** are kept while your account exists and deleted with
+  it; daily totals with no account attached are kept for trends.
 - When you delete your account, all your personal data is erased (see below).
 
 ## Shared content model

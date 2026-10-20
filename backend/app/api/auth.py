@@ -409,6 +409,9 @@ async def register(
     start_trial(user)
     session.add(user)
     await session.flush()
+    from app.services.product_metrics import track
+
+    await track(session, user.id, "signup", via="password")
     if email_verification.verification_required():
         # Best effort: the account works in-app either way and can resend.
         try:
@@ -501,6 +504,9 @@ async def magic_link_request(
         start_trial(user)
         session.add(user)
         await session.flush()
+        from app.services.product_metrics import track
+
+        await track(session, user.id, "signup", via="magic_link")
 
     token = await _create_magic_token(email)
     link = f"{settings.frontend_url.rstrip('/')}/auth/magic?token={token}"
