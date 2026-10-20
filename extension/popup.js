@@ -23,10 +23,10 @@ function showResult(result) {
   if (result.ok) {
     const name =
       result.data?.name || result.data?.creator?.display_name || "Added";
-    statusEl.textContent = `✓ ${name}`;
+    statusEl.textContent = name;
     statusEl.className = "ok";
   } else {
-    statusEl.textContent = `✗ ${result.error || "Failed"}`;
+    statusEl.textContent = result.error || "Failed";
     statusEl.className = "err";
   }
 }
@@ -68,7 +68,7 @@ async function saveRate(rating) {
   const result = await ask("save-rate", { tab, rating });
   showResult(
     result.ok
-      ? { ok: true, data: { name: rating === 1 ? "Saved 👍" : rating === -1 ? "Saved 👎" : "Saved" } }
+      ? { ok: true, data: { name: rating === 1 ? "Saved helpful" : rating === -1 ? "Saved not helpful" : "Saved" } }
       : result
   );
 }

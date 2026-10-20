@@ -240,7 +240,7 @@ def _build_text_body(
                 lines.append(f"{label}{content.summary_brief}")
             lines.append(f"Read: {item_data['open_url']}")
             lines.append(
-                f"Rate: 👍 {item_data['up_url']}  ·  👎 {item_data['down_url']}  ·  "
+                f"Rate: Useful {item_data['up_url']}  ·  Not for me {item_data['down_url']}  ·  "
                 f"Save: {item_data['save_url']}"
             )
     lines.append("\n" + "-" * 40)

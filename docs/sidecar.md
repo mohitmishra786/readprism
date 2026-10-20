@@ -149,12 +149,12 @@ local private subnet (e.g. `http://192.168.1.50:8080` or `http://miniflux.lan`):
 
 | Feature | Miniflux | FreshRSS | Details |
 |---|---|---|---|
-| **Feed subscriptions** | ✅ Yes | ✅ Yes | Feed URLs and titles imported as `Source` records. |
-| **Existing feeds preserved** | ✅ Yes | ✅ Yes | Deduplicated by URL; existing feed trust is untouched. |
-| **Warm-up read history** | ✅ Yes (up to 100) | ❌ No | Miniflux read articles mark matching items opened at 90% completion. |
-| **Two-way sync** | ❌ No | ❌ No | ReadPrism does not push read state or stars back to your reader. |
-| **Continuous sync** | ❌ No | ❌ No | Imports are on-demand. Re-run import whenever you add new feeds. |
-| **Folders / categories** | ❌ No | ❌ No | Feeds are imported into your unified ReadPrism source library. |
+| **Feed subscriptions** | Yes | Yes | Feed URLs and titles imported as `Source` records. |
+| **Existing feeds preserved** | Yes | Yes | Deduplicated by URL; existing feed trust is untouched. |
+| **Warm-up read history** | Yes (up to 100) | No | Miniflux read articles mark matching items opened at 90% completion. |
+| **Two-way sync** | No | No | ReadPrism does not push read state or stars back to your reader. |
+| **Continuous sync** | No | No | Imports are on-demand. Re-run import whenever you add new feeds. |
+| **Folders / categories** | No | No | Feeds are imported into your unified ReadPrism source library. |
 
 ---
 

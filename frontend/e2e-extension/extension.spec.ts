@@ -110,7 +110,7 @@ test("detects the page's feed on click and subscribes to it", async () => {
   await expect(subscribe).toBeVisible();
   await expect(subscribe).toHaveAttribute("title", `http://localhost:${API_PORT}/feed.xml`);
   await subscribe.click();
-  await expect(popup.locator("#status")).toHaveText(/✓/);
+  await expect(popup.locator("#status")).toHaveText(/Feed/);
   const add = calls.find((c) => c.path === "/api/v1/sources");
   expect(add?.body).toEqual({ url: `http://localhost:${API_PORT}/feed.xml` });
   expect(add?.auth).toBe(`Bearer ${TOKEN}`);
@@ -122,7 +122,7 @@ test("saves and rates the current page", async () => {
   const popup = await openPopupFor(`http://localhost:${API_PORT}/article`);
 
   await popup.getByRole("button", { name: /Save & rate up/ }).click();
-  await expect(popup.locator("#status")).toHaveText("✓ Saved 👍");
+  await expect(popup.locator("#status")).toHaveText("Saved helpful");
   const save = calls.find((c) => c.path === "/api/v1/extension/save");
   expect(save?.body).toEqual({
     url: `http://localhost:${API_PORT}/article`,

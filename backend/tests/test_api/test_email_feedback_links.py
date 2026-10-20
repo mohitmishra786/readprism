@@ -111,7 +111,7 @@ async def test_get_on_mutating_action_shows_confirmation_and_records_nothing(
     resp = await client.get(url)
     assert resp.status_code == 200
     assert 'method="post"' in resp.text  # confirmation form, not a mutation
-    assert "👍" in resp.text
+    assert "Useful" in resp.text
 
     rows = (
         await db_session.execute(

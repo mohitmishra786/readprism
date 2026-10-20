@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { X } from "lucide-react";
 import { api } from "../../lib/api";
 
 export function finishedPhrase(activeTimeMs: number): string {
@@ -54,7 +55,7 @@ export function GotItToast({
             Less
           </button>
           <button type="button" onClick={onClose} aria-label="Dismiss" className="px-1 text-stone-400">
-            ✕
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       )}
