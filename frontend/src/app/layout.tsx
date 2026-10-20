@@ -72,11 +72,16 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
   },
   icons: {
-    // SVG works for modern browsers. iOS apple-touch-icon requires PNG, so we
-    // omit the `apple` key rather than point it at an SVG that iOS can't render
-    // (it would fall back to a screenshot, which is fine).
-    // ?v=2: the diamond replaced the triangle (#159); browsers cache favicons hard.
-    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
+    // SVG for modern browsers; PNG/ICO because Safari (tab icon, pinned tabs)
+    // and older browsers don't use SVG favicons and fall back to
+    // /favicon.ico, which didn't exist, so they kept a cached old icon.
+    // ?v=3 makes browsers drop the cached triangle.
+    icon: [
+      { url: "/icon.svg?v=3", type: "image/svg+xml" },
+      { url: "/favicon-32.png?v=3", sizes: "32x32", type: "image/png" },
+      { url: "/favicon.ico?v=3", sizes: "16x16 32x32" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png?v=3", sizes: "180x180", type: "image/png" }],
   },
 };
 
