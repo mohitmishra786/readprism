@@ -73,7 +73,7 @@ export function NoTextFallback({ item }: { item: ContentItemFull }) {
       <h1 className="text-3xl font-bold leading-tight">{item.title}</h1>
       {summary && (
         <p className="mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg leading-relaxed text-stone-600">
-          <SummaryLabel source={item.summary_source} />
+          <SummaryLabel source={item.summary_source} fromTranscript={Boolean(item.transcript_url)} />
           {summary}
         </p>
       )}

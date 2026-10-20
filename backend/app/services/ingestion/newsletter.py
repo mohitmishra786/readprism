@@ -77,22 +77,47 @@ def _html_to_text(html: str) -> str:
     return " ".join(p.parts)
 
 
-async def ensure_newsletter_source(session, user_id: uuid.UUID, sender: str) -> None:
-    """One newsletter source per sender. A second forward does not create another."""
+def delivery_of(header_to: str | None) -> str:
+    """'direct' when the To header is the reader's ReadPrism address, else
+    'forwarded' (a copy forwarded from their own inbox, #249)."""
+    from app.services.ingestion.newsletter_parse import recipient_token
+
+    to = (header_to or "").strip()
+    local = to.split("@")[0].lower() if "@" in to else ""
+    return "direct" if recipient_token(to) or local.startswith("user-") else "forwarded"
+
+
+async def ensure_newsletter_source(
+    session,
+    user_id: uuid.UUID,
+    sender: str,
+    *,
+    list_unsubscribe: str | None = None,
+    header_to: str | None = None,
+) -> None:
+    """One newsletter source per sender. A second forward does not create
+    another; it refreshes the sender's unsubscribe header and delivery."""
     from sqlalchemy import select
 
     from app.models.source import Source
 
     name = sender.strip() or "Newsletter"
     await session.flush()
-    existing = await session.execute(
-        select(Source.id).where(
-            Source.user_id == user_id,
-            Source.source_type == "newsletter",
-            Source.name == name,
+    existing = (
+        await session.execute(
+            select(Source).where(
+                Source.user_id == user_id,
+                Source.source_type == "newsletter",
+                Source.name == name,
+            )
         )
-    )
-    if existing.scalar_one_or_none() is not None:
+    ).scalar_one_or_none()
+    delivery = delivery_of(header_to) if header_to else None
+    if existing is not None:
+        if list_unsubscribe:
+            existing.list_unsubscribe = list_unsubscribe[:2000]
+        if delivery:
+            existing.newsletter_delivery = delivery
         return
     session.add(
         Source(
@@ -101,6 +126,8 @@ async def ensure_newsletter_source(session, user_id: uuid.UUID, sender: str) -> 
             name=name,
             source_type="newsletter",
             initial_backfill_done=True,
+            list_unsubscribe=(list_unsubscribe or None) and list_unsubscribe[:2000],
+            newsletter_delivery=delivery,
         )
     )
 

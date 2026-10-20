@@ -22,6 +22,9 @@ const breakdown = {
   source_trust: 0.3,
   novelty: 0.1,
   explanation: "Close to your interest in compilers",
+  why_topics: "matches your interest in compilers",
+  no_data: ["suggestion"],
+  contributions: { semantic: 0.24, source_trust: 0.12, novelty: 0.04, suggestion: 0.1 },
 };
 
 describe("ContentCard", () => {
@@ -32,13 +35,32 @@ describe("ContentCard", () => {
     expect(screen.getByRole("button", { name: /why this/i })).toBeInTheDocument();
   });
 
-  it("opens the why panel with the explanation and contribution bars", async () => {
+  it("opens a why panel whose shares come from the stored contributions (#185)", async () => {
     render(<ContentCard content={makeItem()} signalBreakdown={breakdown} />);
-    await userEvent.click(screen.getByRole("button", { name: /why this/i }));
-    expect(screen.getByText("Why this is ranked here")).toBeInTheDocument();
-    expect(screen.getByText("Close to your interest in compilers")).toBeInTheDocument();
-    expect(screen.getByText("60%")).toBeInTheDocument(); // semantic share of 0.6/1.0
-    expect(screen.getByText("30%")).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: /why this/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const panel = screen.getByRole("region", { name: "Why this is ranked here" });
+    expect(panel).toHaveTextContent("Close to your interest in compilers");
+    // score 0.5: semantic 0.24 -> 48%, trust 24%, novelty 8%, no-data 20%
+    const items = screen.getAllByRole("listitem").map((li) => li.textContent);
+    expect(items).toEqual([
+      "Topic match: compilers48%",
+      "Source you trust24%",
+      "New angle8%",
+      "No data yet (neutral)20%",
+    ]);
+    expect(screen.getByRole("link", { name: "Topic match: compilers" })).toHaveAttribute("href", "/interests");
+  });
+
+  it("opens and closes the why panel from the keyboard", async () => {
+    render(<ContentCard content={makeItem()} signalBreakdown={breakdown} />);
+    screen.getByRole("button", { name: /why this/i }).focus();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.getByRole("region", { name: "Why this is ranked here" })).toBeInTheDocument();
+    await userEvent.keyboard("{Enter}");
+    expect(screen.queryByRole("region", { name: "Why this is ranked here" })).not.toBeInTheDocument();
   });
 
   it("toggles between the brief and detailed summary", async () => {

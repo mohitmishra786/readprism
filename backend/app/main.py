@@ -4,11 +4,13 @@ import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.router import api_router
 from app.config import get_settings
+from app.database import get_db
 from app.utils.logging import setup_logging
 from app.utils.observability import init_sentry
 
@@ -57,6 +59,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
 
+    # Settings saved on the setup screen (#220); .env values still win.
+    if db_ok:
+        try:
+            from app.database import AsyncSessionLocal
+            from app.services.instance_config import load
+
+            async with AsyncSessionLocal() as session:
+                await load(session)
+        except Exception as e:
+            logger.warning(f"Instance settings not loaded: {type(e).__name__}")
+
     app.state.db_ok = db_ok
     app.state.redis_ok = redis_ok
 
@@ -96,7 +109,46 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def _prometheus_http(request, call_next):
+        # Route template, not the raw path, so IDs don't explode cardinality (#170).
+        import time as _time
+
+        from app.services.metrics.prometheus import observe_request
+
+        started = _time.perf_counter()
+        status_code = 500
+        try:
+            response = await call_next(request)
+            status_code = response.status_code
+            return response
+        finally:
+            template = getattr(request.scope.get("route"), "path", None) or "unmatched"
+            # Routes included under /api/v1 report their path without the prefix.
+            if request.url.path.startswith("/api/v1/") and template.startswith("/"):
+                if not template.startswith("/api/v1"):
+                    template = "/api/v1" + template
+            observe_request(request.method, template, status_code, _time.perf_counter() - started)
+            # Hourly totals in Redis for the 5xx-rate alert (#171), shared by workers.
+            from app.services.alerts import record_http
+
+            await record_http(status_code)
+
     app.include_router(api_router, prefix="/api/v1")
+
+    @app.get("/metrics", include_in_schema=False)
+    async def prometheus_metrics(
+        request: Request, session: AsyncSession = Depends(get_db)
+    ) -> Response:
+        """Prometheus exposition (#170). Same token as /api/v1/metrics/*, sent
+        as X-Metrics-Token or `Authorization: Bearer <token>`."""
+        from app.api.metrics import require_metrics_token
+        from app.services.metrics.prometheus import CONTENT_TYPE_LATEST, render
+
+        auth = request.headers.get("authorization", "")
+        token = auth[7:] if auth.lower().startswith("bearer ") else None
+        await require_metrics_token(request.headers.get("x-metrics-token") or token)
+        return Response(await render(session), media_type=CONTENT_TYPE_LATEST)
 
     @app.get("/health")
     async def health() -> dict:

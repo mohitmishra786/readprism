@@ -70,3 +70,19 @@ jobs:
           push: true
           tags: ${{ steps.meta_front.outputs.tags }}
           cache-from: type=gha
+      # All-in-one image (#208): API, workers, beat and web under s6.
+      - uses: docker/metadata-action@v5
+        id: meta_aio
+        with:
+          images: ghcr.io/${{ github.repository }}/readprism-aio
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/aio/Dockerfile
+          push: true
+          tags: ${{ steps.meta_aio.outputs.tags }}
+          cache-from: type=gha

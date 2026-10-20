@@ -521,7 +521,15 @@ async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
 
     mode = effective_mode()
     allowed, _ = await can_register(session)
-    return {"mode": mode, "open": allowed, "invite_required": mode == "invite" and not allowed}
+    from app.services.registration import has_users
+
+    return {
+        "mode": mode,
+        "open": allowed,
+        "invite_required": mode == "invite" and not allowed,
+        # No accounts yet: the next sign-up becomes the instance owner (#220).
+        "first_account": not await has_users(session),
+    }
 
 
 @router.get("/session")

@@ -185,7 +185,7 @@ async def get_content(
     # (audit 06-6).
     if item.owner_user_id is not None and item.owner_user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
-    await _queue_llm_summary(item)
+    await _queue_llm_summary(item, current_user, session)
     from app.services.display_policy import may_display_full_text
 
     read = ContentItemFullRead.model_validate(item)
@@ -195,15 +195,30 @@ async def get_content(
     return read
 
 
-async def _queue_llm_summary(item: ContentItem) -> None:
-    """Someone is reading it: get the model summary in the background (#147)."""
+async def _queue_llm_summary(item: ContentItem, user: User, session: AsyncSession) -> None:
+    """Someone is reading it: get the model summary in the background (#147).
+
+    On the reader's own key if they have one (#255); otherwise it counts
+    against their plan's daily AI summaries (#172).
+    """
     from app.config import get_settings
+    from app.services import entitlements
+    from app.services.llm import user_keys
     from app.services.summarization.lazy import needs_llm_summary
     from app.utils.cache import cache_set_nx
 
-    if not get_settings().llm_configured or not needs_llm_summary(item):
+    if not needs_llm_summary(item):
+        return
+    own_key = user_keys.available() and await user_keys.get(session, user.id) is not None
+    if not own_key and not get_settings().llm_configured:
+        return
+    if not own_key and await entitlements.remaining_today(user, entitlements.LLM_SUMMARIES) == 0:
         return
     if await cache_set_nx(f"llm-summary-queued:{item.id}", 1, ttl_seconds=3600):
         from app.workers.tasks.compute_embeddings import summarize_item_with_llm
 
-        summarize_item_with_llm.delay(str(item.id))
+        if own_key:
+            summarize_item_with_llm.delay(str(item.id), str(user.id))
+        else:
+            await entitlements.record_use(user, entitlements.LLM_SUMMARIES)
+            summarize_item_with_llm.delay(str(item.id))

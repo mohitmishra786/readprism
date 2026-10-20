@@ -15,7 +15,9 @@ from app.api.metrics import router as metrics_router
 from app.api.newsletter import router as newsletter_router
 from app.api.onboarding import router as onboarding_router
 from app.api.preferences import router as preferences_router
+from app.api.push import router as push_router
 from app.api.search import router as search_router
+from app.api.setup import router as setup_router
 from app.api.sources import router as sources_router
 from app.api.tokens import router as tokens_router
 
@@ -37,3 +39,5 @@ api_router.include_router(integrations_router)
 api_router.include_router(metrics_router)
 api_router.include_router(tokens_router)
 api_router.include_router(extension_router)
+api_router.include_router(push_router)
+api_router.include_router(setup_router)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Any
 
@@ -12,16 +13,28 @@ logger = get_logger(__name__)
 settings = get_settings()
 
 _redis_client: aioredis.Redis | None = None
+_redis_loop: asyncio.AbstractEventLoop | None = None
 
 
 def get_redis() -> aioredis.Redis:
-    global _redis_client
-    if _redis_client is None:
+    """The async client for the running event loop.
+
+    Celery tasks each run in their own `asyncio.run()` loop. A client (and its
+    pooled connections) made in an earlier, closed loop fails with "Event loop
+    is closed", so a new loop gets a new client.
+    """
+    global _redis_client, _redis_loop
+    try:
+        loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if _redis_client is None or (loop is not None and loop is not _redis_loop):
         _redis_client = aioredis.from_url(
             settings.redis_url,
             encoding="utf-8",
             decode_responses=True,
         )
+        _redis_loop = loop
     return _redis_client
 
 

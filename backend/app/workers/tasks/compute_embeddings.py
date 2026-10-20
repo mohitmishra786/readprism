@@ -42,7 +42,15 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             item.summary_source is None or (not lazy and not item.summarization_cached)
         ):
             svc = SummarizationService()
-            await svc.summarize(item.id, item.title, item.full_text, session, use_llm=not lazy)
+            await svc.summarize(
+                item.id,
+                item.title,
+                item.full_text,
+                session,
+                use_llm=not lazy,
+                language=item.language,
+                is_transcript=bool(item.transcript_url),
+            )
             await session.refresh(item)
 
         # Embed
@@ -97,21 +105,27 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
 
 
 @celery_app.task(name="app.workers.tasks.compute_embeddings.summarize_item_with_llm", bind=True)
-def summarize_item_with_llm(self, content_item_id: str) -> dict:
-    """LLM summary for an item someone opened (#147)."""
-    return asyncio.run(_summarize_item_async(uuid.UUID(content_item_id)))
+def summarize_item_with_llm(self, content_item_id: str, user_id: str | None = None) -> dict:
+    """LLM summary for an item someone opened (#147); on their own key if given (#255)."""
+    return asyncio.run(
+        _summarize_item_async(uuid.UUID(content_item_id), uuid.UUID(user_id) if user_id else None)
+    )
 
 
-async def _summarize_item_async(content_item_id: uuid.UUID) -> dict:
+async def _summarize_item_async(
+    content_item_id: uuid.UUID, user_id: uuid.UUID | None = None
+) -> dict:
     from app.database import AsyncSessionLocal
     from app.models.content import ContentItem
+    from app.services.llm.user_keys import summarizer_for
     from app.services.summarization.lazy import ensure_llm_summaries
 
     async with AsyncSessionLocal() as session:
         item = await session.get(ContentItem, content_item_id)
         if item is None:
             return {"status": "not_found"}
-        calls = await ensure_llm_summaries([item])
+        own = await summarizer_for(session, user_id) if user_id else None
+        calls = await ensure_llm_summaries([item], summarizer=own)
         await session.commit()
         return {"status": "ok", "llm_calls": calls, "summary_source": item.summary_source}
 

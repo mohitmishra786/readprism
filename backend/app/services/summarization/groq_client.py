@@ -51,6 +51,54 @@ Title: {title}
 Content: {content}"""
 
 
+# Summaries are written in the article's own language (#248); topic labels
+# stay English so the interest graph matches across languages.
+LANGUAGE_NAMES = {
+    "fr": "French",
+    "de": "German",
+    "es": "Spanish",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "nl": "Dutch",
+    "sv": "Swedish",
+    "da": "Danish",
+    "no": "Norwegian",
+    "nb": "Norwegian",
+    "fi": "Finnish",
+    "pl": "Polish",
+    "cs": "Czech",
+    "tr": "Turkish",
+    "ru": "Russian",
+    "uk": "Ukrainian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "zh": "Chinese",
+    "hi": "Hindi",
+    "ar": "Arabic",
+    "he": "Hebrew",
+    "id": "Indonesian",
+    "vi": "Vietnamese",
+}
+
+
+def language_instruction(language: str | None) -> str:
+    """Prompt line for a non-English article; empty for English or unknown."""
+    code = (language or "").split("-")[0].split("_")[0].lower()
+    name = LANGUAGE_NAMES.get(code)
+    if not name:
+        return ""
+    return (
+        f"\nThe article is in {name}. Write headline, brief and detailed in {name}. "
+        "Keep topic_clusters in English."
+    )
+
+
+TRANSCRIPT_INSTRUCTION = (
+    "\nThe content is the published transcript of a podcast episode or video. "
+    "Summarize what is said; refer to it as an episode, not an article."
+)
+
+
 def _truncate_text(text: str, max_chars: int = 16000) -> str:
     """Approx 4000 tokens at ~4 chars/token."""
     return text[:max_chars]
@@ -83,27 +131,49 @@ def _parse_result(raw: str) -> SummarizationResult | None:
 class LLMSummarizer:
     """Provider-agnostic summarizer. Talks to whatever OpenAI-compatible endpoint is configured."""
 
-    def __init__(self, llm: LLMClient | None = None) -> None:
+    def __init__(
+        self,
+        llm: LLMClient | None = None,
+        *,
+        summary_model: str | None = None,
+        use_fallback: bool = True,
+    ) -> None:
         self._llm_client = llm
         self._fallback_client: LLMClient | None = None
+        # A reader's own key (#255) brings its own model and never falls back
+        # to the instance's provider.
+        self._summary_model = summary_model
+        self._use_fallback = use_fallback
 
     def _llm(self) -> LLMClient:
         if self._llm_client is None:
             self._llm_client = LLMClient()
         return self._llm_client
 
-    async def summarize(self, title: str, full_text: str) -> SummarizationResult | None:
+    async def summarize(
+        self,
+        title: str,
+        full_text: str,
+        language: str | None = None,
+        *,
+        is_transcript: bool = False,
+    ) -> SummarizationResult | None:
         content = _truncate_text(full_text)
-        prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content)
+        prompt = (
+            _USER_PROMPT_TEMPLATE.format(title=title, content=content)
+            + language_instruction(language)
+            + (TRANSCRIPT_INSTRUCTION if is_transcript else "")
+        )
         current = get_settings()
         data = await self._llm().complete_json(
-            model=current.llm_model_primary,
+            model=self._summary_model or current.model_for("summary"),
             system=_SYSTEM_PROMPT,
             user=prompt,
             max_tokens=1024,
         )
         if (
             data is None
+            and self._use_fallback
             and current.openai_fallback_enabled
             and current.openai_api_key
             and current.openai_model
@@ -135,7 +205,7 @@ class LLMSummarizer:
             f"and what a reader should know. Return only the briefing text.\n\n{briefs}"
         )
         text = await self._llm().complete(
-            model=get_settings().llm_model_primary,
+            model=get_settings().model_for("synthesis"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             max_tokens=256,
@@ -149,7 +219,7 @@ class LLMSummarizer:
             f"{text[:2000]}"
         )
         data = await self._llm().complete_json(
-            model=get_settings().llm_model_fast,
+            model=get_settings().model_for("topics"),
             system="Return only a JSON object with a topics array of strings.",
             user=prompt,
             max_tokens=256,
@@ -173,7 +243,7 @@ class LLMSummarizer:
             'Return a JSON object {"topics": ["..."]}.'
         )
         data = await self._llm().complete_json(
-            model=get_settings().llm_model_fast,
+            model=get_settings().model_for("interests"),
             system="Return only a JSON object with a topics array of strings.",
             user=prompt,
             max_tokens=400,

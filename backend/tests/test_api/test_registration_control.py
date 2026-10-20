@@ -42,7 +42,12 @@ async def test_closed_allows_only_the_first_account(client: AsyncClient, mode):
     assert second.status_code == 403
     assert "closed" in second.json()["detail"].lower()
     state = (await client.get("/api/v1/auth/registration")).json()
-    assert state == {"mode": "closed", "open": False, "invite_required": False}
+    assert state == {
+        "mode": "closed",
+        "open": False,
+        "invite_required": False,
+        "first_account": False,
+    }
 
 
 @pytest.mark.asyncio

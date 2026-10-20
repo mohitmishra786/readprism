@@ -22,7 +22,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.content import UserContentInteraction
+from app.models.content import ContentItem, UserContentInteraction
 from app.models.creator import Creator, CreatorPlatform
 from app.models.creator_trust import CreatorTopicTrust
 from app.models.digest import Digest, DigestItem
@@ -37,6 +37,35 @@ logger = get_logger(__name__)
 # Columns never included in an export: opaque derived vectors (not human-portable)
 # and the password hash (a secret, not personal data the user needs back).
 _EXCLUDED_COLUMNS = {"embedding", "topic_embedding", "hashed_password"}
+
+
+# Article metadata exported for items you were shown or touched (format 2,
+# #200): enough to know what each digest offered and to replay rankings
+# offline. Publisher full text is not included.
+_CONTENT_COLUMNS = (
+    "id",
+    "url",
+    "title",
+    "author",
+    "summary_brief",
+    "topic_clusters",
+    "source_id",
+    "feed_id",
+    "origin",
+    "published_at",
+    "fetched_at",
+    "word_count",
+    "reading_time_minutes",
+    "has_citations",
+    "content_depth_score",
+    "is_original_reporting",
+    "rankable",
+)
+
+
+def _content_dict(item: ContentItem) -> dict[str, Any]:
+    full = _row_to_dict(item)
+    return {name: full.get(name) for name in _CONTENT_COLUMNS}
 
 
 def _row_to_dict(obj: Any) -> dict[str, Any]:
@@ -79,10 +108,41 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             select(CreatorPlatform).where(CreatorPlatform.creator_id.in_(creator_ids)),
         )
 
+    from app.services.feed_identity import visible_item_filter
+
+    digest_items = await _all(
+        session,
+        select(DigestItem)
+        .join(Digest, Digest.id == DigestItem.digest_id)
+        .where(Digest.user_id == uid)
+        .order_by(DigestItem.digest_id, DigestItem.position),
+    )
+    touched = select(UserContentInteraction.content_item_id).where(
+        UserContentInteraction.user_id == uid
+    )
+    shown = (
+        select(DigestItem.content_item_id)
+        .join(Digest, Digest.id == DigestItem.digest_id)
+        .where(Digest.user_id == uid)
+    )
+    content = [
+        _content_dict(item)
+        for item in (
+            await session.execute(
+                select(ContentItem).where(
+                    ContentItem.id.in_(touched.union(shown)), visible_item_filter(uid)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    ]
+
     return {
         "export_metadata": {
             "generated_at": datetime.now(UTC).isoformat(),
-            "format_version": 1,
+            # 2 (#200): adds digest_items and content metadata; additive.
+            "format_version": 2,
             "note": (
                 "Portable copy of your ReadPrism personal data (GDPR Art. 20 / CCPA). "
                 "Derived embedding vectors and your password hash are excluded."
@@ -108,6 +168,8 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             session, select(UserMetaWeights).where(UserMetaWeights.user_id == uid)
         ),
         "digests": await _all(session, select(Digest).where(Digest.user_id == uid)),
+        "digest_items": digest_items,
+        "content": content,
     }
 
 

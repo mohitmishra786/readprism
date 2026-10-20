@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,20 +61,24 @@ async def update_preferences(
         current_user.timezone = body.timezone
     if body.collaborative_opt_out is not None:
         current_user.collaborative_opt_out = body.collaborative_opt_out
+    if body.weekly_email is not None:
+        current_user.weekly_email = body.weekly_email
     await session.flush()
     return UserRead.model_validate(current_user)
 
 
 @router.get("/interest-graph", response_model=InterestGraphResponse)
 async def get_interest_graph(
+    limit: int = Query(50, ge=1, le=300),
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> InterestGraphResponse:
+    # The interest map asks for up to 300 nodes (#179); other callers keep 50.
     nodes_result = await session.execute(
         select(InterestNode)
         .where(InterestNode.user_id == current_user.id)
         .order_by(InterestNode.weight.desc())
-        .limit(50)
+        .limit(limit)
     )
     nodes = list(nodes_result.scalars().all())
 
@@ -91,7 +95,14 @@ async def get_interest_graph(
     node_label_map = {n.id: n.topic_label for n in nodes}
     return InterestGraphResponse(
         nodes=[
-            InterestGraphNode(label=n.topic_label, weight=n.weight, is_core=n.is_core)
+            InterestGraphNode(
+                label=n.topic_label,
+                weight=n.weight,
+                is_core=n.is_core,
+                last_reinforced_at=n.last_reinforced_at,
+                reinforcement_count=n.reinforcement_count or 0,
+                suppressed_until=n.suppressed_until,
+            )
             for n in nodes
         ],
         edges=[

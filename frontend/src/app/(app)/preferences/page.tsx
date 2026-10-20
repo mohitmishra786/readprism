@@ -3,7 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
+import { LlmKeySection } from "../../../components/LlmKeySection";
 import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
+import { CitationExport } from "../../../components/CitationExport";
+import { PushAlerts } from "../../../components/PushAlerts";
 import type { InterestGraph, InterestGraphEdge, InterestGraphNode, User } from "../../../lib/types";
 
 // --- Simple force-layout SVG graph ---
@@ -431,13 +434,46 @@ export default function PreferencesPage() {
         <NewsletterAddressCard />
       </section>
 
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Weekly summary</h2>
+        <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14 }}>
+          <input
+            type="checkbox"
+            checked={Boolean(user.weekly_email)}
+            onChange={async (e) => {
+              const updated = await api.preferences.update({ weekly_email: e.target.checked }).catch(() => null);
+              if (updated) {
+                setUser(updated);
+                setInitial(updated);
+              }
+            }}
+          />
+          <span>
+            Email me once a week with what ReadPrism learned: topics rising and fading, and the
+            source I finish most, each with a one-click undo.
+          </span>
+        </label>
+      </section>
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Digest alerts</h2>
+        <PushAlerts />
+      </section>
+
+      <section style={{ marginTop: 40 }}>
+        <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Export saved articles</h2>
+        <CitationExport />
+      </section>
+
       <PlanSection />
+      <LlmKeySection />
 
       <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>
         <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
           Download a portable copy of everything ReadPrism stores about you, or
-          permanently delete your account.
+          permanently delete your account. <a href="/privacy" style={{ textDecoration: "underline" }}>What we collect and why</a>.
+          {" "}Running this instance? <a href="/admin/setup" style={{ textDecoration: "underline" }}>Instance setup</a> (owner only).
         </p>
         <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginBottom: 16 }}>
           <input

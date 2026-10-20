@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ContentItem } from "../../lib/types";
-import { SIGNAL_LABELS } from "../../lib/signals";
+import { topicFromWhy, whySegments } from "../../lib/why";
 import { FeedbackBar } from "./FeedbackBar";
 import { SummaryLabel } from "../SummaryLabel";
 
@@ -17,7 +17,7 @@ const SECTION_ACCENTS: Record<string, string> = {
 interface ContentCardProps {
   content: ContentItem;
   prsScore?: number | null;
-  signalBreakdown?: Record<string, number | string>;
+  signalBreakdown?: Record<string, unknown>;
   isDiscovery?: boolean;
   section?: string;
   position?: number;
@@ -31,46 +31,19 @@ export function ContentCard({
   section,
 }: ContentCardProps) {
   const router = useRouter();
-  const [showWhyTooltip, setShowWhyTooltip] = useState(false);
+  const [showWhy, setShowWhy] = useState(false);
   const [summaryLevel, setSummaryLevel] = useState<"brief" | "detailed">("brief");
 
   const discoveredVia =
     typeof signalBreakdown?.discovered_via === "string" ? signalBreakdown.discovered_via : null;
 
-  // Explainability: rank signals by relative contribution.
-  const signalEntries = signalBreakdown
-    ? Object.entries(signalBreakdown)
-        .filter(([k, v]) => !k.startsWith("_") && typeof v === "number")
-        .sort(([, a], [, b]) => (b as number) - (a as number))
-    : [];
-
-  const totalSignalStrength = signalEntries.reduce(
-    (sum, [, v]) => sum + (v as number),
-    0,
-  );
-
-  const rankedSignals = signalEntries.slice(0, 3).map(([k, v]) => ({
-    key: k,
-    label: SIGNAL_LABELS[k] || k,
-    contribution:
-      totalSignalStrength > 0
-        ? Math.round(((v as number) / totalSignalStrength) * 100)
-        : 0,
-  }));
-
-  // Graph-based explanation (05-5), e.g. "connects your interest in X and Y".
-  const whyTopics =
-    signalBreakdown && typeof signalBreakdown.why_topics === "string"
-      ? (signalBreakdown.why_topics as string)
-      : null;
-
-  const whySummary =
-    whyTopics ||
-    (rankedSignals.length > 0
-      ? `Ranked because it ${rankedSignals[0].label}${
-          rankedSignals[1] ? ` and ${rankedSignals[1].label}` : ""
-        }`
-      : null);
+  // Explainability (#185): each signal's share of this item's score, from the
+  // contributions the ranker stored (they sum to the score).
+  const breakdown = signalBreakdown as Record<string, unknown> | undefined;
+  const whyTopics = typeof breakdown?.why_topics === "string" ? breakdown.why_topics : null;
+  const segments = whySegments(breakdown, topicFromWhy(whyTopics));
+  const explanation = typeof breakdown?.explanation === "string" ? breakdown.explanation : null;
+  const whySummary = explanation || whyTopics;
 
   const accent = section ? SECTION_ACCENTS[section] : "from-prism-600 to-prism-400";
 
@@ -151,13 +124,13 @@ export function ContentCard({
 
       {summaryLevel === "brief" && content.summary_brief && (
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
-          <SummaryLabel source={content.summary_source} />
+          <SummaryLabel source={content.summary_source} fromTranscript={Boolean(content.transcript_url)} />
           {content.summary_brief}
         </p>
       )}
       {summaryLevel === "detailed" && (content.summary_detailed || content.summary_brief) && (
         <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700 dark:text-stone-300">
-          <SummaryLabel source={content.summary_source} />
+          <SummaryLabel source={content.summary_source} fromTranscript={Boolean(content.transcript_url)} />
           {content.summary_detailed || content.summary_brief}
         </p>
       )}
@@ -175,41 +148,57 @@ export function ContentCard({
 
       {/* Footer: why-this + feedback */}
       <div className="mt-4 flex items-center justify-between border-t border-stone-100 pt-3 dark:border-stone-800">
-        {whySummary ? (
+        {whySummary || segments.length ? (
           <div className="relative">
             <button
-              onClick={() => setShowWhyTooltip(!showWhyTooltip)}
-              title={whySummary}
+              type="button"
+              onClick={() => setShowWhy((v) => !v)}
+              aria-expanded={showWhy}
+              aria-controls={`why-${content.id}`}
               className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-prism-500 to-spectrum-violet" />
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-prism-500 to-spectrum-violet" />
               Why this?
             </button>
-            {showWhyTooltip && (
-              <div className="absolute bottom-full left-0 z-20 mb-2 w-64 rounded-lg bg-stone-900 p-3 text-xs text-white shadow-xl">
+            {showWhy && (
+              <div
+                id={`why-${content.id}`}
+                role="region"
+                aria-label="Why this is ranked here"
+                className="absolute bottom-full left-0 z-20 mb-2 w-72 rounded-lg bg-stone-900 p-3 text-xs text-white shadow-xl"
+              >
                 <div className="mb-2 font-semibold">Why this is ranked here</div>
-                {typeof signalBreakdown?.explanation === "string" && (
-                  <p className="mb-2 text-stone-100">{signalBreakdown.explanation}</p>
-                )}
-                {whyTopics && (
-                  <div className="mb-2 rounded bg-white/10 px-2 py-1 capitalize opacity-95">
-                    {whyTopics}
-                  </div>
-                )}
-                {rankedSignals.map((s) => (
-                  <div key={s.key} className="mb-1.5 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/20">
-                      <div
-                        className="h-full rounded-full bg-prism-400"
-                        style={{ width: `${s.contribution}%` }}
-                      />
+                {whySummary && <p className="mb-2 text-stone-100">{whySummary}</p>}
+                {segments.length > 0 && (
+                  <>
+                    {/* One bar, 100% = this item's score. */}
+                    <div className="mb-2 flex h-2 w-full overflow-hidden rounded-full bg-white/10" aria-hidden>
+                      {segments.map((s, i) => (
+                        <span
+                          key={s.key}
+                          className={s.noData ? "bg-white/25" : ["bg-prism-400", "bg-spectrum-violet", "bg-spectrum-cyan", "bg-stone-400"][i] ?? "bg-stone-400"}
+                          style={{ width: `${s.pct}%` }}
+                        />
+                      ))}
                     </div>
-                    <span className="w-8 text-right opacity-70">
-                      {s.contribution}%
-                    </span>
-                    <span className="shrink-0 opacity-95">{s.label}</span>
-                  </div>
-                ))}
+                    <ul aria-label="Share of this item's score">
+                      {segments.map((s) => (
+                        <li key={s.key} className="flex justify-between gap-3 py-0.5">
+                          <span className={s.noData ? "opacity-70" : ""}>
+                            {s.key === "semantic" ? (
+                              <a href="/interests" className="underline decoration-white/40 underline-offset-2 hover:decoration-white">
+                                {s.label}
+                              </a>
+                            ) : (
+                              s.label
+                            )}
+                          </span>
+                          <span className="tabular-nums opacity-90">{s.pct}%</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -4,6 +4,9 @@ Beat is a scheduler, not a worker, so it can't answer `celery inspect ping`. A
 dead beat silently stops all ingestion and digests. This task is scheduled every
 minute; it writes a short-TTL key to Redis. If beat stops scheduling (or no
 worker is consuming), the key expires and the beat container's healthcheck fails.
+
+`queue_heartbeat` (#234) is scheduled onto each worker queue, so the
+instance health banner can tell which worker stopped.
 """
 
 from __future__ import annotations
@@ -18,6 +21,12 @@ logger = get_logger(__name__)
 
 HEARTBEAT_KEY = "beat:heartbeat"
 HEARTBEAT_TTL_SECONDS = 180
+WORKER_QUEUES = ("scrape", "embed", "digest")
+WORKER_HEARTBEAT_TTL_SECONDS = 7 * 86400  # long-lived, so the banner can say "since"
+
+
+def worker_key(queue: str) -> str:
+    return f"worker:heartbeat:{queue}"
 
 
 async def _write_heartbeat() -> dict:
@@ -31,3 +40,16 @@ async def _write_heartbeat() -> dict:
 @celery_app.task(name="app.workers.tasks.heartbeat.beat_heartbeat")
 def beat_heartbeat() -> dict:
     return asyncio.run(_write_heartbeat())
+
+
+async def _write_queue_heartbeat(queue: str) -> dict:
+    from app.utils.cache import cache_set
+
+    ts = int(time.time())
+    await cache_set(worker_key(queue), ts, ttl_seconds=WORKER_HEARTBEAT_TTL_SECONDS)
+    return {"queue": queue, "heartbeat": ts}
+
+
+@celery_app.task(name="app.workers.tasks.heartbeat.queue_heartbeat")
+def queue_heartbeat(queue: str) -> dict:
+    return asyncio.run(_write_queue_heartbeat(queue))

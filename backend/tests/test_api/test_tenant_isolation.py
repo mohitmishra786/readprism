@@ -50,6 +50,7 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("DELETE", "/api/v1/sources/{source_id}", None),
     ("POST", "/api/v1/sources/{source_id}/fix", None),
     ("GET", "/api/v1/sources/import-jobs/{import_job_id}", None),
+    ("GET", "/api/v1/search/why/{private_content_id}", None),
     ("DELETE", "/api/v1/tokens/{token_id}", None),
 ]
 
@@ -85,6 +86,16 @@ EXEMPT = {
     ): "returns the caller's own interaction; checked below",
     ("GET", "/api/v1/digest/e/{action}/{item_id}"): "signed email link (HMAC over user+item)",
     ("POST", "/api/v1/digest/e/{action}/{item_id}"): "signed email link (HMAC over user+item)",
+    (
+        "GET",
+        "/api/v1/digest/t/{action}",
+    ): "signed weekly-email topic link (HMAC over user+topic, #184)",
+    (
+        "POST",
+        "/api/v1/digest/t/{action}",
+    ): "signed weekly-email topic link (HMAC over user+topic, #184)",
+    ("GET", "/api/v1/digest/u/{action}"): "signed win-back link (HMAC over user+action, #238)",
+    ("POST", "/api/v1/digest/u/{action}"): "signed win-back link (HMAC over user+action, #238)",
     ("POST", "/api/v1/newsletter/inbound/{provider}"): "provider webhook, signature-authenticated",
     ("POST", "/api/v1/billing/webhook/{provider_name}"): "MoR webhook, signature-authenticated",
     ("POST", "/api/v1/sources/starter-packs/{pack_id}/subscribe"): "public pack catalogue",

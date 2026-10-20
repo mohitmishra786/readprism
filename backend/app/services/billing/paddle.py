@@ -98,15 +98,21 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {get_settings().billing_api_key}"}
 
 
-async def checkout_url(user, interval: str) -> str | None:
+async def checkout_url(user, interval: str, plan: str = "reader") -> str | None:
+    from app.services.billing import checkout_target
+
     s = get_settings()
-    price = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
+    price = checkout_target(plan, interval)
     if not price or not s.billing_api_key:
         return None
-    payload = {
+    payload: dict = {
         "items": [{"price_id": price, "quantity": 1}],
         "custom_data": {"user_id": str(user.id)},
     }
+    from app.services.billing import academic_discount_for
+
+    if discount := academic_discount_for(user):
+        payload["discount_id"] = discount  # academic discount (#250)
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(f"{_api()}/transactions", json=payload, headers=_headers())
         resp.raise_for_status()
@@ -128,3 +134,16 @@ async def portal_url(user) -> str | None:
         resp.raise_for_status()
     urls = (resp.json().get("data") or {}).get("urls") or {}
     return (urls.get("general") or {}).get("overview")
+
+
+async def cancel_subscription(subscription_id: str) -> None:
+    """Cancel now (account deletion, #221). Raises on failure."""
+    if not get_settings().billing_api_key:
+        raise RuntimeError("BILLING_API_KEY is not set")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{_api()}/subscriptions/{subscription_id}/cancel",
+            json={"effective_from": "immediately"},
+            headers=_headers(),
+        )
+        resp.raise_for_status()

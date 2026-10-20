@@ -1,7 +1,10 @@
 # Benchmarks
 
-Reproducible numbers. Re-run any row with the command in its "How" column.
-Last verified: 2026-10-02 (see docs/PROGRESS.md session evidence for SHAs).
+<p class="lead">Reproducible numbers. Re-run any row with the command in its
+"How" column.</p>
+
+*Last verified: 2026-10-02. Commit SHAs for each run are in the session
+evidence in `docs/PROGRESS.md`.*
 
 ## Ranking quality (synthetic eval, CI-enforced)
 

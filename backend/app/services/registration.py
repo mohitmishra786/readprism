@@ -38,14 +38,22 @@ def _valid_invite(code: str | None) -> bool:
     return any(hmac.compare_digest(code.strip(), valid) for valid in codes)
 
 
-async def _has_users(session: AsyncSession) -> bool:
+async def is_instance_owner(session: AsyncSession, user: User) -> bool:
+    """The first account is the instance owner (#220, #234)."""
+    first = (
+        await session.execute(select(User.id).order_by(User.created_at, User.id).limit(1))
+    ).scalar_one_or_none()
+    return first == user.id
+
+
+async def has_users(session: AsyncSession) -> bool:
     return bool((await session.execute(select(func.count(User.id)))).scalar())
 
 
 async def can_register(session: AsyncSession, invite_code: str | None = None) -> tuple[bool, str]:
     """(allowed, reason-if-not)."""
     mode = effective_mode()
-    if mode == "open" or not await _has_users(session):
+    if mode == "open" or not await has_users(session):
         return True, ""
     if mode == "invite":
         if _valid_invite(invite_code):

@@ -1,0 +1,92 @@
+/* ReadPrism docs: readable line length, calmer tables, roomy diagrams. */
+
+:root {
+  --md-text-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --md-code-font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* Body text at a comfortable size and line height. */
+.md-typeset {
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.6em;
+}
+
+.md-typeset h2 {
+  font-weight: 650;
+  margin-top: 2.2em;
+  padding-top: 0.6em;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset h3 {
+  font-weight: 600;
+  margin-top: 1.6em;
+}
+
+/* The lead paragraph right under the title. */
+.md-typeset .lead {
+  font-size: 0.95rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Tables: full width, zebra rows, no heavy borders. */
+.md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
+  font-size: 0.75rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 6px;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--md-default-fg-color--lightest);
+  font-weight: 600;
+}
+
+.md-typeset table:not([class]) tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--md-default-fg-color--lightest) 40%, transparent);
+}
+
+/* Diagrams: centred, with room around them, scroll instead of shrink. */
+.md-typeset .mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 1.5em 0;
+  padding: 1em;
+  overflow-x: auto;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  background: var(--md-code-bg-color);
+}
+
+/* Inline code that doesn't shout. */
+.md-typeset code {
+  font-size: 0.85em;
+  border-radius: 4px;
+}
+
+/* Grid cards on the home page. */
+.md-typeset .grid.cards > ul > li {
+  border-radius: 8px;
+}
+
+/* Brand colour: the app icon's blue. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #1d4ed8;
+  --md-primary-fg-color--light: #3b82f6;
+  --md-primary-fg-color--dark: #1e3a8a;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #1e3a8a;
+  --md-primary-fg-color--light: #3b82f6;
+  --md-primary-fg-color--dark: #172554;
+  --md-typeset-a-color: #93c5fd;
+}

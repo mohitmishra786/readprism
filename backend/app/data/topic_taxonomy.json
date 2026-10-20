@@ -116,6 +116,12 @@
     {"pack": "quant-finance", "label": "Quantitative finance", "aliases": ["quant", "quantitative finance", "trading", "markets", "finance"], "related": ["Statistics", "Algorithms and data structures"]},
     {"pack": "crypto-web3", "label": "Crypto and blockchain", "aliases": ["blockchain", "web3", "ethereum", "bitcoin", "cryptocurrency", "defi"], "related": ["Cryptography", "Distributed systems"]},
 
+    {"pack": "research-papers", "label": "Research papers", "aliases": ["research papers", "preprints", "preprint", "journals", "peer review", "academic research", "phd", "literature review"], "related": ["Statistics", "Science", "Public policy"]},
+    {"pack": "research-papers", "label": "Econometrics", "aliases": ["econometrics", "economics research", "causal inference"], "related": ["Statistics", "Public policy"]},
+    {"pack": "policy-research", "label": "Public policy", "aliases": ["public policy", "policy", "think tanks", "government", "legislation", "fiscal policy", "regulation research"], "related": ["Economics", "Tech policy"]},
+    {"pack": "policy-research", "label": "Economics", "aliases": ["economics", "macroeconomics", "inflation", "labour market", "labor market"], "related": ["Public policy", "Econometrics", "Central banks"]},
+    {"pack": "filings-markets", "label": "SEC filings", "aliases": ["sec filings", "filings", "10-k", "8-k", "edgar", "annual reports", "ipo", "s-1"], "related": ["Central banks", "Quantitative finance"]},
+    {"pack": "filings-markets", "label": "Central banks", "aliases": ["central banks", "federal reserve", "the fed", "ecb", "monetary policy", "interest rates"], "related": ["Economics", "SEC filings"]},
     {"pack": "web-development", "label": "Search", "aliases": ["search", "search engines", "information retrieval", "elasticsearch", "lucene"], "related": ["Retrieval-augmented generation", "Indexing"]}
   ]
 }

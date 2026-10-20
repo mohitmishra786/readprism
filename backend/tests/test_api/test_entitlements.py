@@ -104,7 +104,7 @@ async def test_hosted_free_user_blocked_at_source_limit(
 
     resp = await _add_source(client, headers, "https://c.example.com")
     assert resp.status_code == 402
-    assert "Upgrade" in resp.json()["detail"]
+    assert "Subscribe to raise it" in resp.json()["detail"]
 
 
 @pytest.mark.asyncio

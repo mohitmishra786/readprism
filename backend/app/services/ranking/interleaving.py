@@ -167,3 +167,120 @@ async def interleaving_report(session, *, days: int = 7, now: datetime | None = 
         "users": len(per_user),
         "user_win_rates": rates,
     }
+
+
+async def user_comparison(
+    session,
+    user_id: uuid.UUID,
+    *,
+    days: int = 7,
+    now: datetime | None = None,
+    min_examples: int = 1,
+) -> dict:
+    """'Your digest vs newest-first' for ONE user (#237); never other users' data.
+
+    Examples: articles the reader finished in the last `days` days that PRS
+    placed near the top while newest-first, over the same digest, would have
+    buried. If interleaved digests exist, also the reader's own outcomes.
+    """
+    from sqlalchemy import select
+
+    from app.models.content import ContentItem, UserContentInteraction
+    from app.models.digest import Digest, DigestImpression, DigestItem
+    from app.models.user import User
+
+    now = now or datetime.now(UTC)
+    user = await session.get(User, user_id)
+    created = user.created_at if user else None
+    if created is not None and created.tzinfo is None:
+        created = created.replace(tzinfo=UTC)
+    if user is None or created is None or now - created < timedelta(days=7):
+        return {"available": False, "reason": "too_new", "examples": [], "interleaving": None}
+
+    since = now - timedelta(days=days)
+    rows = (
+        await session.execute(
+            select(Digest.id, Digest.generated_at, DigestItem.position, ContentItem)
+            .join(DigestItem, DigestItem.digest_id == Digest.id)
+            .join(ContentItem, ContentItem.id == DigestItem.content_item_id)
+            .where(Digest.user_id == user_id, Digest.generated_at >= since)
+        )
+    ).all()
+    finished_ids = {
+        ix.content_item_id
+        for ix in (
+            await session.execute(
+                select(UserContentInteraction).where(
+                    UserContentInteraction.user_id == user_id,
+                    UserContentInteraction.content_item_id.in_(
+                        {row[3].id for row in rows} or {uuid.uuid4()}
+                    ),
+                )
+            )
+        ).scalars()
+        if finished(ix)
+    }
+    by_digest: dict[uuid.UUID, list] = {}
+    for digest_id, generated_at, position, item in rows:
+        by_digest.setdefault(digest_id, []).append((generated_at, position, item))
+
+    examples = []
+    for entries in by_digest.values():
+        newest = sorted(entries, key=lambda e: e[2].fetched_at or e[0], reverse=True)
+        newest_rank = {e[2].id: i + 1 for i, e in enumerate(newest)}
+        for generated_at, position, item in entries:
+            ours, theirs = position + 1, newest_rank[item.id]
+            if item.id in finished_ids and theirs - ours >= 5:
+                examples.append(
+                    {
+                        "content_id": str(item.id),
+                        "title": item.title,
+                        "digest_date": generated_at.date().isoformat(),
+                        "your_position": ours,
+                        "newest_first_position": theirs,
+                    }
+                )
+    examples.sort(key=lambda e: e["newest_first_position"] - e["your_position"], reverse=True)
+
+    interleaved = (
+        await session.execute(
+            select(
+                DigestImpression.digest_id, DigestImpression.content_item_id, DigestImpression.team
+            )
+            .join(Digest, Digest.id == DigestImpression.digest_id)
+            .where(
+                Digest.user_id == user_id,
+                Digest.generated_at >= since,
+                DigestImpression.team.isnot(None),
+            )
+        )
+    ).all()
+    outcome = None
+    if interleaved:
+        teams: dict[uuid.UUID, dict] = {}
+        for digest_id, item_id, team in interleaved:
+            teams.setdefault(digest_id, {})[item_id] = team
+        interactions = {
+            ix.content_item_id: ix
+            for ix in (
+                await session.execute(
+                    select(UserContentInteraction).where(UserContentInteraction.user_id == user_id)
+                )
+            ).scalars()
+        }
+        counts = Counter(digest_outcome(t, interactions) for t in teams.values())
+        outcome = {
+            "digests": len(teams),
+            "prs_wins": counts[PRS],
+            "newest_wins": counts[BASELINE],
+            "ties": counts["tie"],
+        }
+
+    available = len(examples) >= min_examples
+    return {
+        "available": available,
+        "reason": None if available else "not_enough_reading",
+        "window_days": days,
+        "examples": examples[:3],
+        "interleaving": outcome,
+    }

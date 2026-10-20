@@ -3,6 +3,8 @@
 - GET  /integrations/obsidian       → Markdown files (downloadable)
 - GET  /integrations/logseq         → Logseq pages (downloadable)
 - GET  /integrations/export-zip     → zip of the Markdown export
+- GET  /integrations/bibtex         → saved items as BibTeX (Zotero etc.)
+- GET  /integrations/ris            → saved items as RIS
 - POST /integrations/export-webhook → push the Markdown export to a webhook
 - POST /integrations/import-sidecar → Miniflux/FreshRSS subscription import
 
@@ -13,7 +15,7 @@ Markdown zip + webhook cover the same needs without third-party API churn).
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +44,40 @@ async def obsidian_export(
     """
     files = await export_to_obsidian(current_user.id, session)
     return {"files": files, "count": len(files)}
+
+
+@router.get("/bibtex")
+async def bibtex_export(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Saved items as a BibTeX file for Zotero, JabRef, BibDesk (#250)."""
+    from app.services.integrations.citations import to_bibtex
+    from app.services.integrations.export import _get_saved_items
+
+    body = to_bibtex(await _get_saved_items(current_user.id, session))
+    return Response(
+        content=body,
+        media_type="application/x-bibtex; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="readprism-saved.bib"'},
+    )
+
+
+@router.get("/ris")
+async def ris_export(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Saved items as RIS for Zotero, Mendeley, EndNote (#250)."""
+    from app.services.integrations.citations import to_ris
+    from app.services.integrations.export import _get_saved_items
+
+    body = to_ris(await _get_saved_items(current_user.id, session))
+    return Response(
+        content=body,
+        media_type="application/x-research-info-systems; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="readprism-saved.ris"'},
+    )
 
 
 @router.get("/logseq")

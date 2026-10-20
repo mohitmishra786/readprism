@@ -34,6 +34,8 @@ class User(Base):
     # ISO-639 codes the user wants to read (UX-15). Empty = no filter.
     preferred_languages: Mapped[list] = mapped_column(JSONB, default=list)
     tier: Mapped[str] = mapped_column(String, default="free")
+    # Admin per-account quota overrides on hosted (#172), e.g. {"sources": 1000}.
+    quota_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     # Local part of the inbound newsletter address: u.{token}@the configured domain.
     newsletter_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
@@ -51,9 +53,21 @@ class User(Base):
     collaborative_opt_out: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    # Win-back stage reached since the last opened digest (#238): 0 = none.
+    reengagement_stage: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    reengagement_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Weekly "What I learned about you" email (#184): opt-in, off by default.
+    weekly_email: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    weekly_email_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Hosted billing (#173). `tier` is what was bought; app.services.billing
     # .effective_plan() combines it with these dates.
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Trial emails sent so far (#235): 1 started, 2 ending soon, 3 ended.
+    trial_email_stage: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     billing_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     billing_customer_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)

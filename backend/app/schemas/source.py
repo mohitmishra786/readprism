@@ -34,7 +34,11 @@ class SourceRead(BaseModel):
     last_error_at: datetime | None = None
     last_error: str | None = None
     fetch_error_count: int
-    health: str  # healthy | degraded | failing | dead
+    health: str  # healthy | degraded | failing | platform_outage | dead
+    # Newsletter senders (#249): "direct" | "forwarded", and the sender's own
+    # unsubscribe link/address ({"url": https or None, "mailto": ... or None}).
+    newsletter_delivery: str | None = None
+    unsubscribe_options: dict | None = None
     items_per_week: int = 0
     topics: list
     priority: str

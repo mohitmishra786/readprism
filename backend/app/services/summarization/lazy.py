@@ -24,15 +24,17 @@ def needs_llm_summary(item: ContentItem) -> bool:
     return bool(item.full_text) and item.summary_source != "llm"
 
 
-async def ensure_llm_summaries(items: list[ContentItem], *, limit: int | None = None) -> int:
+async def ensure_llm_summaries(
+    items: list[ContentItem], *, limit: int | None = None, summarizer=None
+) -> int:
     """Summarize `items` lacking an LLM summary, in place; returns the call count.
 
     Model calls run concurrently (the LLM client still applies its own rate
     limits); results are written onto the items, which the caller's session
     persists. Failures keep the extractive summary.
     """
-    settings = get_settings()
-    if not settings.llm_configured:
+    # `summarizer`: a reader's own key (#255); otherwise the instance's.
+    if summarizer is None and not get_settings().llm_configured:
         return 0
     from app.services.summarization.summarizer import apply_summary, get_llm_summarizer
 
@@ -42,12 +44,17 @@ async def ensure_llm_summaries(items: list[ContentItem], *, limit: int | None = 
     if not todo:
         return 0
     gate = asyncio.Semaphore(CONCURRENCY)
-    summarizer = get_llm_summarizer()
+    summarizer = summarizer or get_llm_summarizer()
 
     async def one(item: ContentItem):
         async with gate:
             try:
-                return await summarizer.summarize(item.title or "", item.full_text or "")
+                return await summarizer.summarize(
+                    item.title or "",
+                    item.full_text or "",
+                    language=item.language,
+                    is_transcript=bool(item.transcript_url),
+                )
             except Exception as e:  # never block the digest on the model
                 logger.info(f"LLM summary failed for {item.id}: {e}")
                 return None

@@ -24,7 +24,8 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-PROMPT_VERSION = "summarize-v1"
+# v2: summaries in the article's language (#248).
+PROMPT_VERSION = "summarize-v2"
 _MAX_ATTEMPTS = 3
 
 Clock = Callable[[], float]
@@ -86,6 +87,25 @@ def _is_model_missing(status_code: int, body: str) -> bool:
     )
 
 
+def _reason(status_code: int) -> str:
+    if status_code in (401, 403):
+        return f"HTTP {status_code}: the API key was rejected"
+    return f"HTTP {status_code}"
+
+
+async def _record(ok: bool, reason: str = "", *, tokens: int = 0) -> None:
+    """Last outcome for the owner's health banner (#234) and the call/token
+    counters behind /metrics (#170). Never the key."""
+    try:
+        from app.services.instance_health import record_llm_outcome
+        from app.services.metrics.prometheus import record_llm_usage
+
+        await record_llm_outcome(ok, reason)
+        await record_llm_usage(ok, tokens)
+    except Exception:  # never let telemetry break a completion
+        pass
+
+
 class LLMClient:
     """One OpenAI-compatible endpoint. Construct a second instance for a fallback provider."""
 
@@ -120,6 +140,11 @@ class LLMClient:
             return self._api_key_override
         return get_settings().llm_api_key
 
+    def _redact(self, text: str) -> str:
+        """Providers sometimes echo the key in errors; never log it (#255)."""
+        key = self.api_key
+        return text.replace(key, "***") if key else text
+
     @property
     def circuit_open(self) -> bool:
         return self._circuit_open
@@ -134,7 +159,7 @@ class LLMClient:
             f"LLM model {model!r} was rejected by {self.base_url}. "
             "Update LLM_MODEL_PRIMARY and LLM_MODEL_FAST to a model the provider "
             "still serves (Groq defaults: openai/gpt-oss-120b and openai/gpt-oss-20b). "
-            f"Provider said: {body[:300]}"
+            f"Provider said: {self._redact(body)[:300]}"
         )
         logger.error(self._circuit_reason)
 
@@ -200,6 +225,7 @@ class LLMClient:
             except (httpx.TimeoutException, httpx.TransportError) as e:
                 logger.warning("LLM transport error (attempt %s): %s", attempt + 1, e)
                 if attempt + 1 == _MAX_ATTEMPTS:
+                    await _record(False, "provider unreachable")
                     return None
                 await self._backoff(attempt, None)
                 continue
@@ -207,23 +233,31 @@ class LLMClient:
             if resp.status_code == 200:
                 try:
                     data = resp.json()
-                    return str(data["choices"][0]["message"].get("content") or "")
+                    text = str(data["choices"][0]["message"].get("content") or "")
                 except (KeyError, IndexError, TypeError, ValueError) as e:
                     logger.warning("LLM response was not a chat completion: %s", e)
                     return None
+                usage = data.get("usage") if isinstance(data, dict) else None
+                await _record(True, tokens=int((usage or {}).get("total_tokens") or 0))
+                return text
 
             body = resp.text[:500]
             if _is_model_missing(resp.status_code, body):
                 self._trip(model, body)
+                await _record(False, f"model {model} not available")
                 return None
             if resp.status_code == 429 or resp.status_code >= 500:
                 last_status = resp.status_code
                 logger.warning("LLM HTTP %s (attempt %s)", resp.status_code, attempt + 1)
                 if attempt + 1 == _MAX_ATTEMPTS:
+                    await _record(False, f"HTTP {resp.status_code}")
                     return None
                 await self._backoff(attempt, resp.headers.get("retry-after"))
                 continue
-            logger.error("LLM request failed with HTTP %s: %s", resp.status_code, body)
+            logger.error(
+                "LLM request failed with HTTP %s: %s", resp.status_code, self._redact(body)
+            )
+            await _record(False, _reason(resp.status_code))
             return None
         logger.error("LLM request failed after retries (last HTTP %s)", last_status)
         return None

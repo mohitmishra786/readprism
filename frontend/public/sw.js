@@ -132,3 +132,39 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Opt-in digest alerts (#266): show the notification the server pushed, and
+// open (or focus) the digest when it is tapped.
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (_e) {
+    data = {};
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || "ReadPrism", {
+      body: data.body || "Your digest is ready.",
+      icon: "/icon.svg",
+      badge: "/icon.svg",
+      tag: data.tag || "readprism",
+      data: { url: data.url || "/digest" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || "/digest", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+      for (const w of windows) {
+        if (w.url.startsWith(self.location.origin) && "focus" in w) {
+          w.navigate(target);
+          return w.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

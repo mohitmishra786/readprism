@@ -1,9 +1,11 @@
-# ReadPrism Privacy Policy
+# Privacy policy
 
-*Last updated: 2026-07-21. This is a baseline policy template for the ReadPrism
-software; it is not legal advice. Operators of a hosted ReadPrism instance should
-have it reviewed by counsel and adapt it to their jurisdiction before collecting
-user data.*
+*Last updated: 2026-07-21.*
+
+!!! info "A template, not legal advice"
+    This is a baseline policy for the ReadPrism software. Operators of a
+    hosted instance should have it reviewed by counsel and adapt it to their
+    jurisdiction before collecting user data.
 
 ReadPrism is a personalized reading tool. To rank content for you, it processes
 data about what you read and how you read it. This document explains what is
@@ -38,6 +40,22 @@ We do **not** sell personal data, and we do not use it for advertising.
   upvoted, matched to the new reader's own topics. Only per-article counts
   are used, never one person's history, and private items never qualify.
   You can leave the counts in Preferences → Your Data.
+
+## Cookies and browser storage
+
+ReadPrism sets only essential cookies, so it shows no consent banner:
+
+| Name | Purpose | Lifetime |
+|---|---|---|
+| `rp_access` | Session (access token), httpOnly | `ACCESS_TOKEN_EXPIRE_MINUTES` |
+| `rp_refresh` | Session renewal, httpOnly, path `/api/v1/auth` | `REFRESH_TOKEN_EXPIRE_DAYS` |
+| `rp_csrf` | Double-submit CSRF protection, httpOnly | `REFRESH_TOKEN_EXPIRE_DAYS` |
+
+The web app also keeps a few settings in local storage (reader text size and
+theme, a dismissed install hint, a "signed in on this device" flag for offline
+use) and an offline cache of pages you opened. No analytics, advertising or
+third-party cookies are used. The full list is on the in-app `/privacy` page
+and is checked against the code in CI.
 
 ## Why we process it (legal bases)
 

@@ -101,3 +101,46 @@ async def test_onboarding_time_choice_persists_and_locks_the_send_time(client, t
         await _learn_send_times_async()
     again = (await client.get("/api/v1/preferences", headers=headers)).json()
     assert again["digest_time_morning"] == "06:30:00"
+
+
+@pytest.mark.asyncio
+async def test_interest_graph_serves_the_map(client, test_user_data, db_session):
+    """#179: up to 300 nodes on request, with recency and mute state."""
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from app.models.interest_graph import InterestNode
+    from app.models.user import User
+
+    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    user = (
+        await db_session.execute(select(User).where(User.email == test_user_data["email"]))
+    ).scalar_one()
+    now = datetime.now(UTC)
+    for i in range(120):
+        db_session.add(
+            InterestNode(
+                user_id=user.id,
+                topic_label=f"topic {i}",
+                weight=1 - i / 200,
+                last_reinforced_at=now - timedelta(days=i),
+                reinforcement_count=i,
+                suppressed_until=now + timedelta(days=7) if i == 5 else None,
+            )
+        )
+    await db_session.commit()
+
+    default = (await client.get("/api/v1/preferences/interest-graph", headers=headers)).json()
+    assert len(default["nodes"]) == 50
+    big = (await client.get("/api/v1/preferences/interest-graph?limit=300", headers=headers)).json()
+    assert len(big["nodes"]) == 120
+    muted = next(n for n in big["nodes"] if n["label"] == "topic 5")
+    assert (
+        muted["suppressed_until"]
+        and muted["reinforcement_count"] == 5
+        and muted["last_reinforced_at"]
+    )
+    too_many = await client.get("/api/v1/preferences/interest-graph?limit=1000", headers=headers)
+    assert too_many.status_code == 422

@@ -143,3 +143,25 @@ def test_plain_text_part_has_every_item():
     for title in ("How compilers lower loops", "Postgres vacuum, explained", "An adjacent idea"):
         assert title in text
     assert "Unsubscribe: https://rp.example/unsubscribe?t=x" in text
+
+
+def test_send_script_mails_the_reference_snapshot(monkeypatch):
+    """#217: the manual client check sends exactly the snapshot under test."""
+    import asyncio
+    import importlib.util
+
+    script = Path(__file__).resolve().parents[2] / "scripts" / "send_test_digest_email.py"
+    spec = importlib.util.spec_from_file_location("send_test_digest_email", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    sent: list[dict] = []
+
+    async def fake_send(**kwargs):
+        sent.append(kwargs)
+        return kwargs["to"] != "bounce@example.com"
+
+    monkeypatch.setattr("app.utils.email.send_email", fake_send)
+    assert asyncio.run(module.main(["a@example.com"])) == 0
+    assert sent[0]["html_body"] == SNAPSHOT.read_text()
+    assert asyncio.run(module.main(["bounce@example.com"])) == 1

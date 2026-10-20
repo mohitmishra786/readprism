@@ -1,0 +1,4 @@
+#!/command/with-contenv sh
+# Apply migrations once, under the advisory lock (#126), before anything else
+# starts. AUTO_MIGRATE=false skips, as in the multi-container install.
+cd /app && exec python -m app.migrate

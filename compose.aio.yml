@@ -1,0 +1,71 @@
+# ReadPrism all-in-one (#208): three containers instead of eight.
+#
+#   ./scripts/init_env.sh                      # once: .env with fresh secrets
+#   docker compose -f compose.aio.yml up -d
+#
+# Web app: http://localhost:3001  API: http://localhost:8000
+# The first account you create owns the instance and opens the setup screen.
+#
+# `readprism` runs the API, one worker per queue (scrape, embed, digest),
+# beat and the web app under s6 (deploy/aio/). Run exactly ONE copy of it per
+# database: a second copy would start a second beat and double every
+# scheduled job. To scale workers, use the multi-container docker-compose.yml.
+# Rendered-page extraction (browserless) is not included; those pages keep
+# their feed summary.
+
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  readprism:
+    image: ghcr.io/mohitmishra786/readprism/readprism-aio:${READPRISM_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: deploy/aio/Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://readprism:readprism@db:5432/readprism
+      DATABASE_SYNC_URL: postgresql+psycopg2://readprism:readprism@db:5432/readprism
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      BROWSERLESS_URL: ""
+    ports:
+      - "8000:8000"
+      - "3001:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: readprism
+      POSTGRES_PASSWORD: readprism
+      POSTGRES_DB: readprism
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U readprism -d readprism"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Sessions live here (#204): persist them across restarts.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped

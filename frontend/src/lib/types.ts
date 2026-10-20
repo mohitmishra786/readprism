@@ -19,6 +19,8 @@ export interface User {
   fetch_paused_until?: string | null;
   /** Keep my reading out of other readers' collaborative warmup counts (#210). */
   collaborative_opt_out?: boolean;
+  /** Weekly 'What I learned about you' email (#184), opt-in. */
+  weekly_email?: boolean;
 }
 
 export interface Source {
@@ -34,7 +36,10 @@ export interface Source {
   last_error_at: string | null;
   last_error: string | null;
   fetch_error_count: number;
-  health: "healthy" | "degraded" | "failing" | "dead";
+  health: "healthy" | "degraded" | "failing" | "platform_outage" | "dead";
+  /** Newsletter senders (#249). */
+  newsletter_delivery?: "direct" | "forwarded" | null;
+  unsubscribe_options?: { url: string | null; mailto: string | null } | null;
   items_per_week: number;
   topics: string[];
   priority: string;
@@ -91,6 +96,8 @@ export interface ContentItem {
   summarization_cached: boolean;
   /** "llm" summaries are labelled as AI-written (#177). */
   summary_source?: string | null;
+  /** The text and summary come from the episode's published transcript (#252). */
+  transcript_url?: string | null;
   paywalled?: boolean;
   page_type?: string | null;
   language?: string | null;
@@ -111,7 +118,8 @@ export interface DigestItem {
   position: number;
   section: string;
   prs_score: number;
-  signal_breakdown: Record<string, number | string>;
+  /** Features, contributions, no_data, explanation… as stored by the ranker. */
+  signal_breakdown: Record<string, unknown>;
   content: ContentItem | null;
 }
 
@@ -131,13 +139,17 @@ export interface Digest {
 export interface FeedItem {
   content: ContentItem;
   prs_score: number | null;
-  signal_breakdown: Record<string, number | string>;
+  /** Features, contributions, no_data, explanation… as stored by the ranker. */
+  signal_breakdown: Record<string, unknown>;
 }
 
 export interface InterestGraphNode {
   label: string;
   weight: number;
   is_core: boolean;
+  last_reinforced_at?: string | null;
+  reinforcement_count?: number;
+  suppressed_until?: string | null;
 }
 
 export interface InterestGraphEdge {
@@ -161,13 +173,41 @@ export interface Token {
 }
 
 export interface BillingState {
-  plan: "selfhost" | "trial" | "pro" | "team" | "free";
+  plan: "selfhost" | "trial" | "reader" | "pro" | "team" | "free";
   billing_enabled: boolean;
+  /** Academic discount applies at checkout (verified academic email, #250). */
+  academic_discount?: boolean;
   status: string | null;
   trial_ends_at: string | null;
   trial_days_left: number | null;
   plan_expires_at: string | null;
   can_manage: boolean;
+  /** Hosted plan quotas and today's use (#172); empty on self-host. 0 = unlimited. */
+  quotas?: PlanQuota[];
+  /** Plans on sale, cheapest first (#172); empty when billing is off. */
+  plans?: PlanOffer[];
+}
+
+export interface PlanOffer {
+  plan: "reader" | "pro";
+  name: string;
+  intervals: ("month" | "year")[];
+  /** Limits by quota name; 0 = unlimited. */
+  quotas: Record<PlanQuota["quota"], number>;
+}
+
+export interface PlanQuota {
+  quota:
+    | "sources"
+    | "creators"
+    | "newsletters_per_day"
+    | "newsletter_mb_per_day"
+    | "llm_summaries_per_day"
+    | "digest_builds_per_day";
+  limit: number;
+  used: number;
+  /** Resets at midnight UTC. */
+  daily: boolean;
 }
 
 /** A curated starter pack of feeds (#152). */
@@ -191,4 +231,27 @@ export interface ImportResult {
   queued?: boolean;
   job_id?: string;
   errors: { row?: number; url: string; error: string }[];
+}
+
+/** Live score and explanation for one item (#267). */
+export interface WhyNotSeen {
+  content_id: string;
+  title: string;
+  score: number;
+  explanation: string;
+  why_topics: string | null;
+  verdict: "shown" | "not_an_article" | "not_followed" | "ranked_below_cutoff" | "no_digest_yet" | "outside_window";
+  message: string;
+  latest_digest_cutoff: number | null;
+  contributions: { signal: string; feature: number; weight: number; contribution: number; has_data: boolean }[];
+  raise_it: { signal: string; how: string }[];
+}
+
+/** Your own LLM key on hosted (#255). The key itself is never returned. */
+export interface LLMKeyState {
+  configured: boolean;
+  base_url: string | null;
+  model: string | null;
+  last4: string | null;
+  allowed_base_urls?: string[];
 }

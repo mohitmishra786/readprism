@@ -3,7 +3,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-const api = vi.hoisted(() => ({ auth: { me: vi.fn(), resendVerification: vi.fn(() => Promise.resolve({})) } }));
+const api = vi.hoisted(() => ({
+  auth: { me: vi.fn(), resendVerification: vi.fn(() => Promise.resolve({})) },
+  // The instance health banner (#234) polls this; no problems here.
+  metrics: { instanceHealth: vi.fn(() => Promise.resolve({ problems: [] })) },
+}));
 vi.mock("../src/lib/api", () => ({ api }));
 
 import { AccountNotices } from "../src/components/AccountNotices";

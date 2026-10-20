@@ -36,6 +36,11 @@ class Source(Base):
     next_poll_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     recent_gap_seconds: Mapped[list] = mapped_column(JSONB, default=list)
     feed_status: Mapped[str] = mapped_column(String, default="healthy", server_default="healthy")
+    # Newsletter senders (#249): the sender's latest List-Unsubscribe header
+    # and whether the reader subscribed with their ReadPrism address
+    # ("direct") or forwards copies from their own inbox ("forwarded").
+    list_unsubscribe: Mapped[str | None] = mapped_column(String, nullable=True)
+    newsletter_delivery: Mapped[str | None] = mapped_column(String, nullable=True)
     failure_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -63,5 +68,14 @@ class Source(Base):
 
     @property
     def health(self) -> str:
-        """Scheduler label: healthy, degraded, failing, or dead."""
+        """Scheduler label: healthy, degraded, failing, platform_outage, or dead."""
         return self.feed_status or "healthy"
+
+    @property
+    def unsubscribe_options(self) -> dict | None:
+        """Newsletter senders: how to unsubscribe at the source (#249)."""
+        from app.services.ingestion.newsletter_parse import unsubscribe_options
+
+        return (
+            unsubscribe_options(self.list_unsubscribe) if self.source_type == "newsletter" else None
+        )

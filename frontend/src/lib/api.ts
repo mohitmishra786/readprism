@@ -6,7 +6,9 @@ import {
   setCsrfToken,
 } from './auth';
 import type {
+  LLMKeyState,
   BillingState,
+  WhyNotSeen,
   ImportResult,
   StarterPack,
   ContentItem,
@@ -154,6 +156,26 @@ async function request<T>(
  * telemetry uses a keepalive fetch instead: the browser finishes the request
  * even after the page goes away (UX-05).
  */
+/**
+ * Download a file from the API with the session cookie (#250): fetches it as
+ * a blob, refreshing an expired session once, then saves it under `filename`.
+ */
+export async function downloadFile(path: string, filename: string, _retried = false): Promise<void> {
+  const res = await fetch(`${V1}${path}`, { credentials: 'include', headers: buildHeaders({}, false) });
+  if (res.status === 401 && !_retried && (await tryRefresh())) {
+    return downloadFile(path, filename, true);
+  }
+  if (!res.ok) throw new Error(`Download failed (HTTP ${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function keepalivePost(path: string, payload: Record<string, unknown>): void {
   try {
     void fetch(`${V1}${path}`, {
@@ -175,6 +197,25 @@ function rememberCsrf(t: Token): Token {
   return t;
 }
 
+export interface SetupField {
+  key: string;
+  group: 'llm' | 'smtp' | 'registration';
+  label: string;
+  secret: boolean;
+  source: 'env' | 'saved' | 'default';
+  is_set: boolean;
+  value?: string | number;
+  choices?: string[];
+}
+
+export interface SetupConfig {
+  can_store_secrets: boolean;
+  effective_registration_mode: string;
+  llm_configured: boolean;
+  email_configured: boolean;
+  fields: SetupField[];
+}
+
 // Auth
 export const api = {
   auth: {
@@ -185,7 +226,9 @@ export const api = {
       }).then(rememberCsrf),
     /** Whether this instance accepts new accounts (#153). */
     registration: () =>
-      request<{ mode: string; open: boolean; invite_required: boolean }>('/auth/registration'),
+      request<{ mode: string; open: boolean; invite_required: boolean; first_account?: boolean }>(
+        '/auth/registration'
+      ),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',
@@ -216,6 +259,19 @@ export const api = {
       request<{ status: string }>('/auth/verify-email/resend', { method: 'POST' }),
   },
 
+  // Opt-in Web Push digest alerts (#266).
+  push: {
+    publicKey: () => request<{ public_key: string }>('/push/public-key'),
+    subscribe: (sub: PushSubscriptionJSON) =>
+      request<{ status: string }>('/push/subscribe', { method: 'POST', body: JSON.stringify(sub) }),
+    unsubscribe: (endpoint: string) =>
+      request<{ status: string }>('/push/unsubscribe', {
+        method: 'POST',
+        body: JSON.stringify({ endpoint }),
+      }),
+    test: () => request<{ sent: number; gone: number; failed: number }>('/push/test', { method: 'POST' }),
+  },
+
   // Personal newsletter address and its live test (#151).
   newsletter: {
     address: () =>
@@ -232,10 +288,10 @@ export const api = {
   // Hosted billing (#173). Self-hosted instances report plan "selfhost".
   billing: {
     state: () => request<BillingState>('/billing'),
-    checkout: (interval: 'month' | 'year') =>
+    checkout: (interval: 'month' | 'year', plan: 'reader' | 'pro' = 'reader') =>
       request<{ url: string }>('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ interval, plan }),
       }),
     portal: () => request<{ url: string }>('/billing/portal'),
   },
@@ -244,6 +300,11 @@ export const api = {
     // Portable JSON copy of all personal data (GDPR export, 06-3).
     export: () => request<Record<string, unknown>>('/account/export'),
     delete: () => request<void>('/account', { method: 'DELETE' }),
+    // Your own LLM key on hosted (#255). Only the last 4 characters come back.
+    llmKey: () => request<LLMKeyState>('/account/llm-key'),
+    saveLlmKey: (body: { api_key: string; base_url: string; model?: string }) =>
+      request<LLMKeyState>('/account/llm-key', { method: 'PUT', body: JSON.stringify(body) }),
+    removeLlmKey: () => request<void>('/account/llm-key', { method: 'DELETE' }),
   },
 
   sources: {
@@ -324,6 +385,18 @@ export const api = {
 
   digest: {
     latest: () => request<Digest>('/digest/latest'),
+    /** Your digest vs newest-first over the last 7 days (#237). */
+    vsNewest: () =>
+      request<{
+        available: boolean;
+        examples: { content_id: string; title: string; digest_date: string; your_position: number; newest_first_position: number }[];
+        interleaving: { digests: number; prs_wins: number; newest_wins: number; ties: number } | null;
+      }>('/digest/vs-newest'),
+    /** Topics with a burst of coverage across sources this week (#218). */
+    emerging: () =>
+      request<{ topic: string; recent_sources: number; baseline_mean: number; z: number }[]>(
+        '/digest/emerging',
+      ),
     history: (page?: number) => request<Digest[]>(`/digest/history?page=${page || 1}`),
     generate: () =>
       request<{ status: string; message: string }>('/digest/generate', { method: 'POST' }),
@@ -398,7 +471,7 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
-    interestGraph: () => request<InterestGraph>('/preferences/interest-graph'),
+    interestGraph: (limit = 50) => request<InterestGraph>(`/preferences/interest-graph?limit=${limit}`),
   },
 
   metrics: {
@@ -413,6 +486,29 @@ export const api = {
         embedding_quality_note?: string;
         embedding_upgrade_hint?: string | null;
       }>('/metrics/llm-status'),
+    /** Problems for the instance owner's banner (#234); empty for everyone else. */
+    instanceHealth: () =>
+      request<{ owner: boolean; problems: { key: string; message: string; hint: string }[] }>(
+        '/metrics/instance-health'
+      ),
+  },
+
+  /** First-boot setup screen (#220). Owner only, except status. */
+  setup: {
+    status: () => request<{ needs_owner: boolean; can_store_secrets: boolean }>('/setup/status'),
+    config: () => request<SetupConfig>('/setup/config'),
+    save: (values: Record<string, string | null>) =>
+      request<SetupConfig>('/setup/config', { method: 'PUT', body: JSON.stringify({ values }) }),
+    testLlm: (body: { api_key?: string; base_url?: string; model?: string }) =>
+      request<{ ok: boolean; message: string }>('/setup/test-llm', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    testSmtp: (body: { host?: string; port?: number; username?: string; password?: string }) =>
+      request<{ ok: boolean; message: string }>('/setup/test-smtp', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
 
   search: {
@@ -420,6 +516,8 @@ export const api = {
       request<{ query: string; hits: ContentItem[]; limit: number; offset: number }>(
         `/search?q=${encodeURIComponent(q)}&limit=${limit || 20}&offset=${offset || 0}`
       ),
+    /** "Why didn't I see this?" for any item (#267). */
+    why: (contentId: string) => request<WhyNotSeen>(`/search/why/${contentId}`),
   },
 
   onboarding: {

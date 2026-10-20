@@ -25,6 +25,9 @@ const ICONS: Record<string, string> = {
   "startups-business": "💼",
   "systems-programming": "⚙️",
   "web-development": "🌐",
+  "research-papers": "📄",
+  "policy-research": "🏛️",
+  "filings-markets": "📑",
 };
 
 /** Subscribe to the selected packs; returns how many new feeds were added. */

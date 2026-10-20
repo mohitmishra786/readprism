@@ -1,165 +1,169 @@
-# System Architecture
+# Architecture
 
-ReadPrism is a personal reading digest service that aggregates RSS feeds, newsletters, and creator profiles, summarizes articles, and ranks a daily digest using a personal behavioral ranker.
+<p class="lead">ReadPrism collects your feeds, newsletters and creators, ranks what
+arrived for you, and delivers a short daily digest that explains each pick.
+This page shows how the pieces fit together.</p>
 
-It is designed to run in two deployment modes:
-- **`DEPLOYMENT_MODE=selfhost`** (default): fully featured personal instance, closed registration by default, unlimited sources, zero billing or usage budgets.
-- **`DEPLOYMENT_MODE=hosted`**: multi-tenant production SaaS with mandatory email verification, rate limits, source/fetch abuse controls, and subscription billing.
+It runs in two modes, set by `DEPLOYMENT_MODE`:
 
----
+| Mode | Who it's for | What changes |
+|---|---|---|
+| `selfhost` (default) | You, on your own server | No plans, quotas or billing. Registration is closed after the first account. |
+| `hosted` | A managed multi-user service | Email verification, abuse limits, per-plan quotas and billing. See [Hosted service](HOSTING.md). |
 
-## 1. High-Level Component Topology
+## The big picture
+
+Readers use the web app or the browser extension. Both talk to one API. Slow
+work (fetching, embedding, building digests) goes through Redis to background
+workers. Everything durable lives in Postgres.
 
 ```mermaid
-flowchart TD
-    subgraph Clients["Clients"]
-        Web["Next.js 16 Web App\n(Port 3000 / 3001)"]
-        Ext["Cross-Browser MV3 Extension\n(Chrome / Firefox)"]
-    end
+flowchart TB
+    accTitle: ReadPrism components
+    accDescr: The web app and extension call the API. The API and the scheduler queue work in Redis, workers pick it up, fetch the web, and everything durable is stored in Postgres.
 
-    subgraph Edge["Ingress & Egress"]
-        Egress["Browserless Chrome\n(Isolated Egress Proxy)"]
-    end
-
-    subgraph Backend["FastAPI Application (Port 8000)"]
-        API["FastAPI App\n(api/v1)"]
-        Migrate["Auto-Migrate on Boot\n(app/migrate.py)"]
-        Cookies["Cookie Sessions & CSRF\n(session_cookies.py)"]
-        Ranker["Vectorized Ranker\n(ranking/ranker.py)"]
-        Learner["Pairwise Learner\n(ranking/learner.py)"]
-        LazyLLM["Lazy LLM Summarizer\n(summarization/lazy.py)"]
-    end
-
-    subgraph Workers["Celery Workers (Solo Pools)"]
-        ScrapeWorker["Worker: scrape\n(Feeds & Scrapes)"]
-        EmbedWorker["Worker: embed\n(Sentence Transformers)"]
-        DigestWorker["Worker: digest\n(Build & Delivery)"]
-        BeatWorker["Celery Beat\n(Periodic Schedulers)"]
-    end
-
-    subgraph Storage["Data Stores"]
-        PG[("PostgreSQL 16+ & pgvector\n(Shared Feeds, Content, Vectors)")]
-        Redis[("Redis 7+\n(Broker, Result Store, Cache, Rate Limits)")]
-    end
-
-    Web -->|HTTP with Cookies & CSRF| API
-    Ext -->|Bearer / API Token rp_...| API
-    API --> PG
-    API --> Redis
-    API -.-> LazyLLM
-    ScrapeWorker --> PG
-    ScrapeWorker --> Redis
-    ScrapeWorker -->|safe_fetch + IP Pinning| Egress
-    EmbedWorker --> PG
-    EmbedWorker --> Redis
-    DigestWorker --> PG
-    DigestWorker --> Redis
-    BeatWorker --> Redis
-    Migrate -->|Postgres Advisory Lock| PG
+    web["Web app"] --> api["API"]
+    ext["Browser extension"] --> api
+    api -->|queues jobs| redis[("Redis")]
+    beat["Scheduler"] -->|queues jobs| redis
+    redis -->|delivers jobs| workers["Workers"]
+    workers -->|fetch| internet(["Feeds and websites"])
+    api --> pg[("Postgres + pgvector")]
+    workers --> pg
 ```
 
-### Worker Concurrency
-Celery workers run with `--pool=solo` (`docs/adr/0001-celery-solo-pool.md`) so that `asyncpg` connection pools are never shared across disparate asyncio event loops in child processes. Tasks are strictly routed to named queues (`scrape`, `embed`, `digest`).
+| Piece | What it does | Code |
+|---|---|---|
+| Web app | Next.js reader, digest and settings | `frontend/` |
+| API | FastAPI, everything under `/api/v1` | `backend/app/api/` |
+| Workers | Celery, one queue each: `scrape`, `embed`, `digest` | `backend/app/workers/` |
+| Scheduler | Celery beat: polls, digests, emails, upkeep | `backend/app/workers/schedules.py` |
+| Postgres | Users, feeds, items, vectors (pgvector), digests | `backend/app/models/` |
+| Redis | Task broker, cache, rate limits, counters | `backend/app/utils/cache.py` |
 
----
+Each worker runs one process (`--pool=solo`), so database connections are
+never shared across event loops. To add capacity, run more copies of the
+worker whose queue is behind. Why: [ADR 0001](adr/0001-celery-solo-pool.md).
 
-## 2. Ingestion & Shared Feeds
+## From feed to stored item
 
-### Shared Feeds Pipeline
-Subscriptions are separated into per-user subscriptions (`sources` table) and instance-wide polling rows (`feeds` table):
-- **Shared Identity**: `Feed.key = coalesce(feed_url, url)`. $N$ users subscribing to the same RSS feed trigger only a single network fetch per poll cycle.
-- **State Mirroring**: `app/services/ingestion/feeds.py` (`mirror()`) copies HTTP etags, Last-Modified headers, poll intervals, error states, and dead notices onto every subscriber's `Source` row after each poll.
-- **Adaptive Scheduling**: `app/services/ingestion/schedule.py` dynamically adjusts poll intervals between 15 minutes and 24 hours based on recent publication cadence, backing off exponentially on HTTP errors and honoring `Retry-After`.
-- **SSRF Defense with IP Pinning**: `app/utils/ssrf.py` validates public IPs before network requests. `safe_fetch` connects directly to the validated IP literal while preserving the original `Host` and TLS SNI headers, eliminating DNS rebinding vulnerabilities. Local homelab exemptions are opt-in via `SIDECAR_ALLOW_PRIVATE_HTTP`.
-- **Content Deduplication**: Ingested items are deduplicated across three layers: canonical URL normalization, GUID matches, and SimHash Hamming distance for near-duplicate article text.
-- **Platform Connectors**:
-  - Fully tracked: Substack, Medium, YouTube, Bluesky, Mastodon, GitHub.
-  - Best-effort: Blogs and podcasts (via iTunes search autodiscovery).
-  - Unsupported: Twitter/X, LinkedIn, and Reddit (RSS retired on 2026-11-13). Unsupported platforms surface clear UI warnings and never error-loop.
+```mermaid
+flowchart TB
+    accTitle: Ingestion pipeline
+    accDescr: The scheduler triggers a poll, the scrape worker fetches the feed once for all subscribers, drops duplicates, stores new items, and the embed worker adds vectors.
 
----
+    poll["Feed is due"] --> fetch["Fetch it once"]
+    fetch --> dedupe["Drop duplicates"]
+    dedupe --> store["Store new items"]
+    store --> embed["Add embeddings"]
+    embed --> ready(["Ready to rank"])
+```
 
-## 3. The Personal Ranking Engine
+- **One fetch per feed.** Subscriptions are per user (`sources`), but polling
+  is per feed (`feeds`). A feed followed by a hundred readers is fetched once;
+  its HTTP state is copied to each subscriber's row (`ingestion/feeds.py`).
+- **Adaptive polling.** Each feed is polled every 15 minutes to 24 hours,
+  depending on how often it publishes. Errors back off exponentially and
+  `Retry-After` is honoured (`ingestion/schedule.py`).
+- **Duplicates** are caught three ways: canonical URL, feed GUID, and
+  near-identical text (SimHash).
+- **Safe fetching.** Every outbound request resolves the host, refuses
+  private addresses, and connects to the checked IP, so DNS rebinding can't
+  reach your network (`utils/ssrf.py`, [ADR 0003](adr/0003-safe-fetch.md)).
+  JavaScript-only pages are rendered by an isolated browser that can only
+  reach the internet through an egress proxy.
+- **Platforms.** Substack, Medium, YouTube, Bluesky, Mastodon and GitHub are
+  fully supported; blogs and podcasts on a best-effort basis. X, LinkedIn
+  and Reddit are not supported and say so in the app.
 
-ReadPrism replaced per-item signal modules with a unified, vectorized ranking pipeline (`app/services/ranking/ranker.py`):
+## Building a digest
 
 ```mermaid
 sequenceDiagram
-    participant S as Scheduler / API
-    participant R as Ranker (ranker.py)
-    participant PG as PostgreSQL / pgvector
-    participant L as Learner (learner.py)
+    accTitle: Digest build
+    accDescr: The scheduler asks the digest worker for a digest, the ranker scores candidates, the builder lays out sections, and summaries are written only for the items shown.
 
-    S->>R: rank(user, candidates, session)
-    R->>PG: Batch load user weights, interest graph, reading history
-    R->>R: Vectorized feature matrix computation (8 signals via NumPy)
-    R->>R: Weighted dot product -> Personalized PRS score [0, 1]
-    R->>R: Apply MMR diversity (penalty on topic clustering)
-    R->>R: Team-draft interleaving (PRS vs Newest-First)
-    R-->>S: Ranked candidate list + feature decomposition
-    Note over S,L: User reads & rates items in digest
-    S->>L: train_user_weights_debounced(user_id)
-    L->>L: Pairwise within-digest loss optimization
-    L->>PG: Save updated UserMetaWeights revision
+    participant B as Scheduler
+    participant W as Digest worker
+    participant R as Ranker
+    participant L as LLM
+
+    B->>W: Digest due for reader
+    W->>R: Score candidates
+    R-->>W: Scores with reasons
+    W->>W: Diversify and lay out sections
+    W->>L: Summarize shown items only
+    L-->>W: Summaries
+    W-->>B: Delivered (email or app)
 ```
 
-### Feature Decomposition
-Every candidate is evaluated on 8 orthogonal features normalized to $[0, 1]$ before consumption:
-1. `semantic`: Cosine similarity against interest-graph nodes and bridge midpoints.
-2. `reading_depth`: Similarity-weighted historical completion of opened articles.
-3. `suggestion`: Acceptance/completion rate for discovery items.
-4. `explicit_feedback`: Closeness to thumbs-up articles minus thumbs-down penalties.
-5. `source_trust`: Beta posterior of reading outcomes on this specific feed with the user's prior.
-6. `content_quality`: Text length, citation structure, and depth heuristics.
-7. `temporal_context`: Age decay with same-event saturation penalties.
-8. `novelty`: Semantic distance from the last 30 days of user reading history.
+**Sections.** The builder (`digest/builder.py`) fills, in order: the lead
+stories, *From your creators* (at most two per creator), *Deep reads* (8
+minutes or longer), *Discovery* (serendipity picks from outside your usual
+sources) and *More from your feeds* until the digest reaches its length.
 
-When evidence is missing, features default to a neutral `0.5`, contributing zero gradient to pairwise learning.
+**Length and timing.** The digest length follows how many items you
+actually open (1.25 times a moving average, between 5 and 30), unless you set
+it yourself. Digests go out within 15 minutes of your chosen local time.
 
-### Diversity & Experimentation
-- **MMR (Maximal Marginal Relevance)**: Penalizes semantic redundancy among top candidates to prevent single-topic monopolization.
-- **Team-Draft Interleaving**: Alternates selections between the personalized ranker and a newest-first baseline to continuously measure ranking win-rate in production without degrading reading flow.
-- **Pairwise Learning**: Weights are trained on within-digest preference pairs (opened vs skipped items within the same digest) rather than noisy absolute clicks, debounced per user.
+**Summaries are lazy.** Every item gets a short extract at ingest. A model
+summary is written only when the item is shown in a digest or opened in the
+reader, so a feed you never read costs nothing. Summaries use the fast
+model; story synthesis uses the large one ([which model does
+what](DEPLOYMENT.md#which-model-does-what-225)).
 
----
+## How ranking learns
 
-## 4. Digest Building & Summarization
+```mermaid
+flowchart TB
+    accTitle: Ranking feedback loop
+    accDescr: The ranker builds a digest, the reader opens, skips or rates items, the learner turns that into weights, and the ranker uses them next time.
 
-### Assembly & Sections
-`app/services/digest/builder.py` personalizes sections for each reader:
-- **Lead Section**: Top-scoring articles.
-- **From Your Creators**: Grouped by creator (max 2 items per creator).
-- **Deep Reads**: High-scoring long-form content ($\ge 8$ min reading time).
-- **Discovery**: Serendipity picks from the Discovery Pool (`app/services/discovery/pool.py`), surfacing outbound links and starter-pack items matching interest clusters.
-- **More From Your Feeds**: Fills remaining capacity to target length.
+    rank["Ranker scores items"] --> digest["Your digest"]
+    digest --> reader["You open, skip, rate"]
+    reader --> learn["Learner updates weights"]
+    learn -.->|next digest| rank
+```
 
-### Dynamic Digest Length & Schedule
-- **Adaptive Length**: `digest_max_items` dynamically tracks $1.25 \times \text{EMA}(\text{opened items})$, clamped to $[5, 30]$ unless explicitly locked by user preference.
-- **Zoneinfo Delivery**: Digests fire within a $\pm 15$-minute window around the user's preferred local time slot, with frequency deduplication windows (12h daily, 6h twice-daily, 84h weekly) preventing duplicate builds.
+Each candidate gets eight scores between 0 and 1. A score with no evidence
+behind it stays at a neutral 0.5 and is left out of the explanation.
 
-### Lazy LLM Summarization
-Rather than invoking LLMs on all ingested articles, summarization is lazy (`app/services/summarization/lazy.py`):
-1. Ingestion extracts a clean fallback text brief.
-2. An LLM summary is only generated when an item is placed in a delivered digest or explicitly opened in the app.
+| Signal | What it measures |
+|---|---|
+| `semantic` | Closeness to the topics in your interest graph |
+| `reading_depth` | How far you read similar articles |
+| `suggestion` | How often you accept discovery picks like it |
+| `explicit_feedback` | Closeness to what you rated up, away from what you rated down |
+| `source_trust` | How your reading of this source has gone |
+| `content_quality` | Length, citations and depth |
+| `temporal_context` | Freshness, less for the fifth story on the same event |
+| `novelty` | Distance from what you read in the last 30 days |
 
----
+- **Weights are personal.** They are trained on pairs from the same digest
+  (the item you opened against the one you skipped), which is less noisy
+  than raw clicks. Updates are debounced per reader.
+- **Diversity.** Before layout, a re-rank (MMR) keeps one topic from taking
+  over the digest.
+- **Proof it helps.** Part of each digest is interleaved with a newest-first
+  ranking, so the app can measure whether personal ranking actually wins.
+  Details: [How ranking works](signals.md).
 
-## 5. Security, Sessions, and Operations
+## Accounts, sessions and data safety
 
-### Cookie Authentication & CSRF
-- Browser credentials are stored in `httpOnly`, `SameSite=Lax` secure cookies (`readprism_access`, `readprism_refresh`).
-- Mutating endpoints verify double-submit CSRF tokens via `x-csrf-token` header.
-- Scoped API tokens (`rp_<hash>`) provide secure programmatic access for CLI tools and the browser extension.
+- **Sign-in.** The browser holds `httpOnly`, `SameSite=Lax` cookies; every
+  change also needs a CSRF token. The extension and scripts use scoped API
+  tokens (`rp_…`). More: [Security model](security.md).
+- **Migrations** run on start-up under a Postgres advisory lock, so when
+  several containers start at once exactly one migrates and the rest wait.
+- **Secrets entered in the browser** (the setup screen, readers' own LLM
+  keys) are encrypted with a key derived from `SECRETS_ENCRYPTION_KEY`.
+- **Hosted only:** email verification, fetch budgets and per-host limits,
+  plan quotas and billing through Lemon Squeezy or Paddle
+  (`services/billing/`). See [Hosted service](HOSTING.md).
 
-### Database Migrations
-Migrations execute via `app/migrate.py` on startup under Postgres advisory lock `7302410126`. When multiple API or worker containers start simultaneously, exactly one runs migrations while others wait.
+## Watching it run
 
-### Hosted Multi-Tenancy & Abuse Controls
-Under `DEPLOYMENT_MODE=hosted`:
-- User registration enforces email confirmation (`app/services/email_verification.py`).
-- Feed fetching enforces hourly host poll limits and account-level fetch budgets (`app/services/abuse.py`).
-- Source limits and subscriber tiers are gated by LemonSqueezy/Stripe webhooks (`app/services/billing.py`).
-- Full-text retention pruning runs on beat schedule to manage storage growth.
-
-### Queue Metrics & Observability
-Celery task wait times, run durations, and queue latencies are instrumented in `app/workers/queue_metrics.py` and exposed at `GET /api/v1/metrics/queues` guarded by `METRICS_TOKEN`.
+Queue waits, task runtimes and digest punctuality are recorded per task and
+served at `GET /api/v1/metrics/queues` and, for Prometheus, `GET /metrics`
+(both need `METRICS_TOKEN`). The optional monitoring profile adds Prometheus,
+Grafana and alert rules. See [Monitoring](DEPLOYMENT.md#monitoring).

@@ -1,0 +1,16 @@
+# Build context is the repository root; send only what the image needs.
+**
+!backend/app
+!backend/migrations
+!backend/scripts
+!backend/templates
+!backend/alembic.ini
+!backend/requirements.txt
+!backend/requirements-lite.txt
+!frontend
+frontend/node_modules
+frontend/.next
+frontend/test-results
+frontend/playwright-report
+!deploy/aio/rootfs
+**/__pycache__

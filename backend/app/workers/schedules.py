@@ -47,8 +47,45 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.heartbeat.beat_heartbeat",
             "schedule": 60,  # every minute — drives the beat liveness healthcheck
         },
+        "operator-alerts-scrape": {
+            "task": "app.workers.tasks.alerts.check_alerts",
+            "schedule": 600,  # every 10 minutes (#171); first copy per window wins
+            "options": {"queue": "scrape"},
+        },
+        "operator-alerts-digest": {
+            "task": "app.workers.tasks.alerts.check_alerts",
+            "schedule": 600,  # every 10 minutes (#171); first copy per window wins
+            "options": {"queue": "digest"},
+        },
+        "worker-heartbeat-scrape": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("scrape",),
+            "options": {"queue": "scrape"},
+        },
+        "worker-heartbeat-embed": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("embed",),
+            "options": {"queue": "embed"},
+        },
+        "worker-heartbeat-digest": {
+            "task": "app.workers.tasks.heartbeat.queue_heartbeat",
+            "schedule": 300,  # every 5 minutes, on that queue (#234)
+            "args": ("digest",),
+            "options": {"queue": "digest"},
+        },
+        "trial-emails": {
+            "task": "app.workers.tasks.trial_emails.send_trial_emails",
+            # Hourly, so "trial started" follows soon after the email is confirmed (#235).
+            "schedule": crontab(minute=20),
+        },
         "reengagement-emails": {
             "task": "app.workers.tasks.reengagement.send_reengagement_emails",
             "schedule": crontab(hour=16, minute=0),  # daily at 16:00 UTC
+        },
+        "weekly-learning-emails": {
+            "task": "app.workers.tasks.weekly_learning.send_weekly_learning_emails",
+            "schedule": crontab(hour=9, minute=0, day_of_week="sun"),  # Sundays 09:00 UTC (#184)
         },
     }

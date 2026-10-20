@@ -1,8 +1,17 @@
 # Security model
 
-This is the control list for a self-hosted ReadPrism. It describes what the
-code does today. `SECURITY.md` at the repo root is the vulnerability-reporting
-policy.
+<p class="lead">The controls a self-hosted ReadPrism has today, as the code
+implements them. To report a vulnerability, see
+<a href="https://github.com/mohitmishra786/readprism/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+
+| Area | Control |
+|---|---|
+| [Outbound fetches](#outbound-fetches) | Public addresses only, checked on every redirect, connection pinned to the checked IP |
+| [Page rendering](#outbound-fetches) | Isolated browser with no route to internal services |
+| [Scraping](#scraping) | robots.txt honoured, deny list, one request per second per host |
+| [HTML](#html) | Allowlist sanitizer on ingest, again in the reader, plus a CSP |
+| [XML](#xml) | No DOCTYPE or entities, size and outline caps |
+| [Auth and config](#auth-and-config) | bcrypt, rotating refresh tokens, rate limits, strong-key check at start-up |
 
 ## Outbound fetches
 
@@ -18,8 +27,10 @@ autodiscovery, iTunes feed URLs before they are stored) go through
   check runs on every redirect.
 - Decimal and hex IPv4 literals are checked as IPs.
 - Body size and timeout are capped (`DEFAULT_MAX_BYTES` is 5 MB; feeds use 2 MB).
-- `SSRF_PROTECTION_ENABLED=false` turns the check off for a single-tenant
-  homelab that must read a LAN feed.
+
+!!! warning "Reading feeds on your own network"
+    `SSRF_PROTECTION_ENABLED=false` turns the check off, for a single-user
+    homelab that must read a LAN feed. Never set it on a shared instance.
 
 Not user URLs, and therefore not on this path: the iTunes Search API host,
 and the Browserless CDP endpoint. Those hosts come
@@ -80,6 +91,6 @@ listparser sees it.
 
 ## What leaves the machine
 
-See `docs/THIRD_PARTY_SERVICES.md` and `docs/PRIVACY.md`. With no LLM key, no
+See [Privacy](PRIVACY.md) and `docs/THIRD_PARTY_SERVICES.md`. With no LLM key, no
 SMTP password, and no Sentry DSN, ingestion and ranking stay on the box. There
 is no product telemetry SDK.

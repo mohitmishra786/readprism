@@ -502,6 +502,8 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
         if getattr(item, "origin", None) == "discovery":
             f["suggestion"] = clamp01((2.0 + sugg_success) / (3.0 + len(suggested)))
             have.add("suggestion")
+            if sugg_success > 0:
+                notes["suggestion"] = "a discovery pick like ones you finished before"
 
         # explicit feedback
         if sims is not None and keep is not None:
@@ -610,12 +612,15 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
 _PHRASES = {
     "semantic": None,  # uses why_topics
     "reading_depth": "you usually finish articles like this",
-    "suggestion": "a discovery pick like ones you finished before",
-    "explicit_feedback": "similar to articles you rated up",
+    "suggestion": "a discovery pick",
+    # Claims about this item: said only when the signal's note backs them
+    # (#321). A bare fallback made every item "similar to articles you rated
+    # up" whenever the signal merely had data.
+    "explicit_feedback": None,
     "source_trust": "from a source you read",
     "content_quality": "a substantial read",
     "temporal_context": "timely",
-    "novelty": "a fresh angle compared with your recent reading",
+    "novelty": None,
 }
 
 

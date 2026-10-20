@@ -124,8 +124,16 @@ def _confirmation_page(
     """
     import html
 
-    labels = {"up": "👍 Useful", "down": "👎 Not for me", "save": "💾 Save"}
+    labels = {
+        "up": "👍 Useful",
+        "down": "👎 Not for me",
+        "save": "💾 Save",
+        "open": "Open the article",
+    }
     label = html.escape(labels.get(action, "Confirm"))
+    prompt = (
+        "Opening the article…" if action == "open" else "Confirm your feedback for this article:"
+    )
     target = html.escape(
         f"/api/v1/digest/e/{action}/{item_id}?uid={user_id}&exp={exp}&sig={sig}", quote=True
     )
@@ -143,7 +151,7 @@ def _confirmation_page(
           background: #1d4ed8; color: #fff; cursor: pointer; }}
 </style></head>
 <body><div class="card">
-<p>Confirm your feedback for this article:</p>
+<p>{prompt}</p>
 <form method="post" action="{target}" id="confirm">
   <button type="submit">{label}</button>
 </form>
@@ -154,6 +162,9 @@ def _confirmation_page(
 
 
 MUTATING_ACTIONS = {"up", "down", "save"}
+# Recorded only on the POST from the interstitial page, never on a GET a mail
+# scanner can make. "open" too (#257): a prefetched link must not count as read.
+POST_ONLY_ACTIONS = MUTATING_ACTIONS | {"open"}
 
 
 async def _verify_email_action(
@@ -228,19 +239,14 @@ async def email_action_link(
 
     No login: the HMAC over (user, item, action, expiry) is the authority.
 
-    GET is non-mutating for up/down/save (it renders a confirmation page) so
-    mail-scanner prefetch cannot forge ratings or saves. 'open' is a passive
-    click-through: it records opened_at and redirects to the in-app reader so
-    depth/dwell telemetry can follow (UX-04).
+    GET never records anything: mail scanners (Safe Links, Mimecast) fetch
+    every link without running scripts. It renders a page whose script POSTs
+    back to the same signed URL, so a real browser records the action and
+    lands in the reader; a scanner sees inert HTML. That covers 'open' too
+    (#257), so prefetches don't count as reads.
     """
     user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
-
-    if action in MUTATING_ACTIONS:
-        return _confirmation_page(action, user.id, content.id, exp, sig)
-
-    await _record_email_action(user, content.id, action, session)
-    _log_email_action(action, user.id, content.id)
-    return _reader_redirect(content)
+    return _confirmation_page(action, user.id, content.id, exp, sig)
 
 
 @router.post("/e/{action}/{item_id}")
@@ -252,12 +258,15 @@ async def email_action_submit(
     sig: str = Query(...),
     session: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    """Record a mutating email action (form POST from the confirmation page)."""
-    if action not in MUTATING_ACTIONS:
+    """Record an email action (form POST from the interstitial page)."""
+    if action not in POST_ONLY_ACTIONS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
     user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
 
     interaction = await _record_email_action(user, content.id, action, session)
+    if action not in MUTATING_ACTIONS:  # open: nothing for the interest graph
+        _log_email_action(action, user.id, content.id)
+        return _reader_redirect(content)
     # Commit before dispatching so the worker's own session can see the row
     # (get_db commits only after the response is returned — the task could
     # otherwise run first and find nothing).
@@ -267,6 +276,174 @@ async def email_action_submit(
     update_interest_graph_for_interaction.delay(str(interaction.id))
     _log_email_action(action, user.id, content.id)
     return _reader_redirect(content)
+
+
+def _topic_confirmation_page(action: str, uid: str, topic: str, exp: int, sig: str) -> HTMLResponse:
+    """GET for a weekly-email topic link (#184): inert for mail scanners, a
+    real browser auto-submits the POST (same pattern as _confirmation_page)."""
+    import html
+    from urllib.parse import urlencode
+
+    label = "Show less of" if action == "less" else "Keep"
+    query = urlencode({"uid": uid, "topic": topic, "exp": exp, "sig": sig})
+    target = html.escape(f"/api/v1/digest/t/{action}?{query}", quote=True)
+    return HTMLResponse(
+        f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
+<form method="post" action="{target}" id="confirm">
+<p>{html.escape(label)} <strong>{html.escape(topic)}</strong>?</p><button type="submit">Confirm</button></form>
+<script>document.getElementById("confirm").submit();</script></body></html>"""
+    )
+
+
+@router.get("/t/{action}")
+async def topic_action_link(
+    action: str,
+    uid: str = Query(...),
+    topic: str = Query(..., max_length=200),
+    exp: int = Query(...),
+    sig: str = Query(...),
+) -> Response:
+    from app.utils.signed_links import verify_topic_action
+
+    if not verify_topic_action(uid, topic, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    return _topic_confirmation_page(action, uid, topic, exp, sig)
+
+
+@router.post("/t/{action}")
+async def topic_action_submit(
+    action: str,
+    uid: str = Query(...),
+    topic: str = Query(..., max_length=200),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    """Weekly-email undo (#184): 'less' suppresses the topic, 'more' boosts it."""
+    from app.models.interest_graph import InterestNode
+    from app.utils.signed_links import verify_topic_action
+
+    if not verify_topic_action(uid, topic, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    node = (
+        await session.execute(
+            select(InterestNode).where(
+                InterestNode.user_id == uuid.UUID(uid), InterestNode.topic_label == topic
+            )
+        )
+    ).scalar_one_or_none()
+    if node is not None:
+        delta = -0.3 if action == "less" else 0.3
+        node.weight = max(0.0, min(1.0, node.weight + delta))
+        if action == "more":
+            node.suppressed_until = None
+        await session.commit()
+    return RedirectResponse(
+        url=f"{get_settings().frontend_url.rstrip('/')}/interests", status_code=303
+    )
+
+
+@router.get("/u/{action}")
+async def user_action_link(
+    action: str, uid: str = Query(...), exp: int = Query(...), sig: str = Query(...)
+) -> Response:
+    """Win-back 'Switch to weekly' (#238): inert confirmation on GET."""
+    import html
+
+    from app.utils.signed_links import verify_user_action
+
+    if not verify_user_action(uid, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    target = html.escape(
+        f"/api/v1/digest/u/{action}?uid={uuid.UUID(uid)}&exp={int(exp)}&sig={sig}", quote=True
+    )
+    return HTMLResponse(
+        f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
+<form method="post" action="{target}" id="confirm"><p>Switch to one digest a week?</p>
+<button type="submit">Switch to weekly</button></form>
+<script>document.getElementById("confirm").submit();</script></body></html>"""
+    )
+
+
+@router.post("/u/{action}")
+async def user_action_submit(
+    action: str,
+    uid: str = Query(...),
+    exp: int = Query(...),
+    sig: str = Query(...),
+    session: AsyncSession = Depends(get_db),
+) -> RedirectResponse:
+    from app.utils.signed_links import verify_user_action
+
+    if not verify_user_action(uid, action, exp, sig):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired link"
+        )
+    user = await session.get(User, uuid.UUID(uid))
+    if user is not None and action == "weekly":
+        user.digest_frequency = "weekly"
+        await session.commit()
+    return RedirectResponse(
+        url=f"{get_settings().frontend_url.rstrip('/')}/preferences", status_code=303
+    )
+
+
+async def _apply_weekly_unsubscribe(uid: str, token: str, session: AsyncSession) -> bool:
+    from app.utils.unsubscribe import verify_weekly_unsubscribe_token
+
+    try:
+        user_uuid = uuid.UUID(uid)
+    except (ValueError, TypeError):
+        return False
+    if not verify_weekly_unsubscribe_token(uid, token):
+        return False
+    user = await session.get(User, user_uuid)
+    if user is None:
+        return False
+    user.weekly_email = False
+    await session.flush()
+    return True
+
+
+@router.get("/unsubscribe-weekly", response_class=HTMLResponse)
+async def unsubscribe_weekly_get(
+    uid: str = Query(...), token: str = Query(...), session: AsyncSession = Depends(get_db)
+) -> HTMLResponse:
+    if not await _apply_weekly_unsubscribe(uid, token, session):
+        return HTMLResponse("<p>This link is invalid.</p>", status_code=400)
+    return HTMLResponse("<p>The weekly summary is off. Your digest emails are unchanged.</p>")
+
+
+@router.post("/unsubscribe-weekly")
+async def unsubscribe_weekly_post(
+    uid: str = Query(...), token: str = Query(...), session: AsyncSession = Depends(get_db)
+) -> dict:
+    """RFC 8058 one-click target for the weekly email."""
+    if not await _apply_weekly_unsubscribe(uid, token, session):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token")
+    return {"status": "unsubscribed"}
+
+
+@router.get("/vs-newest")
+async def digest_vs_newest(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Your digest vs newest-first over the last 7 days (#237). Only the
+    signed-in reader's own digests and reads; nothing from other users."""
+    from app.services.ranking.interleaving import user_comparison
+
+    return await user_comparison(session, current_user.id)
 
 
 @router.get("/latest", response_model=DigestRead)
@@ -393,6 +570,13 @@ async def generate_digest(
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=entitlements.digest_regeneration_message(current_user),
+        )
+
+    # Hosted: manual builds per day by plan (#172). Scheduled digests don't count.
+    if not await entitlements.take(current_user, entitlements.DIGEST_BUILDS):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=entitlements.daily_quota_message(current_user, entitlements.DIGEST_BUILDS),
         )
 
     from app.workers.tasks.build_digest import build_digest_for_user

@@ -138,6 +138,18 @@ async def _build_digest_async(user_id: uuid.UUID) -> dict:
                     f"{user.digest_frequency}"
                 )
 
+            # Opt-in Web Push alert to the user's devices (#266). Best effort:
+            # a push service outage must never fail the build.
+            if digest.total_items:
+                from app.services.push import digest_payload, notify_user
+
+                try:
+                    await notify_user(session, user.id, digest_payload(digest.total_items))
+                    await session.commit()
+                except Exception as e:
+                    await session.rollback()
+                    logger.warning(f"Digest push alert failed for {user.id}: {type(e).__name__}")
+
             return {"status": "ok", "digest_id": str(digest.id)}
     finally:
         await cache_delete(lock_key)

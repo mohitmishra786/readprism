@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../lib/api";
 import { sanitizeHtml } from "../../../lib/sanitize";
 import type { ContentItem } from "../../../lib/types";
+import { WhyNotSeen } from "../../../components/WhyNotSeen";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -10,12 +11,11 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
 
-  const search = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim()) return;
+  const run = async (q: string) => {
+    if (!q.trim()) return;
     setLoading(true);
     try {
-      const data = await api.search.query(query.trim());
+      const data = await api.search.query(q.trim());
       setResults(data.hits);
       setSearched(true);
     } catch {
@@ -25,6 +25,22 @@ export default function SearchPage() {
       setLoading(false);
     }
   };
+
+  const search = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await run(query);
+  };
+
+  // Links such as the Emerging topics card open /search?q=<topic> (#218).
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) {
+      queueMicrotask(() => {
+        setQuery(q);
+        void run(q);
+      });
+    }
+  }, []);
 
   return (
     <div>
@@ -86,6 +102,7 @@ export default function SearchPage() {
                     }}
                   />
                 )}
+                <WhyNotSeen contentId={item.id} />
               </div>
             ))
           )}

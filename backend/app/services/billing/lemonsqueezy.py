@@ -15,6 +15,8 @@ import uuid
 from datetime import UTC, datetime
 from urllib.parse import urlencode
 
+import httpx
+
 from app.config import get_settings
 from app.services.billing import ACTIVE, CANCELLED, ENDED, PAST_DUE, TRIALING, BillingUpdate
 
@@ -75,14 +77,33 @@ def parse(raw: bytes) -> BillingUpdate:
     )
 
 
-async def checkout_url(user, interval: str) -> str | None:
-    s = get_settings()
-    base = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
+async def checkout_url(user, interval: str, plan: str = "reader") -> str | None:
+    from app.services.billing import checkout_target
+
+    base = checkout_target(plan, interval)
     if not base:
         return None
-    query = urlencode({"checkout[email]": user.email, "checkout[custom][user_id]": str(user.id)})
+    params = {"checkout[email]": user.email, "checkout[custom][user_id]": str(user.id)}
+    from app.services.billing import academic_discount_for
+
+    if discount := academic_discount_for(user):
+        params["checkout[discount_code]"] = discount  # academic discount (#250)
+    query = urlencode(params)
     return f"{base}{'&' if '?' in base else '?'}{query}"
 
 
 async def portal_url(user) -> str | None:
     return user.billing_portal_url
+
+
+async def cancel_subscription(subscription_id: str) -> None:
+    """Cancel (account deletion, #221); no further charges. Raises on failure."""
+    key = get_settings().billing_api_key
+    if not key:
+        raise RuntimeError("BILLING_API_KEY is not set")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.delete(
+            f"https://api.lemonsqueezy.com/v1/subscriptions/{subscription_id}",
+            headers={"Authorization": f"Bearer {key}", "Accept": "application/vnd.api+json"},
+        )
+        resp.raise_for_status()

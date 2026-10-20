@@ -50,6 +50,16 @@ test("login page has no serious axe violations", async ({ page }) => {
   ).toHaveLength(0);
 });
 
+test("privacy page lists the data and has no serious axe violations (#134)", async ({ page }) => {
+  await page.goto("/privacy");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(/What ReadPrism collects/);
+  await expect(page.getByRole("cell", { name: "read_completion_pct" })).toBeVisible();
+  await injectAxe(page);
+  const results = await axeViolations(page);
+  const serious = results.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""));
+  expect(serious, serious.map((v) => `${v.id}: ${v.nodes.length}`).join("; ")).toHaveLength(0);
+});
+
 test("PWA surface: manifest and service worker are served", async ({ request }) => {
   const manifest = await request.get("/manifest.json");
   expect(manifest.ok()).toBeTruthy();

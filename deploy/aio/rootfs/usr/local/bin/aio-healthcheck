@@ -1,0 +1,12 @@
+#!/bin/sh
+# Healthy only when every supervised process is up, the API answers, the web
+# app answers and beat's heartbeat (run by the digest worker) is fresh.
+# Plain sh: `docker exec` runs this outside the s6 tree, with the container env.
+PATH="/command:$PATH"
+for svc in api worker-scrape worker-embed worker-digest beat web; do
+  s6-svstat -o up "/run/service/$svc" | grep -q true || { echo "$svc is down"; exit 1; }
+done
+curl -fsS -o /dev/null http://127.0.0.1:8000/health || { echo "api not answering"; exit 1; }
+curl -fsS -o /dev/null http://127.0.0.1:3000/ || { echo "web not answering"; exit 1; }
+cd /app && python -W ignore -c "import asyncio, sys; from app.utils.cache import get_redis; sys.exit(0 if asyncio.run(get_redis().exists('beat:heartbeat')) else 1)" \
+  || { echo "beat heartbeat missing"; exit 1; }
