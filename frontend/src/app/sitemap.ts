@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/vs/newsblur",
     "/privacy",
     "/terms",
+    "/subprocessors",
   ];
   return routes.map((path) => ({
     url: `${SITE_URL}${path}`,
