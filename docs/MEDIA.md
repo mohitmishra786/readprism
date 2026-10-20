@@ -19,25 +19,14 @@ shots.
 
 ## Shot list (screenshots)
 
-Captured in 1280x800 light and dark mode in `docs/media/`:
-
 1. **Daily digest** (`/digest`) — sectioned lead/creator/deep-reads/discovery,
    showing the PRS score chips. The hero image.
-   - Light: [`docs/media/digest-light.png`](media/digest-light.png)
-   - Dark: [`docs/media/digest-dark.png`](media/digest-dark.png)
 2. **Why-ranked tooltip** — open a card's "Why this?" showing the signal
    contributions and the "connects your interest in X and Y" line.
-   - Light: [`docs/media/why-ranked-light.png`](media/why-ranked-light.png)
-   - Dark: [`docs/media/why-ranked-dark.png`](media/why-ranked-dark.png)
-3. **Interest graph** (`/interests`) — the interactive SVG interest map + tag cloud.
-   - Light: [`docs/media/interest-graph-light.png`](media/interest-graph-light.png)
-   - Dark: [`docs/media/interest-graph-dark.png`](media/interest-graph-dark.png)
-4. **In-app reader** (`/read/[id]`) — editorial typography + reading telemetry progress.
-   - Light: [`docs/media/reader-light.png`](media/reader-light.png)
-   - Dark: [`docs/media/reader-dark.png`](media/reader-dark.png)
-5. **Source management** (`/sources`) — followed feeds with trust scores and health indicators.
-   - Light: [`docs/media/sources-light.png`](media/sources-light.png)
-   - Dark: [`docs/media/sources-dark.png`](media/sources-dark.png)
+3. **Interest graph** (`/preferences`) — the SVG graph + tag cloud ("watch it
+   learn").
+4. **In-app reader** (`/read/[id]`) — editorial typography + scroll progress.
+5. **Source health** (`/sources`) — a source with a "Fetch issues" badge.
 
 ## Demo GIF / video (60–90s, audit 12-5)
 
