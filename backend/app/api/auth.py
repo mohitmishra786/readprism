@@ -165,14 +165,7 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API token"
             )
         request.state.auth_via = "api_token"
-        is_demo = user.email == settings.demo_user_email
-        request.state.is_demo = is_demo
-        if (settings.demo_mode or is_demo) and request.method in MUTATING_METHODS:
-            if not _is_demo_allowed_write(request):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="The demo is read-only",
-                )
+        _enforce_demo_read_only(request, user)
         return user
 
     payload = _decode_token(token, secret=_access_secret())
@@ -189,20 +182,24 @@ async def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    is_demo = user.email == settings.demo_user_email
-    request.state.is_demo = is_demo
     request.state.session_id = payload.get("sid")
-
-    if (settings.demo_mode or is_demo) and request.method in MUTATING_METHODS:
-        if not _is_demo_allowed_write(request):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="The demo is read-only",
-            )
+    _enforce_demo_read_only(request, user)
     return user
 
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _enforce_demo_read_only(request: Request, user: User) -> None:
+    """In demo mode the demo persona can't change anything (#229).
+
+    Only the demo account, and only with DEMO_MODE on: the operator's own
+    account stays writable, and a normal instance where `make demo` seeded the
+    same persona is unaffected.
+    """
+    request.state.is_demo = user.is_demo
+    if user.is_demo and request.method in MUTATING_METHODS and not _is_demo_allowed_write(request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The demo is read-only")
 
 
 def _is_demo_allowed_write(request: Request) -> bool:
@@ -284,7 +281,7 @@ async def _session(
     return Token(access_token="", refresh_token=None, expires_in=token.expires_in, csrf_token=csrf)
 
 
-@router.post("/demo", response_model=Token)
+@router.post("/demo", response_model=Token, dependencies=[Depends(login_rate_limit)])
 async def demo_login(
     request: Request,
     response: Response,

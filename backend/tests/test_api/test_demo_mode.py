@@ -162,3 +162,33 @@ async def test_nightly_reset_demo_task(db_session, monkeypatch):
     assert summary["history"] > 0
     assert summary["fresh"] > 0
     assert summary["digest_items"] > 0
+
+
+@pytest.mark.asyncio
+async def test_read_only_is_only_for_the_demo_account_on_a_demo_instance(
+    client: AsyncClient, db_session: AsyncSession, monkeypatch
+):
+    """#229 review: `make demo` seeds the same persona on normal instances, and
+    the operator of a demo instance must keep a writable account."""
+    from app.api.auth import _create_access_token
+
+    settings = get_settings()
+    demo = User(email=settings.demo_user_email, hashed_password="x", onboarding_complete=True)
+    operator = User(email=f"op{uuid.uuid4().hex[:6]}@example.com", hashed_password="x")
+    db_session.add_all([demo, operator])
+    await db_session.commit()
+
+    def headers(user):
+        return {"Authorization": f"Bearer {_create_access_token(user.id)}"}
+
+    async def write(user):
+        return await client.put(
+            "/api/v1/preferences", json={"digest_max_items": 9}, headers=headers(user)
+        )
+
+    monkeypatch.setattr(settings, "demo_mode", False)
+    assert (await write(demo)).status_code == 200  # normal instance: just a seeded account
+
+    monkeypatch.setattr(settings, "demo_mode", True)
+    assert (await write(demo)).status_code == 403
+    assert (await write(operator)).status_code == 200

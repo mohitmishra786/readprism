@@ -102,7 +102,8 @@ class User(Base):
 
     @property
     def is_demo(self) -> bool:
-        """True when this account is the seeded demo persona (#229)."""
+        """True for the seeded demo persona on a demo instance (DEMO_MODE, #229)."""
         from app.config import get_settings
 
-        return self.email == get_settings().demo_user_email
+        settings = get_settings()
+        return settings.demo_mode and self.email == settings.demo_user_email

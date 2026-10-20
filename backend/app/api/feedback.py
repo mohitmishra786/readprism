@@ -50,10 +50,7 @@ async def record_interaction(
     if not content:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found")
 
-    settings = get_settings()
-    is_demo = current_user.email == settings.demo_user_email or getattr(
-        request.state, "is_demo", False
-    )
+    is_demo = current_user.is_demo
     if is_demo:
         session_id = (
             getattr(request.state, "session_id", None)
@@ -274,10 +271,7 @@ async def get_interaction(
     current_user: User = Depends(get_current_user),
 ) -> UserContentInteractionRead | None:
     """Return the current user's interaction record for a content item, if any."""
-    settings = get_settings()
-    is_demo = current_user.email == settings.demo_user_email or getattr(
-        request.state, "is_demo", False
-    )
+    is_demo = current_user.is_demo
     if is_demo:
         session_id = (
             getattr(request.state, "session_id", None)
