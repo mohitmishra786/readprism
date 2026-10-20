@@ -48,10 +48,13 @@ open http://localhost:3001    # create your account and onboard
 
 ## Screenshots
 
-> Visuals are captured into `docs/media/` — see [`docs/MEDIA.md`](docs/MEDIA.md)
-> for the shot list and the `scripts/seed_demo.py` demo-data script. The hero
-> shots are the ranked daily digest, the "why ranked" explanation, and the
-> interest graph.
+![Weirling daily edition digest with ranked articles and PRS scores](docs/media/digest-light.png)
+
+![Explainable ranking explanation showing signal breakdown and learned topics](docs/media/why-this-light.png)
+
+![In-app editorial reader view in dark mode with reading telemetry](docs/media/reader-dark.png)
+
+*Full shot list, dark mode captures, and refresh instructions are in [`docs/MEDIA.md`](docs/MEDIA.md).*
 
 ---
 

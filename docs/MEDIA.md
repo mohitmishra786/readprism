@@ -19,14 +19,41 @@ shots.
 
 ## Shot list (screenshots)
 
-1. **Daily digest** (`/digest`) — sectioned lead/creator/deep-reads/discovery,
-   showing the PRS score chips. The hero image.
-2. **Why-ranked tooltip** — open a card's "Why this?" showing the signal
-   contributions and the "connects your interest in X and Y" line.
-3. **Interest graph** (`/preferences`) — the SVG graph + tag cloud ("watch it
-   learn").
-4. **In-app reader** (`/read/[id]`) — editorial typography + scroll progress.
-5. **Source health** (`/sources`) — a source with a "Fetch issues" badge.
+Captured in 1280x800 light and dark mode in `docs/media/`:
+
+1. **Daily digest** (`/digest`) — sectioned lead/creator/deep-reads/discovery, showing PRS score chips.
+   - Light: [`media/digest-light.png`](media/digest-light.png)
+   - Dark: [`media/digest-dark.png`](media/digest-dark.png)
+2. **Why-ranked explanation** — card "Why this?" panel showing signal contributions and score breakdown.
+   - Light: [`media/why-this-light.png`](media/why-this-light.png)
+   - Dark: [`media/why-this-dark.png`](media/why-this-dark.png)
+3. **Interest graph** (`/interests`) — interactive SVG interest map with learned topic nodes and weights.
+   - Light: [`media/interests-light.png`](media/interests-light.png)
+   - Dark: [`media/interests-dark.png`](media/interests-dark.png)
+4. **In-app reader** (`/read/[id]`) — editorial typography, standfirst summary, and reading surface theme controls.
+   - Light: [`media/reader-light.png`](media/reader-light.png)
+   - Dark: [`media/reader-dark.png`](media/reader-dark.png)
+5. **Source management** (`/sources`) — followed feeds with trust scores and health indicators.
+   - Light: [`media/sources-light.png`](media/sources-light.png)
+   - Dark: [`media/sources-dark.png`](media/sources-dark.png)
+
+## Refreshing the screenshots
+
+To refresh all 10 screenshots:
+
+1. Start the stack and seed the demo account:
+   ```bash
+   make env                      # only if .env doesn't exist yet
+   docker compose up -d --build  # or `make up-lite` to use published images
+   docker compose exec backend python scripts/seed_demo.py
+   ```
+   Note the demo email and password printed by the seed script. Wait until `curl -fsS http://localhost:3000/login` and `curl -fsS http://localhost:8000/health` both succeed.
+
+2. Run the Playwright capture script:
+   ```bash
+   cd frontend && DEMO_EMAIL="<email>" DEMO_PASSWORD="<password>" BASE_URL="http://localhost:3000" npx tsx scripts/capture-screenshots.ts
+   ```
+   (Run `npx playwright install chromium` first if Chromium is not installed).
 
 ## Demo GIF / video (60–90s, audit 12-5)
 
