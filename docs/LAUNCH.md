@@ -30,9 +30,11 @@ The weights are learned per-user via gradient descent on prediction accuracy,
 so the engine gets sharper the more you use it — and that learned model is the
 moat: an 18-month-old interest graph isn't portable to a competitor.
 
-Celery, FastAPI, Next.js). Free tier has the full ranking engine;
-Pro is $4.99/mo for unlimited sources. Closed platforms (Twitter/LinkedIn) are
-honestly marked "unsupported" rather than silently failing.
+It's fully open-source and self-hostable (Docker Compose, Postgres+pgvector, Redis,
+Celery, FastAPI, Next.js). Hosted accounts get a 30-day trial of the Reader plan
+(500 feeds, 200 AI summaries/day), followed by paid Reader and Pro plans (price set
+at launch) or Free limits after the trial (30 feeds, 20 AI summaries/day). Closed
+platforms (Twitter/LinkedIn) are honestly marked "unsupported" rather than silently failing.
 
 I'm most curious about feedback on the cold-start problem — the hardest part of
 any personalization product. I seed curated starter sources + use collaborative
@@ -58,7 +60,7 @@ language-design are adjacent in your reading).
 - Tracks RSS, scraping (trafilatura + Playwright fallback), newsletters, creators
 - Reddit, Substack, YouTube, Medium, podcasts fully supported; Twitter/LinkedIn
   honestly marked unsupported
-- Full ranking engine on the free tier; $4.99/mo Pro for unlimited sources
+- Self-hosted has no plan limits; hosted accounts get a 30-day trial, Reader, and Pro plans (price set at launch), or Free limits after the trial (30 feeds)
 - Open source (MIT)
 
 The interesting trade-off: the ranking needs behavioral signal, which means it's
