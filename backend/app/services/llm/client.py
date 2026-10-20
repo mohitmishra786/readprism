@@ -24,7 +24,8 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-PROMPT_VERSION = "summarize-v1"
+# v2: summaries in the article's language (#248).
+PROMPT_VERSION = "summarize-v2"
 _MAX_ATTEMPTS = 3
 
 Clock = Callable[[], float]

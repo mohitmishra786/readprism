@@ -39,6 +39,7 @@ class SummarizationService:
         session: AsyncSession,
         *,
         use_llm: bool = True,
+        language: str | None = None,
     ) -> SummarizationResult | None:
         """Summarize and store. `use_llm=False` writes the extractive summary
         without calling the model (lazy mode, #147)."""
@@ -54,7 +55,7 @@ class SummarizationService:
             return SummarizationResult(**cached)
 
         # LLM when configured. A miss, a 404, or a rate limit must not block the digest.
-        llm_result = await get_llm_summarizer().summarize(title, full_text)
+        llm_result = await get_llm_summarizer().summarize(title, full_text, language=language)
         if llm_result is None:
             logger.info("extractive summary for item %s (llm unavailable)", content_item_id)
             result = extractive_summary(title, full_text)

@@ -51,6 +51,48 @@ Title: {title}
 Content: {content}"""
 
 
+# Summaries are written in the article's own language (#248); topic labels
+# stay English so the interest graph matches across languages.
+LANGUAGE_NAMES = {
+    "fr": "French",
+    "de": "German",
+    "es": "Spanish",
+    "it": "Italian",
+    "pt": "Portuguese",
+    "nl": "Dutch",
+    "sv": "Swedish",
+    "da": "Danish",
+    "no": "Norwegian",
+    "nb": "Norwegian",
+    "fi": "Finnish",
+    "pl": "Polish",
+    "cs": "Czech",
+    "tr": "Turkish",
+    "ru": "Russian",
+    "uk": "Ukrainian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "zh": "Chinese",
+    "hi": "Hindi",
+    "ar": "Arabic",
+    "he": "Hebrew",
+    "id": "Indonesian",
+    "vi": "Vietnamese",
+}
+
+
+def language_instruction(language: str | None) -> str:
+    """Prompt line for a non-English article; empty for English or unknown."""
+    code = (language or "").split("-")[0].split("_")[0].lower()
+    name = LANGUAGE_NAMES.get(code)
+    if not name:
+        return ""
+    return (
+        f"\nThe article is in {name}. Write headline, brief and detailed in {name}. "
+        "Keep topic_clusters in English."
+    )
+
+
 def _truncate_text(text: str, max_chars: int = 16000) -> str:
     """Approx 4000 tokens at ~4 chars/token."""
     return text[:max_chars]
@@ -92,9 +134,13 @@ class LLMSummarizer:
             self._llm_client = LLMClient()
         return self._llm_client
 
-    async def summarize(self, title: str, full_text: str) -> SummarizationResult | None:
+    async def summarize(
+        self, title: str, full_text: str, language: str | None = None
+    ) -> SummarizationResult | None:
         content = _truncate_text(full_text)
-        prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content)
+        prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content) + language_instruction(
+            language
+        )
         current = get_settings()
         data = await self._llm().complete_json(
             model=current.llm_model_primary,

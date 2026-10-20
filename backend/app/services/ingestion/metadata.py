@@ -14,6 +14,14 @@ from bs4 import BeautifulSoup
 
 _LANG = re.compile(r"^[a-z]{2}(?:-[a-z0-9]+)?$", re.IGNORECASE)
 _EN_STOPS = {"the", "and", "of", "to", "a", "in", "that", "is", "for", "on"}
+# Fallback detection when the page has no lang attribute (#248): the
+# language whose common words appear most, if any appear at least 3 times.
+_STOPS = {
+    "en": _EN_STOPS,
+    "fr": {"le", "la", "les", "des", "est", "une", "et", "dans", "pour", "que", "qui", "du"},
+    "de": {"der", "die", "das", "und", "ist", "nicht", "mit", "ein", "eine", "zu", "auf", "den"},
+    "es": {"el", "los", "las", "una", "es", "que", "por", "para", "con", "del", "se", "y"},
+}
 
 
 @dataclass
@@ -115,10 +123,10 @@ def _language(soup: BeautifulSoup, text: str) -> str | None:
     lang = root.get("lang") if root else None
     if lang and _LANG.match(str(lang).strip()):
         return str(lang).strip().lower()[:16]
-    tokens = [word.strip(".,").lower() for word in text.split()]
-    if sum(1 for word in tokens if word in _EN_STOPS) >= 3:
-        return "en"
-    return None
+    tokens = [word.strip(".,;:!?«»\"'").lower() for word in text.split()]
+    counts = {code: sum(1 for word in tokens if word in stops) for code, stops in _STOPS.items()}
+    code, hits = max(counts.items(), key=lambda kv: kv[1])
+    return code if hits >= 3 else None
 
 
 def _paywalled(html: str, linked: dict[str, str]) -> bool:

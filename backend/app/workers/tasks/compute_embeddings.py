@@ -42,7 +42,14 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
             item.summary_source is None or (not lazy and not item.summarization_cached)
         ):
             svc = SummarizationService()
-            await svc.summarize(item.id, item.title, item.full_text, session, use_llm=not lazy)
+            await svc.summarize(
+                item.id,
+                item.title,
+                item.full_text,
+                session,
+                use_llm=not lazy,
+                language=item.language,
+            )
             await session.refresh(item)
 
         # Embed
