@@ -731,14 +731,18 @@ async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRea
     content_ids = [di.content_item_id for di in digest_items]
     content_map: dict = {}
     if content_ids:
+        from app.services.takedown import not_blocked_filter
+
         content_result = await session.execute(
-            select(ContentItem).where(ContentItem.id.in_(content_ids))
+            select(ContentItem).where(ContentItem.id.in_(content_ids), not_blocked_filter())
         )
         content_map = {c.id: c for c in content_result.scalars().all()}
 
     item_reads = []
     for di in digest_items:
         content = content_map.get(di.content_item_id)
+        if not content:
+            continue
         item_reads.append(
             DigestItemRead(
                 id=di.id,
@@ -748,7 +752,7 @@ async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRea
                 section=di.section,
                 prs_score=di.prs_score,
                 signal_breakdown=di.signal_breakdown or {},
-                content=ContentItemRead.model_validate(content) if content else None,
+                content=ContentItemRead.model_validate(content),
             )
         )
 

@@ -240,6 +240,9 @@ class Settings(BaseSettings):
     digest_min_items: int = 3
     # Comma-separated hosts the scraper will not touch, even if robots allows them.
     scraper_deny_domains: str = ""
+    # Takedown and grievance contact (#183). Displayed on the /contact page;
+    # empty hides the section.
+    grievance_contact_email: str = ""
     postmark_webhook_secret: str = ""
     resend_webhook_secret: str = ""
     cloudflare_email_webhook_secret: str = ""
