@@ -115,7 +115,13 @@ async def _digest_with_items(db_session, user_id, n=5) -> Digest:
         db_session.add(item)
         await db_session.flush()
         db_session.add(
-            DigestItem(digest_id=digest.id, content_item_id=item.id, position=i, section="lead")
+            DigestItem(
+                digest_id=digest.id,
+                content_item_id=item.id,
+                position=i,
+                section="lead",
+                prs_score=0.5,
+            )
         )
     await db_session.commit()
     return digest
