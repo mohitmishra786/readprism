@@ -47,6 +47,16 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.heartbeat.beat_heartbeat",
             "schedule": 60,  # every minute — drives the beat liveness healthcheck
         },
+        "operator-alerts-scrape": {
+            "task": "app.workers.tasks.alerts.check_alerts",
+            "schedule": 600,  # every 10 minutes (#171); first copy per window wins
+            "options": {"queue": "scrape"},
+        },
+        "operator-alerts-digest": {
+            "task": "app.workers.tasks.alerts.check_alerts",
+            "schedule": 600,  # every 10 minutes (#171); first copy per window wins
+            "options": {"queue": "digest"},
+        },
         "worker-heartbeat-scrape": {
             "task": "app.workers.tasks.heartbeat.queue_heartbeat",
             "schedule": 300,  # every 5 minutes, on that queue (#234)

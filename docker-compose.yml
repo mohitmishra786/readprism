@@ -236,6 +236,7 @@ services:
         --storage.tsdb.path=/prometheus --storage.tsdb.retention.time=30d
     volumes:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       backend:

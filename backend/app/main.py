@@ -129,6 +129,10 @@ def create_app() -> FastAPI:
                 if not template.startswith("/api/v1"):
                     template = "/api/v1" + template
             observe_request(request.method, template, status_code, _time.perf_counter() - started)
+            # Hourly totals in Redis for the 5xx-rate alert (#171), shared by workers.
+            from app.services.alerts import record_http
+
+            await record_http(status_code)
 
     app.include_router(api_router, prefix="/api/v1")
 

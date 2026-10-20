@@ -291,6 +291,20 @@ class Settings(BaseSettings):
     # Prometheus (#170): price of your LLM provider per million tokens (USD),
     # for the readprism_llm_cost_usd_24h series. 0 leaves cost out.
     llm_cost_per_million_tokens: float = 0.0
+    # Operator alerts (#171), evaluated every 10 minutes. Delivered to an ntfy
+    # topic URL (e.g. https://ntfy.sh/<topic>) and/or an operator email; with
+    # neither set, alerts are only logged. Queue targets come from ADR 0001.
+    alert_ntfy_url: str = ""
+    alert_email: str = ""
+    alert_repeat_hours: int = 12
+    alert_ingest_stall_hours: float = 2
+    alert_5xx_rate: float = 0.05
+    alert_llm_error_rate: float = 0.5
+    alert_disk_paths: str = "/"
+    alert_disk_percent: float = 80
+    # Alert when the last successful scripts/backup.sh is older than this
+    # (only after a first backup has succeeded). 0 turns it off.
+    alert_backup_max_age_hours: int = 36
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True

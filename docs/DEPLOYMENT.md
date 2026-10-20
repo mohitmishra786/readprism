@@ -116,6 +116,19 @@ delivered within `DIGEST_ON_TIME_SECONDS`. Targets and the load test
   `METRICS_TOKEN`, as `Authorization: Bearer …` or `X-Metrics-Token`. Set
   `LLM_COST_PER_MILLION_TOKENS` for the cost series and
   `GRAFANA_ADMIN_PASSWORD` before exposing Grafana.
+- **Alerts (#171):** every 10 minutes the workers check for: no new items
+  for `ALERT_INGEST_STALL_HOURS` (2), queue lag over the ADR 0001 targets
+  (digest wait p95 > 60 s, embed > 10 min, digests on time < 99%), API 5xx
+  over `ALERT_5XX_RATE`, LLM errors over `ALERT_LLM_ERROR_RATE`, disk over
+  `ALERT_DISK_PERCENT` on `ALERT_DISK_PATHS`, a last successful backup older
+  than `ALERT_BACKUP_MAX_AGE_HOURS` (`scripts/backup.sh` records each
+  success), and stopped workers or beat. Set `ALERT_NTFY_URL` (an ntfy topic,
+  e.g. `https://ntfy.sh/<random-topic>`) and/or `ALERT_EMAIL`; each alert is
+  sent when it starts, every `ALERT_REPEAT_HOURS` while it lasts, and once
+  when it clears. Disk is measured where the worker runs: mount the volume
+  you care about into a worker and list its path to watch it. With
+  `--profile monitoring`, the same conditions are also Prometheus rules
+  (`deploy/monitoring/alerts.yml`).
 - **Ranking quality:** `python scripts/ranking_eval.py --days 30` prints
   per-cohort read-prediction AUC.
 

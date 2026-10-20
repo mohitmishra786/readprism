@@ -1,0 +1,45 @@
+# Prometheus alert rules (#171) for the `monitoring` profile. They show as
+# firing in Prometheus/Grafana; notifications come from the app's own alert
+# task (ALERT_NTFY_URL / ALERT_EMAIL), which runs without this profile too.
+# Queue targets: docs/adr/0001-celery-solo-pool.md.
+groups:
+  - name: readprism
+    rules:
+      - alert: IngestStalled
+        expr: readprism_newest_item_age_seconds > 2 * 3600 and on() sum(readprism_sources) > 0
+        labels: {severity: warning}
+        annotations: {summary: "No new items for 2 hours"}
+      - alert: DigestQueueLag
+        expr: readprism_queue_wait_seconds{queue="digest",quantile="95"} > 60
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "digest queue wait p95 above 60 s"}
+      - alert: EmbedQueueLag
+        expr: readprism_queue_wait_seconds{queue="embed",quantile="95"} > 600
+        for: 15m
+        labels: {severity: warning}
+        annotations: {summary: "embed queue wait p95 above 10 min"}
+      - alert: DigestsLate
+        expr: readprism_digest_on_time_ratio < 0.99
+        for: 30m
+        labels: {severity: warning}
+        annotations: {summary: "Fewer than 99% of digests on time"}
+      - alert: ApiErrors
+        expr: sum(rate(readprism_http_requests_total{status="5xx"}[10m])) / sum(rate(readprism_http_requests_total[10m])) > 0.05
+        for: 10m
+        labels: {severity: critical}
+        annotations: {summary: "More than 5% of API requests fail"}
+      - alert: LlmErrors
+        expr: readprism_llm_calls_24h{outcome="error"} / ignoring(outcome) (readprism_llm_calls_24h{outcome="ok"} + readprism_llm_calls_24h{outcome="error"}) > 0.5
+        for: 30m
+        labels: {severity: warning}
+        annotations: {summary: "Most LLM calls fail"}
+      - alert: BeatDown
+        expr: readprism_beat_up == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "Scheduler heartbeat missing"}
+      - alert: WorkerDown
+        expr: readprism_heartbeat_age_seconds > 1800
+        labels: {severity: critical}
+        annotations: {summary: "{{ $labels.process }} has not run for 30 minutes"}

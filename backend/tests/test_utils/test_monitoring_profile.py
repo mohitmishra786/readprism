@@ -50,3 +50,12 @@ def test_prometheus_scrapes_the_api_with_the_token():
     job = config["scrape_configs"][0]
     assert job["static_configs"][0]["targets"] == ["backend:8000"]
     assert job["authorization"]["credentials_file"] == "/tmp/metrics_token"
+
+
+def test_alert_rules_use_exported_series_and_adr_targets():
+    rules = yaml.safe_load((MON / "alerts.yml").read_text())["groups"][0]["rules"]
+    names = {r["alert"] for r in rules}
+    assert {"IngestStalled", "DigestQueueLag", "EmbedQueueLag", "ApiErrors", "LlmErrors"} <= names
+    exprs = {r["alert"]: r["expr"] for r in rules}
+    assert "> 60" in exprs["DigestQueueLag"] and "> 600" in exprs["EmbedQueueLag"]
+    assert "rule_files" in yaml.safe_load((MON / "prometheus.yml").read_text())

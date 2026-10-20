@@ -63,6 +63,8 @@ echo "==> bundling $TARGET.tar.gz"
 tar -czf "$TARGET.tar.gz" -C "$OUT_DIR" "readprism-$STAMP"
 rm -rf "$TARGET"
 echo "backup complete: $TARGET.tar.gz"
+# Tell the backup alert (#171) a backup succeeded. Best effort.
+docker compose exec -T redis redis-cli SET backup:last_success "$(date -u +%s)" >/dev/null 2>&1 || true
 
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 if [ "$RETENTION_DAYS" -gt 0 ] 2>/dev/null; then
