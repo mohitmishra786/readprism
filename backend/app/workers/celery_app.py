@@ -14,6 +14,26 @@ def _init_worker_sentry(**_kwargs) -> None:
     init_sentry("worker")
 
 
+@signals.task_prerun.connect
+def _refresh_instance_settings(**_kwargs) -> None:
+    # Pick up LLM / SMTP settings saved on the setup screen (#220), at most
+    # once a minute and only when secrets can be stored at all.
+    from app.utils import secretbox
+
+    if not secretbox.configured():
+        return
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+        return  # eager / in-loop execution (tests): nothing to refresh
+    except RuntimeError:
+        pass
+    from app.services.instance_config import refresh_in_worker
+
+    refresh_in_worker()
+
+
 @signals.beat_init.connect
 def _init_beat_sentry(**_kwargs) -> None:
     init_sentry("beat")

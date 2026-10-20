@@ -196,6 +196,25 @@ function rememberCsrf(t: Token): Token {
   return t;
 }
 
+export interface SetupField {
+  key: string;
+  group: 'llm' | 'smtp' | 'registration';
+  label: string;
+  secret: boolean;
+  source: 'env' | 'saved' | 'default';
+  is_set: boolean;
+  value?: string | number;
+  choices?: string[];
+}
+
+export interface SetupConfig {
+  can_store_secrets: boolean;
+  effective_registration_mode: string;
+  llm_configured: boolean;
+  email_configured: boolean;
+  fields: SetupField[];
+}
+
 // Auth
 export const api = {
   auth: {
@@ -206,7 +225,9 @@ export const api = {
       }).then(rememberCsrf),
     /** Whether this instance accepts new accounts (#153). */
     registration: () =>
-      request<{ mode: string; open: boolean; invite_required: boolean }>('/auth/registration'),
+      request<{ mode: string; open: boolean; invite_required: boolean; first_account?: boolean }>(
+        '/auth/registration'
+      ),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',
@@ -464,6 +485,24 @@ export const api = {
       request<{ owner: boolean; problems: { key: string; message: string; hint: string }[] }>(
         '/metrics/instance-health'
       ),
+  },
+
+  /** First-boot setup screen (#220). Owner only, except status. */
+  setup: {
+    status: () => request<{ needs_owner: boolean; can_store_secrets: boolean }>('/setup/status'),
+    config: () => request<SetupConfig>('/setup/config'),
+    save: (values: Record<string, string | null>) =>
+      request<SetupConfig>('/setup/config', { method: 'PUT', body: JSON.stringify({ values }) }),
+    testLlm: (body: { api_key?: string; base_url?: string; model?: string }) =>
+      request<{ ok: boolean; message: string }>('/setup/test-llm', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    testSmtp: (body: { host?: string; port?: number; username?: string; password?: string }) =>
+      request<{ ok: boolean; message: string }>('/setup/test-smtp', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
   },
 
   search: {

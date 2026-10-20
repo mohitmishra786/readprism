@@ -11,6 +11,7 @@ from app.models.digest import (
     RankerWeightRevision,
 )
 from app.models.feed import Feed
+from app.models.instance_setting import InstanceSetting
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
 from app.models.push import PushSubscription
@@ -25,6 +26,7 @@ from app.models.user import User
 __all__ = [
     "BillingEvent",
     "Feed",
+    "InstanceSetting",
     "User",
     "Source",
     "Creator",

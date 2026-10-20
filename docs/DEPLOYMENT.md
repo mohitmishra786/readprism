@@ -200,6 +200,23 @@ the Redis snapshot, and starts everything again; migrations then run on
 boot. The archive's `env` file holds the `.env` from backup time: compare it
 with yours if you are restoring onto a new machine.
 
+## First-boot setup screen
+
+On a fresh instance the sign-up page creates the **owner account** (the first
+account) and then opens **Instance setup** (`/admin/setup`, also linked from
+Preferences). There the owner can enter the LLM key, base URL and models,
+SMTP details and who may sign up (`closed`, `invite` with codes, `open`), with
+a **Test** button for the key and a test email to the owner's address. No file
+editing is needed.
+
+- Values are stored encrypted (Fernet) in the `instance_settings` table with a
+  key derived from `SECRETS_ENCRYPTION_KEY`, which `scripts/init_env.sh`
+  generates. Without it the screen is read-only. Changing that key makes the
+  saved values unreadable; re-enter them.
+- Anything set in the environment or `.env` wins and shows as locked.
+- Secrets are write-only: the API reports only whether one is saved.
+- The API applies changes at once; workers pick them up within a minute.
+
 ## Self-hosting with your own LLM key (BYO)
 
 Self-hosted instances bring their own `LLM_API_KEY` (or the legacy, deprecated

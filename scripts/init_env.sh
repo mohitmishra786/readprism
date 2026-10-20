@@ -56,5 +56,6 @@ ensure_secret() {
 ensure_secret SECRET_KEY
 ensure_secret REFRESH_SECRET_KEY
 ensure_secret METRICS_TOKEN
+ensure_secret SECRETS_ENCRYPTION_KEY
 
 echo "init_env: $TARGET is ready (APP_ENV=$(grep -E '^APP_ENV=' "$TARGET" | cut -d= -f2-))"

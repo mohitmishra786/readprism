@@ -16,6 +16,7 @@ export default function RegisterPage() {
     mode: string;
     open: boolean;
     invite_required: boolean;
+    first_account?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -29,7 +30,8 @@ export default function RegisterPage() {
     try {
       // Credentials arrive as httpOnly cookies (#103); nothing to store here.
       await api.auth.register(email, password, displayName || undefined, inviteCode || undefined);
-      router.replace("/digest");
+      // The first account owns the instance: finish setup next (#220).
+      router.replace(registration?.first_account ? "/admin/setup" : "/digest");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -42,7 +44,11 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="prism-mark text-3xl">◭ ReadPrism</div>
-          <p className="mt-2 text-sm text-stone-500">Create your account</p>
+          <p className="mt-2 text-sm text-stone-500">
+            {registration?.first_account
+              ? "Create the owner account for this instance"
+              : "Create your account"}
+          </p>
         </div>
 
         {registration && !registration.open && !registration.invite_required ? (

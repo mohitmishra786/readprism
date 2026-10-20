@@ -471,6 +471,7 @@ export default function PreferencesPage() {
         <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>
           Download a portable copy of everything ReadPrism stores about you, or
           permanently delete your account. <a href="/privacy" style={{ textDecoration: "underline" }}>What we collect and why</a>.
+          {" "}Running this instance? <a href="/admin/setup" style={{ textDecoration: "underline" }}>Instance setup</a> (owner only).
         </p>
         <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 14, marginBottom: 16 }}>
           <input

@@ -21,7 +21,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.models.user import User
+from app.services.registration import is_instance_owner
+
+__all__ = ["check", "is_instance_owner", "record_llm_outcome"]
 
 # Grace period after an API restart: heartbeats may not have run yet.
 _STARTED = time.time()
@@ -29,13 +31,6 @@ _STARTED = time.time()
 LLM_OK_KEY = "llm:last_ok"
 LLM_ERROR_KEY = "llm:last_error"
 LLM_STATUS_TTL_SECONDS = 2 * 86400
-
-
-async def is_instance_owner(session: AsyncSession, user: User) -> bool:
-    first = (
-        await session.execute(select(User.id).order_by(User.created_at, User.id).limit(1))
-    ).scalar_one_or_none()
-    return first == user.id
 
 
 async def record_llm_outcome(ok: bool, reason: str = "") -> None:

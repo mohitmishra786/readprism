@@ -57,6 +57,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Redis connection failed: {e}")
 
+    # Settings saved on the setup screen (#220); .env values still win.
+    if db_ok:
+        try:
+            from app.database import AsyncSessionLocal
+            from app.services.instance_config import load
+
+            async with AsyncSessionLocal() as session:
+                await load(session)
+        except Exception as e:
+            logger.warning(f"Instance settings not loaded: {type(e).__name__}")
+
     app.state.db_ok = db_ok
     app.state.redis_ok = redis_ok
 
