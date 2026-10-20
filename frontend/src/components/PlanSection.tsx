@@ -137,7 +137,7 @@ export function PlanSection() {
     (state.plan === "reader" || state.plan === "pro" || state.plan === "team") && state.status !== "cancelled";
 
   return (
-    <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
+    <section id="plan" style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Plan</h2>
       <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>{describe(state)}</p>
       <Quotas quotas={state.quotas ?? []} />

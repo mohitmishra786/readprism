@@ -312,6 +312,8 @@ class Settings(BaseSettings):
     billing_pro_price_ids: str = ""
     billing_team_price_ids: str = ""
     billing_trial_days: int = 30
+    # The "trial ending soon" email goes this many days before the end (#235).
+    trial_ending_notice_days: int = 5
     billing_past_due_grace_days: int = 3
     # Web Push digest alerts (#266). Opt-in per device; off unless all three
     # are set. Generate a key pair with scripts/generate_vapid_keys.py.

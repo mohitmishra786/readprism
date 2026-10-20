@@ -75,6 +75,11 @@ def setup_beat_schedule(app: Celery) -> None:
             "args": ("digest",),
             "options": {"queue": "digest"},
         },
+        "trial-emails": {
+            "task": "app.workers.tasks.trial_emails.send_trial_emails",
+            # Hourly, so "trial started" follows soon after the email is confirmed (#235).
+            "schedule": crontab(minute=20),
+        },
         "reengagement-emails": {
             "task": "app.workers.tasks.reengagement.send_reengagement_emails",
             "schedule": crontab(hour=16, minute=0),  # daily at 16:00 UTC

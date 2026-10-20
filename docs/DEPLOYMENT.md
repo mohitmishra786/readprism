@@ -357,6 +357,10 @@ ignores them.
      while testing.
 
   New accounts start a `BILLING_TRIAL_DAYS` trial with no card required.
+  They get three emails (#235): when the trial starts, `TRIAL_ENDING_NOTICE_DAYS`
+  (5) days before it ends, and when it has ended. Accounts that bought a
+  plan get only the first. After the trial nothing is deleted: the account
+  moves to the Free limits and the export keeps working.
   Prices and trial length are the #138 decision. Webhooks are verified,
   recorded once (a replay does nothing) and applied in order (an older event
   that arrives late can't bring back a cancelled plan). A plan lapses at its

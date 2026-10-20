@@ -66,6 +66,8 @@ class User(Base):
     # Hosted billing (#173). `tier` is what was bought; app.services.billing
     # .effective_plan() combines it with these dates.
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Trial emails sent so far (#235): 1 started, 2 ending soon, 3 ended.
+    trial_email_stage: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     billing_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     billing_customer_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
