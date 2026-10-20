@@ -96,6 +96,8 @@ export interface ContentItem {
   summarization_cached: boolean;
   /** "llm" summaries are labelled as AI-written (#177). */
   summary_source?: string | null;
+  /** The text and summary come from the episode's published transcript (#252). */
+  transcript_url?: string | null;
   paywalled?: boolean;
   page_type?: string | null;
   language?: string | null;

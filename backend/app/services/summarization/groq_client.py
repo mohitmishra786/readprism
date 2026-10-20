@@ -93,6 +93,12 @@ def language_instruction(language: str | None) -> str:
     )
 
 
+TRANSCRIPT_INSTRUCTION = (
+    "\nThe content is the published transcript of a podcast episode or video. "
+    "Summarize what is said; refer to it as an episode, not an article."
+)
+
+
 def _truncate_text(text: str, max_chars: int = 16000) -> str:
     """Approx 4000 tokens at ~4 chars/token."""
     return text[:max_chars]
@@ -135,11 +141,18 @@ class LLMSummarizer:
         return self._llm_client
 
     async def summarize(
-        self, title: str, full_text: str, language: str | None = None
+        self,
+        title: str,
+        full_text: str,
+        language: str | None = None,
+        *,
+        is_transcript: bool = False,
     ) -> SummarizationResult | None:
         content = _truncate_text(full_text)
-        prompt = _USER_PROMPT_TEMPLATE.format(title=title, content=content) + language_instruction(
-            language
+        prompt = (
+            _USER_PROMPT_TEMPLATE.format(title=title, content=content)
+            + language_instruction(language)
+            + (TRANSCRIPT_INSTRUCTION if is_transcript else "")
         )
         current = get_settings()
         data = await self._llm().complete_json(

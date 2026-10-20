@@ -48,7 +48,10 @@ async def ensure_llm_summaries(items: list[ContentItem], *, limit: int | None = 
         async with gate:
             try:
                 return await summarizer.summarize(
-                    item.title or "", item.full_text or "", language=item.language
+                    item.title or "",
+                    item.full_text or "",
+                    language=item.language,
+                    is_transcript=bool(item.transcript_url),
                 )
             except Exception as e:  # never block the digest on the model
                 logger.info(f"LLM summary failed for {item.id}: {e}")

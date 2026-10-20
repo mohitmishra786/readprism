@@ -20,4 +20,9 @@ describe("SummaryLabel", () => {
       unmount();
     }
   });
+
+  it("marks summaries of an episode's transcript (#252)", () => {
+    render(<SummaryLabel source="extractive" fromTranscript />);
+    expect(screen.getByText("Quick summary · transcript")).toBeInTheDocument();
+  });
 });

@@ -29,6 +29,9 @@ class ContentItemRead(BaseModel):
     summarization_cached: bool
     # "llm" | "extractive" | None; the UI labels AI-written summaries (#177).
     summary_source: str | None = None
+    # Set when the text (and so the summary) comes from the episode's own
+    # published transcript (#252).
+    transcript_url: str | None = None
     paywalled: bool = False
     page_type: str | None = None
     language: str | None = None

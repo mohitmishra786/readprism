@@ -8,9 +8,13 @@ const LABELS: Record<string, { text: string; title: string }> = {
   },
 };
 
-export function SummaryLabel({ source }: { source?: string | null }) {
-  const label = source ? LABELS[source] : undefined;
-  if (!label) return null;
+export function SummaryLabel({ source, fromTranscript = false }: { source?: string | null; fromTranscript?: boolean }) {
+  const base = source ? LABELS[source] : undefined;
+  if (!base) return null;
+  // Episodes summarized from their own published transcript (#252).
+  const label = fromTranscript
+    ? { text: `${base.text} · transcript`, title: `${base.title} Based on the episode's published transcript.` }
+    : base;
   return (
     <span
       className="mr-2 inline-block rounded bg-stone-100 px-1.5 py-0.5 align-middle font-sans text-[10px] font-semibold uppercase tracking-wide not-italic text-stone-500 dark:bg-stone-800 dark:text-stone-400"

@@ -124,13 +124,13 @@ export function ContentCard({
 
       {summaryLevel === "brief" && content.summary_brief && (
         <p className="mt-2 text-sm leading-relaxed text-stone-700 dark:text-stone-300">
-          <SummaryLabel source={content.summary_source} />
+          <SummaryLabel source={content.summary_source} fromTranscript={Boolean(content.transcript_url)} />
           {content.summary_brief}
         </p>
       )}
       {summaryLevel === "detailed" && (content.summary_detailed || content.summary_brief) && (
         <p className="mt-2 text-[0.95rem] leading-relaxed text-stone-700 dark:text-stone-300">
-          <SummaryLabel source={content.summary_source} />
+          <SummaryLabel source={content.summary_source} fromTranscript={Boolean(content.transcript_url)} />
           {content.summary_detailed || content.summary_brief}
         </p>
       )}

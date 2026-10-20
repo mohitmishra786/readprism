@@ -262,7 +262,7 @@ export default function ReaderPage() {
         {/* AI summary deck — the editorial "standfirst" */}
         {item.summary_detailed && (
           <p className="deck mt-5 border-l-2 border-prism-600 pl-4 font-serif text-lg italic leading-relaxed text-stone-600">
-            <SummaryLabel source={item.summary_source} />
+            <SummaryLabel source={item.summary_source} fromTranscript={Boolean(item.transcript_url)} />
             {item.summary_detailed}
           </p>
         )}

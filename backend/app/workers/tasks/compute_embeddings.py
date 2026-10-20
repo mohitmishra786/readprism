@@ -49,6 +49,7 @@ async def _compute_embedding_async(content_item_id: uuid.UUID) -> dict:
                 session,
                 use_llm=not lazy,
                 language=item.language,
+                is_transcript=bool(item.transcript_url),
             )
             await session.refresh(item)
 
