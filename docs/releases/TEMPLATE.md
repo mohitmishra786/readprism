@@ -1,4 +1,4 @@
-# ReadPrism vX.Y.Z (YYYY-MM-DD)
+# Weirling vX.Y.Z (YYYY-MM-DD)
 
 One or two sentences: what this release is for.
 

@@ -4,7 +4,7 @@ import { BROWSER_STORAGE } from "../../lib/cookies";
 
 export const metadata = {
   title: "What we collect and why",
-  description: "Every field ReadPrism records about your reading, why, and for how long.",
+  description: "Every field Weirling records about your reading, why, and for how long.",
 };
 
 // Plain-language data page (#134): every recorded field, linked from
@@ -12,9 +12,9 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-5 py-12 text-stone-800 dark:text-stone-100">
-      <h1 className="font-serif text-3xl font-bold">What ReadPrism collects, and why</h1>
+      <h1 className="font-serif text-3xl font-bold">What Weirling collects, and why</h1>
       <p className="mt-3 text-stone-600 dark:text-stone-300">
-        ReadPrism ranks articles by how you actually read. That means it records what you open, how far
+        Weirling ranks articles by how you actually read. That means it records what you open, how far
         you read, and what you rate. Here is every field, in plain language. Nothing is sold, shared with
         advertisers, or sent to analytics companies.
       </p>
@@ -66,7 +66,7 @@ export default function PrivacyPage() {
         <h2 id="other" className="text-xl font-semibold">Everything else</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
           <li><strong>Account:</strong> your email, a one-way hash of your password, your name and your settings.</li>
-          <li><strong>What you follow:</strong> your sources, creators, and the newsletters sent to your ReadPrism address (visible only to you).</li>
+          <li><strong>What you follow:</strong> your sources, creators, and the newsletters sent to your Weirling address (visible only to you).</li>
           <li><strong>What was learned:</strong> your interest map (topics and weights) and how much you trust each source.</li>
           <li><strong>Articles:</strong> the full text of an article is shortened to an excerpt after 90 days.</li>
         </ul>
@@ -74,7 +74,7 @@ export default function PrivacyPage() {
       <section className="mt-10" aria-labelledby="cookies">
         <h2 id="cookies" className="text-xl font-semibold">Cookies and browser storage</h2>
         <p className="mt-1 text-sm text-stone-600 dark:text-stone-300">
-          ReadPrism uses only what it needs to sign you in, keep your account safe and remember your
+          Weirling uses only what it needs to sign you in, keep your account safe and remember your
           settings. There are no analytics, advertising or tracking cookies, and nothing from other
           companies, so there is nothing to consent to and no banner.
         </p>

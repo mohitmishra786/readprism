@@ -1,8 +1,8 @@
 {
-  "_about": "Demo persona content for `make demo` (#158). Every article, author and publication here is fictional and was written for ReadPrism; no third-party text. Released under CC0 1.0 (public domain). Publications live under *.demo.readprism.local, which never resolves.",
+  "_about": "Demo persona content for `make demo` (#158). Every article, author and publication here is fictional and was written for Weirling; no third-party text. Released under CC0 1.0 (public domain). Publications live under *.demo.weirling.local, which never resolves.",
   "persona": {
     "name": "Maya Okafor",
-    "email": "demo@readprism.local",
+    "email": "demo@weirling.local",
     "about": "Backend engineer who reads about databases and compilers, and follows the energy transition on the side.",
     "interests": [
       {"topic": "database internals", "weight": 0.85},

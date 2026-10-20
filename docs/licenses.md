@@ -3,7 +3,7 @@
 Machine-generated report (#260, RL-08) — do not edit by hand.
 Regenerate with `make licenses` (or `python backend/scripts/license_report.py --write`).
 
-ReadPrism is MIT-licensed. Redistribution obligations come from bundled
+Weirling is MIT-licensed. Redistribution obligations come from bundled
 dependencies; the tables below cover every installed backend package and
 every production frontend package.
 

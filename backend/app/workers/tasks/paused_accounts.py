@@ -58,7 +58,7 @@ def render_reminder(
 ) -> tuple[str, str, str]:
     plans = f"{frontend}/preferences#plan"
     export = f"{frontend}/preferences"
-    subject = f"Your ReadPrism account will be deleted on {_day(delete_on)}"
+    subject = f"Your Weirling account will be deleted on {_day(delete_on)}"
     lines = [
         f"Your account has been paused since your trial or plan ended. On {_day(delete_on)} it will be "
         "deleted, with your sources, saved articles, ratings and reading history.",
@@ -140,15 +140,15 @@ async def _run(now: datetime | None = None) -> dict:
                 if email:
                     await send_email(
                         to=email,
-                        subject="Your ReadPrism account has been deleted",
+                        subject="Your Weirling account has been deleted",
                         html_body=(
                             "<p>Your account had no plan for the notice period, so your "
-                            "ReadPrism account and all its data have now been deleted, as our "
+                            "Weirling account and all its data have now been deleted, as our "
                             "earlier email said.</p>"
                             "<p>You're welcome back any time with a new account.</p>"
                         ),
                         text_body=(
-                            "Your account had no plan for the notice period, so your ReadPrism "
+                            "Your account had no plan for the notice period, so your Weirling "
                             "account and all its data have now been deleted, as our earlier "
                             "email said.\n\nYou're welcome back any time with a new account."
                         ),

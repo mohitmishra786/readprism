@@ -1,6 +1,6 @@
 """GDPR/CCPA account data export + erasure (audit 06-3).
 
-ReadPrism stores email, reading telemetry, an interest graph, learned weights
+Weirling stores email, reading telemetry, an interest graph, learned weights
 and interaction history — behavioural personal data. EU/California users have a
 right to a portable copy of it (Art. 20 / CCPA) and to erasure (Art. 17). These
 helpers back the `/account/export` and `DELETE /account` endpoints.
@@ -28,6 +28,7 @@ from app.models.creator_trust import CreatorTopicTrust
 from app.models.digest import Digest, DigestItem
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.meta_weights import UserMetaWeights
+from app.models.product_event import ProductEvent
 from app.models.source import Source
 from app.models.user import User
 from app.utils.logging import get_logger
@@ -144,7 +145,7 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             # 2 (#200): adds digest_items and content metadata; additive.
             "format_version": 2,
             "note": (
-                "Portable copy of your ReadPrism personal data (GDPR Art. 20 / CCPA). "
+                "Portable copy of your Weirling personal data (GDPR Art. 20 / CCPA). "
                 "Derived embedding vectors and your password hash are excluded."
             ),
         },
@@ -168,6 +169,10 @@ async def export_user_data(session: AsyncSession, user: User) -> dict[str, Any]:
             session, select(UserMetaWeights).where(UserMetaWeights.user_id == uid)
         ),
         "digests": await _all(session, select(Digest).where(Digest.user_id == uid)),
+        # First-party product events (#131), disclosed in PRIVACY.md.
+        "product_events": await _all(
+            session, select(ProductEvent).where(ProductEvent.user_id == uid)
+        ),
         "digest_items": digest_items,
         "content": content,
     }

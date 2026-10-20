@@ -91,7 +91,7 @@ async def test_permanent_redirect_is_recorded_and_temporary_is_not():
         return httpx.Response(200, text="ok")
 
     resp = await ssrf.safe_fetch("https://1.1.1.1/old", transport=httpx.MockTransport(permanent))
-    assert resp.headers.get("x-readprism-permanent-url") == "https://1.0.0.1/new"
+    assert resp.headers.get("x-weirling-permanent-url") == "https://1.0.0.1/new"
 
     def temporary(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/old":
@@ -99,7 +99,7 @@ async def test_permanent_redirect_is_recorded_and_temporary_is_not():
         return httpx.Response(200, text="ok")
 
     resp = await ssrf.safe_fetch("https://1.1.1.1/old", transport=httpx.MockTransport(temporary))
-    assert "x-readprism-permanent-url" not in {key.lower() for key in resp.headers}
+    assert "x-weirling-permanent-url" not in {key.lower() for key in resp.headers}
 
 
 @pytest.mark.asyncio

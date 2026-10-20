@@ -16,6 +16,7 @@ from app.models.instance_setting import InstanceSetting
 from app.models.interest_graph import InterestEdge, InterestNode
 from app.models.llm_key import UserLLMKey
 from app.models.meta_weights import UserMetaWeights
+from app.models.product_event import ProductEvent, ProductMetricDaily
 from app.models.push import PushSubscription
 from app.models.source import Source
 from app.models.suggestion import SourceSuggestion
@@ -49,5 +50,7 @@ __all__ = [
     "RankerWeightRevision",
     "UserMetaWeights",
     "PushSubscription",
+    "ProductEvent",
+    "ProductMetricDaily",
     "SourceSuggestion",
 ]

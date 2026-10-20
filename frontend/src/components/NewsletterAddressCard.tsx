@@ -10,7 +10,7 @@ export function elapsedSeconds(sentAt: string, receivedAt: string): number {
 }
 
 // The user's personal newsletter address (#151): copy it, set up forwarding,
-// and send a test that confirms mail reaches ReadPrism end to end.
+// and send a test that confirms mail reaches Weirling end to end.
 export function NewsletterAddressCard() {
   const [info, setInfo] = useState<{ address: string; inbound_configured: boolean; email_verified: boolean } | null>(null);
   const [copied, setCopied] = useState(false);

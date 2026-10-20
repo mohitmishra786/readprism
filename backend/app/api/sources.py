@@ -152,6 +152,9 @@ async def subscribe_pack(
     await session.flush()
     await _seed_pack_interest(session, current_user.id, pack.title)
     if created:
+        from app.services.product_metrics import track
+
+        await track(session, current_user.id, "source_added", count=created, via="starter_pack")
         _fetch_new_sources_soon(current_user.id)
     return {
         "status": "ok",
@@ -276,6 +279,9 @@ async def add_source(
     )
     session.add(source)
     await session.flush()
+    from app.services.product_metrics import track
+
+    await track(session, current_user.id, "source_added", count=1, via="manual")
 
     # Fetch this user's sources now. Never the whole instance: on hosted any
     # user could otherwise trigger a poll of every feed (#169).
@@ -367,6 +373,9 @@ async def import_opml(
             created += 1
         await session.flush()
         if created:
+            from app.services.product_metrics import track
+
+            await track(session, current_user.id, "source_added", count=created, via="opml")
             _fetch_new_sources_soon(current_user.id)
         return {"created": created}
     except ImportError:
@@ -439,6 +448,9 @@ async def import_opml_tagged(
         )
     await session.flush()
     if plan.feeds:
+        from app.services.product_metrics import track
+
+        await track(session, current_user.id, "source_added", count=plan.created, via="opml")
         _fetch_new_sources_soon(current_user.id)
     return {
         "created": plan.created,

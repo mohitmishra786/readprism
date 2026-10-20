@@ -85,8 +85,13 @@ async def process_onboarding(
     seeded = await _seed_starter_sources(user.id, topics, session)
 
     # 6. Mark onboarding complete
+    first_time = not user.onboarding_complete
     user.onboarding_complete = True
     user.interest_text = interest_text
+    if first_time:
+        from app.services.product_metrics import track
+
+        await track(session, user.id, "onboarding_finished", topics=len(topics))
     await session.flush()
     logger.info(
         f"Onboarding complete for user {user.id}: {len(topics)} topics, "

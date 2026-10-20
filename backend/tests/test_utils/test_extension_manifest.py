@@ -36,4 +36,4 @@ def test_instance_access_is_requested_at_setup_and_detection_runs_on_click():
 
 
 def test_no_hard_coded_unlaunched_domain():
-    assert not any("readprism.app/" in p for p in MANIFEST.get("host_permissions", []))
+    assert not any("weirling.com/" in p for p in MANIFEST.get("host_permissions", []))

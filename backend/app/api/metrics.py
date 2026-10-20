@@ -164,6 +164,22 @@ async def email_deliverability() -> dict:
     return await analytics.email_deliverability()
 
 
+@router.get("/product")
+async def product_dashboard(
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """North Star and input metrics for the instance owner (#131)."""
+    from app.services import instance_health as health
+    from app.services import product_metrics
+
+    if not await health.is_instance_owner(session, current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only the instance owner can see this"
+        )
+    return await product_metrics.dashboard(session)
+
+
 @router.get("/time-to-value", dependencies=[Depends(require_metrics_token)])
 async def time_to_value(session: AsyncSession = Depends(get_db)) -> dict:
     """CS-06: local-only signup -> first digest -> first read timing.

@@ -29,10 +29,10 @@ async def test_contact_endpoint_grievance_email(client: AsyncClient, monkeypatch
     assert resp.json()["grievance_contact_email"] is None
 
     # Shown when configured
-    monkeypatch.setattr(get_settings(), "grievance_contact_email", "grievance@readprism.example")
+    monkeypatch.setattr(get_settings(), "grievance_contact_email", "grievance@weirling.example")
     resp = await client.get("/api/v1/contact")
     assert resp.status_code == 200
-    assert resp.json()["grievance_contact_email"] == "grievance@readprism.example"
+    assert resp.json()["grievance_contact_email"] == "grievance@weirling.example"
 
 
 @pytest.mark.asyncio

@@ -76,10 +76,10 @@ def render(
         else:
             items, text_items = "", ""
         body = (
-            "<p>A shorter one today: the three items ReadPrism ranked highest for you.</p>"
+            "<p>A shorter one today: the three items Weirling ranked highest for you.</p>"
             f"<ol>{items}</ol>" + _button(f"{frontend}/digest", "Open the full digest")
         )
-        text = f"A shorter one today: the three items ReadPrism ranked highest for you.\n\n{text_items}\n\nFull digest: {frontend}/digest"
+        text = f"A shorter one today: the three items Weirling ranked highest for you.\n\n{text_items}\n\nFull digest: {frontend}/digest"
     elif stage == ASK:
         subject = "Would a weekly digest suit you better?"
         body = (
@@ -96,16 +96,16 @@ def render(
     else:
         subject = "We'll stop nudging you"
         body = (
-            "<p>This is the last reminder ReadPrism will send. Your sources keep being ranked, and everything "
+            "<p>This is the last reminder Weirling will send. Your sources keep being ranked, and everything "
             "is here whenever you come back.</p>"
             "<p>If you'd rather take your reading elsewhere, you can download all of it (sources, saved "
             "articles, ratings) as a portable export.</p>"
             + _button(f"{frontend}/preferences", "Export my data")
-            + _button(f"{frontend}/digest", "Open ReadPrism")
+            + _button(f"{frontend}/digest", "Open Weirling")
         )
         text = (
-            "This is the last reminder ReadPrism will send. Everything is here whenever you come back.\n\n"
-            f"Export your data: {frontend}/preferences\nOpen ReadPrism: {frontend}/digest"
+            "This is the last reminder Weirling will send. Everything is here whenever you come back.\n\n"
+            f"Export your data: {frontend}/preferences\nOpen Weirling: {frontend}/digest"
         )
     return subject, _shell(body, unsubscribe), f"{text}\n\nStop digest emails: {unsubscribe}"
 

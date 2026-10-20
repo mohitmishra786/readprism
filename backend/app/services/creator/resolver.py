@@ -114,7 +114,7 @@ async def _fetch_page(url: str) -> str | None:
         resp = await safe_fetch(
             url,
             timeout=15,
-            headers={"User-Agent": "ReadPrism/1.0 (+https://readprism.app/bot)"},
+            headers={"User-Agent": "Weirling/1.0 (+https://weirling.com/bot)"},
         )
         return resp.text
     except UnsafeURLError as e:
@@ -145,7 +145,7 @@ async def _lookup_podcast_feed(show_name: str) -> str | None:
             resp = await client.get(
                 "https://itunes.apple.com/search",
                 params={"term": show_name, "entity": "podcast", "limit": 1},
-                headers={"User-Agent": "ReadPrism/1.0"},
+                headers={"User-Agent": "Weirling/1.0"},
             )
             data = resp.json()
             results = data.get("results") or []
@@ -228,7 +228,7 @@ def _autodiscover_feed_url(
     if platform in ("twitter", "linkedin"):
         return None, (
             f"{PLATFORM_CAPABILITIES[platform]['display_label']} provides no public RSS feed. "
-            "ReadPrism cannot automatically track new posts from this profile. "
+            "Weirling cannot automatically track new posts from this profile. "
             "Consider adding the creator's Substack, newsletter, blog, Bluesky, or Mastodon instead."
         )
 

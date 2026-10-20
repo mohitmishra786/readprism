@@ -158,7 +158,7 @@ async def test_nightly_reset_demo_task(db_session, monkeypatch):
     monkeypatch.setattr(demo_task, "AsyncSessionLocal", TestingSessionLocal)
 
     summary = await demo_task._reset_demo_account_async()
-    assert summary["email"] == "demo@readprism.local"
+    assert summary["email"] == "demo@weirling.local"
     assert summary["history"] > 0
     assert summary["fresh"] > 0
     assert summary["digest_items"] > 0

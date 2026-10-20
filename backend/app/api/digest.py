@@ -6,7 +6,7 @@ from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,7 +57,7 @@ async def unsubscribe_get(
     if not ok:
         return HTMLResponse("<p>This unsubscribe link is invalid or expired.</p>", status_code=400)
     return HTMLResponse(
-        "<p>You've been unsubscribed from ReadPrism digest emails. "
+        "<p>You've been unsubscribed from Weirling digest emails. "
         "You can re-enable them anytime in your preferences.</p>"
     )
 
@@ -75,6 +75,34 @@ async def unsubscribe_post(
     return {"status": "unsubscribed"}
 
 
+async def _mark_opened(digest: Digest, session: AsyncSession, *, via: str = "app") -> None:
+    """Digest.opened was never set anywhere, so win-back emails (#238) and the
+    analytics treated every reader as inactive (#131)."""
+    if digest.opened:
+        return
+    digest.opened = True
+    from app.services.product_metrics import track
+
+    await track(session, digest.user_id, "digest_opened", via=via)
+
+
+async def _mark_digest_opened_from_email(
+    user: User, item_id: uuid.UUID, session: AsyncSession
+) -> None:
+    """A click on an item in the digest email opens that digest."""
+    digest = (
+        await session.execute(
+            select(Digest)
+            .join(DigestItem, DigestItem.digest_id == Digest.id)
+            .where(Digest.user_id == user.id, DigestItem.content_item_id == item_id)
+            .order_by(Digest.generated_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if digest is not None:
+        await _mark_opened(digest, session, via="email")
+
+
 async def _record_email_action(
     user: User, item_id: uuid.UUID, action: str, session: AsyncSession
 ) -> UserContentInteraction:
@@ -86,6 +114,9 @@ async def _record_email_action(
         )
     )
     interaction = result.scalar_one_or_none()
+    from app.services import product_metrics
+
+    before = product_metrics.snapshot(interaction)
     if interaction is None:
         interaction = UserContentInteraction(user_id=user.id, content_item_id=item_id)
         session.add(interaction)
@@ -104,6 +135,8 @@ async def _record_email_action(
             interaction.saved_at = datetime.now(UTC)
 
     await session.flush()
+    await product_metrics.track_interaction(session, before, interaction)
+    await _mark_digest_opened_from_email(user, item_id, session)
     return interaction
 
 
@@ -141,7 +174,7 @@ def _confirmation_page(
         f"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ReadPrism — {label}</title>
+<title>Weirling — {label}</title>
 <style>
  body {{ font-family: system-ui, sans-serif; display: flex; min-height: 100vh;
         align-items: center; justify-content: center; background: #f8fafc; margin: 0; }}
@@ -289,7 +322,7 @@ def _topic_confirmation_page(action: str, uid: str, topic: str, exp: int, sig: s
     target = html.escape(f"/api/v1/digest/t/{action}?{query}", quote=True)
     return HTMLResponse(
         f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Weirling</title></head>
 <body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
 <form method="post" action="{target}" id="confirm">
 <p>{html.escape(label)} <strong>{html.escape(topic)}</strong>?</p><button type="submit">Confirm</button></form>
@@ -367,7 +400,7 @@ async def user_action_link(
     )
     return HTMLResponse(
         f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>ReadPrism</title></head>
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>Weirling</title></head>
 <body style="font-family:system-ui,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center">
 <form method="post" action="{target}" id="confirm"><p>Switch to one digest a week?</p>
 <button type="submit">Switch to weekly</button></form>
@@ -710,6 +743,8 @@ async def _mark_viewed(digest: Digest, session: AsyncSession) -> None:
 
     from app.models.digest import DigestImpression
 
+    await _mark_opened(digest, session)
+
     await session.execute(
         update(DigestImpression)
         .where(
@@ -767,4 +802,53 @@ async def _build_digest_read(digest: Digest, session: AsyncSession) -> DigestRea
         total_items=digest.total_items,
         items=item_reads,
         created_at=digest.created_at,
+        ask_top5=await _ask_top5(digest, session),
     )
+
+
+async def _top5_answered(digest_id: uuid.UUID, user_id: uuid.UUID, session: AsyncSession) -> bool:
+    from app.models.product_event import ProductEvent
+
+    found = await session.execute(
+        select(ProductEvent.id).where(
+            ProductEvent.user_id == user_id,
+            ProductEvent.event == "top5_rating",
+            ProductEvent.props["digest_id"].astext == str(digest_id),
+        )
+    )
+    return found.first() is not None
+
+
+async def _ask_top5(digest: Digest, session: AsyncSession) -> bool:
+    from app.services import product_metrics
+
+    if not product_metrics.enabled() or (digest.total_items or 0) < 5:
+        return False
+    return not await _top5_answered(digest.id, digest.user_id, session)
+
+
+class Top5Answer(BaseModel):
+    wanted: int = Field(ge=0, le=5)
+
+
+@router.post("/{digest_id}/top5", response_model=dict)
+async def answer_top5(
+    digest_id: uuid.UUID,
+    body: Top5Answer,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Top-5 precision, self-reported (#131): one answer per digest."""
+    from app.services import product_metrics
+
+    digest = await session.get(Digest, digest_id)
+    if digest is None or digest.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Digest not found")
+    if not product_metrics.enabled():
+        return {"status": "off"}
+    if await _top5_answered(digest_id, current_user.id, session):
+        return {"status": "already_answered"}
+    await product_metrics.track(
+        session, current_user.id, "top5_rating", wanted=body.wanted, digest_id=str(digest_id)
+    )
+    return {"status": "recorded"}

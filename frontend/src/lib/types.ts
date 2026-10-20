@@ -136,6 +136,25 @@ export interface Digest {
   total_items: number;
   items: DigestItem[];
   created_at: string;
+  /** Ask "how many of the top 5 did you want?" (#131). */
+  ask_top5?: boolean;
+}
+
+/** First-party product metrics for the instance owner (#131). */
+export interface ProductDashboard {
+  enabled: boolean;
+  now: {
+    weekly_satisfied_readers: number;
+    ttfgd_minutes_median: number | null;
+    interleaving_win_rate: number | null;
+    retention_d7: number | null;
+    retention_d30: number | null;
+    top5_wanted_median: number | null;
+    feed_health: number | null;
+  };
+  targets: Record<string, string>;
+  events_last_30_days: Record<string, number>;
+  series: Record<string, { day: string; value: number | null }[]>;
 }
 
 export interface FeedItem {

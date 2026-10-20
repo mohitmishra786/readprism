@@ -20,7 +20,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_DIR.parent
 DOCS = REPO_ROOT / "docs" if (REPO_ROOT / "docs").is_dir() else BACKEND_DIR / "docs"
 TARGET = DOCS / "licenses.md"
-SELF_PACKAGES = {"readprism-backend", "readprism-frontend"}
+SELF_PACKAGES = {"weirling-backend", "weirling-frontend"}
 
 # Licenses that redistribute obligations the project cannot accept by default
 # (the project ships MIT). Weak copyleft (LGPL/MPL) is listed for review, not
@@ -121,7 +121,7 @@ def render(backend: list[dict], frontend: list[dict]) -> tuple[str, list[str], l
         "Machine-generated report (#260, RL-08) — do not edit by hand.",
         "Regenerate with `make licenses` (or `python backend/scripts/license_report.py --write`).",
         "",
-        "ReadPrism is MIT-licensed. Redistribution obligations come from bundled",
+        "Weirling is MIT-licensed. Redistribution obligations come from bundled",
         "dependencies; the tables below cover every installed backend package and",
         "every production frontend package.",
         "",

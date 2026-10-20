@@ -127,7 +127,7 @@ async def test_endpoints_return_downloadable_files_of_your_saved_items(client, d
     await db_session.commit()
 
     bib = await client.get("/api/v1/integrations/bibtex", headers=headers)
-    assert bib.status_code == 200 and "readprism-saved.bib" in bib.headers["content-disposition"]
+    assert bib.status_code == 200 and "weirling-saved.bib" in bib.headers["content-disposition"]
     assert "A saved paper" in bib.text and "Only read" not in bib.text
     ris = await client.get("/api/v1/integrations/ris", headers=headers)
     assert ris.status_code == 200 and ris.headers["content-type"].startswith(

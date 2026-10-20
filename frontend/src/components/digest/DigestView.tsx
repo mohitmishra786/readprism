@@ -6,6 +6,7 @@ import { DigestSection } from "./DigestSection";
 import { api } from "../../lib/api";
 import { EmergingTopics } from "./EmergingTopics";
 import { VsNewestCard } from "./VsNewestCard";
+import { Top5Question } from "./Top5Question";
 
 const SECTION_ORDER = ["lead", "creator", "deep_reads", "more", "discovery"];
 
@@ -173,6 +174,8 @@ export function DigestView({ digest, userCreatedAt }: DigestViewProps) {
       {SECTION_ORDER.map((section) => (
         <DigestSection key={section} name={section} items={grouped[section] || []} />
       ))}
+
+      {digest.ask_top5 && <Top5Question digestId={digest.id} />}
     </div>
   );
 }

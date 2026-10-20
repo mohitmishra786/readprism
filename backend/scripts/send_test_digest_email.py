@@ -30,9 +30,9 @@ async def main(recipients: list[str]) -> int:
     for to in recipients:
         ok = await send_email(
             to=to,
-            subject="ReadPrism digest: client rendering check",
+            subject="Weirling digest: client rendering check",
             html_body=html,
-            text_body="ReadPrism digest rendering check. Open the HTML version.",
+            text_body="Weirling digest rendering check. Open the HTML version.",
         )
         print(f"{'sent' if ok else 'FAILED'}: {to}")
         failed += 0 if ok else 1

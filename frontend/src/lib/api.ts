@@ -7,6 +7,7 @@ import {
 } from './auth';
 import type {
   LLMKeyState,
+  ProductDashboard,
   BillingState,
   WhyNotSeen,
   ImportResult,
@@ -417,6 +418,12 @@ export const api = {
     generate: () =>
       request<{ status: string; message: string }>('/digest/generate', { method: 'POST' }),
     get: (id: string) => request<Digest>(`/digest/${id}`),
+    /** Top-5 precision, self-reported (#131). */
+    top5: (id: string, wanted: number) =>
+      request<{ status: string }>(`/digest/${id}/top5`, {
+        method: 'POST',
+        body: JSON.stringify({ wanted }),
+      }),
     prompts: (digestId: string) =>
       request<Array<{ id: string; prompt_text: string; prompt_type: string; answered: boolean; dismissed: boolean; answer: string | null }>>(
         `/digest/${digestId}/prompts`
@@ -491,6 +498,8 @@ export const api = {
   },
 
   metrics: {
+    /** North Star and input metrics, owner only (#131). */
+    product: () => request<ProductDashboard>('/metrics/product'),
     llmStatus: () =>
       request<{
         llm_configured: boolean;

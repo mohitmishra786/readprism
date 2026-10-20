@@ -1,14 +1,14 @@
-# ReadPrism Terms of Service
+# Weirling Terms of Service
 
 *Last updated: 2026-07-21. Baseline template, not legal advice. Have counsel
 review and adapt before offering a hosted service.*
 
-These terms govern use of a ReadPrism instance ("the Service"). By creating an
+These terms govern use of a Weirling instance ("the Service"). By creating an
 account you agree to them.
 
 ## The Service
 
-ReadPrism aggregates content from sources and creators you choose and ranks it by
+Weirling aggregates content from sources and creators you choose and ranks it by
 personal relevance. Ranking quality depends on behavioural signal that
 accumulates over time; early digests are necessarily less personalized.
 
@@ -32,7 +32,7 @@ You agree not to:
 
 ## Forwarded content (newsletters)
 
-When you forward a newsletter to your ReadPrism inbox address, **you confirm you
+When you forward a newsletter to your Weirling inbox address, **you confirm you
 are permitted to forward that content** and to have it processed on the Service.
 Forwarded newsletters are treated as private to your account and are not shown to
 other users. We may block or discard forwarded content that appears abusive.

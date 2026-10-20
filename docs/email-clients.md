@@ -18,7 +18,7 @@ desktop renders with Word).
 ## What to look for
 
 - Each card shows its title, meta line, summary with the "AI summary" label, and "Why: …" line.
-- The four buttons (Read in ReadPrism, Useful, Not for me, Save) are visible, tappable, and wrap to a second row on a phone, never sideways.
+- The four buttons (Read in Weirling, Useful, Not for me, Save) are visible, tappable, and wrap to a second row on a phone, never sideways.
 - In dark mode, text is readable, cards are dark (not white boxes), and links are light blue.
 - The discovery badge says where the item came from.
 - The footer links (fix sources, manage preferences, unsubscribe) work.

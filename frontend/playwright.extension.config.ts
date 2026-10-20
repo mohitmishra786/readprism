@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 /**
  * Browser e2e for the MV3 extension (#215): loads extension/ unpacked into
- * Chromium and talks to a stub ReadPrism API started by the spec. No Next
+ * Chromium and talks to a stub Weirling API started by the spec. No Next
  * server needed.
  */
 export default defineConfig({

@@ -20,7 +20,7 @@ _RETRY_BASE_DELAY = 1.0  # seconds
 _RETRY_MAX_DELAY = 30.0  # seconds
 
 _USER_AGENTS = [
-    "Mozilla/5.0 (compatible; ReadPrism/1.0; +https://readprism.app/bot)",
+    "Mozilla/5.0 (compatible; Weirling/1.0; +https://weirling.com/bot)",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
 ]
@@ -124,7 +124,7 @@ async def _fetch_with_retry(url: str) -> tuple[str | None, bool]:
     refused our bot (403/429/503), so the caller can respect the block instead
     of circumventing it (audit 08-2).
     """
-    # Honest posture: identify as the ReadPrism bot rather than rotating
+    # Honest posture: identify as the Weirling bot rather than rotating
     # browser-impersonation User-Agents.
     user_agent = (
         _USER_AGENTS[0] if settings.scraper_identify_as_bot else random.choice(_USER_AGENTS)

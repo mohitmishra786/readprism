@@ -30,7 +30,7 @@ up: env
 	docker compose up -d
 
 up-lite: env
-	READPRISM_VERSION=latest-lite docker compose up -d
+	WEIRLING_VERSION=latest-lite docker compose up -d
 
 up-full: env
 	docker compose --profile full up -d

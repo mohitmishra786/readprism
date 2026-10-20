@@ -63,22 +63,22 @@ def render(stage: int, *, frontend: str, unsubscribe: str, ends: datetime) -> tu
         "You can export everything at any time."
     )
     if stage == STARTED:
-        subject = f"Your ReadPrism trial runs until {_day(ends)}"
+        subject = f"Your Weirling trial runs until {_day(ends)}"
         lines = [
             f"Your free trial is on until {_day(ends)}. It includes everything in the Pro plan, "
             "and no card is needed.",
             "Add the feeds and newsletters you read; your digest learns from what you open and rate.",
         ]
-        buttons = [(f"{frontend}/digest", "Open ReadPrism")]
+        buttons = [(f"{frontend}/digest", "Open Weirling")]
     elif stage == ENDING:
-        subject = f"Your ReadPrism trial ends on {_day(ends)}"
+        subject = f"Your Weirling trial ends on {_day(ends)}"
         lines = [
             f"Your trial ends on {_day(ends)}. To keep your digests coming, choose a plan before then.",
             deletion,
         ]
         buttons = [(plans, "See plans"), (export, "Export my data")]
     else:
-        subject = "Your ReadPrism trial has ended"
+        subject = "Your Weirling trial has ended"
         lines = [
             "Your trial has ended, so your account is paused: no new digests and no feed updates. "
             "You can still sign in, read what's there and export it.",

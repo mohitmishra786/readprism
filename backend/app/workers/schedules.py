@@ -75,6 +75,10 @@ def setup_beat_schedule(app: Celery) -> None:
             "args": ("digest",),
             "options": {"queue": "digest"},
         },
+        "product-metrics-rollup": {
+            "task": "app.workers.tasks.product_metrics.rollup_product_metrics",
+            "schedule": crontab(hour=0, minute=40),  # daily, for the day before (#131)
+        },
         "paused-accounts": {
             "task": "app.workers.tasks.paused_accounts.process_paused_accounts",
             "schedule": crontab(hour=5, minute=30),  # daily (#341)

@@ -24,7 +24,7 @@ notes follow.</p>
     ```bash
     git pull                               # compose files, scripts, docs
     # Pin a version (recommended) or use latest:
-    #   READPRISM_VERSION=v0.2.0 in .env
+    #   WEIRLING_VERSION=v0.3.0 in .env (READPRISM_VERSION still works)
     docker compose pull
     docker compose up -d
     docker compose logs -f backend         # watch for "migrate: database is at head"
@@ -42,7 +42,7 @@ notes follow.</p>
 Restore the backup from step 1 and pin the previous version:
 
 ```bash
-# READPRISM_VERSION=<previous version> in .env
+# WEIRLING_VERSION=<previous version> in .env
 docker compose pull && docker compose up -d
 ./scripts/restore.sh /var/backups/readprism/readprism-<before-upgrade>.tar.gz
 ```
@@ -50,6 +50,31 @@ docker compose pull && docker compose up -d
 Prefer this over `alembic downgrade`: some migrations drop or reshape data
 (see the notes), and a downgrade can't bring dropped data back. The backup
 can.
+
+## ReadPrism is now Weirling (v0.3.0)
+
+The product is renamed (#340). Your data, sign-ins and settings carry over
+unchanged; there is nothing to migrate.
+
+!!! warning "Keep your install folder's name"
+    Docker names your data volumes after the folder that holds
+    `docker-compose.yml` (for example `readprism_postgres_data`). If you rename
+    or re-clone into a folder called `weirling`, Compose starts with **empty**
+    volumes. Keep the folder, or set `COMPOSE_PROJECT_NAME=readprism` in `.env`.
+
+- **Images** are now `ghcr.io/mohitmishra786/weirling/weirling-backend`
+  (and `-frontend`, `-aio`). Pull the new compose files with `git pull` to
+  use them. The old `readprism-*` images keep receiving updates until v0.4,
+  so an install that hasn't pulled yet doesn't fall behind.
+- **`WEIRLING_VERSION`** pins the image version; `READPRISM_VERSION` is still
+  read.
+- **The repository** moves to `github.com/mohitmishra786/weirling`; GitHub
+  redirects the old URL, and `git pull` keeps working.
+- **Unchanged on purpose:** sign-in cookies and API tokens (`rp_…`), the
+  database name and user (`readprism`), the Prometheus metric names
+  (`readprism_*`) and dashboards, and backup archive names. Existing
+  dashboards, alerts, backups and scripts keep working.
+- The crawler now identifies as `Weirling/1.0 (+https://weirling.com/bot)`.
 
 ## v0.1.0 → v0.2.0
 

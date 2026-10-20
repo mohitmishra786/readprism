@@ -59,7 +59,7 @@ async def bibtex_export(
     return Response(
         content=body,
         media_type="application/x-bibtex; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="readprism-saved.bib"'},
+        headers={"Content-Disposition": 'attachment; filename="weirling-saved.bib"'},
     )
 
 
@@ -76,7 +76,7 @@ async def ris_export(
     return Response(
         content=body,
         media_type="application/x-research-info-systems; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="readprism-saved.ris"'},
+        headers={"Content-Disposition": 'attachment; filename="weirling-saved.ris"'},
     )
 
 
@@ -85,7 +85,7 @@ async def logseq_export(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Saved items as Logseq pages (readprism/ folder) — EC-05."""
+    """Saved items as Logseq pages (weirling/ folder) — EC-05."""
     files = await export_to_logseq(current_user.id, session)
     return {"files": files, "count": len(files)}
 
@@ -114,7 +114,7 @@ async def export_zip(
     return StreamingResponse(
         buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="readprism-{format}.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="weirling-{format}.zip"'},
     )
 
 

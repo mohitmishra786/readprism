@@ -34,3 +34,6 @@ class DigestRead(BaseModel):
     total_items: int
     items: list[DigestItemRead] = []
     created_at: datetime
+    # Ask "how many of today's top 5 did you want?" (#131): metrics on, 5+ items,
+    # not answered yet.
+    ask_top5: bool = False

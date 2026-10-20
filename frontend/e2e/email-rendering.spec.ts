@@ -26,7 +26,7 @@ for (const c of cases) {
     expect(overflow).toBeLessThanOrEqual(1);
 
     // Every item keeps its read/rate/save actions, visible and tappable.
-    await expect(page.getByRole("link", { name: "Read in ReadPrism" })).toHaveCount(4);
+    await expect(page.getByRole("link", { name: "Read in Weirling" })).toHaveCount(4);
     const button = page.getByRole("link", { name: "Useful" }).first();
     await expect(button).toBeVisible();
     const box = await button.boundingBox();

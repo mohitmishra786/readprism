@@ -1,5 +1,5 @@
 /**
- * ReadPrism service worker — offline shell + stale-while-revalidate.
+ * Weirling service worker — offline shell + stale-while-revalidate.
  *
  * Goals (kept intentionally minimal):
  * - App shell (HTML navigations) loads from cache when offline, so the digest
@@ -143,7 +143,7 @@ self.addEventListener("push", (event) => {
     data = {};
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "ReadPrism", {
+    self.registration.showNotification(data.title || "Weirling", {
       body: data.body || "Your digest is ready.",
       icon: "/icon.svg",
       badge: "/icon.svg",

@@ -11,7 +11,7 @@
     narrow-screen tweaks, both progressive enhancements. -#}
 <meta name="color-scheme" content="light dark">
 <meta name="supported-color-schemes" content="light dark">
-<title>Your ReadPrism Digest</title>
+<title>Your Weirling Digest</title>
 <style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
@@ -39,7 +39,7 @@
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" class="rp-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
   <tr><td style="padding:0 4px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <div class="rp-text" style="font-size:22px;font-weight:700;color:#1c1917;">ReadPrism</div>
+    <div class="rp-text" style="font-size:22px;font-weight:700;color:#1c1917;">Weirling</div>
     <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:2px;">{{ generated_at }} · {{ digest.total_items }} items ranked for you</div>
   </td></tr>
 
@@ -66,7 +66,7 @@
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: {{ item_data.why_ranked | join(", ") }}</div>
         {% endif %}
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="{{ item_data.open_url }}" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in ReadPrism</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="{{ item_data.open_url }}" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
           <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.up_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
           <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="{{ item_data.down_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
           <td class="rp-act"><a class="rp-btn" href="{{ item_data.save_url }}" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
@@ -81,12 +81,12 @@
   <tr><td class="rp-muted" style="padding:24px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#a8a29e;">
     {% if dead_sources %}
     <p style="margin:0 0 10px;">These sources stopped updating and were turned off: {{ dead_sources | join(", ") }}.
-      <a class="rp-link" href="{{ sources_url }}" style="color:#1d4ed8;">Fix them in one click</a> (ReadPrism looks for the site's new feed).</p>
+      <a class="rp-link" href="{{ sources_url }}" style="color:#1d4ed8;">Fix them in one click</a> (Weirling looks for the site's new feed).</p>
     {% endif %}
-    <p style="margin:0 0 10px;">You received this because you have a ReadPrism account.
+    <p style="margin:0 0 10px;">You received this because you have a Weirling account.
       <a class="rp-link" href="{{ preferences_url }}" style="color:#1d4ed8;">Manage preferences</a> ·
       <a class="rp-link" href="{{ unsubscribe_url }}" style="color:#1d4ed8;">Unsubscribe</a></p>
-    <p style="margin:0 0 10px;">Links open in ReadPrism first so it can learn from what you read and rate. This email contains no tracking pixel.</p>
+    <p style="margin:0 0 10px;">Links open in Weirling first so it can learn from what you read and rate. This email contains no tracking pixel.</p>
     {% if physical_address %}<p style="margin:0;">{{ physical_address }}</p>{% endif %}
   </td></tr>
 </table>

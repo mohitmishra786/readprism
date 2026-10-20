@@ -1,4 +1,4 @@
-"""ReadPrism MCP server (EC-04), on the official MCP SDK.
+"""Weirling MCP server (EC-04), on the official MCP SDK.
 
 Run (stdio, the default):
     python -m app.mcp_server --api-base http://localhost:8000 --token rp_...
@@ -6,7 +6,7 @@ Run (stdio, the default):
 Run (streamable HTTP):
     python -m app.mcp_server --http --port 8001 --token rp_...
 
-Tools call the ReadPrism API with the given token; the token's scopes decide
+Tools call the Weirling API with the given token; the token's scopes decide
 what is possible: a read-only token disables the write tools (`add_source`,
 `record_feedback`) — they are not even advertised in tools/list.
 
@@ -26,15 +26,15 @@ import httpx
 from mcp.server.mcpserver import MCPServer
 
 PROTOCOL_VERSION = "2024-11-05"
-SERVER_NAME = "readprism"
+SERVER_NAME = "weirling"
 SERVER_VERSION = "1.0.0"
 
 READ_TOOLS = ("get_digest", "search_archive", "list_sources", "explain_item")
 WRITE_TOOLS = ("add_source", "record_feedback")
 
 
-class ReadPrismMcpServer:
-    """Tool implementations against the ReadPrism API, plus a legacy shim."""
+class WeirlingMcpServer:
+    """Tool implementations against the Weirling API, plus a legacy shim."""
 
     def __init__(self, api_base: str, token: str, client: httpx.AsyncClient | None = None):
         self.api_base = api_base.rstrip("/")
@@ -233,7 +233,7 @@ class ReadPrismMcpServer:
 
 
 async def serve(api_base: str, token: str, http: bool = False, port: int = 8001) -> None:
-    server = ReadPrismMcpServer(api_base, token)
+    server = WeirlingMcpServer(api_base, token)
     await server.detect_scope()
     if http:
         import uvicorn
@@ -249,9 +249,9 @@ async def serve(api_base: str, token: str, http: bool = False, port: int = 8001)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="ReadPrism MCP server (official SDK)")
+    parser = argparse.ArgumentParser(description="Weirling MCP server (official SDK)")
     parser.add_argument("--api-base", default="http://localhost:8000")
-    parser.add_argument("--token", required=True, help="ReadPrism API token (rp_...)")
+    parser.add_argument("--token", required=True, help="Weirling API token (rp_...)")
     parser.add_argument(
         "--http", action="store_true", help="serve the streamable-HTTP transport instead of stdio"
     )

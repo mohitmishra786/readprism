@@ -3,7 +3,7 @@ import { MarketingShell } from "./MarketingShell";
 export interface ComparisonRow {
   dimension: string;
   competitor: string;
-  readprism: string;
+  weirling: string;
 }
 
 export interface ComparisonData {
@@ -19,7 +19,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
     <MarketingShell>
       <article className="prose-reader">
         <h1 className="font-serif text-3xl font-bold">
-          ReadPrism vs {data.competitor}
+          Weirling vs {data.competitor}
         </h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">{data.intro}</p>
 
@@ -29,7 +29,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
               <tr className="border-b border-stone-300 dark:border-stone-700">
                 <th className="py-2 text-left">&nbsp;</th>
                 <th className="py-2 text-left">{data.competitor}</th>
-                <th className="py-2 text-left">ReadPrism</th>
+                <th className="py-2 text-left">Weirling</th>
               </tr>
             </thead>
             <tbody>
@@ -37,7 +37,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
                 <tr key={r.dimension} className="border-b border-stone-200 dark:border-stone-800">
                   <td className="py-2 pr-4 font-medium">{r.dimension}</td>
                   <td className="py-2 pr-4 text-stone-600 dark:text-stone-400">{r.competitor}</td>
-                  <td className="py-2 text-stone-900 dark:text-stone-100">{r.readprism}</td>
+                  <td className="py-2 text-stone-900 dark:text-stone-100">{r.weirling}</td>
                 </tr>
               ))}
             </tbody>
@@ -45,7 +45,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
         </div>
 
         <h2 className="mt-8 font-serif text-2xl font-semibold">
-          Where ReadPrism differs
+          Where Weirling differs
         </h2>
         <ul className="mt-3 list-disc space-y-2 pl-6">
           {data.differsBecause.map((d, i) => (
@@ -56,7 +56,7 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
         <p className="mt-6 text-sm text-stone-500">{data.fairnote}</p>
         <p className="mt-6">
           <a href="/register" className="text-prism-700 underline">
-            Try ReadPrism →
+            Try Weirling →
           </a>{" "}
           ·{" "}
           <a href="/how-it-works" className="text-prism-700 underline">

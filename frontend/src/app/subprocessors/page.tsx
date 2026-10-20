@@ -3,7 +3,7 @@ import { SUBPROCESSORS } from "../../lib/subprocessors";
 
 export const metadata = {
   title: "Subprocessors & Third-Party Services",
-  description: "Third-party services, data received, and processing locations for ReadPrism.",
+  description: "Third-party services, data received, and processing locations for Weirling.",
 };
 
 // Plain-language subprocessors list (#182).
@@ -16,7 +16,7 @@ export default function SubprocessorsPage() {
         Template: not legal advice. Have counsel review and adapt before offering a hosted service.
       </p>
       <p className="mt-4 text-stone-600 dark:text-stone-300">
-        ReadPrism integrates the third-party services listed below to deliver content aggregation,
+        Weirling integrates the third-party services listed below to deliver content aggregation,
         AI-assisted summarization, newsletter processing, and subscription management. This page records
         what data each service receives, where processing occurs, and relevant terms.
       </p>

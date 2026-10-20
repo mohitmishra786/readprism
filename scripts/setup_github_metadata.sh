@@ -7,8 +7,8 @@
 #   ./scripts/setup_github_metadata.sh
 set -euo pipefail
 
-REPO="${REPO:-mohitmishra786/readprism}"
-HOMEPAGE="${HOMEPAGE:-https://readprism.app}"
+REPO="${REPO:-mohitmishra786/weirling}"
+HOMEPAGE="${HOMEPAGE:-https://weirling.com}"
 
 # ~128-char, keyword-first description (github skill guidance).
 DESCRIPTION="Self-hostable RSS/newsletter reader that ranks your daily digest by how you actually read — a behavioral, explainable ranking engine. Open source."

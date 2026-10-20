@@ -1,1 +1,1 @@
-"""ReadPrism maintenance and operational scripts."""
+"""Weirling maintenance and operational scripts."""

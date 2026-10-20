@@ -32,7 +32,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "real_pages"
-UA = "ReadPrism-fixture-collector/1.0 (+https://github.com/mohitmishra786/readprism)"
+UA = "Weirling-fixture-collector/1.0 (+https://github.com/mohitmishra786/weirling)"
 
 LICENSES = {
     "go": ("BSD-3-Clause", "https://github.com/golang/website/blob/master/LICENSE"),

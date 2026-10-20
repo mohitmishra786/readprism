@@ -47,7 +47,7 @@ async def test_demo_digest_has_varied_scores_and_real_explanations(db_session):
     assert max(scores) - min(scores) >= 0.05
     explanations = [di.signal_breakdown.get("explanation", "") for di, _ in rows]
     assert all(explanations)
-    assert not any(e.startswith("New to ReadPrism") for e in explanations)
+    assert not any(e.startswith("New to Weirling") for e in explanations)
 
     # The learned preferences show: the persona's main interest beats the
     # topics they skipped for two weeks.
@@ -64,7 +64,7 @@ async def test_demo_digest_has_varied_scores_and_real_explanations(db_session):
     count = (
         (
             await db_session.execute(
-                select(ContentItem).where(ContentItem.url.like("https://%.demo.readprism.local/%"))
+                select(ContentItem).where(ContentItem.url.like("https://%.demo.weirling.local/%"))
             )
         )
         .scalars()

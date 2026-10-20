@@ -73,11 +73,11 @@ def test_email_log_lines_do_not_carry_the_recipient(caplog, monkeypatch):
         from app.utils.email import send_email_sync
 
         assert send_email_sync(
-            to=email, subject="Your ReadPrism Digest — October 18, 2026", html_body="<p>hi</p>"
+            to=email, subject="Your Weirling Digest — October 18, 2026", html_body="<p>hi</p>"
         )
     text = caplog.text
     assert email not in text
-    assert "Your ReadPrism Digest" not in text
+    assert "Your Weirling Digest" not in text
     # The recipient appears only as the one-way hash.
     assert "Email sent to email:" in text
 

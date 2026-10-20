@@ -1,6 +1,6 @@
 # Install & run
 
-<p class="lead">Everything you need to run your own ReadPrism: install it, set
+<p class="lead">Everything you need to run your own Weirling: install it, set
 up AI summaries and email, keep it healthy, and back it up.</p>
 
 Running the managed, multi-user service instead? See [Hosted service](HOSTING.md).
@@ -87,7 +87,7 @@ scheduler heartbeat. A failed migration stops the container.
 `docker-compose.yml` is production-shaped and is what `docker compose up`
 runs. Outside development the app refuses to start when `SECRET_KEY` (or
 `REFRESH_SECRET_KEY`, if set) is empty, shorter than 32 characters, or a
-known placeholder. All settings: [`.env.example`](https://github.com/mohitmishra786/readprism/blob/main/.env.example).
+known placeholder. All settings: [`.env.example`](https://github.com/mohitmishra786/weirling/blob/main/.env.example).
 
 !!! warning "Never expose a development stack"
     `make up-dev` adds `docker-compose.dev.yml`: `APP_ENV=development`, hot
@@ -117,7 +117,7 @@ How the values are kept:
 ## AI summaries
 
 Bring a key for any OpenAI-compatible endpoint (`LLM_BASE_URL` and
-`LLM_API_KEY`). Nothing goes through a ReadPrism service. Without a key,
+`LLM_API_KEY`). Nothing goes through a Weirling service. Without a key,
 summaries are extracts from the article, and everything else works.
 
 ### Which model does what (#225)
@@ -139,7 +139,7 @@ cd backend && python scripts/summary_spot_check.py --n 50 --out ../docs/eval/sum
 
 !!! note "Free Groq keys run out fast"
     Groq's free tier has a daily token cap; in testing it stopped after about
-    40 summaries in a day, and then asks for 15-minute waits. ReadPrism
+    40 summaries in a day, and then asks for 15-minute waits. Weirling
     doesn't wait longer than `LLM_MAX_RETRY_WAIT_SECONDS` (30): it keeps the
     extract and moves on. For a hosted service, use a paid tier.
 
@@ -153,7 +153,7 @@ budget; set it to `""` if your provider rejects the field. Results:
 1. Install [Ollama](https://ollama.com) and pull a model:
    `ollama pull llama3.1:8b`. Add a larger one for synthesis if you have the
    memory, such as `qwen2.5:32b`.
-2. Point ReadPrism at it in `.env`:
+2. Point Weirling at it in `.env`:
 
     ```bash
     LLM_BASE_URL=http://host.docker.internal:11434/v1
@@ -255,7 +255,7 @@ docker compose --profile monitoring up -d
 ```
 
 This adds Prometheus (30-day retention, not published) and Grafana on
-<http://localhost:3002> with a ready-made "ReadPrism overview" dashboard:
+<http://localhost:3002> with a ready-made "Weirling overview" dashboard:
 requests and latency by route, errors, queues, items ingested, feed health,
 digest timing and LLM calls, tokens and cost. The same alert conditions
 are loaded as Prometheus rules (`deploy/monitoring/alerts.yml`).
@@ -309,7 +309,7 @@ Both examples run nightly at 03:15 from the folder with your
 
     ```ini
     [Unit]
-    Description=ReadPrism backup
+    Description=Weirling backup
     After=docker.service
 
     [Service]
@@ -323,7 +323,7 @@ Both examples run nightly at 03:15 from the folder with your
 
     ```ini
     [Unit]
-    Description=Nightly ReadPrism backup
+    Description=Nightly Weirling backup
 
     [Timer]
     OnCalendar=*-*-* 03:15:00

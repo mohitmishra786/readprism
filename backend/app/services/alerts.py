@@ -223,13 +223,13 @@ async def run(session: AsyncSession, *, now: float | None = None, redis=None) ->
         if last and now - last < repeat:
             continue
         sent = await _notify(
-            f"[ReadPrism] {alert.message}", f"{alert.message}\n\nInstance: {instance}"
+            f"[Weirling] {alert.message}", f"{alert.message}\n\nInstance: {instance}"
         )
         if sent or not (s.alert_ntfy_url or s.alert_email):
             await redis.hset(ACTIVE_KEY, key, f"{first},{now}")
             out["sent"].append(key)
     for key in set(active) - set(current):
-        await _notify(f"[ReadPrism] Resolved: {key}", f"Resolved: {key}\n\nInstance: {instance}")
+        await _notify(f"[Weirling] Resolved: {key}", f"Resolved: {key}\n\nInstance: {instance}")
         await redis.hdel(ACTIVE_KEY, key)
         out["resolved"].append(key)
     if out["sent"] or out["resolved"]:

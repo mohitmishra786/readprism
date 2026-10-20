@@ -1,7 +1,7 @@
 """Hosted billing through a merchant of record (#173).
 
 A merchant of record (Lemon Squeezy or Paddle) sells the subscription, so the
-operator does not register for VAT/GST in every buyer's country. ReadPrism
+operator does not register for VAT/GST in every buyer's country. Weirling
 only reacts to the provider's signed webhooks:
 
 - `users.tier` is what was bought ("reader", "pro" or "team"); `plan_expires_at` is
@@ -233,11 +233,26 @@ async def apply_update(session: AsyncSession, update: BillingUpdate) -> str:
     if inserted is None:
         return "duplicate"
     if outcome == "applied" and user is not None:
+        plan_before, status_before = effective_plan(user, now=now), user.billing_status
         _apply(user, update, now)
+        await _track_plan_change(session, user, plan_before, status_before, now)
     elif outcome == "unknown_user":
         logger.warning(f"Billing event {update.key} matches no account")
     await session.flush()
     return outcome
+
+
+async def _track_plan_change(
+    session: AsyncSession, user: User, plan_before: str, status_before: str | None, now: datetime
+) -> None:
+    """Product events for a billing change (#131): a first paid plan, a cancel."""
+    from app.services.product_metrics import track
+
+    plan_after = effective_plan(user, now=now)
+    if plan_after in PAID_TIERS and plan_before not in PAID_TIERS:
+        await track(session, user.id, "trial_converted", plan=plan_after, previous=plan_before)
+    if user.billing_status in (CANCELLED, ENDED) and status_before not in (CANCELLED, ENDED):
+        await track(session, user.id, "cancel", plan=plan_before)
 
 
 async def cancel_for_deletion(session: AsyncSession, user: User) -> str:

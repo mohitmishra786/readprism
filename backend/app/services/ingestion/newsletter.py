@@ -78,7 +78,7 @@ def _html_to_text(html: str) -> str:
 
 
 def delivery_of(header_to: str | None) -> str:
-    """'direct' when the To header is the reader's ReadPrism address, else
+    """'direct' when the To header is the reader's Weirling address, else
     'forwarded' (a copy forwarded from their own inbox, #249)."""
     from app.services.ingestion.newsletter_parse import recipient_token
 

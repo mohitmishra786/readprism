@@ -105,7 +105,7 @@ def test_prs_beats_newest_first_on_a_reader_with_clear_tastes():
     assert prs["ndcg@10"] > newest["ndcg@10"]
     assert prs["recall@5"] >= newest["recall@5"]
     report = report_markdown(result, label="synthetic")
-    assert "| PRS (ReadPrism) |" in report and "x.example" not in report  # aggregate only
+    assert "| PRS (Weirling) |" in report and "x.example" not in report  # aggregate only
 
 
 def test_old_exports_are_rejected_with_a_clear_message(tmp_path):

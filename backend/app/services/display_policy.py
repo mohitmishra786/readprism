@@ -2,7 +2,7 @@
 
 Hosted policy: show what the publisher syndicated in its feed, plus a short
 summary (labelled when it is AI-written) and a link to the original. Text
-ReadPrism extracted from the page itself (trafilatura, readability, a
+Weirling extracted from the page itself (trafilatura, readability, a
 rendered page) is used for ranking and summaries only and is not shown,
 except to the person who saved it. Self-hosted instances read their own
 fetches and show everything; `READER_FULL_TEXT` overrides either default.

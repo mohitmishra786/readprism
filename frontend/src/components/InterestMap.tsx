@@ -25,7 +25,7 @@ function download(name: string, type: string, body: string) {
   URL.revokeObjectURL(url);
 }
 
-// The interest map (#179): every topic ReadPrism inferred, sized by weight,
+// The interest map (#179): every topic Weirling inferred, sized by weight,
 // linked when read together. Drag a topic onto another to merge them;
 // select one to rename, boost, mute or remove it. The list beside the map
 // offers the same actions for keyboard and screen-reader users.
@@ -152,10 +152,10 @@ export function InterestMap() {
           Grey = muted. Drag one topic onto another to merge them.
         </p>
         <div className="mt-2 flex gap-2 text-xs">
-          <button type="button" className="underline" onClick={() => download("readprism-interests.json", "application/json", JSON.stringify(graph, null, 2))}>
+          <button type="button" className="underline" onClick={() => download("weirling-interests.json", "application/json", JSON.stringify(graph, null, 2))}>
             Export JSON
           </button>
-          <button type="button" className="underline" onClick={() => svgRef.current && download("readprism-interests.svg", "image/svg+xml", svgRef.current.outerHTML)}>
+          <button type="button" className="underline" onClick={() => svgRef.current && download("weirling-interests.svg", "image/svg+xml", svgRef.current.outerHTML)}>
             Export image (SVG)
           </button>
         </div>

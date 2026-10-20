@@ -73,9 +73,9 @@ async def test_three_emails_once_each_over_the_trial(db_session):
         now = START + timedelta(hours=hour)
         seen += [(hour // 24, m) for m in await _run(now) if m["to"] == user.email]
     assert [(d, m["subject"]) for d, m in seen] == [
-        (0, "Your ReadPrism trial runs until October 31"),
-        (25, "Your ReadPrism trial ends on October 31"),
-        (30, "Your ReadPrism trial has ended"),
+        (0, "Your Weirling trial runs until October 31"),
+        (25, "Your Weirling trial ends on October 31"),
+        (30, "Your Weirling trial has ended"),
     ]
     ended = seen[-1][1]
     assert "/preferences" in ended["text_body"] and "Export my data" in ended["html_body"]

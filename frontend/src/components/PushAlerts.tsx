@@ -75,7 +75,7 @@ export function PushAlerts() {
     <div className="text-sm">
       {state === "unsupported" && (
         <p className="text-stone-500 dark:text-stone-400">
-          This browser doesn&apos;t support push alerts. On iPhone, add ReadPrism to your home screen first.
+          This browser doesn&apos;t support push alerts. On iPhone, add Weirling to your home screen first.
         </p>
       )}
       {state === "off-server" && (

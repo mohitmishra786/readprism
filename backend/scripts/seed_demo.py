@@ -1,7 +1,7 @@
 """Seed the demo persona so a fresh instance is instantly explorable (RL-03, #158).
 
 Offline and reproducible. The persona, publications and ~30 articles in
-app/data/demo/articles.json are fictional and written for ReadPrism (CC0;
+app/data/demo/articles.json are fictional and written for Weirling (CC0;
 nothing third-party). The script:
 
 1. creates the persona with three interests and seven demo publications;
@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from sqlalchemy import delete, select
 
 DATA = Path(__file__).resolve().parents[1] / "app" / "data" / "demo" / "articles.json"
-DEMO_HOST = "demo.readprism.local"
+DEMO_HOST = "demo.weirling.local"
 
 # How each kind of past read is recorded: completion, seconds on page, extras.
 READS = {

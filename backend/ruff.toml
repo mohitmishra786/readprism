@@ -1,4 +1,4 @@
-# Ruff configuration for ReadPrism backend.
+# Ruff configuration for Weirling backend.
 # Docs: https://docs.astral.sh/ruff/configuration/
 
 target-version = "py311"

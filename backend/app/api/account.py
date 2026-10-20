@@ -24,7 +24,7 @@ async def export_account(
     bundle = await export_user_data(session, current_user)
     return JSONResponse(
         content=bundle,
-        headers={"Content-Disposition": 'attachment; filename="readprism-export.json"'},
+        headers={"Content-Disposition": 'attachment; filename="weirling-export.json"'},
     )
 
 
@@ -54,7 +54,7 @@ async def _send_erasure_confirmation(email: str, *, subscription_cancelled: str)
     from app.utils.email import send_email
 
     lines = [
-        "Your ReadPrism account and everything in it (sources, saved articles, ratings, "
+        "Your Weirling account and everything in it (sources, saved articles, ratings, "
         "digests) have been deleted. This can't be undone.",
     ]
     if subscription_cancelled == "cancelled":
@@ -67,7 +67,7 @@ async def _send_erasure_confirmation(email: str, *, subscription_cancelled: str)
     lines.append("You're receiving this because you asked for the deletion.")
     await send_email(
         to=email,
-        subject="Your ReadPrism account has been deleted",
+        subject="Your Weirling account has been deleted",
         html_body="".join(f"<p>{line}</p>" for line in lines),
         text_body="\n\n".join(lines),
     )

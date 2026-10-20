@@ -1,4 +1,4 @@
-# Contributing to ReadPrism
+# Contributing to Weirling
 
 Thanks for your interest in contributing! A few things to know before you open
 a pull request.
@@ -56,9 +56,9 @@ Before submitting a pull request:
 ## Contributing starter packs and platform recipes
 
 Starter packs and platform recipes are high-impact, low-risk ways to improve
-ReadPrism's discovery and onboarding without touching database schemas or ranking
+Weirling's discovery and onboarding without touching database schemas or ranking
 algorithms. If you have ideas for new topics or platforms, feel free to discuss them
-first in [GitHub Discussions](https://github.com/mohitmishra786/readprism/discussions).
+first in [GitHub Discussions](https://github.com/mohitmishra786/weirling/discussions).
 
 ### 1. Starter packs
 
@@ -83,7 +83,7 @@ Create `backend/app/data/starter_packs/systems-programming.opml`:
 <?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
   <head>
-    <title>Systems Programming — ReadPrism starter pack</title>
+    <title>Systems Programming — Weirling starter pack</title>
   </head>
   <body>
     <outline text="Systems Programming" title="Systems Programming">

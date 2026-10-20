@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export const metadata = {
   title: "Terms of Service",
-  description: "ReadPrism Terms of Service",
+  description: "Weirling Terms of Service",
 };
 
 // Plain-language terms of service (#178).
@@ -10,18 +10,18 @@ export const metadata = {
 export default function TermsPage() {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-5 py-12 text-stone-800 dark:text-stone-100">
-      <h1 className="font-serif text-3xl font-bold">ReadPrism Terms of Service</h1>
+      <h1 className="font-serif text-3xl font-bold">Weirling Terms of Service</h1>
       <p className="mt-2 text-xs italic text-stone-500 dark:text-stone-400">
         Last updated: 2026-07-21. Template: not legal advice. Have counsel review and adapt before offering a hosted service.
       </p>
       <p className="mt-4 text-stone-600 dark:text-stone-300">
-        These terms govern use of a ReadPrism instance (&ldquo;the Service&rdquo;). By creating an account you agree to them.
+        These terms govern use of a Weirling instance (&ldquo;the Service&rdquo;). By creating an account you agree to them.
       </p>
 
       <section className="mt-8" aria-labelledby="the-service">
         <h2 id="the-service" className="text-xl font-semibold">The Service</h2>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-          ReadPrism aggregates content from sources and creators you choose and ranks it by personal relevance.
+          Weirling aggregates content from sources and creators you choose and ranks it by personal relevance.
           Ranking quality depends on behavioural signal that accumulates over time; early digests are necessarily less personalized.
         </p>
       </section>
@@ -48,7 +48,7 @@ export default function TermsPage() {
       <section className="mt-8" aria-labelledby="forwarded-content">
         <h2 id="forwarded-content" className="text-xl font-semibold">Forwarded content (newsletters)</h2>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-          When you forward a newsletter to your ReadPrism inbox address, <strong>you confirm you are permitted to forward that content</strong> and to have it processed on the Service. Forwarded newsletters are treated as private to your account and are not shown to other users. We may block or discard forwarded content that appears abusive.
+          When you forward a newsletter to your Weirling inbox address, <strong>you confirm you are permitted to forward that content</strong> and to have it processed on the Service. Forwarded newsletters are treated as private to your account and are not shown to other users. We may block or discard forwarded content that appears abusive.
         </p>
       </section>
 

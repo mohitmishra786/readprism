@@ -71,7 +71,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="prism-mark text-3xl">◭ ReadPrism</div>
+          <div className="prism-mark text-3xl">◭ Weirling</div>
           <p className="mt-2 text-sm text-stone-500">Sign in to your account</p>
         </div>
 

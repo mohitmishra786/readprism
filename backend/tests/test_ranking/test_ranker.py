@@ -120,7 +120,7 @@ def test_brand_new_user_signals_without_data_are_neutral_and_never_cited():
             assert name in s.no_data
             assert s.features[name] == 0.5
         assert "semantic" not in s.explanation.lower()
-        assert s.explanation.startswith("New to ReadPrism")
+        assert s.explanation.startswith("New to Weirling")
 
 
 # ------------------------------------------------------------- semantic (#155, D-05)

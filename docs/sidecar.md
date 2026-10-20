@@ -1,23 +1,23 @@
-# Use ReadPrism as a ranking sidecar for Miniflux or FreshRSS
+# Use Weirling as a ranking sidecar for Miniflux or FreshRSS
 
 <p class="lead">Keep your existing self-hosted RSS reader as your daily firehose,
-while ReadPrism runs alongside it to score, rank, and summarize your top articles
+while Weirling runs alongside it to score, rank, and summarize your top articles
 into a focused digest.</p>
 
 If you already use [Miniflux](https://miniflux.app/) or [FreshRSS](https://freshrss.org/),
 you don't have to abandon your setup or migrate away. With **sidecar mode**
-([ADR 0007](adr/0007-reader-api-compat.md)), ReadPrism imports your subscriptions
+([ADR 0007](adr/0007-reader-api-compat.md)), Weirling imports your subscriptions
 and reading history directly via their native APIs. Your primary reader stays
-your inbox for full chronological browsing, while ReadPrism builds your
+your inbox for full chronological browsing, while Weirling builds your
 personalized daily digest.
 
 ```mermaid
 flowchart LR
-    accTitle: ReadPrism sidecar architecture
-    accDescr: Miniflux or FreshRSS handles feed subscriptions while ReadPrism pulls feeds, ranks items by behavioral telemetry, and generates digests.
+    accTitle: Weirling sidecar architecture
+    accDescr: Miniflux or FreshRSS handles feed subscriptions while Weirling pulls feeds, ranks items by behavioral telemetry, and generates digests.
 
     reader["Miniflux / FreshRSS<br/>(Your primary reader)"]
-    readprism["ReadPrism Sidecar<br/>(Ranking & Digest Engine)"]
+    readprism["Weirling Sidecar<br/>(Ranking & Digest Engine)"]
     user["You"]
 
     reader -- "POST /integrations/import-sidecar<br/>(Subscriptions + Read state)" --> readprism
@@ -29,21 +29,21 @@ flowchart LR
 
 ## What the import does
 
-ReadPrism exposes a dedicated integration endpoint:
+Weirling exposes a dedicated integration endpoint:
 
 ```http
 POST /api/v1/integrations/import-sidecar
 ```
 
-When you trigger a sidecar import, ReadPrism:
+When you trigger a sidecar import, Weirling:
 
 1. **Connects to your reader's API** using temporary, in-memory credentials.
 2. **Fetches all active feed subscriptions** (paginated in batches of 200).
-3. **Creates new `Source` records** in ReadPrism with an initial trust weight of
+3. **Creates new `Source` records** in Weirling with an initial trust weight of
    `0.45` (identical to curated starter packs).
 4. **Skips feeds you already have**, preserving your accumulated trust history.
 5. **Pulls recent read state (Miniflux):** matches recently read entries against
-   already-ingested items in ReadPrism, creating initial read interactions so
+   already-ingested items in Weirling, creating initial read interactions so
    your ranking model starts warm rather than cold.
 
 Credentials are used **strictly in-memory** for the duration of the request.
@@ -61,15 +61,15 @@ Miniflux provides a clean REST API authenticated by an API token.
 1. Open your Miniflux web interface.
 2. Navigate to **Settings** → **API Keys**.
 3. Click **Create a new API key**.
-4. Label it `ReadPrism` and click **Save**.
+4. Label it `Weirling` and click **Save**.
 5. Copy the generated API token (it will only be displayed once).
 
 #### Step B: Run the sidecar import
-You can trigger the import from ReadPrism's **Sources** page, or call the API directly:
+You can trigger the import from Weirling's **Sources** page, or call the API directly:
 
 ```bash
-curl -X POST https://<your-readprism-host>/api/v1/integrations/import-sidecar \
-  -H "Authorization: Bearer <your-readprism-token>" \
+curl -X POST https://<your-weirling-host>/api/v1/integrations/import-sidecar \
+  -H "Authorization: Bearer <your-weirling-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "miniflux",
@@ -105,8 +105,8 @@ FreshRSS exposes a Google Reader-compatible API (`greader.php`).
 #### Step B: Run the sidecar import
 
 ```bash
-curl -X POST https://<your-readprism-host>/api/v1/integrations/import-sidecar \
-  -H "Authorization: Bearer <your-readprism-token>" \
+curl -X POST https://<your-weirling-host>/api/v1/integrations/import-sidecar \
+  -H "Authorization: Bearer <your-weirling-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "provider": "freshrss",
@@ -130,16 +130,16 @@ curl -X POST https://<your-readprism-host>/api/v1/integrations/import-sidecar \
 
 ## Private network & homelab setup
 
-By default, ReadPrism enforces **strict public HTTPS** and SSRF protections on
+By default, Weirling enforces **strict public HTTPS** and SSRF protections on
 all outgoing connections. If your Miniflux or FreshRSS instance is hosted on a
 local private subnet (e.g. `http://192.168.1.50:8080` or `http://miniflux.lan`):
 
-1. Set these environment variables in your ReadPrism `.env`:
+1. Set these environment variables in your Weirling `.env`:
    ```bash
    DEPLOYMENT_MODE=selfhost
    SIDECAR_ALLOW_PRIVATE_HTTP=true
    ```
-2. When enabled, ReadPrism permits plain HTTP and private IP addresses
+2. When enabled, Weirling permits plain HTTP and private IP addresses
    **only** for the exact host specified in `base_url`. This option is disabled
    and ignored in hosted mode (`DEPLOYMENT_MODE=hosted`).
 
@@ -152,9 +152,9 @@ local private subnet (e.g. `http://192.168.1.50:8080` or `http://miniflux.lan`):
 | **Feed subscriptions** | Yes | Yes | Feed URLs and titles imported as `Source` records. |
 | **Existing feeds preserved** | Yes | Yes | Deduplicated by URL; existing feed trust is untouched. |
 | **Warm-up read history** | Yes (up to 100) | No | Miniflux read articles mark matching items opened at 90% completion. |
-| **Two-way sync** | No | No | ReadPrism does not push read state or stars back to your reader. |
+| **Two-way sync** | No | No | Weirling does not push read state or stars back to your reader. |
 | **Continuous sync** | No | No | Imports are on-demand. Re-run import whenever you add new feeds. |
-| **Folders / categories** | No | No | Feeds are imported into your unified ReadPrism source library. |
+| **Folders / categories** | No | No | Feeds are imported into your unified Weirling source library. |
 
 ---
 

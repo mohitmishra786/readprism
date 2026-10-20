@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { MarketingShell } from "../../components/marketing/MarketingShell";
 
 export const metadata: Metadata = {
-  title: "How ReadPrism ranks your reading: 8 signals + per-user gradient descent",
+  title: "How Weirling ranks your reading: 8 signals + per-user gradient descent",
   description:
-    "A transparent look at ReadPrism's ranking engine — eight behavioral signals, per-user learned weights via gradient descent, and a decaying interest graph with transitive relevance.",
+    "A transparent look at Weirling's ranking engine — eight behavioral signals, per-user learned weights via gradient descent, and a decaying interest graph with transitive relevance.",
   alternates: { canonical: "/how-it-works" },
 };
 
@@ -13,11 +13,11 @@ export default function HowItWorks() {
     <MarketingShell>
       <article className="prose-reader">
         <h1 className="font-serif text-3xl font-bold">
-          How ReadPrism ranks your reading
+          How Weirling ranks your reading
         </h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">
           Relevance is a relationship between content, a specific person, and
-          time — not a property of content alone. ReadPrism computes a{" "}
+          time — not a property of content alone. Weirling computes a{" "}
           <strong>Personalized Relevance Score (PRS)</strong> per item, per user,
           from eight signals, then learns how to weight them from how you actually
           read.

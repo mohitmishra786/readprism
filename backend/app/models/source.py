@@ -37,7 +37,7 @@ class Source(Base):
     recent_gap_seconds: Mapped[list] = mapped_column(JSONB, default=list)
     feed_status: Mapped[str] = mapped_column(String, default="healthy", server_default="healthy")
     # Newsletter senders (#249): the sender's latest List-Unsubscribe header
-    # and whether the reader subscribed with their ReadPrism address
+    # and whether the reader subscribed with their Weirling address
     # ("direct") or forwards copies from their own inbox ("forwarded").
     list_unsubscribe: Mapped[str | None] = mapped_column(String, nullable=True)
     newsletter_delivery: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -59,7 +59,7 @@ async def test_test_email_round_trip_is_seen_and_not_stored(client, inbound_on):
     # The provider delivers it back to the inbound webhook.
     payload = json.dumps(
         {
-            "From": "noreply@readprism.example",
+            "From": "noreply@weirling.example",
             "To": address,
             "Subject": outbox[0]["subject"],
             "MessageID": f"m-{uuid.uuid4().hex}",

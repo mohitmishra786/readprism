@@ -1,6 +1,6 @@
 # Unit Economics
 
-*Economic model for ReadPrism hosted service vs self-hosting. Aligned with
+*Economic model for Weirling hosted service vs self-hosting. Aligned with
 the plan structure in [HOSTING.md](HOSTING.md) and PRODUCT_PLAN §8. Prices are
 decision D-18 (#138).*
 
@@ -34,7 +34,7 @@ The full, configurable table is `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`
 
 ### 1. Lazy summarization (on-demand, not upfront)
 
-ReadPrism does **not** run LLM summaries on every ingested feed item. Feed items
+Weirling does **not** run LLM summaries on every ingested feed item. Feed items
 receive fast extractive summaries at near-zero CPU cost during ingest. Full LLM
 summaries are triggered **lazily** only when a user opens an item or requests a
 summary. This caps token volume to what readers actually read rather than what

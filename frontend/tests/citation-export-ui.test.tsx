@@ -13,8 +13,8 @@ describe("citation export (#250)", () => {
     render(<CitationExport />);
     await userEvent.click(screen.getByRole("button", { name: "BibTeX (.bib)" }));
     await userEvent.click(screen.getByRole("button", { name: "RIS (.ris)" }));
-    expect(downloadFile).toHaveBeenCalledWith("/integrations/bibtex", "readprism-saved.bib");
-    expect(downloadFile).toHaveBeenCalledWith("/integrations/ris", "readprism-saved.ris");
+    expect(downloadFile).toHaveBeenCalledWith("/integrations/bibtex", "weirling-saved.bib");
+    expect(downloadFile).toHaveBeenCalledWith("/integrations/ris", "weirling-saved.ris");
   });
 
   it("shows a failed download", async () => {

@@ -21,7 +21,7 @@ describe("instance health banner (#234)", () => {
     });
     render(<AccountNotices />);
     const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent("This ReadPrism instance needs attention");
+    expect(alert).toHaveTextContent("This Weirling instance needs attention");
     expect(alert).toHaveTextContent("The scrape worker hasn't processed jobs for 45 minutes.");
   });
 

@@ -1,12 +1,12 @@
 # Roadmap
 
-<p class="lead">Where ReadPrism is going, in four milestones. Live status, with
-every issue, is on the <a href="https://github.com/mohitmishra786/readprism/milestones">GitHub
+<p class="lead">Where Weirling is going, in four milestones. Live status, with
+every issue, is on the <a href="https://github.com/mohitmishra786/weirling/milestones">GitHub
 milestones</a> page.</p>
 
 ```mermaid
 flowchart LR
-    accTitle: ReadPrism milestones
+    accTitle: Weirling milestones
     accDescr: Four milestones in order, from core fixes to a hosted beta, the public launch, and year one.
 
     m0["M0: Core loop"] --> m1["M1: Hosted beta"]
@@ -25,7 +25,7 @@ Make the daily loop trustworthy: ingest, rank, deliver, learn.
 
 ## M1: Hosted beta
 
-Run ReadPrism for a small group of readers.
+Run Weirling for a small group of readers.
 
 - **Shared feeds:** a feed followed by many readers is fetched once
 - **One ranker** with faithful explanations and pairwise learning
@@ -57,5 +57,5 @@ Grow the product once the launch is stable.
 - Architecture decisions: [decision records](adr/index.md)
 - What changed in each version: [release notes](releases/v0.2.0.md)
 - The engineering task log (detailed and long) lives in
-  [`docs/PROGRESS.md`](https://github.com/mohitmishra786/readprism/blob/main/docs/PROGRESS.md)
+  [`docs/PROGRESS.md`](https://github.com/mohitmishra786/weirling/blob/main/docs/PROGRESS.md)
   in the repository.

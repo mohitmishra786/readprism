@@ -3,8 +3,8 @@ import { useState } from "react";
 import { downloadFile } from "../lib/api";
 
 const FORMATS = [
-  { path: "/integrations/bibtex", file: "readprism-saved.bib", label: "BibTeX (.bib)" },
-  { path: "/integrations/ris", file: "readprism-saved.ris", label: "RIS (.ris)" },
+  { path: "/integrations/bibtex", file: "weirling-saved.bib", label: "BibTeX (.bib)" },
+  { path: "/integrations/ris", file: "weirling-saved.ris", label: "RIS (.ris)" },
 ];
 
 // Saved articles as citations for Zotero, Mendeley, EndNote, JabRef (#250).

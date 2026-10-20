@@ -5,7 +5,7 @@
    format 2 or later).
 2. Run, on your own machine:
 
-       cd backend && PYTHONPATH=. python scripts/replay_eval.py ~/readprism-export.json \\
+       cd backend && PYTHONPATH=. python scripts/replay_eval.py ~/weirling-export.json \\
            --out ../docs/eval/replay-$(date +%F).md --label "owner, 30 days"
 
 Nothing is sent anywhere. Only the aggregate report is written; review it

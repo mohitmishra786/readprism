@@ -24,10 +24,10 @@ export function InstallPrompt() {
     <div
       className="fixed bottom-4 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-prism-200 bg-white px-4 py-3 shadow-lg dark:bg-stone-900"
       role="complementary"
-      aria-label="Install ReadPrism"
+      aria-label="Install Weirling"
     >
       <span className="text-sm text-stone-700 dark:text-stone-200">
-        Install ReadPrism for offline reading
+        Install Weirling for offline reading
       </span>
       <button
         className="btn-primary px-3 py-1.5 text-xs"

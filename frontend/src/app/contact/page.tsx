@@ -26,9 +26,9 @@ export default function ContactPage() {
 
       <h1 className="font-serif text-3xl font-bold">Contact</h1>
       <p className="mt-3 text-stone-600 dark:text-stone-300">
-        Get in touch with the ReadPrism project. For general issues, bugs, and feature discussions, visit our{' '}
+        Get in touch with the Weirling project. For general issues, bugs, and feature discussions, visit our{' '}
         <a
-          href="https://github.com/mohitmishra786/readprism"
+          href="https://github.com/mohitmishra786/weirling"
           target="_blank"
           rel="noopener noreferrer"
           className="underline"
@@ -37,7 +37,7 @@ export default function ContactPage() {
         </a>{' '}
         or{' '}
         <a
-          href="https://github.com/mohitmishra786/readprism/discussions"
+          href="https://github.com/mohitmishra786/weirling/discussions"
           target="_blank"
           rel="noopener noreferrer"
           className="underline"
@@ -52,7 +52,7 @@ export default function ContactPage() {
             Takedown and grievance requests
           </h2>
           <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
-            ReadPrism respects publisher copyrights and content availability controls. If you are a publisher, author, or copyright holder and wish to request removal of your content, feed, or domain from this instance:
+            Weirling respects publisher copyrights and content availability controls. If you are a publisher, author, or copyright holder and wish to request removal of your content, feed, or domain from this instance:
           </p>
           <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-stone-600 dark:text-stone-300">
             <li>Identify the specific URL(s) or domain to be excluded.</li>

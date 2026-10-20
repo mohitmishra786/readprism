@@ -47,9 +47,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link
             href="/digest"
             className="prism-mark mr-4 text-lg"
-            aria-label="ReadPrism home"
+            aria-label="Weirling home"
           >
-            ◭ ReadPrism
+            ◭ Weirling
           </Link>
           <nav className="flex items-center gap-0.5 overflow-x-auto">
             {NAV.map((item) => {

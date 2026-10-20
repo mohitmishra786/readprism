@@ -1,4 +1,4 @@
-# ReadPrism
+# Weirling
 
 <p class="lead">One short daily digest from your feeds, newsletters and
 creators, ranked by how you actually read, with a plain reason for every
@@ -42,7 +42,7 @@ pick.</p>
 
 </div>
 
-## Why ReadPrism
+## Why Weirling
 
 - **Ranked by you.** It learns from what you open, finish, skip and rate,
   not from what is popular.
