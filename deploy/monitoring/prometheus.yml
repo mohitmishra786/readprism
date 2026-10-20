@@ -1,0 +1,15 @@
+# Prometheus for the `monitoring` compose profile (#170).
+# The bearer token is METRICS_TOKEN from .env, written to a file at start-up
+# by the compose command (Prometheus config can't read env vars).
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: readprism
+    metrics_path: /metrics
+    authorization:
+      type: Bearer
+      credentials_file: /tmp/metrics_token
+    static_configs:
+      - targets: ["backend:8000"]

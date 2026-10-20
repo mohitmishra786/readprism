@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: ReadPrism
+    folder: ReadPrism
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

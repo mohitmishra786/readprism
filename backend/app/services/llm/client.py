@@ -93,12 +93,15 @@ def _reason(status_code: int) -> str:
     return f"HTTP {status_code}"
 
 
-async def _record(ok: bool, reason: str = "") -> None:
-    """Last outcome for the owner's health banner (#234). Never the key."""
+async def _record(ok: bool, reason: str = "", *, tokens: int = 0) -> None:
+    """Last outcome for the owner's health banner (#234) and the call/token
+    counters behind /metrics (#170). Never the key."""
     try:
         from app.services.instance_health import record_llm_outcome
+        from app.services.metrics.prometheus import record_llm_usage
 
         await record_llm_outcome(ok, reason)
+        await record_llm_usage(ok, tokens)
     except Exception:  # never let telemetry break a completion
         pass
 
@@ -229,7 +232,8 @@ class LLMClient:
                 except (KeyError, IndexError, TypeError, ValueError) as e:
                     logger.warning("LLM response was not a chat completion: %s", e)
                     return None
-                await _record(True)
+                usage = data.get("usage") if isinstance(data, dict) else None
+                await _record(True, tokens=int((usage or {}).get("total_tokens") or 0))
                 return text
 
             body = resp.text[:500]

@@ -288,6 +288,9 @@ class Settings(BaseSettings):
     health_worker_stale_minutes: int = 30
     health_ingest_stale_hours: int = 6
     health_queue_backlog: int = 1000
+    # Prometheus (#170): price of your LLM provider per million tokens (USD),
+    # for the readprism_llm_cost_usd_24h series. 0 leaves cost out.
+    llm_cost_per_million_tokens: float = 0.0
 
     # Feature flags
     cold_start_collaborative_enabled: bool = True

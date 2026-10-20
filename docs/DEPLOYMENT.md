@@ -106,6 +106,16 @@ delivered within `DIGEST_ON_TIME_SECONDS`. Targets and the load test
   `HEALTH_INGEST_STALE_HOURS` (default 6), or the last LLM call failed. The
   data is at `GET /api/v1/metrics/instance-health`; other accounts get an
   empty list.
+- **Prometheus and Grafana (#170, optional):**
+  `docker compose --profile monitoring up -d` adds Prometheus (30-day
+  retention, not published) and Grafana on <http://localhost:3002> with the
+  provisioned "ReadPrism overview" dashboard: request rate and p95 latency
+  by route, 5xx, queue wait and depth, items ingested per hour, feed health,
+  digest build time and on-time ratio, LLM calls/tokens/cost, heartbeats.
+  The API serves `GET /metrics` (Prometheus text format) with the
+  `METRICS_TOKEN`, as `Authorization: Bearer …` or `X-Metrics-Token`. Set
+  `LLM_COST_PER_MILLION_TOKENS` for the cost series and
+  `GRAFANA_ADMIN_PASSWORD` before exposing Grafana.
 - **Ranking quality:** `python scripts/ranking_eval.py --days 30` prints
   per-cohort read-prediction AUC.
 
