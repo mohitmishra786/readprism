@@ -103,10 +103,10 @@ async def is_url_blocked(session: AsyncSession, url: str) -> bool:
     canonical = canonicalize_url(url) or url
     host = _normalize_host(url)
 
+    # The host and every parent domain: a block on "b.example.com" covers
+    # "a.b.example.com" too (the SQL filter matches the same way).
     host_parts = host.split(".")
-    candidates = [host]
-    if len(host_parts) > 2:
-        candidates.append(".".join(host_parts[-2:]))
+    candidates = [".".join(host_parts[i:]) for i in range(len(host_parts) - 1)] or [host]
 
     q = (
         select(BlockedUrl.id)
