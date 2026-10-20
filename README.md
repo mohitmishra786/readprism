@@ -48,10 +48,15 @@ open http://localhost:3001    # create your account and onboard
 
 ## Screenshots
 
-> Visuals are captured into `docs/media/` — see [`docs/MEDIA.md`](docs/MEDIA.md)
-> for the shot list and the `scripts/seed_demo.py` demo-data script. The hero
-> shots are the ranked daily digest, the "why ranked" explanation, and the
-> interest graph.
+| Daily Digest (`/digest`) | Explainable Ranking ("Why this?") |
+|:---:|:---:|
+| ![Daily Digest](docs/media/digest-light.png) | ![Explainable Ranking](docs/media/why-ranked-light.png) |
+
+| Directed Interest Graph (`/interests`) | Editorial In-App Reader (`/read/[id]`) |
+|:---:|:---:|
+| ![Interest Graph](docs/media/interest-graph-light.png) | ![In-App Reader](docs/media/reader-light.png) |
+
+*Dark mode versions and full shot specifications are available in [`docs/MEDIA.md`](docs/MEDIA.md).*
 
 ---
 
