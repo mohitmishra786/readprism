@@ -48,7 +48,10 @@ Contributions take a DCO sign-off
 
 ### Pricing?
 
-The full ranking engine is free. A planned hosted Pro (~$4.99/mo) gates
-*quantity* (unlimited sources/creators, higher digest frequency, on-demand
-synthesis) — not the intelligence. Priced on capability, not on being cheapest;
-heavy users self-host. See [COMPETITORS.md](COMPETITORS.md).
+The self-hosted version is free and open-source (MIT) with no plan limits. The
+hosted service gives every reader a 30-day trial with Reader limits (500 feeds,
+200 AI summaries/day), followed by paid Reader and Pro plans (price set at
+launch) or Free limits after the trial (30 feeds, 20 AI summaries/day). Paid plans
+gate quantity (more feeds, newsletters, and daily AI summaries) — not the ranking
+intelligence. Readers can also bring their own LLM key to run summaries on their
+own provider account outside the quota. See [HOSTING.md](HOSTING.md).
