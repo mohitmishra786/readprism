@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -307,14 +308,221 @@ export default function RootPage() {
             Tap “Why this?” on any item to see exactly which of the eight signals
             drove its ranking, and how strongly. One score, and it&apos;s yours.
           </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <a
+              href="/register"
+              className="bg-[#b45309] hover:bg-[#9a4207] text-white text-sm font-medium px-7 py-3 rounded-full transition-all hover:scale-[1.03] active:scale-95 hover:shadow-lg hover:shadow-[#b45309]/30"
+            >
+              Start free trial
+            </a>
+            <a
+              href="https://mohitmishra786.github.io/weirling/DEPLOYMENT/"
+              className="text-sm text-white/80 underline-offset-4 hover:text-white hover:underline"
+            >
+              Self-host instead
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <LandingSections />
+    </div>
+  );
+}
+
+const SELF_HOST_URL = "https://mohitmishra786.github.io/weirling/DEPLOYMENT/";
+
+// Below the hero (#146): who it's for, a real digest, prices, and the
+// honest limits. Copy avoids the PRODUCT_STRATEGY "claims to avoid": no
+// proven-better claims, no "every platform", no paywall bypass.
+function LandingSections() {
+  const steps = [
+    {
+      title: "Bring everything you follow",
+      body: "Forward your newsletters to your own Weirling address, import your feeds, and add the writers you follow on Substack, YouTube, Medium, Bluesky, Mastodon and GitHub.",
+    },
+    {
+      title: "It reads all of it",
+      body: "Overnight, Weirling fetches and de-duplicates it, groups stories that several sources cover into one card, and summarizes what's worth your time.",
+    },
+    {
+      title: "You get one short digest",
+      body: "Each morning: the few items you're most likely to finish, ranked by how you actually read, with a plain reason for every pick.",
+    },
+  ];
+  return (
+    <div className="bg-black text-white">
+      <section className="mx-auto max-w-5xl px-6 py-24" aria-labelledby="how-heading">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[#f08a24]">
+          For people drowning in newsletters and feeds
+        </p>
+        <h2 id="how-heading" className="mt-3 font-playfair text-4xl italic sm:text-5xl">
+          Read less. Keep what matters.
+        </h2>
+        <ol className="mt-12 grid gap-8 sm:grid-cols-3">
+          {steps.map((step, i) => (
+            <li key={step.title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+              <span className="font-playfair text-3xl italic text-[#f08a24]">{i + 1}</span>
+              <h3 className="mt-3 text-lg font-semibold">{step.title}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/70">{step.body}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-24" aria-labelledby="example-heading">
+        <h2 id="example-heading" className="font-playfair text-4xl italic sm:text-5xl">
+          A real digest, with its reasons
+        </h2>
+        <p className="mt-4 max-w-2xl text-white/70">
+          From the demo account: ranked items with summaries, and the &ldquo;Why this?&rdquo;
+          panel showing which signals put each one there. It learns from what you open,
+          finish, skip and rate. You can see and edit what it has learned.
+        </p>
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
+          <Image
+            src="/landing/example-digest.png"
+            alt="A Weirling digest: ranked articles with AI summaries and scores"
+            width={1280}
+            height={800}
+            sizes="(min-width: 768px) 480px, 100vw"
+            className="rounded-2xl border border-white/10"
+          />
+          <Image
+            src="/landing/example-why.png"
+            alt="The Why this? panel: the share of each reading signal behind an item's rank"
+            width={1280}
+            height={800}
+            sizes="(min-width: 768px) 480px, 100vw"
+            className="rounded-2xl border border-white/10"
+          />
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-24" aria-labelledby="pricing-heading">
+        <h2 id="pricing-heading" className="font-playfair text-4xl italic sm:text-5xl">
+          Simple pricing
+        </h2>
+        <p className="mt-4 text-white/70">
+          30 days free with everything in Pro. No card needed to start.
+        </p>
+        <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <PlanCard
+            name="Reader"
+            price="$6"
+            yearly="or $54 a year"
+            points={["500 feeds", "200 AI summaries a day", "100 newsletters a day", "Daily or weekly digest"]}
+          />
+          <PlanCard
+            name="Pro"
+            price="$12"
+            yearly="or $108 a year"
+            points={[
+              "2,000 feeds",
+              "1,000 AI summaries a day",
+              "Twice-daily digests and story synthesis",
+              "API and MCP access, priority fetching",
+            ]}
+            highlight
+          />
+          <PlanCard
+            name="Self-hosted"
+            price="Free"
+            yearly="MIT licensed, on your server"
+            points={["Every feature, no limits", "Your own LLM key, or local models", "One Docker Compose file"]}
+            href={SELF_HOST_URL}
+            cta="Self-host it"
+          />
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-5xl px-6 pb-24" aria-labelledby="honest-heading">
+        <h2 id="honest-heading" className="font-playfair text-3xl italic">
+          What it won&apos;t do
+        </h2>
+        <ul className="mt-6 grid gap-4 text-sm text-white/70 md:grid-cols-3">
+          <li className="rounded-2xl border border-white/10 p-5">
+            X, LinkedIn and Reddit have no public feeds, so they aren&apos;t supported. We say so
+            instead of failing quietly.
+          </li>
+          <li className="rounded-2xl border border-white/10 p-5">
+            No paywall tricks. You get the feed text, a summary and a link to the original.
+          </li>
+          <li className="rounded-2xl border border-white/10 p-5">
+            No ads, no selling your reading data, and no third-party trackers.
+          </li>
+        </ul>
+        <div className="mt-12 flex flex-wrap items-center gap-6">
           <a
             href="/register"
-            className="bg-[#b45309] hover:bg-[#9a4207] text-white text-sm font-medium px-7 py-3 rounded-full transition-all hover:scale-[1.03] active:scale-95 hover:shadow-lg hover:shadow-[#b45309]/30"
+            className="bg-[#b45309] hover:bg-[#9a4207] text-white text-sm font-medium px-7 py-3 rounded-full"
           >
-            Start reading
+            Start free trial
+          </a>
+          <a href={SELF_HOST_URL} className="text-sm text-white/80 underline-offset-4 hover:underline">
+            Self-host instead
           </a>
         </div>
       </section>
+
+      <footer className="border-t border-white/10">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-white/60">
+          <Logo />
+          <nav aria-label="Footer" className="flex flex-wrap gap-5">
+            <a href="/how-it-works" className="hover:text-white">How it works</a>
+            <a href="/vs/feedly" className="hover:text-white">Compare</a>
+            <a href="/privacy" className="hover:text-white">Privacy</a>
+            <a href="/terms" className="hover:text-white">Terms</a>
+            <a href="https://github.com/mohitmishra786/weirling" className="hover:text-white">GitHub</a>
+          </nav>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function PlanCard({
+  name,
+  price,
+  yearly,
+  points,
+  highlight = false,
+  href = "/register",
+  cta = "Start free trial",
+}: {
+  name: string;
+  price: string;
+  yearly: string;
+  points: string[];
+  highlight?: boolean;
+  href?: string;
+  cta?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-col rounded-2xl border p-6 ${
+        highlight ? "border-[#b45309] bg-[#b45309]/10" : "border-white/10 bg-white/[0.03]"
+      }`}
+    >
+      <h3 className="text-lg font-semibold">{name}</h3>
+      <p className="mt-3">
+        <span className="font-playfair text-4xl italic">{price}</span>
+        {price.startsWith("$") && <span className="text-white/60"> a month</span>}
+      </p>
+      <p className="text-sm text-white/60">{yearly}</p>
+      <ul className="mt-5 flex-1 space-y-2 text-sm text-white/80">
+        {points.map((pt) => (
+          <li key={pt}>{pt}</li>
+        ))}
+      </ul>
+      <a
+        href={href}
+        className={`mt-6 rounded-full px-5 py-2.5 text-center text-sm font-medium ${
+          highlight ? "bg-[#b45309] text-white hover:bg-[#9a4207]" : "bg-white text-black hover:bg-white/90"
+        }`}
+      >
+        {cta}
+      </a>
     </div>
   );
 }
