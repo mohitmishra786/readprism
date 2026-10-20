@@ -28,3 +28,24 @@ RAM: MiniLM stays the lite and default profile. Nomic is not loaded, so this cha
 ## Consequences
 
 Backfill of model metadata is resumable (`backfill_batch`) and does not rewrite vectors. A 50k-row stamp was not executed in CI; the cursor test covers a 1,000-row batch. Operators can run the same function over the live table before any cutover.
+
+## Update 2026-10-21: real models on real articles (#203)
+
+The check above compared two hash encoders, not real models. A real
+comparison now exists: [embedding models on real articles](../eval/embedding-models.md),
+52 openly licensed articles (Go, Rust and Kubernetes blogs, Wikipedia), CPU.
+
+| Model | Dim | Title MRR | Summary MRR | Articles/s |
+|---|---|---|---|---|
+| all-MiniLM-L6-v2 (current) | 384 | 0.928 | 0.980 | 68.8 |
+| bge-small-en-v1.5 | 384 | 0.952 | 0.990 | 26.3 |
+| nomic-embed-text-v1.5 | 768 | 0.710 | 0.786 | 0.6 |
+| bge-m3 | 1024 | 0.981 | 0.990 | 0.2 |
+
+**Revised decision.** Nomic does not win the retrieval check, so the 768-d
+cut-over is off. The next default should be `BAAI/bge-small-en-v1.5`: better
+retrieval at the same 384 dimensions, so it needs a re-embed (the model
+identity columns already let both coexist) but no new column. Make the switch
+once it also wins on reader data (search queries and ranking replay), and keep
+MiniLM for the lite profile if bge-small's memory cost matters there.
+bge-m3 stays an option for GPU or multilingual deployments.

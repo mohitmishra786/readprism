@@ -52,6 +52,7 @@ nav:
       - Benchmarks: benchmarks.md
       - Email client check: email-clients.md
       - Replay evaluation: eval/replay-protocol.md
+      - Embedding models: eval/embedding-models.md
   - Project:
       - Roadmap: milestones.md
       - Release notes:
