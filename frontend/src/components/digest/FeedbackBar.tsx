@@ -74,7 +74,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
         className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
           rated === 1
             ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
         }`}
       >
         <ThumbsUp className="h-4 w-4" aria-hidden="true" />
@@ -86,7 +86,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
         className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
           rated === -1
             ? "border-rose-200 bg-rose-50 text-rose-700"
-            : "border-stone-200 text-stone-600 hover:bg-stone-50"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
         }`}
       >
         <ThumbsDown className="h-4 w-4" aria-hidden="true" />
