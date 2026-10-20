@@ -90,33 +90,105 @@ plan.
 
 ## Backups & restore
 
-The interest graph and reading history are the product; back the database up.
+The interest graph and reading history are the product: back them up, keep a
+copy off the machine, and rehearse a restore.
 
-**Nightly backup** (host cron):
+**What a backup contains** (`scripts/backup.sh`, also `make backup`): one
+`readprism-<UTC time>.tar.gz` with the Postgres dump (`pg_dump -Fc`), a Redis
+snapshot (sessions, sign-in links), your `.env` (**secrets**: store the
+archive like a password) and a manifest with the schema version and row
+counts. After each run, archives older than `BACKUP_RETENTION_DAYS` (default
+14) in the same folder are deleted.
 
-```bash
-BACKUP_DIR=/var/backups/readprism ./backend/scripts/backup.sh
+### Schedule it
+
+Pick one. Both run nightly at 03:15 from the directory with your
+`docker-compose.yml`.
+
+cron (`crontab -e`):
+
+```cron
+15 3 * * * cd /opt/readprism && ./scripts/backup.sh /var/backups/readprism >> /var/log/readprism-backup.log 2>&1
 ```
 
-This `pg_dump`s the `readprism` database to a timestamped gzip and prunes dumps
-older than `BACKUP_RETENTION_DAYS` (default 14).
+systemd timer (`/etc/systemd/system/readprism-backup.service` and `.timer`):
 
-**Restore** into a fresh database:
+```ini
+# readprism-backup.service
+[Unit]
+Description=ReadPrism backup
+After=docker.service
 
-```bash
-# 1. Ensure the db container is up and the target DB exists + has pgvector.
-docker compose exec -T db psql -U readprism -c "CREATE DATABASE readprism;" || true
-docker compose exec -T db psql -U readprism -d readprism -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-# 2. Load the dump.
-gunzip -c /var/backups/readprism/readprism-YYYYMMDDTHHMMSSZ.sql.gz \
-  | docker compose exec -T db psql -U readprism -d readprism
-
-# 3. Bring migrations to head (no-op if the dump was current).
-docker compose exec -T backend alembic upgrade head
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/readprism
+Environment=BACKUP_RETENTION_DAYS=14
+ExecStart=/opt/readprism/scripts/backup.sh /var/backups/readprism
 ```
 
-Test a restore periodically — an untested backup is not a backup.
+```ini
+# readprism-backup.timer
+[Unit]
+Description=Nightly ReadPrism backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl enable --now readprism-backup.timer
+systemctl list-timers readprism-backup.timer   # next run
+```
+
+### Copy it off the box
+
+A backup on the same disk doesn't survive that disk. Add one of these after
+the backup (in the cron line with `&&`, or as `ExecStartPost=` in the unit).
+
+restic (encrypted, deduplicated; any S3/B2/SFTP repository):
+
+```bash
+export RESTIC_REPOSITORY=s3:s3.amazonaws.com/my-bucket/readprism RESTIC_PASSWORD_FILE=/root/.restic-pass
+restic backup /var/backups/readprism && restic forget --keep-daily 14 --keep-weekly 8 --prune
+```
+
+rclone (plain copy to any configured remote; the archive holds secrets, so
+use an encrypted `crypt` remote):
+
+```bash
+rclone copy /var/backups/readprism remote-crypt:readprism-backups --max-age 48h
+```
+
+### Rehearse a restore (monthly)
+
+```bash
+make restore-drill                                     # newest backup in ./backups
+./scripts/restore_drill.sh /var/backups/readprism/readprism-<ts>.tar.gz
+```
+
+The drill restores the dump into a throwaway database
+(`readprism_restore_drill`), checks every table's row count against the
+backup's manifest, and drops it. Your live data is not touched; exit status
+0 means the backup restores. CI runs the same drill on every change to the
+backup scripts. To rehearse an off-box copy, download it first (`restic
+restore latest --target /tmp/rp`) and point the drill at the archive.
+
+### Restore for real
+
+**Destructive**: this replaces the live database and Redis data.
+
+```bash
+./scripts/restore.sh /var/backups/readprism/readprism-<ts>.tar.gz   # or: make restore FILE=...
+```
+
+It stops the API and workers, recreates the database from the dump, loads
+the Redis snapshot, and starts everything again; migrations then run on
+boot. The archive's `env` file holds the `.env` from backup time: compare it
+with yours if you are restoring onto a new machine.
 
 ## Self-hosting with your own LLM key (BYO)
 

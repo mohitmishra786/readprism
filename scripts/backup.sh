@@ -9,6 +9,11 @@
 # Usage:
 #   ./scripts/backup.sh  [output-dir]        (default: ./backups)
 #   ./scripts/restore.sh backups/readprism-<ts>.tar.gz
+#   ./scripts/restore_drill.sh [archive]     (non-destructive check, #209)
+#
+# Tarballs older than BACKUP_RETENTION_DAYS (default 14) in the output
+# directory are deleted after a successful backup. Scheduling and off-box
+# copies: docs/DEPLOYMENT.md#backups--restore.
 set -euo pipefail
 umask 077  # archive contains .env secrets
 cd "$(dirname "$0")/.."
@@ -47,9 +52,20 @@ echo "==> writing manifest…"
   echo "git_sha=$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
   echo "alembic_head=$(docker compose exec -T db psql -U readprism -d readprism -tAc \
     "SELECT version_num FROM alembic_version" 2>/dev/null | tr -d '[:space:]' || echo unknown)"
+  # Row counts let restore_drill.sh check a restore without touching live data.
+  for table in users sources content_items user_content_interactions interest_nodes digests; do
+    echo "rows_$table=$(docker compose exec -T db psql -U readprism -d readprism -tAc \
+      "SELECT count(*) FROM $table" 2>/dev/null | tr -d '[:space:]' || echo unknown)"
+  done
 } > "$TARGET/manifest.txt"
 
 echo "==> bundling $TARGET.tar.gz"
 tar -czf "$TARGET.tar.gz" -C "$OUT_DIR" "readprism-$STAMP"
 rm -rf "$TARGET"
 echo "backup complete: $TARGET.tar.gz"
+
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
+if [ "$RETENTION_DAYS" -gt 0 ] 2>/dev/null; then
+  find "$OUT_DIR" -maxdepth 1 -name 'readprism-*.tar.gz' -type f -mtime "+$RETENTION_DAYS" -print -delete \
+    | sed 's/^/pruned (older than '"$RETENTION_DAYS"' days): /'
+fi

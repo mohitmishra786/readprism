@@ -47,6 +47,11 @@ jobs:
           test "$HEADS" = "1"
       - name: Backup
         run: ./scripts/backup.sh
+      - name: Restore drill (non-destructive, counts vs manifest)
+        run: |
+          ./scripts/restore_drill.sh
+          # Live data untouched by the drill:
+          test "$(docker compose exec -T db psql -U readprism -d readprism -tAc "SELECT count(*) FROM users WHERE email='marker@example.com';")" = "1"
       - name: Destroy the database
         run: |
           docker compose exec -T db psql -U readprism -d postgres \
