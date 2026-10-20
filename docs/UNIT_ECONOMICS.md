@@ -6,13 +6,16 @@ decided (#138); subscription prices are set at launch.*
 
 ## Plans and quotas
 
-| Tier | Feeds | AI summaries / day | Newsletters / day | Price |
-|---|---|---|---|---|
-| **Self-host** | Unlimited | Unlimited (BYOK or local) | Unlimited | Free, MIT ($0 to host) |
-| **Hosted Trial** (30 days) | 500 | 200 | 100 (50 MB) | Free, no card |
-| **Hosted Reader** | 500 | 200 | 100 (50 MB) | Price set at launch |
-| **Hosted Pro** | 2,000 | 1,000 | 300 (150 MB) | Price set at launch |
-| **Free limits** (post-trial) | 30 | 20 | 20 (10 MB) | Free ($0) |
+| Tier | Feeds | Creators | AI summaries / day | Newsletters / day | Manual builds / day | Price |
+|---|---|---|---|---|---|---|
+| **Self-host** | Unlimited | Unlimited | Unlimited (BYOK or local) | Unlimited | Unlimited | No license fee (MIT); the operator pays their own hosting |
+| **Hosted Trial** (30 days) | 500 | 50 | 200 | 100 (50 MB) | 6 | Free, no card |
+| **Hosted Reader** | 500 | 50 | 200 | 100 (50 MB) | 6 | Price set at launch |
+| **Hosted Pro** | 2,000 | 200 | 1,000 | 300 (150 MB) | 12 | Price set at launch |
+| **Free limits** (post-trial) | 30 | 5 | 20 | 20 (10 MB) | 3 | Free ($0) |
+
+The full, configurable table is `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`
+(see [Hosted service](HOSTING.md#plans-and-quotas)).
 
 ## Provider costs
 
@@ -63,9 +66,10 @@ subscription price (price set at launch) minus MoR fees.
 
 ## Break-even model
 
-Break-even per paying subscriber is reached when:
+Per paying subscriber:
 
-$$\text{Net Revenue} = (\text{Price set at launch} - \text{MoR Fees}) > \text{Variable Cost} + \text{Allocated Fixed Cost}$$
+- **Net revenue** = price (set at launch) − merchant-of-record fees
+- **Break-even** when net revenue > variable cost + allocated fixed cost
 
 Where:
 - **Variable cost per user:**
