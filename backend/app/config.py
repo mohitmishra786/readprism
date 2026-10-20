@@ -125,6 +125,14 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     llm_model_primary: str = "openai/gpt-oss-120b"
     llm_model_fast: str = "openai/gpt-oss-20b"
+    # Per-task model (#225). Empty = the task's default: summaries and topic
+    # extraction use the fast model; story synthesis and interest expansion
+    # use the primary (large) one. Any model id the endpoint serves works,
+    # e.g. an Ollama tag such as "llama3.1:8b".
+    llm_model_summary: str = ""
+    llm_model_topics: str = ""
+    llm_model_synthesis: str = ""
+    llm_model_interests: str = ""
     llm_tpm_limit: int = 6000
     llm_rpm_limit: int = 30
     llm_timeout_seconds: float = 30.0
@@ -411,6 +419,13 @@ class Settings(BaseSettings):
             legacy_name="GROQ_FAST_MODEL",
         )
         return self
+
+    def model_for(self, task: str) -> str:
+        """The model id for an LLM task: summary, topics, synthesis or interests (#225)."""
+        own = getattr(self, f"llm_model_{task}")
+        if own:
+            return own
+        return self.llm_model_fast if task in ("summary", "topics") else self.llm_model_primary
 
     @property
     def llm_configured(self) -> bool:

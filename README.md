@@ -322,8 +322,9 @@ Redis is persistent: the compose service runs with AOF (`--appendonly yes --appe
 |---|---|---|
 | `LLM_BASE_URL` | `https://api.groq.com/openai/v1` | OpenAI-compatible API base URL (Groq, OpenAI, Ollama, etc.). |
 | `LLM_API_KEY` | Empty (extractive) | Optional API key. When unset, extractive summaries are used without API calls. |
-| `LLM_MODEL_PRIMARY` | `openai/gpt-oss-120b` | Primary model for digest item summaries. |
-| `LLM_MODEL_FAST` | `openai/gpt-oss-20b` | Faster model for brief summaries and categorization. |
+| `LLM_MODEL_PRIMARY` | `openai/gpt-oss-120b` | Large model: story synthesis and interest expansion. |
+| `LLM_MODEL_FAST` | `openai/gpt-oss-20b` | Fast model: item summaries and topic extraction. |
+| `LLM_MODEL_SUMMARY`, `_TOPICS`, `_SYNTHESIS`, `_INTERESTS` | Empty | Override the model for one task. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#which-model-does-what-225). |
 | `LLM_SUMMARIZE` | `lazy` | `lazy` summarizes only items placed in digests or reader; `all` summarizes every ingest. |
 | `OPENAI_FALLBACK_ENABLED` | `false` | Enable secondary OpenAI fallback provider (`OPENAI_API_KEY`, `OPENAI_MODEL`). |
 

@@ -156,7 +156,7 @@ class LLMSummarizer:
         )
         current = get_settings()
         data = await self._llm().complete_json(
-            model=current.llm_model_primary,
+            model=current.model_for("summary"),
             system=_SYSTEM_PROMPT,
             user=prompt,
             max_tokens=1024,
@@ -194,7 +194,7 @@ class LLMSummarizer:
             f"and what a reader should know. Return only the briefing text.\n\n{briefs}"
         )
         text = await self._llm().complete(
-            model=get_settings().llm_model_primary,
+            model=get_settings().model_for("synthesis"),
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             max_tokens=256,
@@ -208,7 +208,7 @@ class LLMSummarizer:
             f"{text[:2000]}"
         )
         data = await self._llm().complete_json(
-            model=get_settings().llm_model_fast,
+            model=get_settings().model_for("topics"),
             system="Return only a JSON object with a topics array of strings.",
             user=prompt,
             max_tokens=256,
@@ -232,7 +232,7 @@ class LLMSummarizer:
             'Return a JSON object {"topics": ["..."]}.'
         )
         data = await self._llm().complete_json(
-            model=get_settings().llm_model_fast,
+            model=get_settings().model_for("interests"),
             system="Return only a JSON object with a topics array of strings.",
             user=prompt,
             max_tokens=400,

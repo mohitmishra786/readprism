@@ -272,13 +272,46 @@ editing is needed.
 
 ## Self-hosting with your own LLM key (BYO)
 
-Self-hosted instances bring their own `LLM_API_KEY` (or the legacy, deprecated
-`GROQ_API_KEY` — removed in v0.3; and optionally an OpenAI fallback), so
-heavy/niche readers pay their own inference bill directly — the
-intended pressure-release for the worst-margin users (audit 13-3). The full
-ranking engine and summarization run locally against your key; no ReadPrism
-hosted service is involved. With `DEPLOYMENT_MODE=selfhost` (the default)
-there are no plans or quotas at all.
+Self-hosted instances bring their own key for any OpenAI-compatible endpoint
+(`LLM_BASE_URL` + `LLM_API_KEY`; the deprecated `GROQ_API_KEY` is still read
+until v0.3). Summarization runs against your key; no ReadPrism hosted service
+is involved. Without a key, summaries are extractive. With
+`DEPLOYMENT_MODE=selfhost` (the default) there are no plans or quotas.
+
+### Which model does what (#225)
+
+| Task | Setting | Default |
+|---|---|---|
+| Item summaries | `LLM_MODEL_SUMMARY` | `LLM_MODEL_FAST` (`openai/gpt-oss-20b`) |
+| Topic extraction | `LLM_MODEL_TOPICS` | `LLM_MODEL_FAST` |
+| Story synthesis across sources | `LLM_MODEL_SYNTHESIS` | `LLM_MODEL_PRIMARY` (`openai/gpt-oss-120b`) |
+| Interest expansion at onboarding | `LLM_MODEL_INTERESTS` | `LLM_MODEL_PRIMARY` |
+
+Summaries are the bulk of the calls, so they go to the cheaper model. To
+compare the two models on your own key, run
+`cd backend && python scripts/summary_spot_check.py --n 50 --out ../docs/eval/summary-models.md`
+and grade the side-by-side output.
+
+### Running models locally with Ollama
+
+1. Install [Ollama](https://ollama.com) on the host and pull a model:
+   `ollama pull llama3.1:8b` (add a larger one for synthesis if you have the
+   memory, e.g. `qwen2.5:32b`).
+2. In `.env`:
+
+   ```bash
+   LLM_BASE_URL=http://host.docker.internal:11434/v1
+   LLM_API_KEY=ollama          # any non-empty value; Ollama ignores it
+   LLM_MODEL_FAST=llama3.1:8b
+   LLM_MODEL_PRIMARY=llama3.1:8b
+   LLM_TPM_LIMIT=1000000       # no provider rate limit to respect
+   LLM_TIMEOUT_SECONDS=120     # local models are slower
+   ```
+
+   On Linux, add `extra_hosts: ["host.docker.internal:host-gateway"]` to the
+   `api` and `worker-*` services, or use the host's LAN address.
+3. Restart, then open an item in the reader: its summary should say it came
+   from the model.
 
 ## Email deliverability (SPF / DKIM)
 

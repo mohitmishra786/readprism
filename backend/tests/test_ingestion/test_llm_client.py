@@ -66,7 +66,7 @@ async def test_summarizer_sends_configured_model_not_a_literal():
     assert result is not None
     assert result.summary_source == "llm"
     assert result.headline == "Test article headline"
-    assert seen["model"] == get_settings().llm_model_primary
+    assert seen["model"] == get_settings().llm_model_fast  # summaries use the fast model (#225)
     assert "llama" not in seen["model"]
 
 
@@ -173,3 +173,28 @@ async def test_digest_summary_ships_with_llm_unset(monkeypatch):
     assert result is not None
     assert result.summary_source == "extractive"
     assert result.brief
+
+
+@pytest.mark.asyncio
+async def test_each_task_goes_to_its_model(monkeypatch):
+    """Summaries and topics on the fast model, synthesis and interests on the large one (#225)."""
+    s = get_settings()
+    sent: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content)["model"])
+        content = MOCK_JSON if len(sent) == 1 else '{"topics": ["a"]}'
+        return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    summarizer = LLMSummarizer(llm=_client(handler))
+    await summarizer.summarize("Title", "Body text here.")
+    await summarizer.extract_topics("text")
+    await summarizer.synthesize_topic([], "rust")
+    await summarizer.expand_interests("rust and databases")
+    assert sent == [s.llm_model_fast, s.llm_model_fast, s.llm_model_primary, s.llm_model_primary]
+
+    monkeypatch.setattr(s, "llm_model_summary", "llama3.1:8b")
+    monkeypatch.setattr(s, "llm_model_synthesis", "qwen2.5:32b")
+    assert s.model_for("summary") == "llama3.1:8b"
+    assert s.model_for("synthesis") == "qwen2.5:32b"
+    assert s.model_for("topics") == s.llm_model_fast

@@ -44,8 +44,13 @@ class Field:
 FIELDS: tuple[Field, ...] = (
     Field("llm_api_key", "llm", "API key", secret=True, aliases=("groq_api_key",)),
     Field("llm_base_url", "llm", "Base URL"),
-    Field("llm_model_primary", "llm", "Summary model", aliases=("groq_summarization_model",)),
-    Field("llm_model_fast", "llm", "Fast model", aliases=("groq_fast_model",)),
+    Field(
+        "llm_model_primary",
+        "llm",
+        "Large model (story synthesis, interests)",
+        aliases=("groq_summarization_model",),
+    ),
+    Field("llm_model_fast", "llm", "Fast model (summaries)", aliases=("groq_fast_model",)),
     Field("zoho_smtp_host", "smtp", "SMTP host"),
     Field("zoho_smtp_port", "smtp", "SMTP port", kind=int),
     Field("zoho_email", "smtp", "SMTP username"),
