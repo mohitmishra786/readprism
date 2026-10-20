@@ -73,12 +73,21 @@ function PlanPicker({
             <li>{n(p.quotas.creators)} tracked creators</li>
           </ul>
           {current !== p.plan && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {p.intervals.map((i) => (
-                <button key={i} style={BUTTON} onClick={() => onBuy(p.plan, i)}>
-                  {p.name} {i === "month" ? "monthly" : "yearly"}
-                </button>
-              ))}
+            <div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {p.intervals.map((i) => (
+                  <button key={i} style={BUTTON} onClick={() => onBuy(p.plan, i)}>
+                    {p.name} {i === "month" ? "monthly" : "yearly"}
+                  </button>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 8 }}>
+                By subscribing, you agree to the{" "}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>
+                  Terms of Service
+                </a>
+                .
+              </p>
             </div>
           )}
         </div>

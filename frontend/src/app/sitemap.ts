@@ -12,6 +12,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/vs/feedly",
     "/vs/inoreader",
     "/vs/newsblur",
+    "/privacy",
+    "/terms",
   ];
   return routes.map((path) => ({
     url: `${SITE_URL}${path}`,
