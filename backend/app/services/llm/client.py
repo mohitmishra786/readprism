@@ -140,6 +140,11 @@ class LLMClient:
             return self._api_key_override
         return get_settings().llm_api_key
 
+    def _redact(self, text: str) -> str:
+        """Providers sometimes echo the key in errors; never log it (#255)."""
+        key = self.api_key
+        return text.replace(key, "***") if key else text
+
     @property
     def circuit_open(self) -> bool:
         return self._circuit_open
@@ -154,7 +159,7 @@ class LLMClient:
             f"LLM model {model!r} was rejected by {self.base_url}. "
             "Update LLM_MODEL_PRIMARY and LLM_MODEL_FAST to a model the provider "
             "still serves (Groq defaults: openai/gpt-oss-120b and openai/gpt-oss-20b). "
-            f"Provider said: {body[:300]}"
+            f"Provider said: {self._redact(body)[:300]}"
         )
         logger.error(self._circuit_reason)
 
@@ -249,7 +254,9 @@ class LLMClient:
                     return None
                 await self._backoff(attempt, resp.headers.get("retry-after"))
                 continue
-            logger.error("LLM request failed with HTTP %s: %s", resp.status_code, body)
+            logger.error(
+                "LLM request failed with HTTP %s: %s", resp.status_code, self._redact(body)
+            )
             await _record(False, _reason(resp.status_code))
             return None
         logger.error("LLM request failed after retries (last HTTP %s)", last_status)

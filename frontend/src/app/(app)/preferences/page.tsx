@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
+import { LlmKeySection } from "../../../components/LlmKeySection";
 import { NewsletterAddressCard } from "../../../components/NewsletterAddressCard";
 import { CitationExport } from "../../../components/CitationExport";
 import { PushAlerts } from "../../../components/PushAlerts";
@@ -465,6 +466,7 @@ export default function PreferencesPage() {
       </section>
 
       <PlanSection />
+      <LlmKeySection />
 
       <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
         <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Your Data</h2>

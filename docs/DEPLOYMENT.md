@@ -368,6 +368,18 @@ ignores them.
   keeps the extractive summary; scheduled digests always run and don't count
   as builds. Preferences → Plan shows the plans side by side, the reader's
   limits and today's use. The abuse caps above still apply on top.
+- **Readers' own LLM keys (#255).** With `SECRETS_ENCRYPTION_KEY` set, a
+  reader can add their own key in Preferences → Your own AI key. Only the
+  providers in `BYOK_ALLOWED_BASE_URLS` are accepted (Groq, OpenAI,
+  OpenRouter, Together, Fireworks, DeepInfra by default), so a key can't make
+  the server call any other host. The key is checked with one tiny request,
+  stored encrypted with a key derived from `SECRETS_ENCRYPTION_KEY` (never
+  `SECRET_KEY`), never returned (only its last 4 characters) and redacted
+  from logs. It is used only for that reader's summaries, never falls back
+  to the instance's provider, and doesn't count against the plan's AI
+  summaries. Changing `SECRETS_ENCRYPTION_KEY` makes stored keys unreadable;
+  readers then add theirs again. A discounted plan for these readers is a
+  pricing decision (#138); add it as another plan when you decide.
 - **Billing (#173).** Billing runs through a merchant of record, so the
   provider handles VAT/GST. Steps:
   1. Set `BILLING_PROVIDER` to `lemonsqueezy` or `paddle`, and set

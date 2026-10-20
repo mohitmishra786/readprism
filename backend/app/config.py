@@ -149,6 +149,14 @@ class Settings(BaseSettings):
     groq_summarization_model: str = ""
     groq_fast_model: str = ""
 
+    # Hosted bring-your-own-key (#255): the endpoints a reader may point their
+    # own key at. A fixed list, so a reader's key can't make the server call
+    # arbitrary hosts. Keys are encrypted with SECRETS_ENCRYPTION_KEY.
+    byok_allowed_base_urls: str = (
+        "https://api.groq.com/openai/v1,https://api.openai.com/v1,"
+        "https://openrouter.ai/api/v1,https://api.together.xyz/v1,"
+        "https://api.fireworks.ai/inference/v1,https://api.deepinfra.com/v1/openai"
+    )
     # Optional second provider. Used only when all three are set.
     openai_fallback_enabled: bool = False
     openai_api_key: str = ""

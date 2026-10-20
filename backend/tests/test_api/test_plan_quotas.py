@@ -154,7 +154,7 @@ async def test_billing_state_lists_quotas_on_hosted_only(
 
 
 @pytest.mark.asyncio
-async def test_opening_an_item_respects_llm_quota(hosted, monkeypatch):
+async def test_opening_an_item_respects_llm_quota(hosted, monkeypatch, db_session):
     from app.api import content
 
     monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"llm_summaries_per_day": 1}})
@@ -166,7 +166,7 @@ async def test_opening_an_item_respects_llm_quota(hosted, monkeypatch):
         patch("app.services.summarization.lazy.needs_llm_summary", return_value=True),
         patch("app.workers.tasks.compute_embeddings.summarize_item_with_llm.delay", delay),
     ):
-        await content._queue_llm_summary(item, user)
+        await content._queue_llm_summary(item, user, db_session)
         item.id = uuid.uuid4()
-        await content._queue_llm_summary(item, user)
+        await content._queue_llm_summary(item, user, db_session)
     assert delay.call_count == 1

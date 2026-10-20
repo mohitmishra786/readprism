@@ -131,9 +131,19 @@ def _parse_result(raw: str) -> SummarizationResult | None:
 class LLMSummarizer:
     """Provider-agnostic summarizer. Talks to whatever OpenAI-compatible endpoint is configured."""
 
-    def __init__(self, llm: LLMClient | None = None) -> None:
+    def __init__(
+        self,
+        llm: LLMClient | None = None,
+        *,
+        summary_model: str | None = None,
+        use_fallback: bool = True,
+    ) -> None:
         self._llm_client = llm
         self._fallback_client: LLMClient | None = None
+        # A reader's own key (#255) brings its own model and never falls back
+        # to the instance's provider.
+        self._summary_model = summary_model
+        self._use_fallback = use_fallback
 
     def _llm(self) -> LLMClient:
         if self._llm_client is None:
@@ -156,13 +166,14 @@ class LLMSummarizer:
         )
         current = get_settings()
         data = await self._llm().complete_json(
-            model=current.model_for("summary"),
+            model=self._summary_model or current.model_for("summary"),
             system=_SYSTEM_PROMPT,
             user=prompt,
             max_tokens=1024,
         )
         if (
             data is None
+            and self._use_fallback
             and current.openai_fallback_enabled
             and current.openai_api_key
             and current.openai_model

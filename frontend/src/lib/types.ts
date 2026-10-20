@@ -246,3 +246,12 @@ export interface WhyNotSeen {
   contributions: { signal: string; feature: number; weight: number; contribution: number; has_data: boolean }[];
   raise_it: { signal: string; how: string }[];
 }
+
+/** Your own LLM key on hosted (#255). The key itself is never returned. */
+export interface LLMKeyState {
+  configured: boolean;
+  base_url: string | null;
+  model: string | null;
+  last4: string | null;
+  allowed_base_urls?: string[];
+}

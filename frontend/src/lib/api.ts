@@ -6,6 +6,7 @@ import {
   setCsrfToken,
 } from './auth';
 import type {
+  LLMKeyState,
   BillingState,
   WhyNotSeen,
   ImportResult,
@@ -299,6 +300,11 @@ export const api = {
     // Portable JSON copy of all personal data (GDPR export, 06-3).
     export: () => request<Record<string, unknown>>('/account/export'),
     delete: () => request<void>('/account', { method: 'DELETE' }),
+    // Your own LLM key on hosted (#255). Only the last 4 characters come back.
+    llmKey: () => request<LLMKeyState>('/account/llm-key'),
+    saveLlmKey: (body: { api_key: string; base_url: string; model?: string }) =>
+      request<LLMKeyState>('/account/llm-key', { method: 'PUT', body: JSON.stringify(body) }),
+    removeLlmKey: () => request<void>('/account/llm-key', { method: 'DELETE' }),
   },
 
   sources: {

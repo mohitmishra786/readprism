@@ -13,6 +13,7 @@ from app.models.digest import (
 from app.models.feed import Feed
 from app.models.instance_setting import InstanceSetting
 from app.models.interest_graph import InterestEdge, InterestNode
+from app.models.llm_key import UserLLMKey
 from app.models.meta_weights import UserMetaWeights
 from app.models.push import PushSubscription
 from app.models.source import Source
@@ -28,6 +29,7 @@ __all__ = [
     "Feed",
     "InstanceSetting",
     "User",
+    "UserLLMKey",
     "Source",
     "Creator",
     "CreatorPlatform",
