@@ -32,7 +32,7 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
     <div className="card card-hover p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="font-serif text-base font-semibold text-stone-900">
+          <div className="font-serif text-base font-semibold text-stone-900 dark:text-stone-100">
             {creator.display_name}
           </div>
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -45,13 +45,13 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
           <button
             onClick={loadSummary}
             disabled={loadingSummary}
-            className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs"
+            className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs dark:border-white/10"
           >
             {loadingSummary ? "Loading…" : "This week"}
           </button>
           <button
             onClick={del}
-            className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50"
+            className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300"
           >
             Remove
           </button>
@@ -59,7 +59,7 @@ export function CreatorProfile({ creator, onDeleted }: CreatorProfileProps) {
       </div>
 
       {summary && (
-        <div className="mt-3 rounded-lg bg-prism-50 px-4 py-3 text-sm leading-relaxed text-prism-900">
+        <div className="mt-3 rounded-lg bg-prism-50 px-4 py-3 text-sm leading-relaxed text-prism-900 dark:bg-prism-900/30">
           <strong className="font-semibold">This week: </strong>
           {summary}
         </div>

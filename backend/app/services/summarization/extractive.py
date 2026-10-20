@@ -35,7 +35,21 @@ _STOP = frozenset(
     via says said say per may might must shall within without across among around every
     including include includes really still even thing things lot lots time year years today
     week day days people post posts blog article read here https http www com""".split()
+    # HTML that leaks through feeds with escaped markup: never a topic (#159:
+    # "noopener noreferrer" showed up as an emerging topic).
+    + """href rel noopener noreferrer nofollow target blank src img alt div span class style
+    amp nbsp quot html org net""".split()
 )
+# Tags and escaped tags, stripped before counting words.
+_TAG = re.compile(r"</?[a-zA-Z][^>]*>|&lt;/?[a-zA-Z].*?&gt;", re.S)
+
+
+_HTML_WORDS = frozenset("href rel noopener noreferrer nofollow target blank src img".split())
+
+
+def is_junk_topic(topic: str) -> bool:
+    """A topic made of leaked HTML ("rel noopener"), stored before #159's fix."""
+    return any(word in _HTML_WORDS for word in topic.lower().split())
 
 
 def keyword_topics(title: str, full_text: str, k: int = 3) -> list[str]:
@@ -55,7 +69,7 @@ def keyword_topics(title: str, full_text: str, k: int = 3) -> list[str]:
         ]
 
     title_words = words(title)
-    body_words = words(" ".join((full_text or "").split()[:600]))
+    body_words = words(" ".join(_TAG.sub(" ", full_text or "").split()[:600]))
     singles: Counter[str] = Counter()
     for w in title_words:
         singles[w] += 3

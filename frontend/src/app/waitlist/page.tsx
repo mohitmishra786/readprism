@@ -13,7 +13,7 @@ export default function Waitlist() {
   return (
     <MarketingShell>
       <article className="prose-reader">
-        <h1 className="font-serif text-3xl font-bold">Hosted Weirling — early access</h1>
+        <h1 className="font-playfair text-3xl font-bold">Hosted Weirling — early access</h1>
         <p className="mt-4 text-lg text-stone-600 dark:text-stone-300">
           Weirling is open source and self-hostable today. A fully-hosted option
           — no Docker, no server — is planned for people who want the behavioral
@@ -24,7 +24,7 @@ export default function Waitlist() {
             <strong>Get notified:</strong>{" "}
             <a
               href="mailto:hello@weirling.com?subject=Weirling%20hosted%20beta%20waitlist"
-              className="text-prism-700 underline"
+              className="text-prism-700 underline dark:text-prism-300"
             >
               email us to join the waitlist
             </a>
@@ -34,7 +34,7 @@ export default function Waitlist() {
             <strong>Follow along:</strong>{" "}
             <a
               href="https://github.com/mohitmishra786/weirling"
-              className="text-prism-700 underline"
+              className="text-prism-700 underline dark:text-prism-300"
             >
               star / watch the repo
             </a>{" "}
@@ -42,13 +42,13 @@ export default function Waitlist() {
           </li>
           <li>
             <strong>Try it now:</strong> self-host in a few minutes —{" "}
-            <a href="/how-it-works" className="text-prism-700 underline">
+            <a href="/how-it-works" className="text-prism-700 underline dark:text-prism-300">
               see how it works
             </a>
             .
           </li>
         </ul>
-        <p className="mt-6 text-sm text-stone-500">
+        <p className="mt-6 text-sm text-stone-500 dark:text-stone-400">
           We&apos;ll only email you about the hosted beta. No spam.
         </p>
       </article>

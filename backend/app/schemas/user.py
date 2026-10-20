@@ -17,8 +17,11 @@ class UserCreate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str
-    password: str
+    # Plain str, not EmailStr: the seeded demo persona uses a .local address,
+    # which EmailStr rejects with 422 (#159). Login is an exact lookup, so any
+    # string is safe; the cap just bounds the payload.
+    email: str = Field(min_length=1, max_length=320)
+    password: str = Field(max_length=1024)
 
 
 class UserRead(BaseModel):

@@ -57,7 +57,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
   };
 
   if (sources.length === 0) {
-    return <p className="text-sm text-stone-500">No sources added yet.</p>;
+    return <p className="text-sm text-stone-500 dark:text-stone-400">No sources added yet.</p>;
   }
 
   return (
@@ -70,7 +70,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate font-medium text-stone-900">
+                <span className="truncate font-medium text-stone-900 dark:text-stone-100">
                   {s.name || s.url}
                 </span>
                 {s.health !== "healthy" && (
@@ -96,7 +96,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                   </span>
                 )}
               </div>
-              <div className="mt-0.5 text-xs text-stone-500">
+              <div className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
                 <span className="font-mono uppercase tracking-wide">{s.source_type}</span>
                 {" · "}
                 {s.last_fetched_at
@@ -109,13 +109,13 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                 Relevance {Math.round(s.trust_weight * 100)}%
               </div>
               {redditStillLive && isRedditUrl(s.feed_url || s.url) && (
-                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
+                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1 dark:text-amber-200 dark:bg-amber-950/40">
                   Reddit stops serving RSS on 13 Nov 2026. This source keeps updating until
                   then and pauses after. Consider a blog, Substack, Bluesky or Mastodon feed instead.
                 </div>
               )}
               {s.last_error && s.health !== "healthy" && (
-                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1">
+                <div className="mt-1.5 text-xs text-amber-800 bg-amber-50 rounded px-2 py-1 dark:text-amber-200 dark:bg-amber-950/40">
                   {s.last_error}
                 </div>
               )}
@@ -125,15 +125,15 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                   <button
                     type="button"
                     onClick={() => fix(s)}
-                    className="rounded border border-stone-300 px-2 py-0.5 font-medium text-stone-700 hover:bg-stone-100"
+                    className="rounded border border-stone-300 px-2 py-0.5 font-medium text-stone-700 hover:bg-stone-100 dark:border-white/20 dark:text-stone-200 dark:hover:bg-white/10"
                   >
                     Fix this feed
                   </button>
-                  {fixNote[s.id] && <span className="text-stone-500">{fixNote[s.id]}</span>}
+                  {fixNote[s.id] && <span className="text-stone-500 dark:text-stone-400">{fixNote[s.id]}</span>}
                 </div>
               )}
               {/* Trust-weight bar */}
-              <div className="mt-2.5 h-1 w-24 overflow-hidden rounded-full bg-stone-200">
+              <div className="mt-2.5 h-1 w-24 overflow-hidden rounded-full bg-stone-200 dark:bg-white/10">
                 <div
                   className="reading-progress h-full rounded-full"
                   style={{ width: `${s.trust_weight * 100}%` }}
@@ -143,13 +143,13 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
             <div className="flex shrink-0 gap-1.5">
               <button
                 onClick={() => toggle(s)}
-                className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs"
+                className="btn-ghost border border-stone-200 px-2.5 py-1 text-xs dark:border-white/10"
               >
                 {s.is_active ? "Pause" : "Resume"}
               </button>
               <button
                 onClick={() => del(s.id)}
-                className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50"
+                className="border border-rose-200 px-2.5 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300"
               >
                 Remove
               </button>

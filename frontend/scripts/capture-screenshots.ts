@@ -43,12 +43,36 @@ function optimizeSize(filePath: string) {
   }
 }
 
-async function captureForTheme(theme: "light" | "dark") {
+// Hide one-off notices so the shots show the product, not the welcome banner
+// and calibration questions. Clicking dismiss is what a reader would do.
+async function clearDigestChrome(page: Page) {
+  const prompts = page.getByRole("button", { name: /^Dismiss prompt:/ });
+  // The calibration questions load after the cards; wait for them (or not).
+  await prompts.first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+  while ((await prompts.count()) > 0) {
+    await prompts.first().click();
+    await page.waitForTimeout(150); // let the list re-render
+  }
+  const banner = page.getByRole("button", { name: "Dismiss", exact: true });
+  if ((await banner.count()) > 0) await banner.first().click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+}
+
+async function shoot(page: Page, file: string) {
+  await page.evaluate(() => document.fonts.ready);
+  await page.screenshot({ path: file, animations: "disabled" });
+  optimizeSize(file);
+}
+
+async function capture() {
+  const theme = "dark"; // the app has one look (#159)
   console.log(`\n=== Capturing screenshots for theme: ${theme} ===`);
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     viewport: { width: 1280, height: 800 },
     colorScheme: theme,
+    // The app honours reduced motion, so cards don't get caught mid fade-in.
+    reducedMotion: "reduce",
   });
 
   const page = await context.newPage();
@@ -65,6 +89,7 @@ async function captureForTheme(theme: "light" | "dark") {
   await page.locator("article.card").first().waitFor({ state: "visible", timeout: 15000 });
   await page.locator('h1:has-text("Your Digest")').waitFor({ state: "visible", timeout: 15000 });
   await page.waitForLoadState("networkidle");
+  await clearDigestChrome(page);
 
   // Get first article ID for reader view
   const firstArticleLink = await page.locator('article.card h3 a[href^="/read/"]').first().getAttribute("href");
@@ -77,9 +102,8 @@ async function captureForTheme(theme: "light" | "dark") {
   // Shot 1: digest
   console.log("Capturing digest...");
   await assertAuthenticatedAndValid(page, "digest");
-  const digestPath = path.join(OUT_DIR, `digest-${theme}.png`);
-  await page.screenshot({ path: digestPath });
-  optimizeSize(digestPath);
+  const digestPath = path.join(OUT_DIR, `digest.png`);
+  await shoot(page, digestPath);
   console.log(`Saved ${digestPath}`);
 
   // Shot 2: why-this
@@ -92,9 +116,8 @@ async function captureForTheme(theme: "light" | "dark") {
   const whyPanel = page.locator('text="Why this is ranked here"').first();
   await whyPanel.waitFor({ state: "visible", timeout: 10000 });
   await assertAuthenticatedAndValid(page, "why-this");
-  const whyThisPath = path.join(OUT_DIR, `why-this-${theme}.png`);
-  await page.screenshot({ path: whyThisPath });
-  optimizeSize(whyThisPath);
+  const whyThisPath = path.join(OUT_DIR, `why-this.png`);
+  await shoot(page, whyThisPath);
   console.log(`Saved ${whyThisPath}`);
 
   // Shot 3: interests
@@ -104,25 +127,19 @@ async function captureForTheme(theme: "light" | "dark") {
   await page.locator("svg").first().waitFor({ state: "visible", timeout: 10000 });
   await page.locator('text="All topics"').first().waitFor({ state: "visible", timeout: 10000 });
   await assertAuthenticatedAndValid(page, "interests");
-  const interestsPath = path.join(OUT_DIR, `interests-${theme}.png`);
-  await page.screenshot({ path: interestsPath });
-  optimizeSize(interestsPath);
+  const interestsPath = path.join(OUT_DIR, `interests.png`);
+  await shoot(page, interestsPath);
   console.log(`Saved ${interestsPath}`);
 
   // Shot 4: reader
   console.log(`Capturing reader for article ${firstArticleId}...`);
-  if (theme === "dark") {
-    await page.evaluate(() => window.localStorage.setItem("reader-theme", "dark"));
-  } else {
-    await page.evaluate(() => window.localStorage.setItem("reader-theme", "light"));
-  }
+  await page.evaluate(() => window.localStorage.removeItem("reader-theme"));
   await page.goto(`${BASE_URL}/read/${firstArticleId}`, { waitUntil: "networkidle" });
   await page.locator(".prose-reader").waitFor({ state: "visible", timeout: 10000 });
   await page.locator("header h1").waitFor({ state: "visible", timeout: 10000 });
   await assertAuthenticatedAndValid(page, "reader");
-  const readerPath = path.join(OUT_DIR, `reader-${theme}.png`);
-  await page.screenshot({ path: readerPath });
-  optimizeSize(readerPath);
+  const readerPath = path.join(OUT_DIR, `reader.png`);
+  await shoot(page, readerPath);
   console.log(`Saved ${readerPath}`);
 
   // Shot 5: sources
@@ -131,9 +148,8 @@ async function captureForTheme(theme: "light" | "dark") {
   await page.locator('h1:has-text("Sources")').waitFor({ state: "visible", timeout: 10000 });
   await page.locator(".card").first().waitFor({ state: "visible", timeout: 10000 });
   await assertAuthenticatedAndValid(page, "sources");
-  const sourcesPath = path.join(OUT_DIR, `sources-${theme}.png`);
-  await page.screenshot({ path: sourcesPath });
-  optimizeSize(sourcesPath);
+  const sourcesPath = path.join(OUT_DIR, `sources.png`);
+  await shoot(page, sourcesPath);
   console.log(`Saved ${sourcesPath}`);
 
   await context.close();
@@ -145,10 +161,9 @@ async function main() {
     fs.mkdirSync(OUT_DIR, { recursive: true });
   }
 
-  await captureForTheme("light");
-  await captureForTheme("dark");
+  await capture();
 
-  console.log("\nAll 10 screenshots captured successfully!");
+  console.log("\nAll 5 screenshots captured successfully!");
 }
 
 main().catch((err) => {

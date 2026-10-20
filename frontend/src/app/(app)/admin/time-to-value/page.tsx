@@ -34,11 +34,11 @@ export default function TimeToValuePage() {
 
   return (
     <section>
-      <h1 className="font-serif text-2xl text-stone-900 dark:text-stone-100">Time to value</h1>
+      <h1 className="font-playfair text-2xl text-stone-900 dark:text-stone-100">Time to value</h1>
       <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
         Local-only: computed from this instance&apos;s own rows, nothing leaves the box.
       </p>
-      {error && <p className="mt-6 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-6 text-sm text-red-600 dark:text-red-300">{error}</p>}
       {ttv && (
         <dl className="mt-6 grid gap-4 sm:grid-cols-3">
           <div className="card p-4">

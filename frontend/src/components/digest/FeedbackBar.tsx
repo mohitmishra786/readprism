@@ -145,7 +145,7 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
             <button
               key={r.value}
               onClick={() => rateWithReason(r.value)}
-              className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs transition-colors hover:border-stone-300"
+              className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-xs transition-colors hover:border-stone-300 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-white/30"
             >
               {r.label}
             </button>

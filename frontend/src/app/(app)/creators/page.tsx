@@ -16,9 +16,9 @@ export default function CreatorsPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="eyebrow text-prism-700">People</div>
-        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Creators</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <div className="eyebrow text-prism-700 dark:text-prism-300">People</div>
+        <h1 className="mt-1 font-playfair text-3xl font-bold tracking-tight">Creators</h1>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           Track individuals across Substack, YouTube, Medium, Bluesky, Mastodon, and more.
         </p>
       </header>
@@ -33,7 +33,7 @@ export default function CreatorsPage() {
           ))}
         </div>
       ) : creators.length === 0 ? (
-        <p className="text-sm text-stone-500">No creators added yet.</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">No creators added yet.</p>
       ) : (
         <div className="space-y-2.5">
           {creators.map((c) => (

@@ -42,9 +42,11 @@ def detect_emerging(
     history_counts: topic -> distinct-source counts per trailing 7-day window
     (oldest first), typically four windows over 28 days.
     """
+    from app.services.summarization.extractive import is_junk_topic
+
     out: list[EmergingTopic] = []
     for topic, count in recent_sources.items():
-        if count < min_sources:
+        if count < min_sources or is_junk_topic(topic):
             continue
         windows = history_counts.get(topic)
         if windows is None:

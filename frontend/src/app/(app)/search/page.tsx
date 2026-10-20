@@ -45,9 +45,9 @@ export default function SearchPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="eyebrow text-prism-700">Archive</div>
-        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight">Search</h1>
-        <p className="mt-1 text-sm text-stone-500">
+        <div className="eyebrow text-prism-700 dark:text-prism-300">Archive</div>
+        <h1 className="mt-1 font-playfair text-3xl font-bold tracking-tight">Search</h1>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
           Full-text search across your reading archive.
         </p>
       </header>
@@ -68,7 +68,7 @@ export default function SearchPage() {
       {searched && (
         <div className="space-y-3">
           {results.length === 0 ? (
-            <p className="py-8 text-center text-sm text-stone-500">
+            <p className="py-8 text-center text-sm text-stone-500 dark:text-stone-400">
               No results for “{query}”.
             </p>
           ) : (
@@ -79,7 +79,7 @@ export default function SearchPage() {
                     href={item.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-stone-900 hover:text-prism-700"
+                    className="text-stone-900 dark:text-stone-100 hover:text-prism-700 dark:hover:text-prism-200"
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(
                         (item as unknown as { _formatted?: Record<string, string> })._formatted
@@ -89,11 +89,11 @@ export default function SearchPage() {
                   />
                 </h3>
                 {item.author && (
-                  <p className="mt-1 text-xs text-stone-500">{item.author}</p>
+                  <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{item.author}</p>
                 )}
                 {item.summary_brief && (
                   <p
-                    className="mt-2 text-sm leading-relaxed text-stone-600"
+                    className="mt-2 text-sm leading-relaxed text-stone-600 dark:text-stone-300"
                     dangerouslySetInnerHTML={{
                       __html: sanitizeHtml(
                         (item as unknown as { _formatted?: Record<string, string> })._formatted

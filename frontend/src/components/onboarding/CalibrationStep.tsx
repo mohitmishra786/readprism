@@ -50,29 +50,29 @@ export function CalibrationStep() {
 
   if (gaveUp) {
     return (
-      <p className="text-sm text-stone-500">
+      <p className="text-sm text-stone-500 dark:text-stone-400">
         Your sources haven&apos;t delivered articles yet, so there&apos;s nothing to rate.
         Skip this step: the first digest learns from what you read.
       </p>
     );
   }
   if (items === null || items.length === 0) {
-    return <p className="text-sm text-stone-500">Fetching a few headlines from your sources…</p>;
+    return <p className="text-sm text-stone-500 dark:text-stone-400">Fetching a few headlines from your sources…</p>;
   }
   const rated = Object.keys(ratings).length;
 
   return (
     <div>
-      <p className="mb-3 text-sm text-stone-500">
+      <p className="mb-3 text-sm text-stone-500 dark:text-stone-400">
         Quick taste test: would you read these? {rated}/{items.length} rated.{" "}
         <strong>Optional</strong>.
       </p>
       <ul className="space-y-2">
         {items.map((item) => (
-          <li key={item.id} className="flex items-center gap-3 rounded-lg border border-stone-200 p-3">
+          <li key={item.id} className="flex items-center gap-3 rounded-lg border border-stone-200 p-3 dark:border-white/10">
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{item.title}</p>
-              <p className="text-xs text-stone-500">
+              <p className="text-xs text-stone-500 dark:text-stone-400">
                 {hostOf(item.url)}
                 {item.topic_clusters[0] ? ` · ${item.topic_clusters[0]}` : ""}
               </p>

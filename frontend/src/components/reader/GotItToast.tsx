@@ -50,7 +50,7 @@ export function GotItToast({
           <button
             type="button"
             onClick={() => adjust("suppress", `Got it: less ${topic}.`)}
-            className="rounded border border-stone-300 px-3 py-1"
+            className="rounded border border-stone-300 px-3 py-1 dark:border-white/20"
           >
             Less
           </button>

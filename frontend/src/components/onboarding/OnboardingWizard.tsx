@@ -152,7 +152,7 @@ export function OnboardingWizard() {
                 height: 4,
                 flex: 1,
                 borderRadius: 2,
-                background: i <= step ? "#2563eb" : "#e5e7eb",
+                background: i <= step ? "#b45309" : "#3a3a3a",
               }}
             />
           ))}
@@ -180,7 +180,7 @@ export function OnboardingWizard() {
                   padding: "6px 12px",
                   borderRadius: 16,
                   background: "rgba(37,99,235,0.12)",
-                  color: "#1e40af",
+                  color: "#f8a94a",
                   fontSize: 14,
                 }}
               >
@@ -188,7 +188,7 @@ export function OnboardingWizard() {
                 <button
                   onClick={() => setTopics((prev) => prev.filter((x) => x !== t))}
                   aria-label={`Remove topic ${t}`}
-                  style={{ background: "none", border: "none", color: "#1e40af", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center" }}
+                  style={{ background: "none", border: "none", color: "#f8a94a", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center" }}
                 >
                   <X style={{ width: 14, height: 14 }} aria-hidden="true" />
                 </button>
@@ -212,7 +212,7 @@ export function OnboardingWizard() {
             />
             <button
               onClick={addTopic}
-              style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+              style={{ padding: "8px 16px", background: "#b45309", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
             >
               Add
             </button>
@@ -252,7 +252,7 @@ export function OnboardingWizard() {
             />
             <button
               onClick={addSource}
-              style={{ padding: "8px 16px", background: "#2563eb", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+              style={{ padding: "8px 16px", background: "#b45309", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
             >
               Add
             </button>
@@ -364,7 +364,7 @@ export function OnboardingWizard() {
             disabled={expanding || subscribing}
             style={{
               padding: "10px 20px",
-              background: "#2563eb",
+              background: "#b45309",
               color: "#fff",
               border: "none",
               borderRadius: 6,

@@ -6,7 +6,7 @@ const SECTION_META: Record<string, { title: string; eyebrow: string; accent: str
   lead: {
     title: "Top Reads",
     eyebrow: "What matters most today",
-    accent: "text-prism-700",
+    accent: "text-prism-700 dark:text-prism-300",
   },
   creator: {
     title: "From Your Creators",
@@ -21,7 +21,7 @@ const SECTION_META: Record<string, { title: string; eyebrow: string; accent: str
   more: {
     title: "More From Your Feeds",
     eyebrow: "Also worth a look",
-    accent: "text-stone-700",
+    accent: "text-stone-700 dark:text-stone-200",
   },
   discovery: {
     title: "Discover",
@@ -37,13 +37,13 @@ interface DigestSectionProps {
 
 export function DigestSection({ name, items }: DigestSectionProps) {
   if (items.length === 0) return null;
-  const meta = SECTION_META[name] || { title: name, eyebrow: "", accent: "text-stone-700" };
+  const meta = SECTION_META[name] || { title: name, eyebrow: "", accent: "text-stone-700 dark:text-stone-200" };
 
   return (
     <section className="mb-10 animate-slide-up">
-      <div className="mb-4 border-b border-stone-200 pb-2">
+      <div className="mb-4 border-b border-stone-200 pb-2 dark:border-white/10">
         <div className={`eyebrow ${meta.accent}`}>{meta.eyebrow}</div>
-        <h2 className="mt-0.5 font-serif text-xl font-bold text-stone-900">
+        <h2 className="mt-0.5 font-playfair text-xl font-bold text-stone-900 dark:text-stone-100">
           {meta.title}
         </h2>
       </div>

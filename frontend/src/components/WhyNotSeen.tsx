@@ -39,8 +39,8 @@ export function WhyNotSeen({ contentId }: { contentId: string }) {
       </button>
       {open && (
         <div className="mt-2 rounded-lg border border-stone-200 p-3 text-sm dark:border-stone-700">
-          {error && <p className="text-red-600">{error}</p>}
-          {!why && !error && <p className="text-stone-500">Scoring it for you…</p>}
+          {error && <p className="text-red-600 dark:text-red-300">{error}</p>}
+          {!why && !error && <p className="text-stone-500 dark:text-stone-400">Scoring it for you…</p>}
           {why && (
             <>
               <p>{why.message}</p>

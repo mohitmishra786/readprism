@@ -42,7 +42,7 @@ export function AddSourceForm({ onAdded }: AddSourceFormProps) {
           {loading ? "Adding…" : "Add Source"}
         </button>
       </div>
-      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{error}</p>}
     </form>
   );
 }

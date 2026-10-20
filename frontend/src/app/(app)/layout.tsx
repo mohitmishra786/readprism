@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, hasSession } from "../../lib/api";
 import { AccountNotices } from "../../components/AccountNotices";
+import { Logo } from "../../components/ui/Logo";
 
 const NAV = [
   { href: "/digest", label: "Digest" },
@@ -38,30 +39,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-stone-50 dark:bg-stone-950">
+    <div className="min-h-screen bg-[var(--bg)]">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
-      <header className="sticky top-0 z-40 border-b border-stone-200 bg-white/80 backdrop-blur-lg dark:border-stone-800 dark:bg-stone-900/80">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-1 px-4">
-          <Link
-            href="/digest"
-            className="prism-mark mr-4 text-lg"
-            aria-label="Weirling home"
+      {/* Same chrome as the landing page (#159): wordmark, glass pill nav,
+          pill action on the right. */}
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-black/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4">
+          <Logo href="/digest" />
+          <nav
+            aria-label="Main"
+            className="mx-auto flex items-center gap-0.5 overflow-x-auto rounded-full border border-white/15 bg-white/[0.06] p-1"
           >
-            ◭ Weirling
-          </Link>
-          <nav className="flex items-center gap-0.5 overflow-x-auto">
             {NAV.map((item) => {
               const active = pathname === item.href;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    active
-                      ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900"
-                      : "text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+                  aria-current={active ? "page" : undefined}
+                  className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    active ? "bg-white text-black" : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {item.label}
@@ -75,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               await api.auth.logout().catch(() => {});
               router.replace("/login");
             }}
-            className="ml-auto text-sm text-stone-500 transition-colors hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100"
+            className="whitespace-nowrap rounded-full border border-white/20 px-4 py-1.5 text-sm text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >
             Sign out
           </button>

@@ -108,8 +108,8 @@ export function StarterPackPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topicKey]);
 
-  if (packs === null) return <p className="text-sm text-stone-500">Loading starter packs…</p>;
-  if (packs.length === 0) return <p className="text-sm text-stone-500">No starter packs available.</p>;
+  if (packs === null) return <p className="text-sm text-stone-500 dark:text-stone-400">Loading starter packs…</p>;
+  if (packs.length === 0) return <p className="text-sm text-stone-500 dark:text-stone-400">No starter packs available.</p>;
 
   const toggle = (id: string) =>
     onChange(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
@@ -134,16 +134,16 @@ export function StarterPackPicker({
               <div className="flex items-center gap-2 font-medium">
                 {(() => {
                   const Icon = ICONS[p.id] ?? BookOpen;
-                  return <Icon className="h-4 w-4 shrink-0 text-stone-600" aria-hidden="true" />;
+                  return <Icon className="h-4 w-4 shrink-0 text-stone-600 dark:text-stone-300" aria-hidden="true" />;
                 })()}
                 {p.title}
                 {p.suggested && !following && (
-                  <span className="ml-auto rounded bg-amber-50 px-1.5 text-[10px] font-semibold uppercase text-amber-700">
+                  <span className="ml-auto rounded bg-amber-50 px-1.5 text-[10px] font-semibold uppercase text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
                     For you
                   </span>
                 )}
               </div>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
                 {following
                   ? "Already following"
                   : `${p.feed_count} sources · ${p.feeds.slice(0, 3).map((f) => f.name).join(", ")}`}
@@ -152,7 +152,7 @@ export function StarterPackPicker({
           );
         })}
       </div>
-      <div className="sticky bottom-0 mt-4 flex items-center justify-between border-t border-stone-200 bg-white/95 py-3 text-sm backdrop-blur dark:bg-stone-950/95">
+      <div className="sticky bottom-0 mt-4 flex items-center justify-between border-t border-stone-200 bg-white/95 py-3 text-sm backdrop-blur dark:bg-stone-950/95 dark:border-white/10">
         <span>{packSummary(packs, selected)}</span>
         {footer}
       </div>

@@ -680,26 +680,60 @@ async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
 
 
 @router.get("/session")
-async def session_state(request: Request) -> dict:
+async def session_state(
+    request: Request, response: Response, session: AsyncSession = Depends(get_db)
+) -> dict:
     """Is there a valid browser session? Returns the CSRF token for it (#103).
 
     Lets the web app restore its in-memory CSRF token after a reload without
     reading cookies (which also works when the API is on another subdomain).
+
+    "Valid" means what every other endpoint means: a good access token for an
+    account that still exists. A token for a deleted or re-seeded account
+    used to count as signed in here while every API call returned 401, so the
+    app bounced between /digest and /login forever (#159). Such cookies are
+    cleared.
     """
-    from app.api.session_cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
+    from app.api.session_cookies import (
+        ACCESS_COOKIE,
+        CSRF_COOKIE,
+        REFRESH_COOKIE,
+        clear_session_cookies,
+    )
 
     access = request.cookies.get(ACCESS_COOKIE)
     valid = False
     if access:
         try:
-            valid = _decode_token(access, secret=_access_secret()).get("type") == "access"
-        except HTTPException:
+            payload = _decode_token(access, secret=_access_secret())
+            user_id = payload.get("sub") if payload.get("type") == "access" else None
+            if user_id:
+                valid = await session.get(User, uuid.UUID(user_id)) is not None
+        except (HTTPException, ValueError):
             valid = False
+    refreshable = bool(request.cookies.get(REFRESH_COOKIE))
+    if access and not valid and refreshable and not await _refresh_user_exists(request, session):
+        clear_session_cookies(response)
+        refreshable = False
+    elif access and not valid and not refreshable:
+        clear_session_cookies(response)
     return {
         "authenticated": valid,
-        "refreshable": bool(request.cookies.get(REFRESH_COOKIE)),
+        "refreshable": refreshable,
         "csrf_token": request.cookies.get(CSRF_COOKIE) if valid else None,
     }
+
+
+async def _refresh_user_exists(request: Request, session: AsyncSession) -> bool:
+    """Whether the refresh cookie belongs to an account that still exists."""
+    from app.api.session_cookies import REFRESH_COOKIE
+
+    try:
+        payload = _decode_token(request.cookies.get(REFRESH_COOKIE) or "", secret=_refresh_secret())
+        user_id = payload.get("sub")
+        return bool(user_id) and await session.get(User, uuid.UUID(user_id)) is not None
+    except (HTTPException, ValueError):
+        return False
 
 
 @router.get("/me", response_model=UserRead)

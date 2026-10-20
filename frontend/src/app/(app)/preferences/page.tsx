@@ -60,7 +60,7 @@ function InterestGraphSVG({
             y1={from.y}
             x2={to.x}
             y2={to.y}
-            stroke="#bfdbfe"
+            stroke="#3a3a3a"
             strokeWidth={Math.max(0.5, edge.weight * 3)}
             opacity={0.6}
           />
@@ -77,7 +77,7 @@ function InterestGraphSVG({
               cy={pos.y}
               r={r}
               fill={`rgba(37,99,235,${0.15 + node.weight * 0.4})`}
-              stroke={node.is_core ? "#2563eb" : "#93c5fd"}
+              stroke={node.is_core ? "#b45309" : "#f8a94a"}
               strokeWidth={node.is_core ? 2 : 1}
             />
             <text
@@ -86,7 +86,7 @@ function InterestGraphSVG({
               textAnchor="middle"
               dominantBaseline="middle"
               fontSize={Math.max(8, Math.min(11, 200 / visible.length))}
-              fill="#1e3a8a"
+              fill="#e7e5e4"
               fontWeight={node.is_core ? "bold" : "normal"}
               style={{ pointerEvents: "none" }}
             >
@@ -136,7 +136,7 @@ function LlmStatus() {
           {status.embedding_is_hash ? (
             <AlertTriangle style={{ width: 14, height: 14, color: "#d97706" }} aria-hidden="true" />
           ) : (
-            <Brain style={{ width: 14, height: 14, color: "#2563eb" }} aria-hidden="true" />
+            <Brain style={{ width: 14, height: 14, color: "#f08a24" }} aria-hidden="true" />
           )}
           <span>
             Embeddings: {status.embedding_model}
@@ -389,7 +389,7 @@ export default function PreferencesPage() {
           style={{
             marginTop: 16,
             padding: "10px 24px",
-            background: "#2563eb",
+            background: "#b45309",
             color: "#fff",
             border: "none",
             borderRadius: 6,
@@ -400,7 +400,7 @@ export default function PreferencesPage() {
           {saving ? "Saving..." : saved ? "Saved!" : "Save preferences"}
         </button>
         {saveError && (
-          <p role="alert" style={{ color: "#dc2626", fontSize: 14, marginTop: 8 }}>
+          <p role="alert" style={{ color: "#f87171", fontSize: 14, marginTop: 8 }}>
             {saveError}
           </p>
         )}
@@ -433,10 +433,10 @@ export default function PreferencesPage() {
                   padding: "4px 12px",
                   borderRadius: 20,
                   background: `rgba(37,99,235,${0.1 + node.weight * 0.5})`,
-                  color: "#1e40af",
+                  color: "#f8a94a",
                   fontSize: `${0.75 + node.weight * 0.5}rem`,
                   fontWeight: node.is_core ? 700 : 400,
-                  border: node.is_core ? "2px solid #93c5fd" : "1px solid #dbeafe",
+                  border: node.is_core ? "2px solid #b45309" : "1px solid #3a3a3a",
                 }}
               >
                 <button
@@ -446,9 +446,9 @@ export default function PreferencesPage() {
                 >
                   {node.label}
                 </button>
-                <button onClick={() => boostTopic(node.label)} title={`More of "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#166534", padding: 0, fontSize: "0.8em" }}>▲</button>
-                <button onClick={() => renameInterest(node.label)} title={`Rename "${node.label}"`} aria-label={`Rename "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#1e40af", padding: 0, fontSize: "0.8em", display: "inline-flex", alignItems: "center" }}><Pencil style={{ width: 12, height: 12 }} aria-hidden="true" /></button>
-                <button onClick={() => mergeInterest(node.label)} title={`Merge "${node.label}" into another topic`} style={{ cursor: "pointer", background: "none", border: "none", color: "#6b21a8", padding: 0, fontSize: "0.8em" }}>⇄</button>
+                <button onClick={() => boostTopic(node.label)} title={`More of "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#86efac", padding: 0, fontSize: "0.8em" }}>▲</button>
+                <button onClick={() => renameInterest(node.label)} title={`Rename "${node.label}"`} aria-label={`Rename "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#f8a94a", padding: 0, fontSize: "0.8em", display: "inline-flex", alignItems: "center" }}><Pencil style={{ width: 12, height: 12 }} aria-hidden="true" /></button>
+                <button onClick={() => mergeInterest(node.label)} title={`Merge "${node.label}" into another topic`} style={{ cursor: "pointer", background: "none", border: "none", color: "#c4b5fd", padding: 0, fontSize: "0.8em" }}>⇄</button>
               </span>
             ))}
           </div>
@@ -541,10 +541,10 @@ export default function PreferencesPage() {
             disabled={busy}
             style={{
               padding: "8px 16px",
-              border: "1px solid #fecaca",
+              border: "1px solid #7f1d1d",
               borderRadius: 6,
               background: "var(--bg-elevated)",
-              color: "#dc2626",
+              color: "#f87171",
               cursor: busy ? "not-allowed" : "pointer",
             }}
           >

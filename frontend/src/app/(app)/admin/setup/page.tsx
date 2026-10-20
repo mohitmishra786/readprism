@@ -45,12 +45,12 @@ export default function SetupPage() {
   if (error) {
     return (
       <section className="max-w-2xl">
-        <h1 className="font-serif text-2xl">Instance setup</h1>
+        <h1 className="font-playfair text-2xl">Instance setup</h1>
         <p className="mt-3 text-sm text-stone-600 dark:text-stone-300">{error}</p>
       </section>
     );
   }
-  if (!config) return <p className="text-sm text-stone-500">Loading…</p>;
+  if (!config) return <p className="text-sm text-stone-500 dark:text-stone-400">Loading…</p>;
 
   const fields = (group: SetupField["group"]) => config.fields.filter((f) => f.group === group);
   const change = (key: string, value: string) => setDraft((d) => ({ ...d, [key]: value }));
@@ -110,13 +110,13 @@ export default function SetupPage() {
   return (
     <section className="max-w-2xl space-y-8">
       <div>
-        <h1 className="font-serif text-2xl text-stone-900 dark:text-stone-100">Instance setup</h1>
+        <h1 className="font-playfair text-2xl text-stone-900 dark:text-stone-100">Instance setup</h1>
         <p className="mt-2 text-sm text-stone-600 dark:text-stone-300">
           You own this Weirling instance. Settings saved here are encrypted on your server. Anything
           set in <code>.env</code> takes precedence and is shown as locked.
         </p>
         {!config.can_store_secrets && (
-          <p role="alert" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p role="alert" className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
             Saving is off: <code>SECRETS_ENCRYPTION_KEY</code> isn&apos;t set. Run{" "}
             <code>./scripts/init_env.sh</code> and restart, or set these in <code>.env</code>.
           </p>
@@ -138,12 +138,12 @@ export default function SetupPage() {
             <h2 id={`setup-${g.id}`} className="text-lg font-semibold">
               {g.title}
               {g.id === "llm" && (
-                <span className="ml-2 text-xs font-normal text-stone-500">
+                <span className="ml-2 text-xs font-normal text-stone-500 dark:text-stone-400">
                   {config.llm_configured ? "Configured" : "Not configured"}
                 </span>
               )}
               {g.id === "smtp" && (
-                <span className="ml-2 text-xs font-normal text-stone-500">
+                <span className="ml-2 text-xs font-normal text-stone-500 dark:text-stone-400">
                   {config.email_configured ? "Configured" : "Not configured"}
                 </span>
               )}
@@ -172,7 +172,7 @@ export default function SetupPage() {
                   {g.id === "llm" ? "Test the key" : "Send me a test email"}
                 </button>
               )}
-              {saved === g.id && <span className="text-sm text-emerald-700">Saved.</span>}
+              {saved === g.id && <span className="text-sm text-emerald-700 dark:text-emerald-300">Saved.</span>}
             </div>
             {result && (
               <p role="status" className={`text-sm ${result.ok ? "text-emerald-700" : "text-rose-700"}`}>
@@ -208,7 +208,7 @@ function FieldInput({
     <div>
       <label htmlFor={id} className="mb-1 block text-sm font-medium">
         {field.label}
-        {note && <span className="ml-2 text-xs font-normal text-stone-500">{note}</span>}
+        {note && <span className="ml-2 text-xs font-normal text-stone-500 dark:text-stone-400">{note}</span>}
       </label>
       <div className="flex gap-2">
         {field.choices ? (

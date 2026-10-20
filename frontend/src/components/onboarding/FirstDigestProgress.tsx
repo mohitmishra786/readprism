@@ -21,13 +21,13 @@ function Step({ done, active, label }: { done: boolean; active: boolean; label: 
           done
             ? "flex h-5 w-5 items-center justify-center rounded-full bg-prism-600 text-xs text-white"
             : active
-              ? "h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-prism-600"
-              : "h-5 w-5 rounded-full border-2 border-stone-200"
+              ? "h-5 w-5 animate-spin rounded-full border-2 border-stone-200 border-t-prism-600 dark:border-white/10"
+              : "h-5 w-5 rounded-full border-2 border-stone-200 dark:border-white/10"
         }
       >
         {done ? <Check className="h-3 w-3" aria-hidden="true" /> : ""}
       </span>
-      <span className={done ? "text-stone-900" : "text-stone-500"}>{label}</span>
+      <span className={done ? "text-stone-900 dark:text-stone-100" : "text-stone-500 dark:text-stone-400"}>{label}</span>
     </li>
   );
 }
@@ -89,8 +89,8 @@ export function FirstDigestProgress({ onReady }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center" aria-live="polite">
-      <h2 className="font-serif text-2xl font-bold text-stone-900">Building your first digest</h2>
-      <p className="mt-2 max-w-md text-sm text-stone-500">
+      <h2 className="font-playfair text-2xl font-bold text-stone-900 dark:text-stone-100">Building your first digest</h2>
+      <p className="mt-2 max-w-md text-sm text-stone-500 dark:text-stone-400">
         We’re fetching your sources and reading the newest articles. This usually takes a
         minute or two; the page updates on its own.
       </p>
@@ -109,7 +109,7 @@ export function FirstDigestProgress({ onReady }: Props) {
         <Step done={Boolean(status?.digest_id)} active={Boolean(status?.ready)} label="Ranking for you" />
       </ul>
       {stalled && (
-        <p className="mt-8 max-w-sm text-sm text-stone-600">
+        <p className="mt-8 max-w-sm text-sm text-stone-600 dark:text-stone-300">
           This is taking longer than usual. Your sources may be slow to respond; your digest
           will appear here as soon as it’s built. You can also add more sources meanwhile.
         </p>

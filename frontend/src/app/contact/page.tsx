@@ -24,7 +24,7 @@ export default function ContactPage() {
         <strong>Template: not legal advice.</strong> Review with counsel for your specific operating jurisdiction.
       </div>
 
-      <h1 className="font-serif text-3xl font-bold">Contact</h1>
+      <h1 className="font-playfair text-3xl font-bold">Contact</h1>
       <p className="mt-3 text-stone-600 dark:text-stone-300">
         Get in touch with the Weirling project. For general issues, bugs, and feature discussions, visit our{' '}
         <a

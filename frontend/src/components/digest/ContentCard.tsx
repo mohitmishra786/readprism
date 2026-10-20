@@ -64,12 +64,12 @@ export function ContentCard({
       />
 
       {typeof signalBreakdown?.fallback_reason === "string" && (
-        <span className="mb-3 mr-2 inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200">
+        <span className="mb-3 mr-2 inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600 ring-1 ring-stone-200 dark:bg-white/[0.06] dark:text-stone-300">
           Catch-up · from your feeds this fortnight
         </span>
       )}
       {isDiscovery && (
-        <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200">
+        <span className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300">
           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           {discoveredVia
             ? `Outside your usual sources — found via ${discoveredVia}`
@@ -82,7 +82,7 @@ export function ContentCard({
           <a
             href={`/read/${content.id}`}
             onClick={handleRead}
-            className="text-stone-900 transition-colors hover:text-prism-700 dark:text-stone-100"
+            className="text-stone-900 transition-colors hover:text-prism-700 dark:text-stone-100 dark:hover:text-prism-200"
           >
             {content.title}
           </a>
@@ -140,7 +140,7 @@ export function ContentCard({
           onClick={() =>
             setSummaryLevel(summaryLevel === "brief" ? "detailed" : "brief")
           }
-          className="mt-2 text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-prism-600 hover:underline dark:text-stone-400"
+          className="mt-2 text-xs font-medium text-stone-500 underline-offset-2 transition-colors hover:text-prism-600 hover:underline dark:text-stone-400 dark:hover:text-prism-200"
         >
           {summaryLevel === "brief" ? "Show detailed takeaway" : "Show brief summary"}
         </button>
@@ -155,7 +155,7 @@ export function ContentCard({
               onClick={() => setShowWhy((v) => !v)}
               aria-expanded={showWhy}
               aria-controls={`why-${content.id}`}
-              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800"
+              className="inline-flex items-center gap-1.5 rounded-md border border-stone-200 px-2 py-1 text-xs text-stone-500 transition-colors hover:border-stone-300 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:border-white/30"
             >
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-gradient-to-r from-prism-500 to-spectrum-violet" />
               Why this?

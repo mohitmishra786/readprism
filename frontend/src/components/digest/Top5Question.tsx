@@ -8,20 +8,20 @@ export function Top5Question({ digestId }: { digestId: string }) {
   const [answered, setAnswered] = useState(false);
   if (answered) {
     return (
-      <p role="status" className="mb-6 text-sm text-stone-500">
+      <p role="status" className="mb-6 text-sm text-stone-500 dark:text-stone-400">
         Thanks, that helps us tune your ranking.
       </p>
     );
   }
   return (
-    <div className="mb-6 rounded-lg border border-stone-200 px-4 py-3 text-sm">
-      <p className="mb-2 text-stone-700">How many of today&apos;s top 5 did you want to read?</p>
+    <div className="mb-6 rounded-lg border border-stone-200 px-4 py-3 text-sm dark:border-white/10">
+      <p className="mb-2 text-stone-700 dark:text-stone-200">How many of today&apos;s top 5 did you want to read?</p>
       <div className="flex gap-2" role="group" aria-label="How many of the top 5 you wanted">
         {[0, 1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
-            className="h-8 w-8 rounded-md border border-stone-200 hover:bg-stone-50"
+            className="h-8 w-8 rounded-md border border-stone-200 hover:bg-stone-50 dark:border-white/10 dark:hover:bg-white/[0.06]"
             onClick={() => {
               setAnswered(true);
               api.digest.top5(digestId, n).catch(() => {});

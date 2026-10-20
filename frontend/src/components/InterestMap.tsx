@@ -86,9 +86,9 @@ export function InterestMap() {
     return { x: ((e.clientX - rect.left) / rect.width) * W, y: ((e.clientY - rect.top) / rect.height) * H };
   };
 
-  if (!graph) return <p className="text-sm text-stone-500">Loading your interests…</p>;
+  if (!graph) return <p className="text-sm text-stone-500 dark:text-stone-400">Loading your interests…</p>;
   if (graph.nodes.length === 0)
-    return <p className="text-sm text-stone-500">No interests yet. They appear as you read and rate articles.</p>;
+    return <p className="text-sm text-stone-500 dark:text-stone-400">No interests yet. They appear as you read and rate articles.</p>;
 
   const pos = (label: string) => (drag?.id === label ? drag.at : positions.get(label));
   const current = graph.nodes.find((n) => n.label === selected) ?? null;
@@ -204,7 +204,7 @@ export function InterestMap() {
                 <span className={isMuted(n, now) ? "text-stone-400 line-through" : ""}>
                   {n.label}{isRecent(n, now) ? " •" : ""}
                 </span>
-                <span className="tabular-nums text-stone-500">{Math.round(n.weight * 100)}%</span>
+                <span className="tabular-nums text-stone-500 dark:text-stone-400">{Math.round(n.weight * 100)}%</span>
               </button>
             </li>
           ))}

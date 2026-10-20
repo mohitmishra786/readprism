@@ -12,7 +12,7 @@ export const metadata = {
 export default function PrivacyPage() {
   return (
     <main id="main-content" className="mx-auto max-w-3xl px-5 py-12 text-stone-800 dark:text-stone-100">
-      <h1 className="font-serif text-3xl font-bold">What Weirling collects, and why</h1>
+      <h1 className="font-playfair text-3xl font-bold">What Weirling collects, and why</h1>
       <p className="mt-3 text-stone-600 dark:text-stone-300">
         Weirling ranks articles by how you actually read. That means it records what you open, how far
         you read, and what you rate. Here is every field, in plain language. Nothing is sold, shared with

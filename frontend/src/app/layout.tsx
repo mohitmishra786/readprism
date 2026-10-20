@@ -75,7 +75,8 @@ export const metadata: Metadata = {
     // SVG works for modern browsers. iOS apple-touch-icon requires PNG, so we
     // omit the `apple` key rather than point it at an SVG that iOS can't render
     // (it would fall back to a screenshot, which is fine).
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    // ?v=2: the diamond replaced the triangle (#159); browsers cache favicons hard.
+    icon: [{ url: "/icon.svg?v=2", type: "image/svg+xml" }],
   },
 };
 
@@ -92,7 +93,7 @@ const STRUCTURED_DATA = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2563eb",
+  themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -105,7 +106,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang="en"
-      className={`${sans.variable} ${serif.variable} ${display.variable} ${mono.variable}`}
+      // Always dark, like the landing page (#159).
+      className={`dark ${sans.variable} ${serif.variable} ${display.variable} ${mono.variable}`}
     >
       <body>
         <script

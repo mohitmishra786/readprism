@@ -19,27 +19,18 @@ shots.
 
 ## Shot list (screenshots)
 
-Captured in 1280x800 light and dark mode in `docs/media/`:
+Captured at 1280x800 in `docs/media/`. The app has one look, the landing
+page's dark theme, so there is one set:
 
-1. **Daily digest** (`/digest`) — sectioned lead/creator/deep-reads/discovery, showing PRS score chips.
-   - Light: [`media/digest-light.png`](media/digest-light.png)
-   - Dark: [`media/digest-dark.png`](media/digest-dark.png)
-2. **Why-ranked explanation** — card "Why this?" panel showing signal contributions and score breakdown.
-   - Light: [`media/why-this-light.png`](media/why-this-light.png)
-   - Dark: [`media/why-this-dark.png`](media/why-this-dark.png)
-3. **Interest graph** (`/interests`) — interactive SVG interest map with learned topic nodes and weights.
-   - Light: [`media/interests-light.png`](media/interests-light.png)
-   - Dark: [`media/interests-dark.png`](media/interests-dark.png)
-4. **In-app reader** (`/read/[id]`) — editorial typography, standfirst summary, and reading surface theme controls.
-   - Light: [`media/reader-light.png`](media/reader-light.png)
-   - Dark: [`media/reader-dark.png`](media/reader-dark.png)
-5. **Source management** (`/sources`) — followed feeds with trust scores and health indicators.
-   - Light: [`media/sources-light.png`](media/sources-light.png)
-   - Dark: [`media/sources-dark.png`](media/sources-dark.png)
+1. **Daily digest** (`/digest`): ranked sections with score chips. [`media/digest.png`](media/digest.png)
+2. **Why-ranked explanation**: a card's "Why this?" panel with the signal breakdown. [`media/why-this.png`](media/why-this.png)
+3. **Interest graph** (`/interests`): learned topics and weights. [`media/interests.png`](media/interests.png)
+4. **In-app reader** (`/read/[id]`): summary standfirst and reading controls. [`media/reader.png`](media/reader.png)
+5. **Source management** (`/sources`): followed feeds with relevance and health. [`media/sources.png`](media/sources.png)
 
 ## Refreshing the screenshots
 
-To refresh all 10 screenshots:
+To refresh all 5 screenshots:
 
 1. Start the stack and seed the demo account:
    ```bash

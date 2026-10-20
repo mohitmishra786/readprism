@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
+import { Logo } from "../../../components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -68,11 +69,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-stone-50 px-4 dark:bg-white/[0.03]">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="prism-mark text-3xl">◭ Weirling</div>
-          <p className="mt-2 text-sm text-stone-500">Sign in to your account</p>
+          <Logo size="lg" />
+          <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">Sign in to your account</p>
         </div>
 
         <form
@@ -80,7 +81,7 @@ export default function LoginPage() {
           className="card space-y-4 p-6"
         >
           <div>
-            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-stone-700">
+            <label htmlFor="login-email" className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-200">
               Email
             </label>
             <input
@@ -94,7 +95,7 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-stone-700">
+            <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-stone-700 dark:text-stone-200">
               Password
             </label>
             <input
@@ -107,7 +108,7 @@ export default function LoginPage() {
             />
           </div>
           {error && (
-            <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">
+            <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">
               {error}
             </p>
           )}
@@ -121,7 +122,7 @@ export default function LoginPage() {
 
           <div className="pt-1 text-center">
             {magicSent ? (
-              <p className="text-sm text-emerald-700">
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
                 Check your email for a sign-in link.
               </p>
             ) : (
@@ -129,7 +130,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={sendMagicLink}
                 disabled={loading}
-                className="text-sm text-stone-500 underline-offset-2 hover:text-prism-600 hover:underline"
+                className="text-sm text-stone-500 underline-offset-2 hover:text-prism-600 hover:underline dark:text-stone-400 dark:hover:text-prism-200"
               >
                 Email me a sign-in link instead
               </button>
@@ -140,10 +141,10 @@ export default function LoginPage() {
             <div className="pt-1">
               <div className="relative my-3">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-stone-200" />
+                  <div className="w-full border-t border-stone-200 dark:border-white/10" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-stone-400">or</span>
+                  <span className="bg-white px-2 text-stone-400 dark:bg-[var(--bg-elevated)]">or</span>
                 </div>
               </div>
               <button
@@ -158,9 +159,9 @@ export default function LoginPage() {
           )}
         </form>
 
-        <p className="mt-6 text-center text-sm text-stone-500">
+        <p className="mt-6 text-center text-sm text-stone-500 dark:text-stone-400">
           No account?{" "}
-          <a href="/register" className="font-medium text-prism-600 hover:text-prism-700">
+          <a href="/register" className="font-medium text-prism-600 hover:text-prism-700 dark:text-prism-300 dark:hover:text-prism-200">
             Register
           </a>
         </p>

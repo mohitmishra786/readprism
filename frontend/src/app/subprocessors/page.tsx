@@ -11,7 +11,7 @@ export const metadata = {
 export default function SubprocessorsPage() {
   return (
     <main id="main-content" className="mx-auto max-w-4xl px-5 py-12 text-stone-800 dark:text-stone-100">
-      <h1 className="font-serif text-3xl font-bold">Third-Party Services &amp; Subprocessors</h1>
+      <h1 className="font-playfair text-3xl font-bold">Third-Party Services &amp; Subprocessors</h1>
       <p className="mt-2 text-xs italic text-stone-500 dark:text-stone-400">
         Template: not legal advice. Have counsel review and adapt before offering a hosted service.
       </p>
@@ -72,7 +72,7 @@ export default function SubprocessorsPage() {
         </p>
       </section>
 
-      <div className="mt-12 border-t border-stone-200 pt-6 text-sm text-stone-500 dark:border-stone-800">
+      <div className="mt-12 border-t border-stone-200 pt-6 text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
         <p>
           See also:{" "}
           <Link href="/privacy" className="underline hover:text-stone-700 dark:hover:text-stone-300">
