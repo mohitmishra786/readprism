@@ -114,7 +114,9 @@ async def _digest_with_items(db_session, user_id, n=5) -> Digest:
         item = ContentItem(url=f"https://x.example/{uuid.uuid4().hex}", title=f"t{i}")
         db_session.add(item)
         await db_session.flush()
-        db_session.add(DigestItem(digest_id=digest.id, content_item_id=item.id, position=i))
+        db_session.add(
+            DigestItem(digest_id=digest.id, content_item_id=item.id, position=i, section="lead")
+        )
     await db_session.commit()
     return digest
 
@@ -163,10 +165,11 @@ async def test_email_click_opens_the_digest(db_session, hosted):
             select(DigestItem.content_item_id).where(DigestItem.digest_id == digest.id).limit(1)
         )
     ).scalar_one()
+    uid, digest_id = user.id, digest.id
     await _record_email_action(user, item_id, "open", db_session)
     await db_session.commit()
-    assert digest.opened is True
-    opened = await _events(db_session, "digest_opened", user.id)
+    assert (await db_session.get(Digest, digest_id, populate_existing=True)).opened is True
+    opened = await _events(db_session, "digest_opened", uid)
     assert opened[0].props == {"via": "email"}
 
 
@@ -203,10 +206,11 @@ async def test_billing_conversion_and_cancel(db_session, hosted):
     await _track_plan_change(db_session, user, "trial", None, NOW)
     user.billing_status = "cancelled"
     await _track_plan_change(db_session, user, "reader", "active", NOW)
+    uid = user.id
     await db_session.commit()
-    converted = await _events(db_session, "trial_converted", user.id)
+    converted = await _events(db_session, "trial_converted", uid)
     assert converted[0].props == {"plan": "reader", "previous": "trial"}
-    assert len(await _events(db_session, "cancel", user.id)) == 1
+    assert len(await _events(db_session, "cancel", uid)) == 1
 
 
 @pytest.mark.asyncio

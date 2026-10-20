@@ -70,10 +70,10 @@ async def _stale_feed(db_session, hours):
     await db_session.commit()
 
 
-async def _keys(db_session, *, redis=None, report=None):
+async def _keys(db_session, *, redis=None, report=None, now=NOW):
     found = await alerts.evaluate(
         db_session,
-        now=NOW,
+        now=now,
         redis=redis or FakeRedis(),
         queue_report=lambda *a, **k: report or _report(),
     )
@@ -84,12 +84,14 @@ async def _keys(db_session, *, redis=None, report=None):
 async def test_simulated_ingest_stall_alerts_after_two_hours(db_session, monkeypatch):
     monkeypatch.setattr(get_settings(), "alert_disk_paths", "")
     await _stale_feed(db_session, hours=1.5)
-    assert await _keys(db_session) == []
+    assert await _keys(db_session, now=time.time()) == []
     await db_session.execute(
         ContentItem.__table__.update().values(fetched_at=datetime.now(UTC) - timedelta(hours=2.1))
     )
     await db_session.commit()
-    assert await _keys(db_session) == ["ingest_stall"]
+    # The current time, not import time: the suite can run long enough that
+    # "2.1 hours ago" measured from import looks like under 2 hours.
+    assert await _keys(db_session, now=time.time()) == ["ingest_stall"]
 
 
 @pytest.mark.asyncio

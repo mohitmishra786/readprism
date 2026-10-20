@@ -43,6 +43,7 @@ ID_ROUTES: list[tuple[str, str, dict | None]] = [
     ("GET", "/api/v1/digest/{digest_id}/prompts", None),
     ("POST", "/api/v1/digest/{digest_id}/prompts/{prompt_id}/answer", {"answer": "x"}),
     ("POST", "/api/v1/digest/{digest_id}/prompts/{prompt_id}/dismiss", None),
+    ("POST", "/api/v1/digest/{digest_id}/top5", {"wanted": 3}),
     ("POST", "/api/v1/onboarding/calibration/{private_content_id}", {"rating": 1}),
     ("POST", "/api/v1/sources/discover-suggestions/{suggestion_id}/accept", None),
     ("POST", "/api/v1/sources/discover-suggestions/{suggestion_id}/dismiss", None),
