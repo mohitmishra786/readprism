@@ -98,9 +98,11 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {get_settings().billing_api_key}"}
 
 
-async def checkout_url(user, interval: str) -> str | None:
+async def checkout_url(user, interval: str, plan: str = "reader") -> str | None:
+    from app.services.billing import checkout_target
+
     s = get_settings()
-    price = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
+    price = checkout_target(plan, interval)
     if not price or not s.billing_api_key:
         return None
     payload: dict = {

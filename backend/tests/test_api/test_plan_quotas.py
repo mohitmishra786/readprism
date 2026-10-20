@@ -24,7 +24,7 @@ def hosted(monkeypatch):
 def _user(tier="free", **kw) -> User:
     user = User(id=uuid.uuid4(), email=f"{uuid.uuid4().hex[:8]}@example.com", hashed_password="x")
     user.tier = tier
-    if tier in ("pro", "team"):
+    if tier in ("reader", "pro", "team"):
         user.plan_expires_at = datetime.now(UTC) + timedelta(days=30)
     for k, v in kw.items():
         setattr(user, k, v)
@@ -39,13 +39,13 @@ def test_selfhost_has_no_quotas(monkeypatch):
 
 
 def test_plan_table_and_config_and_admin_override(hosted, monkeypatch):
-    assert ent.limit(_user("pro"), ent.SOURCES) == 500
-    assert ent.limit(_user("team"), ent.SOURCES) == 2000
+    assert ent.limit(_user("reader"), ent.SOURCES) == 500
+    assert ent.limit(_user("pro"), ent.SOURCES) == 2000
     assert ent.limit(_user(trial_ends_at=datetime.now(UTC) + timedelta(days=3)), ent.SOURCES) == 500
     assert ent.limit(_user(), ent.SOURCES) == ent.settings.free_max_sources
 
-    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"pro": {"sources": 800}})
-    pro = _user("pro")
+    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"reader": {"sources": 800}})
+    pro = _user("reader")
     assert ent.limit(pro, ent.SOURCES) == 800
     assert ent.limit(pro, ent.LLM_SUMMARIES) == 200  # other rows kept
 
@@ -56,9 +56,9 @@ def test_plan_table_and_config_and_admin_override(hosted, monkeypatch):
 
 def test_paid_plan_source_cap_names_the_next_plan(hosted):
     with pytest.raises(HTTPException) as e:
-        ent.enforce_source_limit(_user("pro"), 500)
+        ent.enforce_source_limit(_user("reader"), 500)
     assert e.value.status_code == 402
-    assert "500 sources" in e.value.detail and "Team plan" in e.value.detail
+    assert "500 sources" in e.value.detail and "Pro plan" in e.value.detail
 
 
 @pytest.mark.asyncio
@@ -144,9 +144,9 @@ async def test_billing_state_lists_quotas_on_hosted_only(
     user = (
         await db_session.execute(select(User).where(User.email == test_user_data["email"]))
     ).scalar_one()
-    user.tier, user.plan_expires_at = "pro", datetime.now(UTC) + timedelta(days=5)
+    user.tier, user.plan_expires_at = "reader", datetime.now(UTC) + timedelta(days=5)
     await db_session.commit()
-    with patch("app.services.billing.effective_plan", return_value="pro"):
+    with patch("app.services.billing.effective_plan", return_value="reader"):
         rows = (await client.get("/api/v1/billing", headers=headers)).json()["quotas"]
     by = {r["quota"]: r for r in rows}
     assert by["sources"] == {"quota": "sources", "limit": 500, "used": 0, "daily": False}

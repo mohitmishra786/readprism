@@ -315,19 +315,26 @@ ignores them.
   across all accounts, and one account can follow at most
   `HOSTED_MAX_SOURCES_PER_HOST` feeds on the same host. Inbound newsletters
   are capped per account per day by count and size.
-- **Plan quotas (#172).** Each plan has limits on feeds, tracked creators,
-  newsletters per day (count and MB), AI summaries per day and manual digest
-  builds per day; 0 means unlimited. Defaults (`DEFAULT_PLAN_QUOTAS` in
-  `backend/app/config.py`): free 30 feeds (`FREE_MAX_SOURCES`), trial and
-  `pro` (the Hosted Reader plan) 500 feeds and 50 MB of newsletters a day,
-  `team` (Hosted Pro) 2,000 feeds. Change a plan with `HOSTED_PLAN_QUOTAS`,
-  JSON merged over the defaults, e.g. `{"pro": {"sources": 800}}`. Change one
-  account with `cd backend && python scripts/set_quota.py <email>
-  sources=1000` (no arguments shows its limits; `--clear` removes overrides).
-  Daily allowances reset at midnight UTC. When AI summaries run out the
-  digest keeps the extractive summary; scheduled digests always run and
-  don't count as builds. The Plan section in Preferences shows each limit and
-  today's use. The abuse caps above still apply on top.
+- **Plans and quotas (#172).** Two plans are on sale, plus the trial:
+
+  | Plan | Feeds | AI summaries/day | Newsletters/day | Manual builds/day |
+  |---|---|---|---|---|
+  | Trial (30 days, no card) | 500 | 200 | 100, 50 MB | 6 |
+  | Reader | 500 | 200 | 100, 50 MB | 6 |
+  | Pro | 2,000 | 1,000 | 300, 150 MB | 12 |
+  | Free (trial over, no plan) | 30 | 20 | 20, 10 MB | 3 |
+
+  Prices live in the payment provider, not here. Defaults are
+  `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`; 0 means unlimited. Free
+  feeds and creators come from `FREE_MAX_SOURCES` / `FREE_MAX_CREATORS`.
+  Change a plan with `HOSTED_PLAN_QUOTAS`, JSON merged over the defaults,
+  e.g. `{"pro": {"sources": 3000}}`. Change one account with
+  `cd backend && python scripts/set_quota.py <email> sources=1000` (no
+  arguments shows its limits; `--clear` removes overrides). Daily
+  allowances reset at midnight UTC. When AI summaries run out the digest
+  keeps the extractive summary; scheduled digests always run and don't count
+  as builds. Preferences → Plan shows the plans side by side, the reader's
+  limits and today's use. The abuse caps above still apply on top.
 - **Billing (#173).** Billing runs through a merchant of record, so the
   provider handles VAT/GST. Steps:
   1. Set `BILLING_PROVIDER` to `lemonsqueezy` or `paddle`, and set
@@ -335,11 +342,17 @@ ignores them.
   2. Point the provider's webhook at
      `https://<api>/api/v1/billing/webhook/<provider>`, subscribed to the
      subscription events.
-  3. Set the checkout links (Lemon Squeezy) or price ids (Paddle) in
-     `BILLING_CHECKOUT_MONTHLY` and `BILLING_CHECKOUT_YEARLY`.
+  3. Create a product per plan (Reader, Pro) with a monthly and a yearly
+     price. Set the checkout links (Lemon Squeezy) or price ids (Paddle) in
+     `BILLING_CHECKOUT_READER_MONTHLY`, `BILLING_CHECKOUT_READER_YEARLY`,
+     `BILLING_CHECKOUT_PRO_MONTHLY` and `BILLING_CHECKOUT_PRO_YEARLY`. A plan
+     with no link isn't offered. (The older `BILLING_CHECKOUT_MONTHLY` /
+     `_YEARLY` still work as Reader's links.)
   4. List the variant or price ids that grant each plan in
-     `BILLING_PRO_PRICE_IDS` and `BILLING_TEAM_PRICE_IDS`. An id that isn't
-     listed never upgrades anyone.
+     `BILLING_READER_PRICE_IDS` and `BILLING_PRO_PRICE_IDS`
+     (`BILLING_TEAM_PRICE_IDS` for hand-granted Team accounts). An id that
+     isn't listed never upgrades anyone. Readers who already pay switch plans
+     in the provider's portal (Manage billing), which prorates.
   5. Paddle only: also set `BILLING_API_KEY`. Use `BILLING_SANDBOX=true`
      while testing.
 

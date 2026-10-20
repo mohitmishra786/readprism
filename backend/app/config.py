@@ -13,6 +13,7 @@ DEFAULT_PLAN_QUOTAS: dict[str, dict[str, int]] = {
         "llm_summaries_per_day": 20,
         "digest_builds_per_day": 3,
     },
+    # The trial gets Reader's limits.
     "trial": {
         "sources": 500,
         "creators": 50,
@@ -21,7 +22,7 @@ DEFAULT_PLAN_QUOTAS: dict[str, dict[str, int]] = {
         "llm_summaries_per_day": 200,
         "digest_builds_per_day": 6,
     },
-    "pro": {
+    "reader": {
         "sources": 500,
         "creators": 50,
         "newsletters_per_day": 100,
@@ -29,6 +30,15 @@ DEFAULT_PLAN_QUOTAS: dict[str, dict[str, int]] = {
         "llm_summaries_per_day": 200,
         "digest_builds_per_day": 6,
     },
+    "pro": {
+        "sources": 2000,
+        "creators": 200,
+        "newsletters_per_day": 300,
+        "newsletter_mb_per_day": 150,
+        "llm_summaries_per_day": 1000,
+        "digest_builds_per_day": 12,
+    },
+    # Not sold yet; kept for accounts granted it by hand.
     "team": {
         "sources": 2000,
         "creators": 200,
@@ -279,8 +289,7 @@ class Settings(BaseSettings):
     # Defaults: DEFAULT_PLAN_QUOTAS above. HOSTED_PLAN_QUOTAS (JSON) is merged
     # over them per plan and quota, e.g. {"pro": {"sources": 800}};
     # the free row's sources/creators come from FREE_MAX_SOURCES/CREATORS.
-    # "pro" is the Hosted Reader plan and "team" the Hosted Pro plan of the
-    # product plan (§5). Per-account overrides: scripts/set_quota.py.
+    # Per-account overrides: scripts/set_quota.py.
     hosted_plan_quotas: dict[str, dict[str, int]] = {}
     # Billing on hosted through a merchant of record (#173). Prices and trial
     # length are a business decision (#138); this is configuration only.
@@ -288,10 +297,18 @@ class Settings(BaseSettings):
     billing_webhook_secret: str = ""
     billing_api_key: str = ""  # Paddle only: checkout + portal sessions
     billing_sandbox: bool = False  # Paddle sandbox API
-    # Lemon Squeezy: hosted checkout links. Paddle: price ids (pri_...).
+    # Plans on sale (#172): Reader and Pro, monthly and yearly. Lemon Squeezy:
+    # hosted checkout links. Paddle: price ids (pri_...). A plan with neither
+    # is not offered. BILLING_CHECKOUT_MONTHLY/YEARLY are the older single-plan
+    # names and are used for Reader when its own are empty.
+    billing_checkout_reader_monthly: str = ""
+    billing_checkout_reader_yearly: str = ""
+    billing_checkout_pro_monthly: str = ""
+    billing_checkout_pro_yearly: str = ""
     billing_checkout_monthly: str = ""
     billing_checkout_yearly: str = ""
     # Which provider price/variant ids grant which tier (comma-separated).
+    billing_reader_price_ids: str = ""
     billing_pro_price_ids: str = ""
     billing_team_price_ids: str = ""
     billing_trial_days: int = 30

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import type { BillingState, PlanQuota } from "../lib/types";
+import type { BillingState, PlanOffer, PlanQuota } from "../lib/types";
 
 const BUTTON = {
   padding: "8px 16px",
@@ -19,9 +19,10 @@ function describe(state: BillingState): string {
   switch (state.plan) {
     case "trial":
       return `Free trial: ${state.trial_days_left ?? 0} days left (until ${day(state.trial_ends_at)}).`;
+    case "reader":
     case "pro":
     case "team": {
-      const name = state.plan === "team" ? "Team" : "Pro";
+      const name = { reader: "Reader", pro: "Pro", team: "Team" }[state.plan];
       if (state.status === "cancelled") return `${name}, cancelled: active until ${day(state.plan_expires_at)}.`;
       if (state.status === "past_due") return `${name}: the last payment failed. Update your card to keep access.`;
       return state.plan_expires_at ? `${name}: renews ${day(state.plan_expires_at)}.` : `${name}.`;
@@ -39,6 +40,52 @@ const QUOTA_LABEL: Record<PlanQuota["quota"], string> = {
   llm_summaries_per_day: "AI summaries today",
   digest_builds_per_day: "Manual digest builds today",
 };
+
+const n = (v: number) => (v > 0 ? v.toLocaleString() : "Unlimited");
+
+// The plans on sale, side by side (#172).
+function PlanPicker({
+  plans,
+  current,
+  onBuy,
+}: {
+  plans: PlanOffer[];
+  current: string;
+  onBuy: (plan: PlanOffer["plan"], interval: "month" | "year") => void;
+}) {
+  if (!plans.length) return null;
+  return (
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
+      {plans.map((p) => (
+        <div
+          key={p.plan}
+          data-testid={`plan-${p.plan}`}
+          style={{ flex: "1 1 220px", border: "1px solid var(--border)", borderRadius: 8, padding: 16 }}
+        >
+          <h3 style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 8 }}>
+            {p.name}
+            {current === p.plan && <span style={{ fontWeight: 400, color: "var(--text-tertiary)" }}> (your plan)</span>}
+          </h3>
+          <ul style={{ fontSize: 14, margin: "0 0 12px", paddingLeft: 18 }}>
+            <li>{n(p.quotas.sources)} feeds</li>
+            <li>{n(p.quotas.llm_summaries_per_day)} AI summaries a day</li>
+            <li>{n(p.quotas.newsletter_mb_per_day)} MB of newsletters a day</li>
+            <li>{n(p.quotas.creators)} tracked creators</li>
+          </ul>
+          {current !== p.plan && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {p.intervals.map((i) => (
+                <button key={i} style={BUTTON} onClick={() => onBuy(p.plan, i)}>
+                  {p.name} {i === "month" ? "monthly" : "yearly"}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // What the plan includes and what is used (#172).
 function Quotas({ quotas }: { quotas: PlanQuota[] }) {
@@ -86,7 +133,8 @@ export function PlanSection() {
       })
       .catch(() => setError("Billing is unavailable right now. Try again in a few minutes."));
 
-  const paying = (state.plan === "pro" || state.plan === "team") && state.status !== "cancelled";
+  const paying =
+    (state.plan === "reader" || state.plan === "pro" || state.plan === "team") && state.status !== "cancelled";
 
   return (
     <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
@@ -98,18 +146,18 @@ export function PlanSection() {
           🎓 Academic discount: your university email qualifies, and the discount is applied at checkout.
         </p>
       )}
+      {state.billing_enabled && !paying && (
+        <PlanPicker
+          plans={state.plans ?? []}
+          current={state.plan}
+          onBuy={(plan, interval) => go(api.billing.checkout(interval, plan))}
+        />
+      )}
+      {state.billing_enabled && paying && (state.plans?.length ?? 0) > 1 && (
+        <p style={{ fontSize: 14, marginBottom: 12 }}>To switch plans, use Manage billing.</p>
+      )}
       {state.billing_enabled && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {!paying && (
-            <>
-              <button style={BUTTON} onClick={() => go(api.billing.checkout("month"))}>
-                Subscribe monthly
-              </button>
-              <button style={BUTTON} onClick={() => go(api.billing.checkout("year"))}>
-                Subscribe yearly
-              </button>
-            </>
-          )}
           {state.can_manage && (
             <button style={BUTTON} onClick={() => go(api.billing.portal())}>
               Manage billing

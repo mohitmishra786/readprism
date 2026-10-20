@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => vi.fn());
-vi.mock("../src/lib/api", () => ({ api: { billing: { state } } }));
+const checkout = vi.hoisted(() => vi.fn(() => Promise.reject(new Error("no"))));
+vi.mock("../src/lib/api", () => ({ api: { billing: { state, checkout, portal: vi.fn() } } }));
 
 import { PlanSection } from "../src/components/PlanSection";
 
@@ -39,5 +41,27 @@ describe("plan quotas (#172)", () => {
     const { container } = render(<PlanSection />);
     await Promise.resolve();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("offers Reader and Pro side by side and buys the chosen one", async () => {
+    const q = { sources: 500, creators: 50, newsletters_per_day: 100, newsletter_mb_per_day: 50, llm_summaries_per_day: 200, digest_builds_per_day: 6 };
+    state.mockResolvedValueOnce({
+      ...base,
+      billing_enabled: true,
+      plan: "trial",
+      status: null,
+      quotas: [],
+      plans: [
+        { plan: "reader", name: "Reader", intervals: ["month", "year"], quotas: q },
+        { plan: "pro", name: "Pro", intervals: ["year"], quotas: { ...q, sources: 2000 } },
+      ],
+    });
+    render(<PlanSection />);
+    const pro = await screen.findByTestId("plan-pro");
+    expect(within(pro).getByText("2,000 feeds")).toBeInTheDocument();
+    expect(within(screen.getByTestId("plan-reader")).getByText("500 feeds")).toBeInTheDocument();
+    expect(within(pro).queryByRole("button", { name: "Pro monthly" })).toBeNull();
+    await userEvent.click(within(pro).getByRole("button", { name: "Pro yearly" }));
+    expect(checkout).toHaveBeenCalledWith("year", "pro");
   });
 });

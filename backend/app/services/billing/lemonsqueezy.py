@@ -75,9 +75,10 @@ def parse(raw: bytes) -> BillingUpdate:
     )
 
 
-async def checkout_url(user, interval: str) -> str | None:
-    s = get_settings()
-    base = s.billing_checkout_yearly if interval == "year" else s.billing_checkout_monthly
+async def checkout_url(user, interval: str, plan: str = "reader") -> str | None:
+    from app.services.billing import checkout_target
+
+    base = checkout_target(plan, interval)
     if not base:
         return None
     params = {"checkout[email]": user.email, "checkout[custom][user_id]": str(user.id)}

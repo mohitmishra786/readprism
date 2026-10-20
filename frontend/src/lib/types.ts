@@ -173,7 +173,7 @@ export interface Token {
 }
 
 export interface BillingState {
-  plan: "selfhost" | "trial" | "pro" | "team" | "free";
+  plan: "selfhost" | "trial" | "reader" | "pro" | "team" | "free";
   billing_enabled: boolean;
   /** Academic discount applies at checkout (verified academic email, #250). */
   academic_discount?: boolean;
@@ -184,6 +184,16 @@ export interface BillingState {
   can_manage: boolean;
   /** Hosted plan quotas and today's use (#172); empty on self-host. 0 = unlimited. */
   quotas?: PlanQuota[];
+  /** Plans on sale, cheapest first (#172); empty when billing is off. */
+  plans?: PlanOffer[];
+}
+
+export interface PlanOffer {
+  plan: "reader" | "pro";
+  name: string;
+  intervals: ("month" | "year")[];
+  /** Limits by quota name; 0 = unlimited. */
+  quotas: Record<PlanQuota["quota"], number>;
 }
 
 export interface PlanQuota {

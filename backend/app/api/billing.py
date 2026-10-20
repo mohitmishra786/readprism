@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 class CheckoutRequest(BaseModel):
     interval: Literal["month", "year"] = "month"
+    plan: Literal["reader", "pro"] = "reader"
 
 
 @router.get("")
@@ -50,6 +51,8 @@ async def billing_state(
         "can_manage": bool(user.billing_customer_id or user.billing_portal_url),
         # Plan quotas and today's use (#172); empty on self-host.
         "quotas": await entitlements.usage(session, user),
+        # What can be bought, cheapest first, with each plan's limits (#172).
+        "plans": billing.plans_on_sale(),
     }
 
 
@@ -63,8 +66,20 @@ def _provider_or_404():
 @router.post("/checkout")
 async def checkout(body: CheckoutRequest, user: User = Depends(get_current_user)) -> dict:
     adapter = _provider_or_404()
+    if not billing.checkout_target(body.plan, body.interval):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="That plan isn't on sale")
+    # A second checkout would start a second subscription; switching plans
+    # happens in the provider's portal, which prorates.
+    if (
+        billing.effective_plan(user) in billing.PAID_TIERS
+        and user.billing_status != billing.CANCELLED
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You already have a plan. Change it from Manage billing.",
+        )
     try:
-        url = await adapter.checkout_url(user, body.interval)
+        url = await adapter.checkout_url(user, body.interval, body.plan)
     except Exception as e:
         logger.error(f"Checkout creation failed for {user.id}: {e}")
         url = None

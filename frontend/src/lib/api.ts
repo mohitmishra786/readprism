@@ -287,10 +287,10 @@ export const api = {
   // Hosted billing (#173). Self-hosted instances report plan "selfhost".
   billing: {
     state: () => request<BillingState>('/billing'),
-    checkout: (interval: 'month' | 'year') =>
+    checkout: (interval: 'month' | 'year', plan: 'reader' | 'pro' = 'reader') =>
       request<{ url: string }>('/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ interval, plan }),
       }),
     portal: () => request<{ url: string }>('/billing/portal'),
   },

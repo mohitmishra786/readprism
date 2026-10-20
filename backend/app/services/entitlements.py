@@ -77,8 +77,8 @@ def _upgrade_hint(user: User) -> str:
     plan = _plan(user)
     if plan in ("free", "trial"):
         return " Subscribe to raise it."
-    if plan == "pro":
-        return " The Team plan raises it."
+    if plan == "reader":
+        return " The Pro plan raises it."
     return " Contact support to raise it."
 
 

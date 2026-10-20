@@ -246,6 +246,51 @@ async def test_checkout_link_carries_the_account_and_selfhost_has_no_billing(
     ).status_code == 404
 
 
+@pytest.mark.asyncio
+async def test_reader_and_pro_on_sale_with_their_own_checkouts(
+    client, db_session, hosted_billing, monkeypatch
+):
+    """Two plans to choose from (#172); the old single link is Reader's fallback."""
+    monkeypatch.setattr(hosted_billing, "billing_provider", "lemonsqueezy")
+    monkeypatch.setattr(
+        hosted_billing, "billing_checkout_pro_yearly", "https://shop.example/buy/pro-y"
+    )
+    monkeypatch.setattr(hosted_billing, "billing_reader_price_ids", "333")
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={"email": f"p{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+    )
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    plans = (await client.get("/api/v1/billing", headers=headers)).json()["plans"]
+    assert [(p["plan"], p["name"], p["intervals"]) for p in plans] == [
+        ("reader", "Reader", ["month"]),
+        ("pro", "Pro", ["year"]),
+    ]
+    assert plans[0]["quotas"]["sources"] == 500 and plans[1]["quotas"]["sources"] == 2000
+
+    async def buy(plan, interval):
+        return await client.post(
+            "/api/v1/billing/checkout", json={"plan": plan, "interval": interval}, headers=headers
+        )
+
+    assert (await buy("pro", "year")).json()["url"].startswith("https://shop.example/buy/pro-y?")
+    assert (
+        (await buy("reader", "month"))
+        .json()["url"]
+        .startswith("https://shop.example/checkout/buy/abc?")
+    )
+    assert (await buy("pro", "month")).status_code == 404
+    assert billing.tier_for_price("333") == "reader"
+
+    # Already paying: change plans in the portal, not with a second subscription.
+    me = (await client.get("/api/v1/auth/me", headers=headers)).json()
+    user = await db_session.get(User, uuid.UUID(me["id"]))
+    user.tier, user.plan_expires_at = "reader", datetime.now(UTC) + timedelta(days=20)
+    user.billing_status = billing.ACTIVE
+    await db_session.commit()
+    assert (await buy("pro", "year")).status_code == 409
+
+
 # ---------------------------------------------------------------------- Paddle
 
 

@@ -4,7 +4,7 @@ A merchant of record (Lemon Squeezy or Paddle) sells the subscription, so the
 operator does not register for VAT/GST in every buyer's country. ReadPrism
 only reacts to the provider's signed webhooks:
 
-- `users.tier` is what was bought ("pro" or "team"); `plan_expires_at` is
+- `users.tier` is what was bought ("reader", "pro" or "team"); `plan_expires_at` is
   when it lapses. `effective_plan()` combines them with the trial, so an
   expired subscription downgrades itself without a sweep job.
 - Every event is recorded in `billing_events` once; a replay is a no-op.
@@ -33,7 +33,10 @@ from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
-PAID_TIERS = ("pro", "team")
+PAID_TIERS = ("reader", "pro", "team")
+# Plans offered at checkout, cheapest first (#172), with their display names.
+SOLD_PLANS = ("reader", "pro")
+PLAN_NAMES = {"reader": "Reader", "pro": "Pro", "team": "Team", "trial": "Trial", "free": "Free"}
 # Provider subscription statuses, normalised.
 ACTIVE = "active"  # paid and current
 TRIALING = "trialing"  # provider-side trial (counts as paid access)
@@ -76,7 +79,42 @@ def tier_for_price(price_id: str | None) -> str | None:
         return "team"
     if str(price_id) in _ids(s.billing_pro_price_ids):
         return "pro"
+    if str(price_id) in _ids(s.billing_reader_price_ids):
+        return "reader"
     return None
+
+
+def checkout_target(plan: str, interval: str) -> str:
+    """The checkout link (Lemon Squeezy) or price id (Paddle) for a plan; "" = not sold."""
+    s = get_settings()
+    yearly = interval == "year"
+    if plan == "reader":
+        own = s.billing_checkout_reader_yearly if yearly else s.billing_checkout_reader_monthly
+        return own or (s.billing_checkout_yearly if yearly else s.billing_checkout_monthly)
+    if plan == "pro":
+        return s.billing_checkout_pro_yearly if yearly else s.billing_checkout_pro_monthly
+    return ""
+
+
+def plans_on_sale() -> list[dict]:
+    """The plans a reader can buy, cheapest first, with what each includes."""
+    if not billing_enabled():
+        return []
+    from app.services.entitlements import plan_quotas
+
+    offered = []
+    for plan in SOLD_PLANS:
+        intervals = [i for i in ("month", "year") if checkout_target(plan, i)]
+        if intervals:
+            offered.append(
+                {
+                    "plan": plan,
+                    "name": PLAN_NAMES[plan],
+                    "intervals": intervals,
+                    "quotas": plan_quotas(plan),
+                }
+            )
+    return offered
 
 
 def _aware(value: datetime | None) -> datetime | None:
@@ -86,7 +124,7 @@ def _aware(value: datetime | None) -> datetime | None:
 
 
 def effective_plan(user: User, *, now: datetime | None = None) -> str:
-    """ "selfhost" | "team" | "pro" | "trial" | "free"."""
+    """ "selfhost" | "team" | "pro" | "reader" | "trial" | "free"."""
     if get_settings().deployment_mode != "hosted":
         return "selfhost"
     now = now or datetime.now(UTC)
