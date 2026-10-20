@@ -10,6 +10,10 @@ theme:
 nav:
   - Home: index.md
   - Quickstart & deployment: DEPLOYMENT.md
+  - Upgrading: UPGRADING.md
+  - Release notes:
+      - v0.2.0: releases/v0.2.0.md
+      - Template: releases/TEMPLATE.md
   - How ranking works: signals.md
   - Feedback mapping: feedback-mapping.md
   - Architecture: ARCHITECTURE.md

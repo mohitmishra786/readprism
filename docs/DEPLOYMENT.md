@@ -28,6 +28,8 @@ published placeholder. Before a hosted deployment also set
 `MAILGUN_WEBHOOK_SIGNING_KEY` (or the provider secret you use),
 SMTP credentials. See [`.env.example`](https://github.com/mohitmishra786/readprism/blob/main/.env.example).
 
+For upgrades between versions, follow [UPGRADING.md](UPGRADING.md).
+
 ## Upgrading to shared feeds (migration 0025)
 
 Since #161 a feed followed by several users is polled once. Migration 0025
