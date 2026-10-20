@@ -12,6 +12,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/vs/feedly",
     "/vs/inoreader",
     "/vs/newsblur",
+    "/vs/folo",
+    "/vs/readless",
     "/privacy",
     "/terms",
     "/subprocessors",
