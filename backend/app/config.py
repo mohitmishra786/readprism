@@ -133,6 +133,15 @@ class Settings(BaseSettings):
     llm_model_topics: str = ""
     llm_model_synthesis: str = ""
     llm_model_interests: str = ""
+    # Reasoning models (gpt-oss) spend completion tokens thinking before they
+    # answer; at the default effort a 1,024-token summary budget sometimes runs
+    # out before the JSON is written (#225). "auto" sends reasoning_effort=low
+    # to gpt-oss models only; "low"/"medium"/"high" send it to every model;
+    # "" never sends it (for providers that reject the field).
+    llm_reasoning_effort: str = "auto"
+    # A provider asking to retry after longer than this (e.g. a daily token
+    # cap) isn't waited for: the call fails and the summary stays extractive.
+    llm_max_retry_wait_seconds: float = 30.0
     llm_tpm_limit: int = 6000
     llm_rpm_limit: int = 30
     llm_timeout_seconds: float = 30.0

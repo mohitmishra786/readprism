@@ -137,6 +137,17 @@ models on your key:
 cd backend && python scripts/summary_spot_check.py --n 50 --out ../docs/eval/summary-models.md
 ```
 
+!!! note "Free Groq keys run out fast"
+    Groq's free tier has a daily token cap; in testing it stopped after about
+    40 summaries in a day, and then asks for 15-minute waits. ReadPrism
+    doesn't wait longer than `LLM_MAX_RETRY_WAIT_SECONDS` (30): it keeps the
+    extract and moves on. For a hosted service, use a paid tier.
+
+The gpt-oss models reason before answering. `LLM_REASONING_EFFORT=auto` (the
+default) asks them for low effort, which keeps summaries inside their token
+budget; set it to `""` if your provider rejects the field. Results:
+[summary model check](eval/summary-models.md).
+
 ### Local models with Ollama
 
 1. Install [Ollama](https://ollama.com) and pull a model:

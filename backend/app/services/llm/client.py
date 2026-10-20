@@ -106,6 +106,14 @@ async def _record(ok: bool, reason: str = "", *, tokens: int = 0) -> None:
         pass
 
 
+def reasoning_effort(model: str) -> str:
+    """The reasoning_effort to send for `model`, or "" to leave it out (#225)."""
+    setting = get_settings().llm_reasoning_effort.strip().lower()
+    if setting == "auto":
+        return "low" if "gpt-oss" in model.lower() else ""
+    return setting
+
+
 class LLMClient:
     """One OpenAI-compatible endpoint. Construct a second instance for a fallback provider."""
 
@@ -163,7 +171,11 @@ class LLMClient:
         )
         logger.error(self._circuit_reason)
 
-    async def _backoff(self, attempt: int, retry_after: str | None) -> None:
+    async def _backoff(self, attempt: int, retry_after: str | None) -> bool:
+        """Sleep before the next attempt; False (no sleep) if the provider asks
+        for longer than LLM_MAX_RETRY_WAIT_SECONDS. Workers are single-process,
+        so a long wait would hold up every task on the queue; the caller falls
+        back to the extractive summary instead (#225)."""
         if retry_after:
             try:
                 delay = float(retry_after)
@@ -171,9 +183,13 @@ class LLMClient:
                 delay = 0.0
         else:
             delay = 0.0
+        if delay > get_settings().llm_max_retry_wait_seconds:
+            logger.warning("LLM asked to retry after %.0fs; not waiting", delay)
+            return False
         if delay <= 0:
             delay = min(20.0, float(2**attempt)) + random.random()
         await self._sleep(delay)
+        return True
 
     async def _post(self, payload: dict[str, Any]) -> httpx.Response:
         timeout = httpx.Timeout(get_settings().llm_timeout_seconds)
@@ -217,6 +233,9 @@ class LLMClient:
         }
         if json_mode:
             payload["response_format"] = {"type": "json_object"}
+        effort = reasoning_effort(model)
+        if effort:
+            payload["reasoning_effort"] = effort
 
         last_status: int | None = None
         for attempt in range(_MAX_ATTEMPTS):
@@ -249,10 +268,11 @@ class LLMClient:
             if resp.status_code == 429 or resp.status_code >= 500:
                 last_status = resp.status_code
                 logger.warning("LLM HTTP %s (attempt %s)", resp.status_code, attempt + 1)
-                if attempt + 1 == _MAX_ATTEMPTS:
+                if attempt + 1 == _MAX_ATTEMPTS or not await self._backoff(
+                    attempt, resp.headers.get("retry-after")
+                ):
                     await _record(False, f"HTTP {resp.status_code}")
                     return None
-                await self._backoff(attempt, resp.headers.get("retry-after"))
                 continue
             logger.error(
                 "LLM request failed with HTTP %s: %s", resp.status_code, self._redact(body)
