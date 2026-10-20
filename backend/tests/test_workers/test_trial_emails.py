@@ -123,5 +123,5 @@ async def test_export_works_after_the_trial_ends(client, db_session, monkeypatch
     user = await db_session.get(User, uuid.UUID(me["id"]))
     user.trial_ends_at = datetime.now(UTC) - timedelta(days=10)
     await db_session.commit()
-    assert (await client.get("/api/v1/billing", headers=headers)).json()["plan"] == "free"
+    assert (await client.get("/api/v1/billing", headers=headers)).json()["plan"] == "paused"
     assert (await client.get("/api/v1/account/export", headers=headers)).status_code == 200

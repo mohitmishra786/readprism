@@ -22,15 +22,19 @@ T0 = datetime(2026, 11, 1, 12, tzinfo=UTC)  # the trial ended
 @pytest.fixture
 def hosted(monkeypatch):
     s = get_settings()
-    for key, value in {
+    values = {
         "deployment_mode": "hosted",
         "registration_mode": "open",
         "email_verification": "off",
         "billing_trial_days": 30,
         "hosted_paused_delete_days": 30,
         "hosted_delete_reminder_days": 7,
-    }.items():
-        monkeypatch.setattr(s, key, value)
+    }
+    # entitlements keeps the settings object it imported; an earlier test may
+    # have cleared get_settings' cache, so patch both when they differ.
+    for target in {id(s): s, id(entitlements.settings): entitlements.settings}.values():
+        for key, value in values.items():
+            monkeypatch.setattr(target, key, value)
     return s
 
 
