@@ -219,16 +219,26 @@ export interface SetupConfig {
 // Auth
 export const api = {
   auth: {
-    register: (email: string, password: string, display_name?: string, invite_code?: string) =>
+    register: (
+      email: string,
+      password: string,
+      display_name?: string,
+      invite_code?: string,
+      accept_terms?: boolean
+    ) =>
       request<Token>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, display_name, invite_code }),
+        body: JSON.stringify({ email, password, display_name, invite_code, accept_terms }),
       }).then(rememberCsrf),
     /** Whether this instance accepts new accounts (#153). */
     registration: () =>
-      request<{ mode: string; open: boolean; invite_required: boolean; first_account?: boolean }>(
-        '/auth/registration'
-      ),
+      request<{
+        mode: string;
+        open: boolean;
+        invite_required: boolean;
+        first_account?: boolean;
+        hosted?: boolean;
+      }>('/auth/registration'),
     login: (email: string, password: string) =>
       request<Token>('/auth/login', {
         method: 'POST',

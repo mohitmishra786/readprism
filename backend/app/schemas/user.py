@@ -12,6 +12,8 @@ class UserCreate(BaseModel):
     display_name: str | None = None
     # Required when REGISTRATION_MODE=invite (#153).
     invite_code: str | None = None
+    # Consent to Terms of Service and Privacy Policy (#181). Required on hosted.
+    accept_terms: bool = False
 
 
 class UserLogin(BaseModel):

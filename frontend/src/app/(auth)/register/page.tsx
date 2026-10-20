@@ -11,12 +11,14 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   // What this instance allows (#153): closed instances accept only their owner.
   const [registration, setRegistration] = useState<{
     mode: string;
     open: boolean;
     invite_required: boolean;
     first_account?: boolean;
+    hosted?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -29,7 +31,13 @@ export default function RegisterPage() {
     setError("");
     try {
       // Credentials arrive as httpOnly cookies (#103); nothing to store here.
-      await api.auth.register(email, password, displayName || undefined, inviteCode || undefined);
+      await api.auth.register(
+        email,
+        password,
+        displayName || undefined,
+        inviteCode || undefined,
+        acceptTerms
+      );
       // The first account owns the instance: finish setup next (#220).
       router.replace(registration?.first_account ? "/admin/setup" : "/digest");
     } catch (err: unknown) {
@@ -125,20 +133,55 @@ export default function RegisterPage() {
               {error}
             </p>
           )}
+          {registration?.hosted && (
+            <div className="flex items-start gap-2 pt-1 text-sm text-stone-600">
+              <input
+                id="reg-accept-terms"
+                type="checkbox"
+                checked={acceptTerms}
+                onChange={(e) => setAcceptTerms(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 rounded border-stone-300 text-prism-600 focus:ring-prism-500"
+              />
+              <label htmlFor="reg-accept-terms" className="text-xs text-stone-600">
+                I agree to the{" "}
+                <a
+                  href="/terms"
+                  className="underline hover:text-stone-800"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Terms
+                </a>{" "}
+                and the{" "}
+                <a
+                  href="/privacy"
+                  className="underline hover:text-stone-800"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Privacy policy
+                </a>
+                .
+              </label>
+            </div>
+          )}
           <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
             {loading ? "Creating account…" : "Create account"}
           </button>
-          <p className="text-center text-xs text-stone-500">
-            By creating an account, you agree to the{" "}
-            <a href="/terms" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="/privacy" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
-              Privacy Policy
-            </a>
-            .
-          </p>
+          {!registration?.hosted && (
+            <p className="text-center text-xs text-stone-500">
+              By creating an account, you agree to the{" "}
+              <a href="/terms" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>
+              .
+            </p>
+          )}
         </form>
         )}
 

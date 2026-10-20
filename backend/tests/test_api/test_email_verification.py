@@ -40,7 +40,11 @@ def _token(mail: dict) -> str:
 
 
 async def _register(client: AsyncClient, email: str | None = None):
-    data = {"email": email or f"ev{uuid.uuid4().hex[:8]}@example.com", "password": "TestPass123!"}
+    data = {
+        "email": email or f"ev{uuid.uuid4().hex[:8]}@example.com",
+        "password": "TestPass123!",
+        "accept_terms": True,
+    }
     resp = await client.post("/api/v1/auth/register", json=data)
     return resp, data["email"]
 

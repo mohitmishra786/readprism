@@ -82,7 +82,11 @@ async def test_signup_starts_a_trial_and_trial_lifts_free_limits(
     monkeypatch.setattr(entitlements.settings, "free_max_sources", 1)
     reg = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"t{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+        json={
+            "email": f"t{uuid.uuid4().hex[:6]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     state = (await client.get("/api/v1/billing", headers=headers)).json()
@@ -228,7 +232,11 @@ async def test_checkout_link_carries_the_account_and_selfhost_has_no_billing(
     monkeypatch.setattr(hosted_billing, "billing_provider", "lemonsqueezy")
     reg = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"c{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+        json={
+            "email": f"c{uuid.uuid4().hex[:6]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     me = (await client.get("/api/v1/auth/me", headers=headers)).json()
@@ -258,7 +266,11 @@ async def test_reader_and_pro_on_sale_with_their_own_checkouts(
     monkeypatch.setattr(hosted_billing, "billing_reader_price_ids", "333")
     reg = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"p{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+        json={
+            "email": f"p{uuid.uuid4().hex[:6]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     plans = (await client.get("/api/v1/billing", headers=headers)).json()["plans"]

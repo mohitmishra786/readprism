@@ -47,6 +47,7 @@ async def test_closed_allows_only_the_first_account(client: AsyncClient, mode):
         "open": False,
         "invite_required": False,
         "first_account": False,
+        "hosted": False,
     }
 
 

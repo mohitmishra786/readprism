@@ -276,10 +276,22 @@ async def register(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=_DOMAIN_LIMIT_DETAIL
         )
 
+    s = get_settings()
+    if s.deployment_mode == "hosted" and not body.accept_terms:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Agreement to the Terms and Privacy policy is required",
+        )
+
+    now = datetime.now(UTC)
     user = User(
         email=body.email,
         hashed_password=_hash_password(body.password),
         display_name=body.display_name,
+        terms_accepted_at=now if (s.deployment_mode == "hosted" or body.accept_terms) else None,
+        terms_version=s.terms_version
+        if (s.deployment_mode == "hosted" or body.accept_terms)
+        else None,
     )
     from app.services.billing import start_trial
 
@@ -523,12 +535,14 @@ async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
     allowed, _ = await can_register(session)
     from app.services.registration import has_users
 
+    s = get_settings()
     return {
         "mode": mode,
         "open": allowed,
         "invite_required": mode == "invite" and not allowed,
         # No accounts yet: the next sign-up becomes the instance owner (#220).
         "first_account": not await has_users(session),
+        "hosted": s.deployment_mode == "hosted",
     }
 
 

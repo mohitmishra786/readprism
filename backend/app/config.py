@@ -243,6 +243,8 @@ class Settings(BaseSettings):
     # Takedown and grievance contact (#183). Displayed on the /contact page;
     # empty hides the section.
     grievance_contact_email: str = ""
+    # Version slug of the Terms of Service for signup consent audit trail (#181).
+    terms_version: str = "2026-07-21"
     postmark_webhook_secret: str = ""
     resend_webhook_secret: str = ""
     cloudflare_email_webhook_secret: str = ""
