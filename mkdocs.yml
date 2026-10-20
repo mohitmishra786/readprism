@@ -47,6 +47,7 @@ nav:
   - Self-hosting:
       - Install & run: DEPLOYMENT.md
       - Upgrading: UPGRADING.md
+      - Ranking sidecar: sidecar.md
   - Hosted service: HOSTING.md
   - How it works:
       - Architecture: ARCHITECTURE.md
