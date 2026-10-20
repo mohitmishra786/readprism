@@ -5,12 +5,13 @@ for and the relevant terms, so operators can confirm compliant use (audit 08-8).
 Software licenses of bundled libraries are separate from the service terms noted
 here.
 
-| Service | Used for | Data sent | Terms notes |
-|---|---|---|---|
-| **Groq** (Llama 3.3 70B / 3.1 8B) | Summarization, topic extraction | Article title + text | Content policy prohibits certain content classes; the digest/summarization use is compliant. No cold email. Summaries are cached to limit calls. |
-| **OpenAI** (optional fallback) | Summarization when `OPENAI_FALLBACK_ENABLED=true` | Article title + text | Same content-policy considerations as Groq. Disabled by default. |
-| **Zoho SMTP / Resend** | Digest email delivery | Recipient email + digest content | Transactional/user-requested email only — no cold or bulk marketing. Include a working unsubscribe (implemented) and, for bulk sending, a physical address and SPF/DKIM/DMARC on a sending subdomain. |
-| **Browserless / Chrome** | Headless rendering of JS-heavy pages | Target URL | Runs in the operator's own container. Fetching respects robots.txt and the honest-bot posture. |
+| Service | Used for | Data sent | Location | Terms notes |
+|---|---|---|---|---|
+| **Groq** (Llama 3.3 70B / 3.1 8B) | Summarization, topic extraction | Article title + text | United States | Content policy prohibits certain content classes; the digest/summarization use is compliant. No cold email. Summaries are cached to limit calls. |
+| **OpenAI** (optional fallback) | Summarization when `OPENAI_FALLBACK_ENABLED=true` | Article title + text | United States | Same content-policy considerations as Groq. Disabled by default. |
+| **Zoho SMTP / Resend** | Digest email delivery | Recipient email + digest content | United States / EU | Transactional/user-requested email only — no cold or bulk marketing. Include a working unsubscribe (implemented) and, for bulk sending, a physical address and SPF/DKIM/DMARC on a sending subdomain. |
+| **Lemon Squeezy / Paddle** | Merchant of record & subscription billing (hosted) | Customer email, country, billing token | United States / UK | Merchant of record processes payment data directly; card details never touch ReadPrism servers. |
+| **Browserless / Chrome** | Headless rendering of JS-heavy pages | Target URL | Operator host | Runs in the operator's own container. Fetching respects robots.txt and the honest-bot posture. |
 
 ## Libraries (licenses)
 

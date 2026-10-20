@@ -27,7 +27,7 @@ for (const c of cases) {
 
     // Every item keeps its read/rate/save actions, visible and tappable.
     await expect(page.getByRole("link", { name: "Read in ReadPrism" })).toHaveCount(4);
-    const button = page.getByRole("link", { name: "👍 Useful" }).first();
+    const button = page.getByRole("link", { name: "Useful" }).first();
     await expect(button).toBeVisible();
     const box = await button.boundingBox();
     expect(box && box.height).toBeGreaterThanOrEqual(24);

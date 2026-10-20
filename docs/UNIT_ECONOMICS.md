@@ -1,65 +1,82 @@
-# Unit Economics (re-modeled, July 2026)
+# Unit Economics
 
-*Replaces the spec's optimistic $0.31 free / $0.95 Pro / 81%-margin table with
-real 2026 provider pricing and explicit assumptions (audit 07-5 / 13-2). Numbers
-are directional, not a guarantee — the load-bearing variable is the summary
-cache-hit rate.*
+*Economic model for ReadPrism hosted service vs self-hosting. Aligned with
+the plan structure in [HOSTING.md](HOSTING.md) and PRODUCT_PLAN §8. Prices are not
+decided (#138); subscription prices are set at launch.*
 
-## Provider prices used
+## Plans and quotas
 
-- **Groq Llama 3.3 70B:** ~$0.59 / M input tokens, ~$0.79 / M output tokens
-  ([groq.com/pricing](https://groq.com/pricing)). Batch/prompt-caching can cut
-  this ~25–50%.
-- **Email (Resend):** free 3,000/mo (100/day), then $20/mo for 50k
-  ([resend.com/pricing](https://resend.com/pricing)). A **step cost**, not linear.
-  (The shipped code uses generic SMTP / Zoho; the same step-cost logic applies —
-  Zoho's own send limits kick in earlier.)
-- **Embeddings:** local sentence-transformers, no API cost — but CPU time is the
-  worker bottleneck, not a line item.
+| Tier | Feeds | Creators | AI summaries / day | Newsletters / day | Manual builds / day | Price |
+|---|---|---|---|---|---|---|
+| **Self-host** | Unlimited | Unlimited | Unlimited (BYOK or local) | Unlimited | Unlimited | No license fee (MIT); the operator pays their own hosting |
+| **Hosted Trial** (30 days) | 500 | 50 | 200 | 100 (50 MB) | 6 | Free, no card |
+| **Hosted Reader** | 500 | 50 | 200 | 100 (50 MB) | 6 | Price set at launch |
+| **Hosted Pro** | 2,000 | 200 | 1,000 | 300 (150 MB) | 12 | Price set at launch |
+| **Free limits** (post-trial) | 30 | 5 | 20 | 20 (10 MB) | 3 | Free ($0) |
 
-## The load-bearing assumption: summary cache-hit rate
+The full, configurable table is `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`
+(see [Hosted service](HOSTING.md#plans-and-quotas)).
 
-Summaries are cached across all users of a shared source (`summarization_cached`,
-shared `content_items`). Whether the economics work hinges almost entirely on how
-often a summary is already cached when a user needs it:
+## Provider costs
 
-- **Popular sources** (many co-subscribers) → high cache hits → low marginal LLM
-  cost.
-- **Niche sources** (few co-subscribers) → low cache hits → the summary is paid
-  for nearly every user. This is exactly ICP #1's (deep-niche self-hoster)
-  reading pattern, so **assume a *lower* cache-hit rate for the core ICP.**
+- **LLM inference (Groq / provider):** primary model for synthesis and fast model
+  for summaries (e.g. `openai/gpt-oss-120b` and `openai/gpt-oss-20b`). Typical
+  rates: ~$0.075–0.15 / M input tokens, ~$0.30–0.60 / M output tokens.
+- **Email delivery (Resend / SMTP):** free tier covers initial volume (~3,000/mo,
+  100/day); paid tiers (e.g. $20/mo for 50k emails) behave as a **step cost**,
+  not a linear per-user expense. Unverified accounts receive no digest emails.
+- **Embeddings:** local sentence-transformers running on CPU workers, no external
+  API cost.
 
-Model it explicitly. Rough per-Pro-user monthly LLM cost, assuming ~300 summarized
-items/mo at ~1.5k input + 0.3k output tokens each (~0.9M in / 0.09M out before
-caching ≈ $0.53 + $0.07 ≈ $0.60 uncached):
+## The load-bearing levers
 
-| Cache-hit rate | Effective LLM $/Pro-user/mo |
-|---|---|
-| 80% (mostly popular sources) | ~$0.12 |
-| 60% | ~$0.24 |
-| 40% (niche-heavy, ICP #1) | ~$0.36 |
-| 0% (worst case) | ~$0.60 |
+### 1. Lazy summarization (on-demand, not upfront)
 
-Target from the KPI framework: **cache hit ≥ 60%, per-Pro-user LLM < $0.50/mo.**
+ReadPrism does **not** run LLM summaries on every ingested feed item. Feed items
+receive fast extractive summaries at near-zero CPU cost during ingest. Full LLM
+summaries are triggered **lazily** only when a user opens an item or requests a
+summary. This caps token volume to what readers actually read rather than what
+feeds publish.
 
-## Email is a step cost, not $0.02/user
+### 2. Cross-user summary caching
 
-- 1 daily digest/user hits Resend's 100/day free cap at ~100 users.
-- $20/mo then covers ~50k sends ≈ ~1,600 daily-digest users.
-- So email is flat within a tier and jumps at tier boundaries — don't model it
-  as linear per-user.
+Summaries for shared, publicly accessible feed items are cached globally
+(`summarization_cached`). When multiple readers follow the same source or story,
+the LLM cost is paid once:
 
-## Free vs Pro alignment (see audit 13)
+- **Popular shared sources:** high cache-hit rate (>70%), amortizing inference
+  cost across many subscribers.
+- **Deep niche / personal feeds:** low cache-hit rate, where summaries are
+  computed once per item read.
+- **Private forwarded newsletters:** always private to the owning user; never
+  shared, but volume is bounded by daily newsletter and summary quotas.
 
-Giving the full ranking engine + LLM summaries away on Free means cost scales with
-free users while revenue doesn't. Recommended lever: **Free = cached/shared
-summaries only; Pro = on-demand, detailed, per-item synthesis**, which ties the
-paywall to the variable cost. Heavy/niche users are pushed to self-host with their
-own Groq key (they pay their own inference).
+### 3. Readers' own LLM keys (BYOK)
 
-## Realistic near-term target
+Readers who add their own provider API key in Preferences run summaries directly
+against their own provider account. For these readers, variable LLM inference
+cost to the hosted instance is **$0**.
 
-Not the spec's 8,000-Pro profitability endgame. Model a **hosted beta under
-$100/mo infra serving < 100 users**, and instrument real per-user LLM cost +
-cache-hit rate from that beta (KPI framework, artifact 17) before projecting
-further.
+### 4. Merchant of Record (MoR) fees
+
+Payments are processed through a Merchant of Record (Lemon Squeezy or Paddle) to
+handle global sales tax, VAT, and GST compliance. MoR providers charge a transaction
+fee (typically ~5% + $0.50 per transaction). Net revenue per subscriber equals the
+subscription price (price set at launch) minus MoR fees.
+
+## Break-even model
+
+Per paying subscriber:
+
+- **Net revenue** = price (set at launch) − merchant-of-record fees
+- **Break-even** when net revenue > variable cost + allocated fixed cost
+
+Where:
+- **Variable cost per user:**
+  - LLM tokens for opened items not already cached: capped by daily quotas (200/day on Reader, 1,000/day on Pro). For typical daily reading (5–15 articles read/day), this represents pennies per user per month.
+  - Email step cost allocation.
+- **Allocated fixed cost:** server hosting (e.g. Hetzner cloud node), domain, and
+  off-box backup storage amortized across active users.
+- **Safety valve:** post-trial non-paying users revert to Free limits (30 feeds,
+  20 summaries/day, 3 digest builds/day), preventing unbounded variable cost from
+  inactive or casual accounts while self-hosters incur no operator cost.

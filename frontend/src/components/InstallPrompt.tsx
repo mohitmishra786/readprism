@@ -4,6 +4,7 @@
  * dismissible banner. No Web Push (optional per spec) — see PROGRESS.
  */
 import { useState } from "react";
+import { X } from "lucide-react";
 import { useInstallPrompt } from "../lib/useInstallPrompt";
 
 export function InstallPrompt() {
@@ -39,7 +40,7 @@ export function InstallPrompt() {
         aria-label="Dismiss install prompt"
         className="text-stone-400 hover:text-stone-700"
       >
-        ✕
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   );

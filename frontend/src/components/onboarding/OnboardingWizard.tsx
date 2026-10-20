@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { InterestInput } from "./InterestInput";
 import { CalibrationStep } from "./CalibrationStep";
 import { detectedTimezone, digestPreferencesPayload } from "./digestPrefs";
@@ -187,9 +188,9 @@ export function OnboardingWizard() {
                 <button
                   onClick={() => setTopics((prev) => prev.filter((x) => x !== t))}
                   aria-label={`Remove topic ${t}`}
-                  style={{ background: "none", border: "none", color: "#1e40af", cursor: "pointer", padding: 0 }}
+                  style={{ background: "none", border: "none", color: "#1e40af", cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center" }}
                 >
-                  ✕
+                  <X style={{ width: 14, height: 14 }} aria-hidden="true" />
                 </button>
               </span>
             ))}

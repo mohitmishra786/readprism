@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ThumbsUp, ThumbsDown } from "lucide-react";
 import { api, type CalibrationItem } from "../../lib/api";
 
 const WANT = 8;
@@ -81,18 +82,18 @@ export function CalibrationStep() {
               aria-label={`More like ${item.title}`}
               aria-pressed={ratings[item.id] === 1}
               onClick={() => rate(item.id, 1)}
-              className={`rounded px-2 py-1 ${ratings[item.id] === 1 ? "bg-emerald-100" : "hover:bg-stone-100"}`}
+              className={`rounded px-2 py-1 ${ratings[item.id] === 1 ? "bg-emerald-100 text-emerald-800" : "hover:bg-stone-100 text-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"}`}
             >
-              👍
+              <ThumbsUp className="h-4 w-4" aria-hidden="true" />
             </button>
             <button
               type="button"
               aria-label={`Less like ${item.title}`}
               aria-pressed={ratings[item.id] === -1}
               onClick={() => rate(item.id, -1)}
-              className={`rounded px-2 py-1 ${ratings[item.id] === -1 ? "bg-rose-100" : "hover:bg-stone-100"}`}
+              className={`rounded px-2 py-1 ${ratings[item.id] === -1 ? "bg-rose-100 text-rose-800" : "hover:bg-stone-100 text-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"}`}
             >
-              👎
+              <ThumbsDown className="h-4 w-4" aria-hidden="true" />
             </button>
           </li>
         ))}

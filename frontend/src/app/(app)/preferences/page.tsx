@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, AlertTriangle, Brain, Pencil } from "lucide-react";
 import { api } from "../../../lib/api";
 import { PlanSection } from "../../../components/PlanSection";
 import { LlmKeySection } from "../../../components/LlmKeySection";
@@ -117,16 +118,30 @@ function LlmStatus() {
   if (!status) return null;
   return (
     <div style={{ fontSize: 12, color: "var(--text-tertiary)", marginTop: 12 }} role="status">
-      <p style={{ margin: "4px 0" }}>
-        {status.llm_configured ? "✅" : "⚠️"} Summaries:{" "}
-        {status.llm_configured ? "LLM active" : "extractive fallback (no key)"} ·{" "}
-        {status.model_primary} · fast: {status.model_fast}
-        {status.openai_fallback_enabled ? " · OpenAI fallback on" : ""}
+      <p style={{ margin: "4px 0", display: "flex", alignItems: "center", gap: 6 }}>
+        {status.llm_configured ? (
+          <Check style={{ width: 14, height: 14, color: "#16a34a" }} aria-hidden="true" />
+        ) : (
+          <AlertTriangle style={{ width: 14, height: 14, color: "#d97706" }} aria-hidden="true" />
+        )}
+        <span>
+          Summaries:{" "}
+          {status.llm_configured ? "LLM active" : "extractive fallback (no key)"} ·{" "}
+          {status.model_primary} · fast: {status.model_fast}
+          {status.openai_fallback_enabled ? " · OpenAI fallback on" : ""}
+        </span>
       </p>
       {status.embedding_model && (
-        <p style={{ margin: "4px 0" }}>
-          {status.embedding_is_hash ? "⚠️" : "🧠"} Embeddings: {status.embedding_model}
-          {status.embedding_quality_note ? ` · ${status.embedding_quality_note}` : ""}
+        <p style={{ margin: "4px 0", display: "flex", alignItems: "center", gap: 6 }}>
+          {status.embedding_is_hash ? (
+            <AlertTriangle style={{ width: 14, height: 14, color: "#d97706" }} aria-hidden="true" />
+          ) : (
+            <Brain style={{ width: 14, height: 14, color: "#2563eb" }} aria-hidden="true" />
+          )}
+          <span>
+            Embeddings: {status.embedding_model}
+            {status.embedding_quality_note ? ` · ${status.embedding_quality_note}` : ""}
+          </span>
         </p>
       )}
       {status.embedding_is_hash && status.embedding_upgrade_hint && (
@@ -394,7 +409,7 @@ export default function PreferencesPage() {
           {/* Tag cloud — mute 30d / boost / rename / merge (UX-08). */}
           <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginTop: 16 }}>
             Click a topic to mute it for 30 days; use the arrows to boost or
-            the ✎/⇄ controls to rename or merge.
+            the rename and merge controls to rename or merge.
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
             {graph.nodes.slice(0, 30).map((node) => (
@@ -421,7 +436,7 @@ export default function PreferencesPage() {
                   {node.label}
                 </button>
                 <button onClick={() => boostTopic(node.label)} title={`More of "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#166534", padding: 0, fontSize: "0.8em" }}>▲</button>
-                <button onClick={() => renameInterest(node.label)} title={`Rename "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#1e40af", padding: 0, fontSize: "0.8em" }}>✎</button>
+                <button onClick={() => renameInterest(node.label)} title={`Rename "${node.label}"`} aria-label={`Rename "${node.label}"`} style={{ cursor: "pointer", background: "none", border: "none", color: "#1e40af", padding: 0, fontSize: "0.8em", display: "inline-flex", alignItems: "center" }}><Pencil style={{ width: 12, height: 12 }} aria-hidden="true" /></button>
                 <button onClick={() => mergeInterest(node.label)} title={`Merge "${node.label}" into another topic`} style={{ cursor: "pointer", background: "none", border: "none", color: "#6b21a8", padding: 0, fontSize: "0.8em" }}>⇄</button>
               </span>
             ))}

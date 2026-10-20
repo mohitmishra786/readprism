@@ -38,6 +38,10 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
           <a href="/terms" className="underline hover:text-prism-700">
             Terms
           </a>
+          {" · "}
+          <a href="/subprocessors" className="underline hover:text-prism-700">
+            Subprocessors
+          </a>
         </p>
       </footer>
     </div>

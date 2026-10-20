@@ -81,7 +81,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   // Surface the result via a notification badge on the action icon.
   await chrome.action.setBadgeText({
     tabId: tab.id,
-    text: result.ok ? "✓" : "!",
+    text: result.ok ? "OK" : "!",
   });
   await chrome.action.setBadgeBackgroundColor({
     tabId: tab.id,

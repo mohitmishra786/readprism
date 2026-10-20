@@ -125,9 +125,9 @@ def _confirmation_page(
     import html
 
     labels = {
-        "up": "👍 Useful",
-        "down": "👎 Not for me",
-        "save": "💾 Save",
+        "up": "Useful",
+        "down": "Not for me",
+        "save": "Save",
         "open": "Open the article",
     }
     label = html.escape(labels.get(action, "Confirm"))
