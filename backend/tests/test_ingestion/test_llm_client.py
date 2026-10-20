@@ -44,14 +44,8 @@ class _Clock:
 
 
 def _client(handler, **kwargs) -> LLMClient:
-    return LLMClient(
-        api_key="test-key",
-        transport=httpx.MockTransport(handler),
-        sleep=_no_sleep,
-        tpm=100_000,
-        rpm=1_000,
-        **kwargs,
-    )
+    options = {"sleep": _no_sleep, "tpm": 100_000, "rpm": 1_000, **kwargs}
+    return LLMClient(api_key="test-key", transport=httpx.MockTransport(handler), **options)
 
 
 @pytest.mark.asyncio
@@ -198,3 +192,63 @@ async def test_each_task_goes_to_its_model(monkeypatch):
     assert s.model_for("summary") == "llama3.1:8b"
     assert s.model_for("synthesis") == "qwen2.5:32b"
     assert s.model_for("topics") == s.llm_model_fast
+
+
+@pytest.mark.asyncio
+async def test_reasoning_effort_low_for_gpt_oss_only(monkeypatch):
+    """#225: gpt-oss spent the summary budget reasoning and returned no JSON."""
+    sent: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    client = _client(handler)
+    msg = [{"role": "user", "content": "hi"}]
+    await client.complete(model="openai/gpt-oss-20b", messages=msg)
+    await client.complete(model="llama3.1:8b", messages=msg)
+    assert sent[0]["reasoning_effort"] == "low"
+    assert "reasoning_effort" not in sent[1]  # other providers never see the field
+
+    monkeypatch.setattr(get_settings(), "llm_reasoning_effort", "")
+    await client.complete(model="openai/gpt-oss-20b", messages=msg)
+    assert "reasoning_effort" not in sent[2]
+    monkeypatch.setattr(get_settings(), "llm_reasoning_effort", "medium")
+    await client.complete(model="any-model", messages=msg)
+    assert sent[3]["reasoning_effort"] == "medium"
+
+
+@pytest.mark.asyncio
+async def test_long_retry_after_fails_fast_instead_of_blocking_the_worker():
+    """#225: a 429 with a long Retry-After (daily cap) must not stall a solo worker."""
+    slept: list[float] = []
+    calls = {"n": 0}
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429, headers={"retry-after": "900"}, json={"error": {}})
+
+    client = _client(handler, sleep=fake_sleep)
+    assert await client.complete(model="m", messages=[{"role": "user", "content": "hi"}]) is None
+    assert calls["n"] == 1 and all(s < 60 for s in slept)
+
+
+@pytest.mark.asyncio
+async def test_short_retry_after_is_honoured():
+    slept: list[float] = []
+    replies = iter(
+        [
+            httpx.Response(429, headers={"retry-after": "3"}, json={}),
+            httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]}),
+        ]
+    )
+
+    async def fake_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    client = _client(lambda request: next(replies), sleep=fake_sleep)
+    assert await client.complete(model="m", messages=[{"role": "user", "content": "hi"}]) == "ok"
+    assert 3.0 in slept
