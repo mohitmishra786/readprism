@@ -6,13 +6,25 @@ export interface ComparisonRow {
   weirling: string;
 }
 
+export interface ComparisonSource {
+  label: string;
+  url: string;
+}
+
 export interface ComparisonData {
   competitor: string;
   intro: string;
   rows: ComparisonRow[];
   differsBecause: string[];
   fairnote: string;
+  /** When the competitor's prices and claims were last checked (#168). */
+  checked: string;
+  sources: ComparisonSource[];
 }
+
+/** Our own plans, in one place so every comparison page agrees (D-18). */
+export const WEIRLING_PRICING =
+  "Self-hosted: free (MIT). Hosted: Reader $6/mo or $54/yr, Pro $12/mo or $108/yr, 30-day Pro trial";
 
 export function ComparisonPage({ data }: { data: ComparisonData }) {
   return (
@@ -54,9 +66,22 @@ export function ComparisonPage({ data }: { data: ComparisonData }) {
         </ul>
 
         <p className="mt-6 text-sm text-stone-500 dark:text-stone-400">{data.fairnote}</p>
+
+        <p className="mt-6 text-sm text-stone-500 dark:text-stone-400" data-testid="checked">
+          Prices and features last checked {data.checked}. Sources:
+        </p>
+        <ul className="mt-1 list-disc pl-6 text-sm text-stone-500 dark:text-stone-400">
+          {data.sources.map((src) => (
+            <li key={src.url}>
+              <a href={src.url} rel="noopener noreferrer" className="underline">
+                {src.label}
+              </a>
+            </li>
+          ))}
+        </ul>
         <p className="mt-6">
           <a href="/register" className="text-prism-700 underline dark:text-prism-300">
-            Try Weirling →
+            Try Weirling
           </a>{" "}
           ·{" "}
           <a href="/how-it-works" className="text-prism-700 underline dark:text-prism-300">
