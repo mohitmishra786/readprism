@@ -50,7 +50,7 @@ Before submitting a pull request:
   npx tsc --noEmit -p .
   npm test
   ```
-- Add or update tests for any code change — an item isn't done until it's covered.
+- Add or update tests for any code change: an item isn't done until it's covered.
 - Keep commits focused and reference the relevant area in the message.
 
 ## Contributing starter packs and platform recipes
@@ -62,7 +62,7 @@ first in [GitHub Discussions](https://github.com/mohitmishra786/weirling/discuss
 
 ### 1. Starter packs
 
-Starter packs are curated sets of 10–25 high-quality RSS or Atom feeds that help
+Starter packs are curated sets of 10 to 25 high-quality RSS or Atom feeds that help
 new users bootstrap their reading digest during cold-start onboarding.
 
 - **Location:** `backend/app/data/starter_packs/<slug>.opml`
@@ -83,7 +83,7 @@ Create `backend/app/data/starter_packs/systems-programming.opml`:
 <?xml version="1.0" encoding="UTF-8"?>
 <opml version="2.0">
   <head>
-    <title>Systems Programming — Weirling starter pack</title>
+    <title>Systems Programming: Weirling starter pack</title>
   </head>
   <body>
     <outline text="Systems Programming" title="Systems Programming">

@@ -1,12 +1,12 @@
 /**
- * Weirling service worker — offline shell + stale-while-revalidate.
+ * Weirling service worker: offline shell + stale-while-revalidate.
  *
  * Goals (kept intentionally minimal):
  * - App shell (HTML navigations) loads from cache when offline, so the digest
  *   is readable on a subway. Content data is still fetched live when online.
  * - Static assets (JS/CSS/fonts) use stale-while-revalidate for fast loads.
  *
- * Non-goals: we do NOT cache article bodies or API responses here — the in-app
+ * Non-goals: we do NOT cache article bodies or API responses here. The in-app
  * reader fetches content live, and the ranking signals need fresh data.
  */
 const CACHE_VERSION = "readprism-v2";
@@ -101,7 +101,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Only cache successful responses — caching 4xx/5xx would replay
+          // Only cache successful responses: caching 4xx/5xx would replay
           // transient errors as the offline fallback (cache poisoning).
           if (response.ok) {
             const copy = response.clone();

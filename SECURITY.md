@@ -15,7 +15,7 @@ Please include:
 - affected version/commit.
 
 We aim to acknowledge reports within a few days and will keep you updated on
-remediation. Responsible disclosure is appreciated — please give us a reasonable
+remediation. Responsible disclosure is appreciated; please give us a reasonable
 window to ship a fix before any public disclosure.
 
 ## Scope

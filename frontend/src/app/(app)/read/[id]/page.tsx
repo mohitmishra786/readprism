@@ -304,8 +304,8 @@ export default function ReaderPage() {
           {(savedQuick || ratedQuick !== null) && (
             <p className="mt-2 text-xs text-emerald-600" role="status">
               {savedQuick && ratedQuick === null && "Saved"}
-              {ratedQuick === 1 && "Rated helpful — more like this"}
-              {ratedQuick === -1 && "Rated not helpful — less like this"}
+              {ratedQuick === 1 && "Rated helpful: more like this"}
+              {ratedQuick === -1 && "Rated not helpful: less like this"}
               {savedQuick && ratedQuick !== null && " · Saved"}
             </p>
           )}

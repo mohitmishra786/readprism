@@ -36,17 +36,17 @@ const TIER_STYLES: Record<
   fully_tracked: {
     className: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300",
     marker: Check,
-    title: "Reliably tracked — new posts ingested",
+    title: "Reliably tracked: new posts ingested",
   },
   best_effort: {
     className: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300",
     marker: AlertTriangle,
-    title: "Best effort — a feed may exist but isn't guaranteed",
+    title: "Best effort: a feed may exist but isn't guaranteed",
   },
   unsupported: {
     className: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300",
     marker: X,
-    title: "Not supported — this platform has no public feed",
+    title: "Not supported: this platform has no public feed",
   },
 };
 
@@ -62,7 +62,7 @@ export function PlatformBadge({ platform }: { platform: CreatorPlatform }) {
       href={platform.platform_url}
       target="_blank"
       rel="noopener noreferrer"
-      title={`${label} — ${tierStyle.title}`}
+      title={`${label}: ${tierStyle.title}`}
       className={`chip ring-1 ${tierStyle.className} hover:opacity-80`}
     >
       <span aria-hidden className="inline-flex items-center">

@@ -69,9 +69,9 @@ and is checked against the code in CI.
 
 ## Why we process it (legal bases)
 
-- To provide the service you asked for (ranking, digests) — performance of a
+- To provide the service you asked for (ranking, digests): performance of a
   contract.
-- To improve ranking quality for you — legitimate interest, balanced against
+- To improve ranking quality for you: legitimate interest, balanced against
   your rights; you can turn telemetry-driven features off by not using the
   in-app reader.
 
@@ -98,8 +98,8 @@ and is checked against the code in CI.
 ## Shared content model
 
 Public web/RSS content is deduplicated across users and stored once, keyed by
-URL, with no owner — this keeps costs and summarization efficient. Content that
-is personal to you — **forwarded newsletters** — is tagged with your user id, is
+URL, with no owner; this keeps costs and summarization efficient. Content that
+is personal to you (**forwarded newsletters**) is tagged with your user id, is
 never shown to other users, and is only readable by you.
 
 ## Third-party processors
@@ -132,7 +132,7 @@ terms apply to the operator.
 Digest emails contain **no tracking pixel** and no per-recipient beacons.
 Links in the email (titles, rate/save) are signed with an expiring HMAC and
 route through your own Weirling instance, which records that you opened or
-rated an item so the ranking can learn — this is disclosed in the email
+rated an item so the ranking can learn; this is disclosed in the email
 footer. Signed links expire after 30 days.
 
 EU/California residents additionally have the rights to rectification,

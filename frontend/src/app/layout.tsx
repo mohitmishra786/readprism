@@ -37,13 +37,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://weirling.com";
 // Platform"; lead with the plain, provable value.
 const TAGLINE = "The reading app that ranks by how you actually read";
 const DESCRIPTION =
-  "Weirling aggregates every source and creator you follow and orders your daily digest by personal relevance — a behavioral, explainable ranking engine that gets sharper the more you read. Open source and self-hostable.";
+  "Weirling aggregates every source and creator you follow and orders your daily digest by personal relevance: a behavioral, explainable ranking engine that gets sharper the more you read. Open source and self-hostable.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `Weirling — ${TAGLINE}`,
-    template: "%s — Weirling",
+    default: `Weirling: ${TAGLINE}`,
+    template: "%s | Weirling",
   },
   description: DESCRIPTION,
   applicationName: "Weirling",
@@ -62,13 +62,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Weirling",
-    title: `Weirling — ${TAGLINE}`,
+    title: `Weirling: ${TAGLINE}`,
     description: DESCRIPTION,
     url: SITE_URL,
   },
   twitter: {
     card: "summary_large_image",
-    title: `Weirling — ${TAGLINE}`,
+    title: `Weirling: ${TAGLINE}`,
     description: DESCRIPTION,
   },
   icons: {

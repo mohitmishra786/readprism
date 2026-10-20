@@ -184,7 +184,7 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     }
 
-    subject = f"Your Weirling Digest — {digest.generated_at.strftime('%B %d, %Y')}"
+    subject = f"Your Weirling Digest: {digest.generated_at.strftime('%B %d, %Y')}"
     success = await send_email(
         to=user.email,
         subject=subject,

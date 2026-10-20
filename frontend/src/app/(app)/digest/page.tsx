@@ -62,7 +62,7 @@ export default function DigestPage() {
         } catch {}
       }
       setGenerating(false);
-      setError("Digest is still building — refresh in a moment.");
+      setError("Digest is still building; refresh in a moment.");
     } catch (err: unknown) {
       setGenerating(false);
       setError(err instanceof Error ? err.message : "Failed to generate digest");

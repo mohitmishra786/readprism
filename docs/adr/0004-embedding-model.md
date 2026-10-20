@@ -1,4 +1,4 @@
-# ADR 0004 — Keep MiniLM until Nomic wins the retrieval check
+# ADR 0004: Keep MiniLM until Nomic wins the retrieval check
 
 - **Status:** Accepted
 - **Date:** 2026-09-25

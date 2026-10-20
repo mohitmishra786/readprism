@@ -79,7 +79,7 @@ If assessment confirms compromise of personal data:
 
 1. Fix underlying vulnerability (code patch, dependency upgrade, or firewall rule update).
 2. Verify all rotated credentials and run complete test suite and security audit.
-3. Hold formal incident post-mortem within 5 business days and archive evidence log for statutory retention (minimum 3–5 years).
+3. Hold formal incident post-mortem within 5 business days and archive evidence log for statutory retention (minimum 3 to 5 years).
 
 ---
 
@@ -104,7 +104,7 @@ The Evidence Custodian must record every forensic action and artifact in the fol
 ```text
 To: [Data Protection Board of India / Lead Supervisory Authority]
 Date: [Date and Time UTC]
-Subject: Formal Notification of Personal Data Incident — [Operator / Service Entity Name]
+Subject: Formal Notification of Personal Data Incident: [Operator / Service Entity Name]
 
 1. Contact Details of Data Fiduciary / Controller:
    - Organization: [Legal Entity Name]

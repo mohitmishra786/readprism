@@ -22,7 +22,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-3xl px-4 py-12">{children}</main>
       <footer className="border-t border-stone-200 px-4 py-8 text-center text-sm text-stone-500 dark:border-stone-800 dark:text-stone-400">
         <p>
-          Weirling — behavioral, explainable, open-source content ranking.{" "}
+          Weirling: behavioral, explainable, open-source content ranking.{" "}
           <a
             href="https://github.com/mohitmishra786/weirling"
             className="underline hover:text-prism-700 dark:hover:text-prism-200"

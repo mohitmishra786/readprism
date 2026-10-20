@@ -1,4 +1,4 @@
-# ADR 0002 — One OpenAI-compatible LLM client
+# ADR 0002: One OpenAI-compatible LLM client
 
 - **Status:** Accepted
 - **Date:** 2026-09-24
