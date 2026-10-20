@@ -45,6 +45,12 @@ open http://localhost:3001    # create your account and onboard
 - `make demo`: seed a demo persona (Maya, a backend engineer): seven fictional publications, two weeks of reading history and a real digest. All demo content is fictional, written for Weirling and released CC0 (`backend/app/data/demo/articles.json`).
 - `make starter-pack-check`: verify starter-pack feed liveness (>=90%).
 
+## Demo
+
+[![A 40-second tour of Weirling: the digest, why each item is ranked, and what it learns](frontend/public/landing/weirling-demo.jpg)](frontend/public/landing/weirling-demo.mp4)
+
+*40 seconds, narrated, captions on screen. Click to play.*
+
 ## Screenshots
 
 ![Weirling daily edition digest with ranked articles and PRS scores](docs/media/digest.png)
