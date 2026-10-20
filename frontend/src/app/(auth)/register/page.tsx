@@ -128,6 +128,17 @@ export default function RegisterPage() {
           <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
             {loading ? "Creating account…" : "Create account"}
           </button>
+          <p className="text-center text-xs text-stone-500">
+            By creating an account, you agree to the{" "}
+            <a href="/terms" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" className="underline hover:text-stone-700" target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+            </a>
+            .
+          </p>
         </form>
         )}
 
