@@ -182,11 +182,17 @@ def _pro_followed(now: datetime):
 
     if not entitlements.is_hosted():
         return None
+    plan_active = or_(User.plan_expires_at.is_(None), User.plan_expires_at > now)
     paid_pro = and_(
-        User.tier.in_([t for t in PAID_TIERS if t in entitlements.PRO_PLANS]),
-        or_(User.plan_expires_at.is_(None), User.plan_expires_at > now),
+        User.tier.in_([t for t in PAID_TIERS if t in entitlements.PRO_PLANS]), plan_active
     )
-    trialing = and_(User.trial_ends_at.is_not(None), User.trial_ends_at > now)
+    # Matches billing.effective_plan: an active paid plan wins over a trial,
+    # so a Reader whose trial date hasn't passed is not Pro.
+    trialing = and_(
+        User.trial_ends_at.is_not(None),
+        User.trial_ends_at > now,
+        ~and_(User.tier.in_(PAID_TIERS), plan_active),
+    )
     return (
         exists()
         .where(Source.feed_id == Feed.id, Source.is_active.is_(True), Source.user_id == User.id)
@@ -206,12 +212,12 @@ async def _apply_pro_priority(feed, subs, session) -> None:
     cap = get_settings().hosted_pro_max_poll_minutes
     if not entitlements.is_hosted() or cap <= 0 or feed.fetch_error_count:
         return
+    soonest = datetime.now(UTC) + timedelta(minutes=cap)
+    if feed.next_poll_at is not None and feed.next_poll_at <= soonest:
+        return  # already due within the cap; no need to look up subscribers
     user_ids = list({sub.user_id for sub in subs})
     users = (await session.execute(select(User).where(User.id.in_(user_ids)))).scalars()
-    if not any(entitlements.pro_features(u) for u in users):
-        return
-    soonest = datetime.now(UTC) + timedelta(minutes=cap)
-    if feed.next_poll_at is None or feed.next_poll_at > soonest:
+    if any(entitlements.pro_features(u) for u in users):
         feed.next_poll_at = soonest
 
 

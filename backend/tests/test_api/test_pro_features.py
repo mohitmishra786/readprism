@@ -113,6 +113,20 @@ async def test_twice_daily_needs_pro(client, db_session, hosted):
 
 
 @pytest.mark.asyncio
+async def test_downgraded_reader_can_still_save_with_twice_daily_stored(client, db_session, hosted):
+    """CodeRabbit on #347: the page resends digest_frequency on every save."""
+    user, headers = await _account(client, db_session, "reader")
+    user.digest_frequency = "twice_daily"
+    await db_session.commit()
+    resp = await client.put(
+        "/api/v1/preferences",
+        json={"digest_frequency": "twice_daily", "serendipity_percentage": 20},
+        headers=headers,
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_api_tokens_are_pro_except_for_the_extension(client, db_session, hosted):
     async def token_for(tier):
         user, _ = await _account(client, db_session, tier)
@@ -162,6 +176,8 @@ async def test_pro_feeds_go_first_and_are_checked_at_least_hourly(db_session, ho
     from app.workers.tasks.ingest_feeds import _apply_pro_priority, _pro_followed
 
     reader, pro = _user("reader"), _user("pro")
+    # A Reader whose trial date hasn't passed is still Reader, not Pro.
+    reader.trial_ends_at = NOW + timedelta(days=10)
     db_session.add_all([reader, pro])
     await db_session.flush()
     plain = Feed(key=f"https://a{uuid.uuid4().hex[:6]}.example/feed", url="https://a.example")

@@ -268,6 +268,7 @@ export default function PreferencesPage() {
           .filter(Boolean);
       }
       setSaveError("");
+      setSaved(false);
       const updated = await api.preferences.update(payload);
       setUser(updated);
       setInitial(updated);
