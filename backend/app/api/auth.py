@@ -367,10 +367,17 @@ async def magic_link_request(
         allowed, _ = await can_register(session)
         if not allowed or not await domain_signup_allowed(session, email):
             return {"status": "sent"}
+        # On hosted, no account without consent (#181). Same 202 either way.
+        hosted = get_settings().deployment_mode == "hosted"
+        if hosted and not body.accept_terms:
+            return {"status": "sent"}
+        consented = hosted or body.accept_terms
         user = User(
             email=email,
             hashed_password=_hash_password(uuid.uuid4().hex),  # unusable random pw
             display_name=body.display_name,
+            terms_accepted_at=datetime.now(UTC) if consented else None,
+            terms_version=get_settings().terms_version if consented else None,
         )
         from app.services.billing import start_trial
 

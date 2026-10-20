@@ -81,6 +81,9 @@ class TokenRefresh(BaseModel):
 class MagicLinkRequest(BaseModel):
     email: EmailStr
     display_name: str | None = None
+    # A magic link can also create an account; on hosted that needs consent
+    # to the Terms and Privacy policy, like /register (#181).
+    accept_terms: bool = False
 
 
 class MagicLinkVerify(BaseModel):

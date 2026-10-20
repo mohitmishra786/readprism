@@ -111,3 +111,34 @@ async def test_consent_stored_and_exported_in_gdpr(
     assert "terms_accepted_at" in profile
     assert profile["terms_accepted_at"] is not None
     assert profile["terms_version"] == "2026-07-21"
+
+
+@pytest.mark.asyncio
+async def test_magic_link_signup_on_hosted_needs_consent(client, db_session, monkeypatch):
+    """#181: the magic link doubles as sign-up, so it must not skip consent."""
+    from unittest.mock import AsyncMock, patch
+
+    s = get_settings()
+    monkeypatch.setattr(s, "deployment_mode", "hosted")
+    monkeypatch.setattr(s, "registration_mode", "open")
+    monkeypatch.setattr(s, "email_verification", "off")
+
+    async def user_for(email):
+        db_session.expire_all()
+        return (
+            await db_session.execute(select(User).where(User.email == email))
+        ).scalar_one_or_none()
+
+    with patch("app.utils.email.send_email", AsyncMock(return_value=True)):
+        no = await client.post(
+            "/api/v1/auth/magic-link/request", json={"email": "ml-no@example.com"}
+        )
+        yes = await client.post(
+            "/api/v1/auth/magic-link/request",
+            json={"email": "ml-yes@example.com", "accept_terms": True},
+        )
+    assert no.status_code == yes.status_code == 202  # same answer: not enumerating
+    assert await user_for("ml-no@example.com") is None
+    created = await user_for("ml-yes@example.com")
+    assert created is not None and created.terms_accepted_at is not None
+    assert created.terms_version == s.terms_version
