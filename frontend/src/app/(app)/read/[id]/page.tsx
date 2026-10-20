@@ -111,7 +111,7 @@ export default function ReaderPage() {
   };
 
   // Keyboard shortcuts (UX-05): j/k next/prev digest item, o original,
-  // s save, u 👍, d 👎. Skips when typing in a form control.
+  // s save, u helpful, d not helpful. Skips when typing in a form control.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -231,7 +231,7 @@ export default function ReaderPage() {
           {theme}
         </button>
         <span className="ml-auto hidden text-stone-500 sm:inline dark:text-stone-400">
-          j/k next·prev · o original · s save · u 👍 · d 👎
+          j/k next·prev · o original · s save · u helpful · d not helpful
         </span>
       </div>
 
@@ -302,10 +302,10 @@ export default function ReaderPage() {
           />
           {(savedQuick || ratedQuick !== null) && (
             <p className="mt-2 text-xs text-emerald-600" role="status">
-              {savedQuick && ratedQuick === null && "Saved ✓"}
-              {ratedQuick === 1 && "Rated 👍 — more like this"}
-              {ratedQuick === -1 && "Rated 👎 — less like this"}
-              {savedQuick && ratedQuick !== null && " · Saved ✓"}
+              {savedQuick && ratedQuick === null && "Saved"}
+              {ratedQuick === 1 && "Rated helpful — more like this"}
+              {ratedQuick === -1 && "Rated not helpful — less like this"}
+              {savedQuick && ratedQuick !== null && " · Saved"}
             </p>
           )}
         </div>

@@ -19,7 +19,7 @@ Be careful how much weight you put on the "where we stand" section. Here is exac
 
 **Consequence:** the repo is very likely *further along* than the stale README suggests (52 closed PRs vs 24 commits in the snapshot), but nothing below asserts that a feature works or doesn't. Where I say "not evident" I mean *not mentioned in the README/spec mapping*. **Phase 0 of the plan is a code audit that turns every guess here into a verified status** (Spec Coverage Matrix in `PROGRESS.md`).
 
-Facts I *did* verify against primary sources are marked ✅. Facts from third-party blogs (many are competitors' marketing pages, notably Readless) are marked ⚠️ — re-check on vendor pages before you publish any comparison.
+Facts I *did* verify against primary sources are marked [Verified]. Facts from third-party blogs (many are competitors' marketing pages, notably Readless) are marked [Warning] — re-check on vendor pages before you publish any comparison.
 
 ---
 
@@ -29,8 +29,8 @@ Facts I *did* verify against primary sources are marked ✅. Facts from third-pa
 
 **But six things would sink it if left as specified**, ordered by urgency:
 
-1. ✅ **Your LLM is probably dead.** Groq shut down `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on **16 Aug 2026** for free/developer tiers. The README names both. If the code still hard-codes them, every summary has been failing for ~5½ weeks.
-2. ✅ **The embedding model can't read your long articles.** `all-MiniLM-L6-v2` truncates around 256 tokens, so "deep reads" are ranked on their first ~200 words.
+1. [Verified] **Your LLM is probably dead.** Groq shut down `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` on **16 Aug 2026** for free/developer tiers. The README names both. If the code still hard-codes them, every summary has been failing for ~5½ weeks.
+2. [Verified] **The embedding model can't read your long articles.** `all-MiniLM-L6-v2` truncates around 256 tokens, so "deep reads" are ranked on their first ~200 words.
 3. **The cold-start plan needs other users**, and a self-hosted instance has one. The spec's "collaborative warmup" is a no-op for the exact audience you're targeting.
 4. **The Suggestion signal (the spec's "purest signal") needs a pool of non-followed content**, and nothing in the README says where that pool comes from.
 5. **Learning from a ranked list is biased** (people read what's on top). The spec has no impression logging, no exploration, no evaluation harness — so you can't *prove* the ranking is better than chronological.
@@ -44,26 +44,26 @@ Facts I *did* verify against primary sources are marked ✅. Facts from third-pa
 
 ## 2. Where we stand — spec vs. repo (as far as visible)
 
-Legend: 🟢 README claims it · 🟡 partially/unclear · 🔴 not evident · ⚪ unknown (blocked folder). *Nothing here is verified in code.*
+Legend: Done: README claims it · Partial: partially/unclear · Not started: not evident · Unknown: unknown (blocked folder). *Nothing here is verified in code.*
 
 | Spec phase / item | README evidence | Status |
 |---|---|---|
-| **Phase 1 – Ingestion**: RSS/Atom, scraping (trafilatura+Playwright), newsletter forwarding, email digest | Listed in "What it does" + services (Browserless, Resend) | 🟢 |
-| Chronological feed with manual categorization | Not mentioned | 🟡 |
-| Fault tolerance + user notification | "Honest platform tiers" only | 🟡 |
-| **Phase 2 – Ranking**: embeddings, 8-signal PRS, telemetry, explicit feedback, source trust, summaries, dedupe | All listed; migration 0003 = reading telemetry; `useReadingTelemetry` | 🟢 |
-| Collaborative cold-start warmup | Listed (`cold_start/collaborative.py`) — but see Finding F4 | 🟡 |
-| **Phase 3 – Advanced**: meta-learning weights, 3-scale temporal, serendipity, creator resolution, interest graph | Listed (`meta_weights.py`, `interest_graph/`, `creator/`) | 🟢 |
-| Cross-source synthesis / emerging topics | Not mentioned | 🔴 |
-| Explainability ("why this") | Claimed in concept; UI unknown | 🟡 |
-| **Phase 4 – Ecosystem**: PWA/offline/push | Not mentioned | 🔴 |
-| Browser extension | `extension/` folder exists — contents unknown | ⚪ |
-| Obsidian/Notion/Logseq | Not mentioned | 🔴 |
-| Discover-new-sources | Not mentioned | 🔴 |
-| Self-host docs | `docs/` exists — contents unknown | ⚪ |
+| **Phase 1 – Ingestion**: RSS/Atom, scraping (trafilatura+Playwright), newsletter forwarding, email digest | Listed in "What it does" + services (Browserless, Resend) | Done |
+| Chronological feed with manual categorization | Not mentioned | Partial |
+| Fault tolerance + user notification | "Honest platform tiers" only | Partial |
+| **Phase 2 – Ranking**: embeddings, 8-signal PRS, telemetry, explicit feedback, source trust, summaries, dedupe | All listed; migration 0003 = reading telemetry; `useReadingTelemetry` | Done |
+| Collaborative cold-start warmup | Listed (`cold_start/collaborative.py`) — but see Finding F4 | Partial |
+| **Phase 3 – Advanced**: meta-learning weights, 3-scale temporal, serendipity, creator resolution, interest graph | Listed (`meta_weights.py`, `interest_graph/`, `creator/`) | Done |
+| Cross-source synthesis / emerging topics | Not mentioned | Not started |
+| Explainability ("why this") | Claimed in concept; UI unknown | Partial |
+| **Phase 4 – Ecosystem**: PWA/offline/push | Not mentioned | Not started |
+| Browser extension | `extension/` folder exists — contents unknown | Unknown |
+| Obsidian/Notion/Logseq | Not mentioned | Not started |
+| Discover-new-sources | Not mentioned | Not started |
+| Self-host docs | `docs/` exists — contents unknown | Unknown |
 | Team digests, tiered pricing | Not applicable to self-host | — |
-| Search (spec: Meilisearch) | Not in stack table | 🔴 |
-| Digest length personalization, 30% saturation cap, digest sections | Sections claimed; others not mentioned | 🟡 |
+| Search (spec: Meilisearch) | Not in stack table | Not started |
+| Digest length personalization, 30% saturation cap, digest sections | Sections claimed; others not mentioned | Partial |
 
 **Rough read:** Phases 1–3 of the spec look largely built at a first-pass level; Phase 4 and the "second-order" features (synthesis, discovery, search, PWA, integrations) look open. The larger risk is not missing features — it's **correctness and evaluability of what exists** (Findings F1–F8).
 
@@ -73,7 +73,7 @@ Legend: 🟢 README claims it · 🟡 partially/unclear · 🔴 not evident · �
 
 Each finding lists evidence → consequence → action (task IDs in `PROGRESS.md`).
 
-### F1 — LLM model deprecation ✅ (P0)
+### F1 — LLM model deprecation (Verified, P0)
 Groq's deprecation page lists both `llama-3.3-70b-versatile` and `llama-3.1-8b-instant` with a shutdown date of 16 Aug 2026 and suggests `openai/gpt-oss-120b` and `openai/gpt-oss-20b`. `qwen/qwen3.6-27b` was itself shut down on 14 Sep 2026 in favor of `qwen/qwen3.8-27b`. Other projects report 404s since the Llama shutdown. Free-tier limits are per-minute token caps (≈6k–12k TPM), which is the real constraint for a summarizer.
 **Action:** provider-agnostic client, configurable model IDs, rate limiter, extractive fallback so the digest never depends on an LLM → **P0-05**. Decision **D-01/D-02**.
 
@@ -81,7 +81,7 @@ Groq's deprecation page lists both `llama-3.3-70b-versatile` and `llama-3.1-8b-i
 Any app that fetches user-supplied URLs server-side (feeds, scraper, Browserless, link unwrapping) and renders third-party HTML in a reader/email needs: SSRF protection (block private/loopback/metadata IPs on every redirect), HTML sanitization + CSP, XML entity/expansion protection for feeds/OPML, auth hardening. I could not inspect code, so these are audit items, not accusations.
 **Action:** **P0-06 / P0-07 / P0-08 / P0-09**.
 
-### F3 — Embedding truncation ✅ (P1)
+### F3 — Embedding truncation (Verified, P1)
 The all-MiniLM-L6-v2 family truncates input at ~256 word pieces by default; `nomic-embed-text-v1.5` supports 8k context at 768 dimensions (Matryoshka down to 64) and beats MiniLM on MTEB (≈62 vs ≈56); `bge-m3` covers multilingual + 8k. Nomic needs task prefixes (`search_document:` / `search_query:`); missing them silently degrades quality. Switching dimension means a migration (new column/table, dual write, backfill, cut-over).
 **Action:** abstraction + golden retrieval check + migration → **IQ-01/02/03**. Decision **D-03**. Keep MiniLM as a `lite` profile for low-RAM boxes.
 
@@ -105,7 +105,7 @@ Users interact more with items shown higher; naively training on that reinforces
 "Reading Depth" is a *scoring signal* for an item the user hasn't read yet. If it uses that item's own telemetry it is circular. It must be a **prediction** (from history on similar source × topic × length) and labels must come only from post-consumption events. Same for "Explicit Feedback".
 **Action:** feature contract + leakage test → **IQ-04**. Weight learning: per-user, but with shrinkage to a prior and a minimum-evidence gate (sparse data), simplex-projected → **IQ-10**.
 
-### F9 — Competitive landscape moved ⚠️ (strategy)
+### F9 — Competitive landscape moved (Warning, strategy)
 See §4. The moat is *behavioral + explainable + open + self-hostable*, not "has AI".
 
 ### F10 — Platform coverage: don't hand-build every connector (P1)
@@ -131,19 +131,19 @@ Artifact (Instagram founders' personalized news app) shut down citing insufficie
 
 ## 4. Competitive landscape (Sept 2026)
 
-Prices from third-party sources ⚠️ unless noted — verify on vendor sites before publishing.
+Prices from third-party sources (Warning) unless noted — verify on vendor sites before publishing.
 
 | Product | What it is now | Price (indicative) | AI / personalization | Gap vs ReadPrism thesis |
 |---|---|---|---|---|
-| **Feedly** | Polished cloud reader; Leo AI on Pro+ | Pro ≈ $6.99/mo; Pro+ ≈ $12.99/mo (≈ $8.25 annual) ⚠️ | Leo: topic/keyword prioritization, muting, dedupe, summaries — *user-trained*, no behavioral learning | No learned per-user ranker, no explanations, AI paywalled, closed |
-| **Inoreader** | Power-user reader, rules, monitoring | Free (150 feeds); Pro $7.50/mo annual, $9.99 monthly ✅ | **Now has AI** (Intelligence since Mar 2025: summaries, reports; bring-your-own-AI key since Apr 2026) ⚠️ — *the V2 proposal's "no AI layer whatsoever" is outdated* | AI = summarization/Q&A, not behavioral ranking |
-| **Readwise Reader** | Read-later + RSS + highlights + spaced repetition | ≈ $9.99/mo annual, $12.99 monthly; no free tier ⚠️ | Ghostreader (summaries, Q&A) | Optimizes retention of what you read, not deciding what to read |
-| **Readless** | AI digest of newsletters + RSS, cross-source dedupe | ≈ $4.90/mo ⚠️ (spec said $9) | Summary digest, no learned ranking | Chronological/curated digest, no per-user model |
-| **Folo** | **Open-source** AI RSS reader, 33k+ stars, all platforms, RSSHub-friendly | Free / cheap hosted ⚠️ | AI summaries, timeline TL;DR, daily AI digest, feed discovery | **Closest OSS rival.** No evidence of a learned, explainable per-user ranker |
+| **Feedly** | Polished cloud reader; Leo AI on Pro+ | Pro ≈ $6.99/mo; Pro+ ≈ $12.99/mo (≈ $8.25 annual) (Warning) | Leo: topic/keyword prioritization, muting, dedupe, summaries — *user-trained*, no behavioral learning | No learned per-user ranker, no explanations, AI paywalled, closed |
+| **Inoreader** | Power-user reader, rules, monitoring | Free (150 feeds); Pro $7.50/mo annual, $9.99 monthly (Verified) | **Now has AI** (Intelligence since Mar 2025: summaries, reports; bring-your-own-AI key since Apr 2026) (Warning) — *the V2 proposal's "no AI layer whatsoever" is outdated* | AI = summarization/Q&A, not behavioral ranking |
+| **Readwise Reader** | Read-later + RSS + highlights + spaced repetition | ≈ $9.99/mo annual, $12.99 monthly; no free tier (Warning) | Ghostreader (summaries, Q&A) | Optimizes retention of what you read, not deciding what to read |
+| **Readless** | AI digest of newsletters + RSS, cross-source dedupe | ≈ $4.90/mo (Warning) (spec said $9) | Summary digest, no learned ranking | Chronological/curated digest, no per-user model |
+| **Folo** | **Open-source** AI RSS reader, 33k+ stars, all platforms, RSSHub-friendly | Free / cheap hosted (Warning) | AI summaries, timeline TL;DR, daily AI digest, feed discovery | **Closest OSS rival.** No evidence of a learned, explainable per-user ranker |
 | **Miniflux / FreshRSS** | Self-hosted readers; Fever + Google Reader APIs so Reeder/NetNewsWire work | Free (self-host) | None | No ranking; but they own the self-hoster mindshare |
-| **NewsBlur** | Reader with training + (2026) Ask AI and Daily Briefing ⚠️ | ≈ $99/yr top tier ⚠️ | Intelligence trainer + AI briefing | Rule-like training, not embeddings/behavior |
-| **Artifact** | Personalized news app (shut down Jan 2024; tech to Yahoo) ✅ | — | ML recommendations | Cautionary tale on market size |
-| **Pocket / Omnivore** | Sunset 8 Jul 2025 / 15 Nov 2024 ⚠️ | — | — | Displaced users looking for an owned alternative |
+| **NewsBlur** | Reader with training + (2026) Ask AI and Daily Briefing (Warning) | ≈ $99/yr top tier (Warning) | Intelligence trainer + AI briefing | Rule-like training, not embeddings/behavior |
+| **Artifact** | Personalized news app (shut down Jan 2024; tech to Yahoo) (Verified) | — | ML recommendations | Cautionary tale on market size |
+| **Pocket / Omnivore** | Sunset 8 Jul 2025 / 15 Nov 2024 (Warning) | — | — | Displaced users looking for an owned alternative |
 
 **What this implies**
 - Position on: *ranks by how you actually read · explains itself · open source · self-hostable · full engine free*. (README already says this; keep it.)
@@ -262,10 +262,10 @@ Time estimates assume one focused human-plus-agent workflow; treat them as relat
 ## 10. Sources
 
 Repo & spec: github.com/mohitmishra786/readprism (README snapshot, `/pulls`, `/issues`, `/discussions`, `spec/PCIP_Proposal_V2.md`).
-- Groq deprecations (✅ primary): console.groq.com/docs/deprecations
-- Feedly pricing/AI: makerstack.co/reviews/feedly-review · readless.app/compare/readless-vs-feedly ⚠️ (competitor page)
-- Inoreader pricing/AI: inoreader.com/pricing · readless.app/blog/inoreader-pricing-2026 ⚠️
-- Readwise Reader: marqly.com/blog/readwise-reader-review-2026 · readless.app/blog/readwise-reader-pricing-2026 ⚠️ (also source for Pocket/Omnivore shutdown dates)
+- Groq deprecations (Verified primary): console.groq.com/docs/deprecations
+- Feedly pricing/AI: makerstack.co/reviews/feedly-review · readless.app/compare/readless-vs-feedly (Warning) (competitor page)
+- Inoreader pricing/AI: inoreader.com/pricing · readless.app/blog/inoreader-pricing-2026 (Warning)
+- Readwise Reader: marqly.com/blog/readwise-reader-review-2026 · readless.app/blog/readwise-reader-pricing-2026 (Warning) (also source for Pocket/Omnivore shutdown dates)
 - Folo: github.com/RSSNext/Folo · news.ycombinator.com/item?id=46033915 · RSSHub: github.com/diygod/rsshub
 - Miniflux/FreshRSS: ossalt.com/guides/freshrss-vs-miniflux-2026
 - Artifact: medium.com/artifact-news/shutting-down-artifact-1e70de46d419

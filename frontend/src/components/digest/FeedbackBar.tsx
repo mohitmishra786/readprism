@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { ThumbsUp, ThumbsDown, Check } from "lucide-react";
 import { api } from "../../lib/api";
 
 interface FeedbackBarProps {
@@ -69,35 +70,45 @@ export function FeedbackBar({ contentItemId, topics, onFeedback }: FeedbackBarPr
       <button
         onClick={() => rate(1)}
         title="Helpful"
+        aria-label="Helpful"
         className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
           rated === 1
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-stone-200 hover:bg-stone-50"
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50"
         }`}
       >
-        👍
+        <ThumbsUp className="h-4 w-4" aria-hidden="true" />
       </button>
       <button
         onClick={() => rate(-1)}
         title="Not helpful"
+        aria-label="Not helpful"
         className={`flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors ${
           rated === -1
-            ? "border-rose-200 bg-rose-50"
-            : "border-stone-200 hover:bg-stone-50"
+            ? "border-rose-200 bg-rose-50 text-rose-700"
+            : "border-stone-200 text-stone-600 hover:bg-stone-50"
         }`}
       >
-        👎
+        <ThumbsDown className="h-4 w-4" aria-hidden="true" />
       </button>
       <button
         onClick={save}
         title="Save for later"
+        aria-label="Save for later"
         className={`flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-medium transition-colors ${
           saved
             ? "border-prism-200 bg-prism-50 text-prism-700"
             : "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
         }`}
       >
-        {saved ? "✓ Saved" : "Save"}
+        {saved ? (
+          <>
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Saved</span>
+          </>
+        ) : (
+          "Save"
+        )}
       </button>
 
       {topTopic && (

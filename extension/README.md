@@ -21,7 +21,7 @@ ReadPrism — as a **source** (any publication/blog/feed) or as a **creator**
 - Click the extension icon on any page → **Add page as source** / **Add page as creator**.
 - Or right-click the page → **Add page as source/creator in ReadPrism**.
 
-A green ✓ (or red !) badge on the icon confirms success or failure.
+A green OK (or red !) badge on the icon confirms success or failure.
 
 ## How it works
 

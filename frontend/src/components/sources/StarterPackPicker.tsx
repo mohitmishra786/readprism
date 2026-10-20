@@ -1,33 +1,60 @@
 "use client";
 import { useEffect, useState } from "react";
+import type { LucideIcon } from "lucide-react";
+import {
+  GraduationCap,
+  Bot,
+  Dna,
+  Sprout,
+  Link,
+  Database,
+  Palette,
+  Cloud,
+  Gamepad2,
+  Plug,
+  Smartphone,
+  Wrench,
+  Code,
+  TrendingUp,
+  Cpu,
+  Microscope,
+  Lock,
+  Rocket,
+  Briefcase,
+  Globe,
+  FileText,
+  Landmark,
+  FileSpreadsheet,
+  BookOpen,
+} from "lucide-react";
 import { api } from "../../lib/api";
 import type { StarterPack } from "../../lib/types";
 
-const ICONS: Record<string, string> = {
-  "academic-computing": "🎓",
-  "ai-machine-learning": "🤖",
-  "biotech-health": "🧬",
-  "climate-energy": "🌱",
-  "crypto-web3": "⛓️",
-  "databases-data": "🗄️",
-  "design-ux": "🎨",
-  "devops-cloud": "☁️",
-  gamedev: "🎮",
-  "hardware-electronics": "🔌",
-  "mobile-development": "📱",
-  "open-source-devtools": "🛠️",
-  "programming-languages": "🔤",
-  "quant-finance": "📈",
-  "robotics-automation": "🦾",
-  "science-research": "🔬",
-  "security-privacy": "🔐",
-  "space-astronomy": "🚀",
-  "startups-business": "💼",
-  "systems-programming": "⚙️",
-  "web-development": "🌐",
-  "research-papers": "📄",
-  "policy-research": "🏛️",
-  "filings-markets": "📑",
+const ICONS: Record<string, LucideIcon> = {
+  "academic-computing": GraduationCap,
+  "ai-machine-learning": Bot,
+  "biotech-health": Dna,
+  "climate-energy": Sprout,
+  "crypto-web3": Link,
+  "databases-data": Database,
+  "design-ux": Palette,
+  "devops-cloud": Cloud,
+  gamedev: Gamepad2,
+  "hardware-electronics": Plug,
+  "mobile-development": Smartphone,
+  "open-source-devtools": Wrench,
+  "programming-languages": Code,
+  "quant-finance": TrendingUp,
+  "robotics-automation": Cpu,
+  "science-research": Microscope,
+  "security-privacy": Lock,
+  "space-astronomy": Rocket,
+  "startups-business": Briefcase,
+  "systems-programming": Cpu,
+  "web-development": Globe,
+  "research-papers": FileText,
+  "policy-research": Landmark,
+  "filings-markets": FileSpreadsheet,
 };
 
 /** Subscribe to the selected packs; returns how many new feeds were added. */
@@ -105,7 +132,10 @@ export function StarterPackPicker({
               } ${following ? "opacity-60" : ""}`}
             >
               <div className="flex items-center gap-2 font-medium">
-                <span aria-hidden>{ICONS[p.id] ?? "📚"}</span>
+                {(() => {
+                  const Icon = ICONS[p.id] ?? BookOpen;
+                  return <Icon className="h-4 w-4 shrink-0 text-stone-600" aria-hidden="true" />;
+                })()}
                 {p.title}
                 {p.suggested && !following && (
                   <span className="ml-auto rounded bg-amber-50 px-1.5 text-[10px] font-semibold uppercase text-amber-700">

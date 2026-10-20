@@ -118,7 +118,7 @@ terms apply to the operator.
 ## Digest emails
 
 Digest emails contain **no tracking pixel** and no per-recipient beacons.
-Links in the email (titles, 👍/👎/save) are signed with an expiring HMAC and
+Links in the email (titles, rate/save) are signed with an expiring HMAC and
 route through your own ReadPrism instance, which records that you opened or
 rated an item so the ranking can learn — this is disclosed in the email
 footer. Signed links expire after 30 days.

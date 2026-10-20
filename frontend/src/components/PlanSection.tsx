@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { GraduationCap } from "lucide-react";
 import { api } from "../lib/api";
 import type { BillingState, PlanOffer, PlanQuota } from "../lib/types";
 
@@ -151,8 +152,9 @@ export function PlanSection() {
       <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>{describe(state)}</p>
       <Quotas quotas={state.quotas ?? []} />
       {state.billing_enabled && state.academic_discount && !paying && (
-        <p style={{ fontSize: 14, marginBottom: 12 }} role="status">
-          🎓 Academic discount: your university email qualifies, and the discount is applied at checkout.
+        <p style={{ fontSize: 14, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }} role="status">
+          <GraduationCap style={{ width: 16, height: 16, flexShrink: 0 }} aria-hidden="true" />
+          <span>Academic discount: your university email qualifies, and the discount is applied at checkout.</span>
         </p>
       )}
       {state.billing_enabled && !paying && (

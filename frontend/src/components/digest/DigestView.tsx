@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import type { Digest, DigestItem } from "../../lib/types";
 import { DigestSection } from "./DigestSection";
 import { api } from "../../lib/api";
@@ -73,7 +74,7 @@ function FeedbackPrompts({ digestId }: { digestId: string }) {
               aria-label={`Dismiss prompt: ${p.prompt_text}`}
               className="text-stone-400 transition-colors hover:text-stone-700"
             >
-              ✕
+              <X className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -92,14 +93,14 @@ function FirstDigestBanner({ onDismiss }: { onDismiss: () => void }) {
     <div className="mb-8 overflow-hidden rounded-xl border border-prism-200 bg-gradient-to-br from-prism-50 to-cyan-50 p-5">
       <div className="flex items-start justify-between">
         <p className="mb-2 text-sm font-semibold text-prism-800">
-          👋 Your first digest
+          Your first digest
         </p>
         <button
           onClick={onDismiss}
           className="text-stone-400 transition-colors hover:text-stone-700"
           aria-label="Dismiss"
         >
-          ✕
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
       <p className="text-sm leading-relaxed text-prism-900/80">

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
 import { api, type FirstDigestStatus } from "../../lib/api";
 
 const POLL_MS = 3000;
@@ -24,7 +25,7 @@ function Step({ done, active, label }: { done: boolean; active: boolean; label: 
               : "h-5 w-5 rounded-full border-2 border-stone-200"
         }
       >
-        {done ? "✓" : ""}
+        {done ? <Check className="h-3 w-3" aria-hidden="true" /> : ""}
       </span>
       <span className={done ? "text-stone-900" : "text-stone-500"}>{label}</span>
     </li>

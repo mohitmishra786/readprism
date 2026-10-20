@@ -31,7 +31,7 @@ cluster delta targets the item's **top cluster**, defined as
 
 | Control | Where | Mechanism |
 |---|---|---|
-| 👍 / 👎 | Digest cards, reader, email one-click | `explicit_rating` ±1 → label (1.0 / 0.0, c 1.0) |
+| Helpful / Not helpful | Digest cards, reader, email one-click | `explicit_rating` ±1 → label (1.0 / 0.0, c 1.0) |
 | Save | Cards, reader, email one-click | `saved=true` → strong positive once read (UX-12 semantics) |
 | Snooze topic | Preferences → interest graph (suppress, 30 d) | `POST /feedback/adjust-interests {action: suppress, duration_days}` |
 | Mute source | Sources page | `PATCH /sources/{id} {is_active: false}` |
