@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.models.user import User
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 
 logger = get_logger(__name__)
 
@@ -164,6 +164,8 @@ async def domain_signup_allowed(
         )
     ).scalar() or 0
     if recent >= limit:
-        logger.warning(f"Signup refused: {recent} signups from @{domain} in the last hour")
+        logger.warning(
+            f"Signup refused: {recent} signups from @{sanitize_log(domain)} in the last hour"
+        )
         return False
     return True

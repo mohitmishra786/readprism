@@ -186,11 +186,8 @@ async def time_to_value(session: AsyncSession = Depends(get_db)) -> dict:
 
     No external telemetry (D-07): computed from this instance's own rows.
     """
-    from datetime import UTC, datetime
-
     from sqlalchemy import text
 
-    now = datetime.now(UTC)
     rows = await session.execute(
         text(
             """
@@ -216,7 +213,6 @@ async def time_to_value(session: AsyncSession = Depends(get_db)) -> dict:
             signup_to_digest.append((first_digest - created).total_seconds() / 3600)
         if first_digest is not None and first_read is not None:
             digest_to_read.append((first_read - first_digest).total_seconds() / 3600)
-        del now
 
     def _median(values: list[float]) -> float | None:
         if not values:

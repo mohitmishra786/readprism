@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.source import Source
 from app.models.user import User
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 from app.utils.ssrf import safe_fetch
 
 logger = get_logger(__name__)
@@ -98,7 +98,7 @@ async def _safe_get(url: str, **kwargs) -> httpx.Response | None:
             url, method="GET", max_redirects=0, **_network_policy(url), **kwargs
         )
     except Exception as e:
-        logger.info(f"Sidecar fetch failed for {url}: {e}")
+        logger.info(f"Sidecar fetch failed for {sanitize_log(url)}: {sanitize_log(e)}")
         return None
 
 
@@ -114,7 +114,7 @@ async def _sidecar_post(url: str, content: bytes) -> httpx.Response | None:
             **_network_policy(url),
         )
     except Exception as e:
-        logger.info(f"Sidecar POST failed for {url}: {e}")
+        logger.info(f"Sidecar POST failed for {sanitize_log(url)}: {sanitize_log(e)}")
         return None
 
 

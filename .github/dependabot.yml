@@ -1,30 +1,31 @@
 # Dependabot configuration for Weirling.
 #
 # Strategy:
-# - Security alerts are scanned DAILY so critical vulns surface fast.
-# - Version update PRs open on a MONTHLY cadence to limit Actions usage.
-# - All ecosystem updates are grouped into ONE PR per ecosystem (not one per
-#   dependency) so reviews are batched and the PR queue stays manageable.
-# - Major-version updates are allowed for npm (frontend) but held for pip
-#   (backend) where runtime stability matters more; minors/patches auto-merge
-#   eligible.
+# - Security fixes: Dependabot security updates are ON for the repo (Settings
+#   -> Code security). They are not on this schedule: a PR opens as soon as an
+#   advisory matches (GitHub re-checks at least daily). The groups below apply
+#   to version updates only, so each security fix arrives as its own small PR.
+# - Routine version updates: WEEKLY (Monday), grouped into one PR per
+#   ecosystem so reviews are batched.
+# - Major versions are held for pip (backend stability); allowed for npm except
+#   tailwindcss/typescript, which need manual migrations.
 
 version: 2
 
 updates:
   # ──────────────────────────────────────────────────────────────
-  # Backend: Python (pip) — weekly, grouped, production deps only
+  # Backend: Python (pip) — weekly, grouped
   # ──────────────────────────────────────────────────────────────
   - package-ecosystem: "pip"
     directory: "/backend"
     schedule:
-      # Monthly: version-update runs consume Actions minutes; security alerts
-      # are a separate (daily, free) scan, so freshness of vuln data is kept.
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
     # Group ALL pip updates into a single PR.
     groups:
       python-dependencies:
+        applies-to: version-updates
         patterns:
           - "*"
     # Backend stability is critical — only patch + minor, no majors.
@@ -44,19 +45,21 @@ updates:
   - package-ecosystem: "npm"
     directory: "/frontend"
     schedule:
-      # Monthly, matching pip (see the note there on security alerts).
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
     # Group production + dev deps separately so Next/React majors are reviewable
     # apart from tooling bumps. Both still batch many deps into few PRs.
     groups:
       npm-production:
+        applies-to: version-updates
         patterns:
           - "next"
           - "react"
           - "react-dom"
           - "js-cookie"
       npm-dev:
+        applies-to: version-updates
         patterns:
           - "*"
         exclude-patterns:
@@ -80,13 +83,19 @@ updates:
         update-types: ["version-update:semver-major"]
 
   # ──────────────────────────────────────────────────────────────
-  # Docker base images — monthly (rare churn)
+  # Docker base images — weekly
   # ──────────────────────────────────────────────────────────────
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 2
+    # Python minor jumps (3.12 -> 3.15) wait until torch ships wheels for the
+    # new version; without them the standard image can't build (#349).
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
     labels:
       - "dependencies"
       - "docker"
@@ -94,22 +103,25 @@ updates:
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 2
     labels:
       - "dependencies"
       - "docker"
 
   # ──────────────────────────────────────────────────────────────
-  # GitHub Actions — monthly
+  # GitHub Actions — weekly
   # ──────────────────────────────────────────────────────────────
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 2
     groups:
       github-actions:
+        applies-to: version-updates
         patterns:
           - "*"
     labels:

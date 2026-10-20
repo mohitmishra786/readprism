@@ -40,11 +40,18 @@ To refresh all 5 screenshots:
    ```
    Note the demo email and password printed by the seed script. Wait until `curl -fsS http://localhost:3000/login` and `curl -fsS http://localhost:8000/health` both succeed.
 
-2. Run the Playwright capture script:
+2. Install the capture tools (once):
    ```bash
-   cd frontend && DEMO_EMAIL="<email>" DEMO_PASSWORD="<password>" BASE_URL="http://localhost:3000" npx tsx scripts/capture-screenshots.ts
+   cd frontend && npm ci && npx playwright install chromium
    ```
-   (Run `npx playwright install chromium` first if Chromium is not installed).
+   Also install `pngquant` (`brew install pngquant` or `apt install pngquant`):
+   the script uses it to keep each image under 300 KB and stops if it is
+   missing when a screenshot is larger.
+
+3. Run the Playwright capture script (from `frontend/`):
+   ```bash
+   DEMO_EMAIL="<email>" DEMO_PASSWORD="<password>" BASE_URL="http://localhost:3000" npx tsx scripts/capture-screenshots.ts
+   ```
 
 ## Demo GIF / video (60–90s, audit 12-5)
 
