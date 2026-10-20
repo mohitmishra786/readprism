@@ -11,8 +11,11 @@ import io
 import tokenize
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-APP_DIR = REPO_ROOT / "backend" / "app"
+# backend/ (the container's /app): app strings are checked everywhere. README
+# and docs are repo-level and only exist outside the container, so that test
+# skips there and runs in CI's "Config checks" job.
+BACKEND_DIR = Path(__file__).resolve().parents[2]
+APP_DIR = BACKEND_DIR / "app"
 
 
 def _get_docstring_positions(source_text: str) -> set[tuple[int, int]]:
@@ -48,7 +51,7 @@ def test_no_em_or_en_dash_in_backend_app_strings():
                 if (lineno, col) in doc_positions:
                     continue
                 if "—" in tok.string or "–" in tok.string:
-                    rel_path = py_file.relative_to(REPO_ROOT)
+                    rel_path = py_file.relative_to(BACKEND_DIR)
                     offenders.append(f"{rel_path}:{lineno}: {tok.string.strip()[:80]}")
 
     assert offenders == [], "Found em/en dashes in backend/app strings:\n" + "\n".join(offenders)
@@ -62,14 +65,23 @@ def test_no_em_or_en_dash_in_app_data():
         for data_file in sorted(APP_DIR.glob(pattern)):
             content = data_file.read_text(encoding="utf-8")
             if "—" in content or "–" in content:
-                rel_path = data_file.relative_to(REPO_ROOT)
+                rel_path = data_file.relative_to(BACKEND_DIR)
                 offenders.append(str(rel_path))
 
     assert offenders == [], "Found em/en dashes in app data files:\n" + "\n".join(offenders)
 
 
+def test_app_dir_is_found():
+    """Guard against a vacuous pass: the scans above must see real files."""
+    assert len(list(APP_DIR.rglob("*.py"))) > 50
+    assert list(APP_DIR.glob("data/starter_packs/*.opml"))
+
+
 def test_no_em_or_en_dash_in_readme_and_docs():
     """Ensure README and non-history docs have zero em or en dashes outside fenced code blocks."""
+    from tests.repo_files import require_repo_root
+
+    REPO_ROOT = require_repo_root()
     excluded_exact = {
         "docs/PROGRESS.md",
         "docs/ROADMAP.md",
