@@ -87,6 +87,8 @@ def test_no_em_or_en_dash_in_readme_and_docs():
         "docs/ROADMAP.md",
         "docs/releases/v0.2.0.md",
         "docs/licenses.md",
+        # Raw LLM output quoted for grading (#225); editing it would misreport the models.
+        "docs/eval/summary-models.md",
     }
     offenders: list[str] = []
 
