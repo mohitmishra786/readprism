@@ -16,7 +16,7 @@ from app.services import entitlements
 
 
 async def _register(client: AsyncClient, data: dict, db_session) -> tuple[dict, User]:
-    reg = await client.post("/api/v1/auth/register", json=data)
+    reg = await client.post("/api/v1/auth/register", json={**data, "accept_terms": True})
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     user = (await db_session.execute(select(User).where(User.email == data["email"]))).scalar_one()
     return headers, user

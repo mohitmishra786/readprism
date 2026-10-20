@@ -243,6 +243,15 @@ class Settings(BaseSettings):
     # Takedown and grievance contact (#183). Displayed on the /contact page;
     # empty hides the section.
     grievance_contact_email: str = ""
+    # Version slug of the Terms of Service for signup consent audit trail (#181).
+    terms_version: str = "2026-07-21"
+    # Public zero-login demo instance (#229). When enabled, visitors can log into
+    # the seeded demo persona via POST /auth/demo, all mutating writes return 403
+    # "The demo is read-only" except reading telemetry and feedback (which are
+    # routed to a volatile per-session sandbox), and a nightly beat task re-seeds
+    # the demo account.
+    demo_mode: bool = False
+    demo_user_email: str = "demo@readprism.local"
     postmark_webhook_secret: str = ""
     resend_webhook_secret: str = ""
     cloudflare_email_webhook_secret: str = ""

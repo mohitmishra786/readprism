@@ -12,6 +12,8 @@ class UserCreate(BaseModel):
     display_name: str | None = None
     # Required when REGISTRATION_MODE=invite (#153).
     invite_code: str | None = None
+    # Consent to Terms of Service and Privacy Policy (#181). Required on hosted.
+    accept_terms: bool = False
 
 
 class UserLogin(BaseModel):
@@ -41,6 +43,7 @@ class UserRead(BaseModel):
     fetch_paused_until: datetime | None = None
     collaborative_opt_out: bool = False
     weekly_email: bool = False
+    is_demo: bool = False
 
 
 class UserUpdate(BaseModel):
@@ -79,6 +82,9 @@ class TokenRefresh(BaseModel):
 class MagicLinkRequest(BaseModel):
     email: EmailStr
     display_name: str | None = None
+    # A magic link can also create an account; on hosted that needs consent
+    # to the Terms and Privacy policy, like /register (#181).
+    accept_terms: bool = False
 
 
 class MagicLinkVerify(BaseModel):

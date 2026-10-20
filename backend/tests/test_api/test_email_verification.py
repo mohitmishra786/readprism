@@ -40,7 +40,11 @@ def _token(mail: dict) -> str:
 
 
 async def _register(client: AsyncClient, email: str | None = None):
-    data = {"email": email or f"ev{uuid.uuid4().hex[:8]}@example.com", "password": "TestPass123!"}
+    data = {
+        "email": email or f"ev{uuid.uuid4().hex[:8]}@example.com",
+        "password": "TestPass123!",
+        "accept_terms": True,
+    }
     resp = await client.post("/api/v1/auth/register", json=data)
     return resp, data["email"]
 
@@ -119,7 +123,9 @@ async def test_bad_tokens_are_rejected(client, db_session, hosted, outbox):
 async def test_magic_link_sign_in_verifies_the_address(client, db_session, hosted, outbox):
     email = f"mlv{uuid.uuid4().hex[:8]}@example.com"
     assert (
-        await client.post("/api/v1/auth/magic-link/request", json={"email": email})
+        await client.post(
+            "/api/v1/auth/magic-link/request", json={"email": email, "accept_terms": True}
+        )
     ).status_code == 202
     token = _token(outbox[-1])
     assert (

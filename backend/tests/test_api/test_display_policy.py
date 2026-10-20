@@ -26,7 +26,11 @@ def mode(monkeypatch):
 
 
 async def _reader(client):
-    data = {"email": f"dp{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"}
+    data = {
+        "email": f"dp{uuid.uuid4().hex[:6]}@example.com",
+        "password": "TestPass123!",
+        "accept_terms": True,
+    }
     reg = await client.post("/api/v1/auth/register", json=data)
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     me = (await client.get("/api/v1/auth/me", headers=headers)).json()

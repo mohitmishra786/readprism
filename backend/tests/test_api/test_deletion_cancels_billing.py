@@ -33,7 +33,8 @@ def hosted(monkeypatch):
 async def _paying(client, db_session, provider="paddle"):
     email = f"del{uuid.uuid4().hex[:6]}@example.com"
     reg = await client.post(
-        "/api/v1/auth/register", json={"email": email, "password": "TestPass123!"}
+        "/api/v1/auth/register",
+        json={"email": email, "password": "TestPass123!", "accept_terms": True},
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     user = (await db_session.execute(select(User).where(User.email == email))).scalar_one()
@@ -123,7 +124,8 @@ async def test_failed_cancel_still_erases_and_tells_the_operator(client, db_sess
 async def test_no_subscription_means_no_cancel_call(client, db_session, hosted):
     email = f"free{uuid.uuid4().hex[:6]}@example.com"
     reg = await client.post(
-        "/api/v1/auth/register", json={"email": email, "password": "TestPass123!"}
+        "/api/v1/auth/register",
+        json={"email": email, "password": "TestPass123!", "accept_terms": True},
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     cancel = AsyncMock()

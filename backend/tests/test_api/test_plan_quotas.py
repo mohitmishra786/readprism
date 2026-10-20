@@ -122,7 +122,7 @@ async def test_manual_digest_builds_per_day(
     monkeypatch.setattr(ent.settings, "hosted_free_digest_regen_minutes", 0)
     monkeypatch.setattr(ent.settings, "manual_digest_guard_seconds", 0)
     monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"digest_builds_per_day": 1}})
-    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    reg = await client.post("/api/v1/auth/register", json={**test_user_data, "accept_terms": True})
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     with patch("app.workers.tasks.build_digest.build_digest_for_user.delay"):
         first = await client.post("/api/v1/digest/generate", headers=headers)
@@ -136,7 +136,7 @@ async def test_manual_digest_builds_per_day(
 async def test_billing_state_lists_quotas_on_hosted_only(
     client, test_user_data, db_session, monkeypatch
 ):
-    reg = await client.post("/api/v1/auth/register", json=test_user_data)
+    reg = await client.post("/api/v1/auth/register", json={**test_user_data, "accept_terms": True})
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     assert (await client.get("/api/v1/billing", headers=headers)).json()["quotas"] == []
 

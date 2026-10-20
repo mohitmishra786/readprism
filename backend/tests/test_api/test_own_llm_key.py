@@ -39,7 +39,8 @@ def hosted(monkeypatch):
 async def _signup(client, db_session):
     email = f"k{uuid.uuid4().hex[:6]}@example.com"
     reg = await client.post(
-        "/api/v1/auth/register", json={"email": email, "password": "TestPass123!"}
+        "/api/v1/auth/register",
+        json={"email": email, "password": "TestPass123!", "accept_terms": True},
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     user = (await db_session.execute(select(User).where(User.email == email))).scalar_one()

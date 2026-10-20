@@ -136,7 +136,11 @@ async def test_sources_per_host_cap_and_on_demand_budget(client, hosted, counter
     monkeypatch.setattr(hosted, "hosted_fetch_budget_per_hour", 3)
     reg = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"sh{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+        json={
+            "email": f"sh{uuid.uuid4().hex[:6]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
 

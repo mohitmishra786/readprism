@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../lib/api";
 
@@ -10,6 +10,29 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
+  const [demoMode, setDemoMode] = useState(false);
+
+  useEffect(() => {
+    api.auth
+      .registration()
+      .then((reg) => {
+        if (reg?.demo_mode) setDemoMode(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleDemoSignIn = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await api.auth.demo();
+      router.replace("/digest");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Demo sign-in failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const sendMagicLink = async () => {
     if (!email) {
@@ -112,6 +135,27 @@ export default function LoginPage() {
               </button>
             )}
           </div>
+
+          {demoMode && (
+            <div className="pt-1">
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-stone-200" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-stone-400">or</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDemoSignIn}
+                disabled={loading}
+                className="btn-secondary w-full py-2.5 text-center font-medium"
+              >
+                Try the demo
+              </button>
+            </div>
+          )}
         </form>
 
         <p className="mt-6 text-center text-sm text-stone-500">

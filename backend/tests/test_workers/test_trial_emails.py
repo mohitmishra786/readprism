@@ -110,7 +110,11 @@ async def test_export_works_after_the_trial_ends(client, db_session, monkeypatch
     monkeypatch.setattr(get_settings(), "email_verification", "off")
     reg = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"ex{uuid.uuid4().hex[:6]}@example.com", "password": "TestPass123!"},
+        json={
+            "email": f"ex{uuid.uuid4().hex[:6]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
     )
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     me = (await client.get("/api/v1/auth/me", headers=headers)).json()

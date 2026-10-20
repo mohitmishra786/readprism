@@ -78,6 +78,11 @@ class User(Base):
     billing_event_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Recorded consent on hosted signup (#181).
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    terms_version: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -94,3 +99,11 @@ class User(Base):
         from app.services.email_verification import is_verified
 
         return is_verified(self)
+
+    @property
+    def is_demo(self) -> bool:
+        """True for the seeded demo persona on a demo instance (DEMO_MODE, #229)."""
+        from app.config import get_settings
+
+        settings = get_settings()
+        return settings.demo_mode and self.email == settings.demo_user_email
