@@ -124,8 +124,16 @@ def _confirmation_page(
     """
     import html
 
-    labels = {"up": "👍 Useful", "down": "👎 Not for me", "save": "💾 Save"}
+    labels = {
+        "up": "👍 Useful",
+        "down": "👎 Not for me",
+        "save": "💾 Save",
+        "open": "Open the article",
+    }
     label = html.escape(labels.get(action, "Confirm"))
+    prompt = (
+        "Opening the article…" if action == "open" else "Confirm your feedback for this article:"
+    )
     target = html.escape(
         f"/api/v1/digest/e/{action}/{item_id}?uid={user_id}&exp={exp}&sig={sig}", quote=True
     )
@@ -143,7 +151,7 @@ def _confirmation_page(
           background: #1d4ed8; color: #fff; cursor: pointer; }}
 </style></head>
 <body><div class="card">
-<p>Confirm your feedback for this article:</p>
+<p>{prompt}</p>
 <form method="post" action="{target}" id="confirm">
   <button type="submit">{label}</button>
 </form>
@@ -154,6 +162,9 @@ def _confirmation_page(
 
 
 MUTATING_ACTIONS = {"up", "down", "save"}
+# Recorded only on the POST from the interstitial page, never on a GET a mail
+# scanner can make. "open" too (#257): a prefetched link must not count as read.
+POST_ONLY_ACTIONS = MUTATING_ACTIONS | {"open"}
 
 
 async def _verify_email_action(
@@ -228,19 +239,14 @@ async def email_action_link(
 
     No login: the HMAC over (user, item, action, expiry) is the authority.
 
-    GET is non-mutating for up/down/save (it renders a confirmation page) so
-    mail-scanner prefetch cannot forge ratings or saves. 'open' is a passive
-    click-through: it records opened_at and redirects to the in-app reader so
-    depth/dwell telemetry can follow (UX-04).
+    GET never records anything: mail scanners (Safe Links, Mimecast) fetch
+    every link without running scripts. It renders a page whose script POSTs
+    back to the same signed URL, so a real browser records the action and
+    lands in the reader; a scanner sees inert HTML. That covers 'open' too
+    (#257), so prefetches don't count as reads.
     """
     user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
-
-    if action in MUTATING_ACTIONS:
-        return _confirmation_page(action, user.id, content.id, exp, sig)
-
-    await _record_email_action(user, content.id, action, session)
-    _log_email_action(action, user.id, content.id)
-    return _reader_redirect(content)
+    return _confirmation_page(action, user.id, content.id, exp, sig)
 
 
 @router.post("/e/{action}/{item_id}")
@@ -252,12 +258,15 @@ async def email_action_submit(
     sig: str = Query(...),
     session: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    """Record a mutating email action (form POST from the confirmation page)."""
-    if action not in MUTATING_ACTIONS:
+    """Record an email action (form POST from the interstitial page)."""
+    if action not in POST_ONLY_ACTIONS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown action")
     user, content = await _verify_email_action(action, item_id, uid, exp, sig, session)
 
     interaction = await _record_email_action(user, content.id, action, session)
+    if action not in MUTATING_ACTIONS:  # open: nothing for the interest graph
+        _log_email_action(action, user.id, content.id)
+        return _reader_redirect(content)
     # Commit before dispatching so the worker's own session can see the row
     # (get_db commits only after the response is returned — the task could
     # otherwise run first and find nothing).

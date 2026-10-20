@@ -150,22 +150,33 @@ async def test_save_link_records_saved(client: AsyncClient, test_user_data: dict
 async def test_open_link_marks_opened_without_rating(
     client: AsyncClient, test_user_data: dict, db_session
 ):
+    """#257: a GET alone (a mail scanner) records nothing; the browser's POST does."""
     user, content = await _seed(client, db_session, test_user_data)
     url = action_url(user.id, content.id, "open")
 
-    resp = await client.get(url)
-    assert resp.status_code == 303
-
-    interaction = (
-        await db_session.execute(
-            select(UserContentInteraction).where(
-                UserContentInteraction.user_id == user.id,
-                UserContentInteraction.content_item_id == content.id,
+    async def interaction():
+        db_session.expire_all()
+        return (
+            await db_session.execute(
+                select(UserContentInteraction).where(
+                    UserContentInteraction.user_id == user_id,
+                    UserContentInteraction.content_item_id == content_id,
+                )
             )
-        )
-    ).scalar_one()
-    assert interaction.opened_at is not None
-    assert interaction.explicit_rating is None
+        ).scalar_one_or_none()
+
+    user_id, content_id = user.id, content.id
+    scanned = await client.get(url)
+    assert scanned.status_code == 200 and 'method="post"' in scanned.text
+    assert await interaction() is None
+
+    path = url[url.index("/api/v1/") :]
+    opened = await client.post(path)
+    assert opened.status_code == 303
+    assert opened.headers["location"].endswith(f"/read/{content_id}")
+    row = await interaction()
+    assert row.opened_at is not None
+    assert row.explicit_rating is None
 
 
 @pytest.mark.asyncio
