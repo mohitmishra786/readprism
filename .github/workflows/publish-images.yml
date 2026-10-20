@@ -15,9 +15,15 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Emulated arm64 builds (torch wheels, Next build) take several times longer.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Nothing later needs git credentials; don't leave the token in .git/config.
+          persist-credentials: false
+      # arm64 is built under QEMU emulation (Apple silicon, ARM servers, Pi 5).
+      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -27,18 +33,14 @@ jobs:
       - uses: docker/metadata-action@v6
         id: meta
         with:
-          # Weirling rename (#340): full paths, so it works before and after the repo
-          # rename; the old name keeps updating until v0.4 for installs that have not
-          # pulled the new compose file.
-          images: |
-            ghcr.io/mohitmishra786/weirling/weirling-backend
-            ghcr.io/mohitmishra786/readprism/readprism-backend
+          images: ghcr.io/mohitmishra786/weirling/weirling-backend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./backend
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -49,18 +51,14 @@ jobs:
       - uses: docker/metadata-action@v6
         id: meta_lite
         with:
-          # Weirling rename (#340): full paths, so it works before and after the repo
-          # rename; the old name keeps updating until v0.4 for installs that have not
-          # pulled the new compose file.
-          images: |
-            ghcr.io/mohitmishra786/weirling/weirling-backend
-            ghcr.io/mohitmishra786/readprism/readprism-backend
+          images: ghcr.io/mohitmishra786/weirling/weirling-backend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}-lite
             type=raw,value=latest-lite,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./backend
           build-args: LITE=1
           push: true
@@ -69,18 +67,14 @@ jobs:
       - uses: docker/metadata-action@v6
         id: meta_front
         with:
-          # Weirling rename (#340): full paths, so it works before and after the repo
-          # rename; the old name keeps updating until v0.4 for installs that have not
-          # pulled the new compose file.
-          images: |
-            ghcr.io/mohitmishra786/weirling/weirling-frontend
-            ghcr.io/mohitmishra786/readprism/readprism-frontend
+          images: ghcr.io/mohitmishra786/weirling/weirling-frontend
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
+          platforms: linux/amd64,linux/arm64
           context: ./frontend
           push: true
           tags: ${{ steps.meta_front.outputs.tags }}
@@ -89,18 +83,14 @@ jobs:
       - uses: docker/metadata-action@v6
         id: meta_aio
         with:
-          # Weirling rename (#340): full paths, so it works before and after the repo
-          # rename; the old name keeps updating until v0.4 for installs that have not
-          # pulled the new compose file.
-          images: |
-            ghcr.io/mohitmishra786/weirling/weirling-aio
-            ghcr.io/mohitmishra786/readprism/readprism-aio
+          images: ghcr.io/mohitmishra786/weirling/weirling-aio
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
+          platforms: linux/amd64,linux/arm64
           context: .
           file: deploy/aio/Dockerfile
           push: true
