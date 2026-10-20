@@ -26,6 +26,7 @@ _PIXEL_HINTS = ("pixel", "track", "open", "beacon")
 @dataclass
 class ParsedNewsletter:
     sender: str
+    # The envelope recipient: where the mail was delivered (owner matching).
     recipient: str
     subject: str
     message_id: str
@@ -36,6 +37,9 @@ class ParsedNewsletter:
     is_confirmation: bool = False
     dedupe_key: str = ""
     headers: dict[str, str] = field(default_factory=dict)
+    # The To header. Differs from `recipient` when the reader forwarded the
+    # newsletter from their own inbox (#322, #249).
+    header_to: str = ""
 
 
 def verify_body_hmac(*, secret: str, payload: bytes, signature: str) -> bool:
@@ -70,6 +74,7 @@ def parse_html_body(
     html: str | None = None,
     text: str | None = None,
     list_unsubscribe: str | None = None,
+    header_to: str | None = None,
 ) -> ParsedNewsletter:
     cleaned_html, view = _clean_html(html or "")
     plain = (text or _html_to_text(cleaned_html)).strip()
@@ -88,6 +93,7 @@ def parse_html_body(
         view_in_browser=view,
         is_confirmation=confirmation,
         dedupe_key=key,
+        header_to=(header_to if header_to is not None else recipient).strip(),
     )
 
 
@@ -125,7 +131,11 @@ def _from_message(message: Message) -> ParsedNewsletter:
             text = decoded
     return parse_html_body(
         sender=str(message.get("From") or ""),
-        recipient=str(message.get("To") or ""),
+        # The receiving server records the envelope address (#322).
+        recipient=str(
+            message.get("Delivered-To") or message.get("X-Original-To") or message.get("To") or ""
+        ),
+        header_to=str(message.get("To") or ""),
         subject=str(message.get("Subject") or "Newsletter"),
         message_id=str(message.get("Message-ID") or message.get("Message-Id") or ""),
         html=html,
@@ -202,7 +212,10 @@ def parse_postmark(payload: dict) -> ParsedNewsletter:
     }
     return parse_html_body(
         sender=str(payload.get("From") or ""),
-        recipient=str(payload.get("To") or ""),
+        # OriginalRecipient is the envelope address; a forwarded newsletter
+        # keeps the reader's own address in To (#322).
+        recipient=str(payload.get("OriginalRecipient") or payload.get("To") or ""),
+        header_to=str(payload.get("To") or ""),
         subject=str(payload.get("Subject") or "Newsletter"),
         message_id=str(payload.get("MessageID") or ""),
         html=payload.get("HtmlBody") or "",
@@ -232,7 +245,8 @@ def parse_cloudflare(payload: dict) -> ParsedNewsletter:
     headers = raw_headers if isinstance(raw_headers, dict) else {}
     return parse_html_body(
         sender=str(payload.get("from") or ""),
-        recipient=str(payload.get("to") or ""),
+        recipient=str(payload.get("to") or ""),  # the Worker's message.to: the envelope
+        header_to=str(headers.get("to") or headers.get("To") or payload.get("to") or ""),
         subject=str(payload.get("subject") or "Newsletter"),
         message_id=str(payload.get("message_id") or payload.get("messageId") or ""),
         html=payload.get("html") or payload.get("raw") or "",
