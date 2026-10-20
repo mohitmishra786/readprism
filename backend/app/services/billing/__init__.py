@@ -83,7 +83,9 @@ def tier_for_price(price_id: str | None) -> str | None:
         return None
     if str(price_id) in _ids(s.billing_team_price_ids):
         return "team"
-    if str(price_id) in _ids(s.billing_pro_price_ids):
+    if str(price_id) in _ids(s.billing_pro_price_ids) or (
+        s.razorpay_plan_id_pro and str(price_id) == s.razorpay_plan_id_pro
+    ):
         return "pro"
     if str(price_id) in _ids(s.billing_reader_price_ids):
         return "reader"
@@ -291,9 +293,9 @@ async def cancel_for_deletion(session: AsyncSession, user: User) -> str:
 
 
 def provider(name: str | None = None):
-    from app.services.billing import lemonsqueezy, paddle
+    from app.services.billing import lemonsqueezy, paddle, razorpay
 
-    providers = {"lemonsqueezy": lemonsqueezy, "paddle": paddle}
+    providers = {"lemonsqueezy": lemonsqueezy, "paddle": paddle, "razorpay": razorpay}
     chosen = (name or get_settings().billing_provider or "").strip().lower()
     return providers.get(chosen)
 

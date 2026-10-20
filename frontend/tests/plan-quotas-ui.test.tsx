@@ -72,4 +72,20 @@ describe("plan quotas (#172)", () => {
     await userEvent.click(within(pro).getByRole("button", { name: "Pro yearly" }));
     expect(checkout).toHaveBeenCalledWith("year", "pro");
   });
+
+  it("handles portal_url === null gracefully with support email link (#342)", async () => {
+    state.mockResolvedValueOnce({
+      ...base,
+      billing_enabled: true,
+      plan: "pro",
+      can_manage: true,
+      portal_url: null,
+      quotas: [],
+    });
+    render(<PlanSection />);
+    const link = await screen.findByRole("link", { name: "Manage subscription via support" });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "mailto:support@weirling.com?subject=Manage%20subscription");
+    expect(screen.queryByRole("button", { name: "Manage billing" })).toBeNull();
+  });
 });
