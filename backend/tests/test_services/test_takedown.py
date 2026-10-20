@@ -54,6 +54,8 @@ async def test_add_and_remove_takedown(db_session):
     assert host_entry.url_key == "badsite.org"
     assert await is_url_blocked(db_session, "https://badsite.org/anything")
     assert await is_url_blocked(db_session, "https://sub.badsite.org/page")
+    assert await is_url_blocked(db_session, "https://a.b.badsite.org/page")
+    assert not await is_url_blocked(db_session, "https://notbadsite.org/page")
 
     # Remove
     removed = await remove_blocked_entry(db_session, "https://example.com/blocked-1")
@@ -68,14 +70,17 @@ async def test_add_and_remove_takedown(db_session):
 
 @pytest.mark.asyncio
 async def test_takedown_cli_script(db_session):
+    from unittest.mock import patch
+
     from scripts.takedown import run_takedown
+    from tests.conftest import TestingSessionLocal
 
-    # Add via CLI
-    code = await run_takedown("https://example.com/cli-test", "Test CLI add", remove=False)
-    assert code == 0
-    assert await is_url_blocked(db_session, "https://example.com/cli-test")
+    # The script opens its own session: point it at the test database.
+    with patch("app.database.AsyncSessionLocal", TestingSessionLocal):
+        code = await run_takedown("https://example.com/cli-test", "Test CLI add", remove=False)
+        assert code == 0
+        assert await is_url_blocked(db_session, "https://example.com/cli-test")
 
-    # Remove via CLI
-    code = await run_takedown("https://example.com/cli-test", "", remove=True)
-    assert code == 0
-    assert not await is_url_blocked(db_session, "https://example.com/cli-test")
+        code = await run_takedown("https://example.com/cli-test", "", remove=True)
+        assert code == 0
+        assert not await is_url_blocked(db_session, "https://example.com/cli-test")

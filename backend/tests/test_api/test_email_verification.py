@@ -123,7 +123,9 @@ async def test_bad_tokens_are_rejected(client, db_session, hosted, outbox):
 async def test_magic_link_sign_in_verifies_the_address(client, db_session, hosted, outbox):
     email = f"mlv{uuid.uuid4().hex[:8]}@example.com"
     assert (
-        await client.post("/api/v1/auth/magic-link/request", json={"email": email})
+        await client.post(
+            "/api/v1/auth/magic-link/request", json={"email": email, "accept_terms": True}
+        )
     ).status_code == 202
     token = _token(outbox[-1])
     assert (
