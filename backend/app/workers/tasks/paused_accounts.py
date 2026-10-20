@@ -97,7 +97,8 @@ async def _run(now: datetime | None = None) -> dict:
         trialing = User.trial_ends_at.is_not(None) & (User.trial_ends_at > now)
         users = list((await session.execute(select(User).where(~paid, ~trialing))).scalars())
         for user in users:
-            if not entitlements.is_paused(user):
+            # Same clock as the candidate query above.
+            if billing.effective_plan(user, now=now) != entitlements.PAUSED:
                 continue
             since = billing.paused_since(user)
             remind, delete = schedule(
