@@ -139,7 +139,9 @@ async def search(
         )
         params["saved"] = saved
         params["uid"] = str(current_user.id)
-    filters_sql = " AND " + " AND ".join(filters)
+    from app.services.takedown import raw_not_blocked_sql
+
+    filters_sql = " AND " + " AND ".join(filters) + raw_not_blocked_sql("ci")
 
     # Per-leg candidate depth must cover the requested page: an offset beyond
     # a fixed candidate window would return an empty page even when scoped
@@ -175,8 +177,12 @@ async def search(
     if not page:
         return {"query": q, "hits": [], "limit": limit, "offset": offset, "has_more": has_more}
 
+    from app.services.takedown import not_blocked_filter
+
     rows = await session.execute(
-        select(ContentItem).where(ContentItem.id.in_([uuid.UUID(p) for p in page]))
+        select(ContentItem).where(
+            ContentItem.id.in_([uuid.UUID(p) for p in page]), not_blocked_filter()
+        )
     )
     by_id = {item.id: item for item in rows.scalars().all()}
     ordered = [by_id[uuid.UUID(item_id)] for item_id in page if uuid.UUID(item_id) in by_id]

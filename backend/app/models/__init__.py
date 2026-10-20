@@ -1,4 +1,5 @@
 from app.models.billing import BillingEvent
+from app.models.blocked_url import BlockedUrl
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.creator import Creator, CreatorPlatform
 from app.models.creator_trust import CreatorTopicTrust
@@ -17,6 +18,7 @@ from app.models.llm_key import UserLLMKey
 from app.models.meta_weights import UserMetaWeights
 from app.models.push import PushSubscription
 from app.models.source import Source
+from app.models.suggestion import SourceSuggestion
 from app.models.user import User
 
 # Importing every model here registers it on Base.metadata. This is required so
@@ -26,6 +28,7 @@ from app.models.user import User
 # drop_all fails on dependent FKs (e.g. creator_topic_trust → creators).
 __all__ = [
     "BillingEvent",
+    "BlockedUrl",
     "Feed",
     "InstanceSetting",
     "User",
@@ -46,4 +49,5 @@ __all__ = [
     "RankerWeightRevision",
     "UserMetaWeights",
     "PushSubscription",
+    "SourceSuggestion",
 ]

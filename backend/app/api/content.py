@@ -42,6 +42,8 @@ async def get_feed(
     # newsletters and saves.
     source_ids = await equivalent_source_ids(session, current_user.id)
     feed_ids = await user_feed_ids(session, current_user.id)
+    from app.services.takedown import not_blocked_filter
+
     in_scope = or_(
         from_user_feeds(source_ids, feed_ids),
         ContentItem.owner_user_id == current_user.id,
@@ -55,7 +57,7 @@ async def get_feed(
             & (UserContentInteraction.user_id == current_user.id),
             isouter=True,
         )
-        .where(in_scope, visible_item_filter(current_user.id))
+        .where(in_scope, visible_item_filter(current_user.id), not_blocked_filter())
         .order_by(
             UserContentInteraction.prs_score.desc().nullslast(),
             ContentItem.fetched_at.desc(),
@@ -179,6 +181,10 @@ async def get_content(
     result = await session.execute(select(ContentItem).where(ContentItem.id == content_id))
     item = result.scalar_one_or_none()
     if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    from app.services.takedown import is_url_blocked
+
+    if await is_url_blocked(session, item.url):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
     # Private content (e.g. forwarded newsletters) is readable only by its owner.
     # Return 404 (not 403) so non-owners can't even confirm the item exists

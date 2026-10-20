@@ -46,10 +46,12 @@ async def _select_serendipity_candidates(
     users), preserving day-1 behaviour.
     """
     from app.services.interest_graph.graph import InterestGraphManager
+    from app.services.takedown import not_blocked_filter
 
     base_filters = [
         ContentItem.fetched_at >= cutoff,
         ContentItem.owner_user_id.is_(None),  # never surface others' private content
+        not_blocked_filter(),
     ]
     if source_ids or feed_ids:
         from app.services.feed_identity import outside_user_feeds
@@ -102,6 +104,8 @@ async def _quiet_day_fallback(
         .join(Digest, Digest.id == DigestItem.digest_id)
         .where(Digest.user_id == user.id)
     )
+    from app.services.takedown import not_blocked_filter
+
     opened = select(UserContentInteraction.content_item_id).where(
         UserContentInteraction.user_id == user.id,
         UserContentInteraction.opened_at.isnot(None),
@@ -112,6 +116,7 @@ async def _quiet_day_fallback(
             from_user_feeds(source_ids, feed_ids),
             ContentItem.fetched_at >= datetime.now(UTC) - QUIET_FALLBACK_WINDOW,
             visible_item_filter(user.id),
+            not_blocked_filter(),
             ContentItem.id.notin_(already_digested),
             ContentItem.id.notin_(opened),
         )
@@ -129,6 +134,7 @@ async def _candidates(
     newest first. Without an ORDER BY the old LIMIT 200 handed the ranker an
     arbitrary subset, and every feed past it never competed."""
     from app.services.feed_identity import from_user_feeds, visible_item_filter
+    from app.services.takedown import not_blocked_filter
 
     settings_ = get_settings()
     cap = settings_.digest_per_source_cap
@@ -146,6 +152,7 @@ async def _candidates(
             from_user_feeds(source_ids, feed_ids),
             ContentItem.fetched_at >= cutoff,
             visible_item_filter(user.id),
+            not_blocked_filter(),
             ContentItem.rankable.is_(True),
         )
         .subquery()

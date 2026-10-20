@@ -28,9 +28,12 @@ async def _insert_items(session, rows: list[dict]) -> list[uuid.UUID]:
     from sqlalchemy.dialects.postgresql import insert
 
     from app.models.content import ContentItem
+    from app.services.takedown import is_url_blocked
 
     new_ids: list[uuid.UUID] = []
     for row in rows:
+        if await is_url_blocked(session, row.get("url", "")):
+            continue
         result = await session.execute(
             insert(ContentItem).values(**row).on_conflict_do_nothing().returning(ContentItem.id)
         )

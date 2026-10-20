@@ -570,3 +570,17 @@ export interface FirstDigestStatus {
   ready: boolean;
   digest_id: string | null;
 }
+
+export interface ContactInfo {
+  grievance_contact_email: string | null;
+}
+
+export async function getContactInfo(): Promise<ContactInfo> {
+  try {
+    const res = await fetch(`${V1}/contact`);
+    if (!res.ok) return { grievance_contact_email: null };
+    return await res.json();
+  } catch {
+    return { grievance_contact_email: null };
+  }
+}

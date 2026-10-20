@@ -71,6 +71,10 @@ async def _existing_urls(session: AsyncSession, urls: list[str]) -> set[str]:
 
 
 async def _store(session: AsyncSession, raw, via: str, now: datetime) -> uuid.UUID | None:
+    from app.services.takedown import is_url_blocked
+
+    if await is_url_blocked(session, raw.url):
+        return None
     result = await session.execute(
         insert(ContentItem)
         .values(

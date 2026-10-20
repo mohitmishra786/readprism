@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.api.account import router as account_router
 from app.api.auth import router as auth_router
 from app.api.billing import router as billing_router
+from app.api.contact import router as contact_router
 from app.api.content import router as content_router
 from app.api.creators import router as creators_router
 from app.api.digest import router as digest_router
@@ -39,5 +40,6 @@ api_router.include_router(integrations_router)
 api_router.include_router(metrics_router)
 api_router.include_router(tokens_router)
 api_router.include_router(extension_router)
+api_router.include_router(contact_router)
 api_router.include_router(push_router)
 api_router.include_router(setup_router)
