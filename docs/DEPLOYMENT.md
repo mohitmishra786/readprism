@@ -30,6 +30,36 @@ SMTP credentials. See [`.env.example`](https://github.com/mohitmishra786/readpri
 
 For upgrades between versions, follow [UPGRADING.md](UPGRADING.md).
 
+## All-in-one image (3 containers)
+
+For homelab app stores (Unraid, CasaOS, TrueNAS) and small installs,
+`compose.aio.yml` runs ReadPrism as three containers: `readprism` plus
+Postgres and Redis.
+
+```bash
+./scripts/init_env.sh
+docker compose -f compose.aio.yml up -d      # pulls ghcr.io/…/readprism-aio
+# or build from this checkout:
+docker compose -f compose.aio.yml up -d --build
+```
+
+The `readprism` container (`deploy/aio/Dockerfile`) supervises, with
+s6-overlay: a one-shot migration, then the API, one solo-pool worker per queue
+(scrape, embed, digest, as in the multi-container install), a single beat and
+the web app. Its healthcheck requires every process to be up, the API and web
+app to answer and the beat heartbeat to be fresh. A failed migration stops
+the container.
+
+- Run **one** copy per database: a second copy would start a second beat.
+  To scale workers, use the multi-container `docker-compose.yml`.
+- Rendered-page extraction (browserless) is not included; JS-only pages keep
+  their feed summary.
+- Build with `--build-arg LITE=1` for the image without torch.
+- Idle memory, measured on 2026-10-20 (lite image, arm64, fresh instance, no
+  sources yet): `readprism` 419 MiB, Postgres 55 MiB, Redis 11 MiB, about
+  485 MiB in total. The full image also loads the sentence-transformers model
+  (the API does so at start-up), so it needs more; that was not measured.
+
 ## Upgrading to shared feeds (migration 0025)
 
 Since #161 a feed followed by several users is polled once. Migration 0025

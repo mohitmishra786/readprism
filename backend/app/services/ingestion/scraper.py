@@ -205,6 +205,9 @@ async def _fetch_with_playwright(url: str) -> tuple[str | None, str | None]:
         # egress proxy (#127). Pages keep their feed text instead.
         logger.info("Rendered extraction is disabled on the hosted service")
         return None, None
+    if not settings.browserless_url:
+        # No renderer configured (all-in-one install, #208): keep the feed text.
+        return None, None
     try:
         # Browserless renders arbitrary user-supplied URLs; validate before we
         # hand the URL to the headless browser (SSRF guard, audit 06-2).

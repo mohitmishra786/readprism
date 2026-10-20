@@ -65,6 +65,7 @@ jobs:
           tests/test_utils/test_renderer_isolation.py
           tests/test_utils/test_extension_manifest.py
           tests/test_utils/test_privacy_page.py
+          tests/test_utils/test_aio_image.py
 
   typecheck:
     name: Typecheck (mypy)
