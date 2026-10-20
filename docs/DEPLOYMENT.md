@@ -353,10 +353,16 @@ ignores them.
      (`BILLING_TEAM_PRICE_IDS` for hand-granted Team accounts). An id that
      isn't listed never upgrades anyone. Readers who already pay switch plans
      in the provider's portal (Manage billing), which prorates.
-  5. Paddle only: also set `BILLING_API_KEY`. Use `BILLING_SANDBOX=true`
-     while testing.
+  5. Set `BILLING_API_KEY` (Paddle: checkout and portal sessions; both
+     providers: cancelling the subscription when an account is deleted). Use
+     `BILLING_SANDBOX=true` with Paddle while testing.
 
   New accounts start a `BILLING_TRIAL_DAYS` trial with no card required.
+  Deleting an account (#221) cancels its subscription first, then erases the
+  data even if the cancel fails, and emails the user a confirmation. A
+  failed cancel is recorded in `billing_events` (provider and subscription
+  id only) and raised by the `billing_cancel_failed` alert for 7 days:
+  cancel it by hand in the provider dashboard.
   They get three emails (#235): when the trial starts, `TRIAL_ENDING_NOTICE_DAYS`
   (5) days before it ends, and when it has ended. Accounts that bought a
   plan get only the first. After the trial nothing is deleted: the account

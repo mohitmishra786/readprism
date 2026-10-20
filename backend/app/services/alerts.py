@@ -143,6 +143,34 @@ async def evaluate(
         if age_h > s.alert_backup_max_age_hours:
             alerts.append(Alert("backup", f"The last successful backup was {age_h:.0f} hours ago."))
 
+    # Subscriptions that account deletion couldn't cancel (#221), last 7 days.
+    from datetime import UTC, datetime, timedelta
+
+    from app.models.billing import BillingEvent
+
+    failed = (
+        (
+            await session.execute(
+                select(BillingEvent.outcome).where(
+                    BillingEvent.event_type == "account_deleted_cancel",
+                    BillingEvent.outcome.like("failed:%"),
+                    BillingEvent.received_at
+                    >= datetime.fromtimestamp(now, UTC) - timedelta(days=7),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    if failed:
+        subs = ", ".join(o.split("subscription ", 1)[-1] for o in failed)
+        alerts.append(
+            Alert(
+                "billing_cancel_failed",
+                f"Deleted accounts still have subscriptions to cancel by hand: {subs}.",
+            )
+        )
+
     # Stopped workers or scheduler (#234).
     for problem in await instance_health.check(session, now=now, redis=redis):
         if problem["key"].startswith(("beat", "worker:")):

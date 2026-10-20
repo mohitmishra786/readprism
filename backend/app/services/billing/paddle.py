@@ -134,3 +134,16 @@ async def portal_url(user) -> str | None:
         resp.raise_for_status()
     urls = (resp.json().get("data") or {}).get("urls") or {}
     return (urls.get("general") or {}).get("overview")
+
+
+async def cancel_subscription(subscription_id: str) -> None:
+    """Cancel now (account deletion, #221). Raises on failure."""
+    if not get_settings().billing_api_key:
+        raise RuntimeError("BILLING_API_KEY is not set")
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{_api()}/subscriptions/{subscription_id}/cancel",
+            json={"effective_from": "immediately"},
+            headers=_headers(),
+        )
+        resp.raise_for_status()

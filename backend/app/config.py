@@ -295,7 +295,8 @@ class Settings(BaseSettings):
     # length are a business decision (#138); this is configuration only.
     billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off
     billing_webhook_secret: str = ""
-    billing_api_key: str = ""  # Paddle only: checkout + portal sessions
+    # Paddle: checkout + portal sessions. Both: cancelling on account deletion.
+    billing_api_key: str = ""
     billing_sandbox: bool = False  # Paddle sandbox API
     # Plans on sale (#172): Reader and Pro, monthly and yearly. Lemon Squeezy:
     # hosted checkout links. Paddle: price ids (pri_...). A plan with neither

@@ -221,6 +221,41 @@ async def apply_update(session: AsyncSession, update: BillingUpdate) -> str:
     return outcome
 
 
+async def cancel_for_deletion(session: AsyncSession, user: User) -> str:
+    """Cancel the user's subscription before their account is erased (#221).
+
+    Returns "none", "cancelled" or "failed". A failure never blocks the
+    erasure: it is recorded for the operator as a billing_events row that
+    holds only the provider and subscription id, so the subscription can be
+    cancelled by hand.
+    """
+    if not user.billing_subscription_id or user.billing_status == ENDED:
+        return "none"
+    name = user.billing_provider or get_settings().billing_provider
+    adapter = provider(name)
+    sub = user.billing_subscription_id
+    try:
+        if adapter is None:
+            raise RuntimeError(f"unknown billing provider {name!r}")
+        await adapter.cancel_subscription(sub)
+        outcome = "cancelled"
+    except Exception as e:
+        logger.error(f"Cancel on account deletion failed for {name} subscription {sub}: {e}")
+        outcome = "failed"
+    await session.execute(
+        insert(BillingEvent)
+        .values(
+            key=f"{name}:deletion-cancel:{sub}",
+            provider=name or "",
+            event_type="account_deleted_cancel",
+            user_id=None,
+            outcome=f"{outcome}: subscription {sub}",
+        )
+        .on_conflict_do_nothing()
+    )
+    return outcome
+
+
 def provider(name: str | None = None):
     from app.services.billing import lemonsqueezy, paddle
 
