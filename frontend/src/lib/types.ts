@@ -37,6 +37,9 @@ export interface Source {
   last_error: string | null;
   fetch_error_count: number;
   health: "healthy" | "degraded" | "failing" | "platform_outage" | "dead";
+  /** Newsletter senders (#249). */
+  newsletter_delivery?: "direct" | "forwarded" | null;
+  unsubscribe_options?: { url: string | null; mailto: string | null } | null;
   items_per_week: number;
   topics: string[];
   priority: string;

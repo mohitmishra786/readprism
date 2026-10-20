@@ -68,14 +68,40 @@ def _extract_signature_fields(
     return "", "", ""
 
 
-async def _remember_sender(session: AsyncSession, user_id_str: str | None, sender: str) -> None:
+async def _remember_sender(
+    session: AsyncSession,
+    user_id_str: str | None,
+    sender: str,
+    *,
+    list_unsubscribe: str | None = None,
+    header_to: str | None = None,
+) -> None:
     if not user_id_str:
         return
     try:
         user_id = uuid.UUID(user_id_str)
     except ValueError:
         return
-    await ensure_newsletter_source(session, user_id, sender)
+    await ensure_newsletter_source(
+        session, user_id, sender, list_unsubscribe=list_unsubscribe, header_to=header_to
+    )
+
+
+def _mailgun_header(source, name: str) -> str | None:
+    """A header from Mailgun's 'message-headers' ([[name, value], ...])."""
+    import json
+
+    if source is None:
+        return None
+    raw = source.get("message-headers")
+    try:
+        pairs = json.loads(raw) if isinstance(raw, str) else raw or []
+    except ValueError:
+        return None
+    for pair in pairs if isinstance(pairs, list) else []:
+        if isinstance(pair, list) and len(pair) == 2 and str(pair[0]).lower() == name.lower():
+            return str(pair[1])
+    return None
 
 
 @router.post("/inbound", status_code=status.HTTP_200_OK)
@@ -195,7 +221,14 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
         message_id=message_id,
         user_id=user_id_str,
     )
-    await _remember_sender(session, user_id_str, sender)
+    fields = payload if payload is not None else form
+    await _remember_sender(
+        session,
+        user_id_str,
+        sender,
+        list_unsubscribe=_mailgun_header(fields, "List-Unsubscribe"),
+        header_to=str((fields or {}).get("To") or _mailgun_header(fields, "To") or recipient),
+    )
 
     return {"status": "ok"}
 
@@ -278,7 +311,13 @@ async def inbound_provider(
         user_id=str(owner) if owner else None,
     )
     if owner:
-        await ensure_newsletter_source(session, owner, parsed.sender)
+        await ensure_newsletter_source(
+            session,
+            owner,
+            parsed.sender,
+            list_unsubscribe=parsed.list_unsubscribe,
+            header_to=parsed.header_to,
+        )
     return {
         "status": "ok",
         "confirmation": parsed.is_confirmation,

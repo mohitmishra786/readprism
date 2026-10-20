@@ -2,6 +2,7 @@
 import { useState } from "react";
 import type { Source } from "../../lib/types";
 import { api } from "../../lib/api";
+import { NewsletterSenderHelp } from "./NewsletterSenderHelp";
 
 // Reddit ends RSS on this date (#107); the backend pauses its feeds then.
 const REDDIT_RSS_END = Date.UTC(2026, 10, 13);
@@ -118,6 +119,7 @@ export function SourceList({ sources, onUpdated, onDeleted }: SourceListProps) {
                   {s.last_error}
                 </div>
               )}
+              <NewsletterSenderHelp source={s} />
               {(s.health === "dead" || s.health === "failing") && s.source_type !== "newsletter" && (
                 <div className="mt-1.5 flex items-center gap-2 text-xs">
                   <button

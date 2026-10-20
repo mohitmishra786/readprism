@@ -253,3 +253,23 @@ def parse_cloudflare(payload: dict) -> ParsedNewsletter:
         text=payload.get("text") or "",
         list_unsubscribe=headers.get("list-unsubscribe") or headers.get("List-Unsubscribe"),
     )
+
+
+def unsubscribe_options(header: str | None) -> dict | None:
+    """The sender's unsubscribe link and/or address from List-Unsubscribe
+    (#249). Untrusted input: only https: and mailto: are kept, and nothing
+    is ever fetched server-side."""
+    import re
+    from urllib.parse import urlparse
+
+    if not header:
+        return None
+    url = mailto = None
+    for candidate in re.findall(r"<([^>]+)>", header) or [header]:
+        candidate = candidate.strip()
+        scheme = urlparse(candidate).scheme.lower()
+        if scheme == "https" and url is None and len(candidate) <= 2000:
+            url = candidate
+        elif scheme == "mailto" and mailto is None and "@" in candidate:
+            mailto = candidate
+    return {"url": url, "mailto": mailto} if (url or mailto) else None
