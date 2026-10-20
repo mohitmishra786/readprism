@@ -24,7 +24,11 @@ class CheckoutRequest(BaseModel):
 
 
 @router.get("")
-async def billing_state(user: User = Depends(get_current_user)) -> dict:
+async def billing_state(
+    user: User = Depends(get_current_user), session: AsyncSession = Depends(get_db)
+) -> dict:
+    from app.services import entitlements
+
     plan = billing.effective_plan(user)
     trial_days_left = None
     if plan == "trial" and user.trial_ends_at is not None:
@@ -44,6 +48,8 @@ async def billing_state(user: User = Depends(get_current_user)) -> dict:
         "trial_days_left": trial_days_left,
         "plan_expires_at": user.plan_expires_at,
         "can_manage": bool(user.billing_customer_id or user.billing_portal_url),
+        # Plan quotas and today's use (#172); empty on self-host.
+        "quotas": await entitlements.usage(session, user),
     }
 
 

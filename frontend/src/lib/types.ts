@@ -182,6 +182,22 @@ export interface BillingState {
   trial_days_left: number | null;
   plan_expires_at: string | null;
   can_manage: boolean;
+  /** Hosted plan quotas and today's use (#172); empty on self-host. 0 = unlimited. */
+  quotas?: PlanQuota[];
+}
+
+export interface PlanQuota {
+  quota:
+    | "sources"
+    | "creators"
+    | "newsletters_per_day"
+    | "newsletter_mb_per_day"
+    | "llm_summaries_per_day"
+    | "digest_builds_per_day";
+  limit: number;
+  used: number;
+  /** Resets at midnight UTC. */
+  daily: boolean;
 }
 
 /** A curated starter pack of feeds (#152). */

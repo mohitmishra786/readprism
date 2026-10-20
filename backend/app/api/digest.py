@@ -563,6 +563,13 @@ async def generate_digest(
             detail=entitlements.digest_regeneration_message(current_user),
         )
 
+    # Hosted: manual builds per day by plan (#172). Scheduled digests don't count.
+    if not await entitlements.take(current_user, entitlements.DIGEST_BUILDS):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=entitlements.daily_quota_message(current_user, entitlements.DIGEST_BUILDS),
+        )
+
     from app.workers.tasks.build_digest import build_digest_for_user
 
     build_digest_for_user.delay(str(current_user.id))

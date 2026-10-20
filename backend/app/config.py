@@ -5,6 +5,40 @@ from functools import lru_cache
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Hosted per-plan quotas (#172); Settings.hosted_plan_quotas is merged over this.
+DEFAULT_PLAN_QUOTAS: dict[str, dict[str, int]] = {
+    "free": {
+        "newsletters_per_day": 20,
+        "newsletter_mb_per_day": 10,
+        "llm_summaries_per_day": 20,
+        "digest_builds_per_day": 3,
+    },
+    "trial": {
+        "sources": 500,
+        "creators": 50,
+        "newsletters_per_day": 100,
+        "newsletter_mb_per_day": 50,
+        "llm_summaries_per_day": 200,
+        "digest_builds_per_day": 6,
+    },
+    "pro": {
+        "sources": 500,
+        "creators": 50,
+        "newsletters_per_day": 100,
+        "newsletter_mb_per_day": 50,
+        "llm_summaries_per_day": 200,
+        "digest_builds_per_day": 6,
+    },
+    "team": {
+        "sources": 2000,
+        "creators": 200,
+        "newsletters_per_day": 300,
+        "newsletter_mb_per_day": 150,
+        "llm_summaries_per_day": 1000,
+        "digest_builds_per_day": 12,
+    },
+}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -241,6 +275,13 @@ class Settings(BaseSettings):
     free_max_sources: int = 30
     free_max_creators: int = 5
     hosted_free_digest_regen_minutes: int = 60
+    # Hosted per-plan quotas (#172), keyed by effective plan. 0 = unlimited.
+    # Defaults: DEFAULT_PLAN_QUOTAS above. HOSTED_PLAN_QUOTAS (JSON) is merged
+    # over them per plan and quota, e.g. {"pro": {"sources": 800}};
+    # the free row's sources/creators come from FREE_MAX_SOURCES/CREATORS.
+    # "pro" is the Hosted Reader plan and "team" the Hosted Pro plan of the
+    # product plan (§5). Per-account overrides: scripts/set_quota.py.
+    hosted_plan_quotas: dict[str, dict[str, int]] = {}
     # Billing on hosted through a merchant of record (#173). Prices and trial
     # length are a business decision (#138); this is configuration only.
     billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off

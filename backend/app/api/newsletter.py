@@ -209,6 +209,11 @@ async def inbound_email(request: Request, session: AsyncSession = Depends(get_db
     if not allowed:
         logger.warning(f"Inbound newsletter dropped: {why}")
         return {"status": "ignored", "reason": why}
+    if user_id_str:
+        allowed, why = await _plan_allows_newsletter(session, user_id_str, len(body_text.encode()))
+        if not allowed:
+            logger.info(f"Inbound newsletter dropped: {why}")
+            return {"status": "ignored", "reason": why}
     from app.services.newsletter_address import record_if_test
 
     if await record_if_test(user_id_str, subject):
@@ -299,6 +304,11 @@ async def inbound_provider(
     if not allowed:
         logger.warning(f"Inbound newsletter dropped: {why}")
         return {"status": "ignored", "reason": why}
+    if owner:
+        allowed, why = await _plan_allows_newsletter(session, owner, len(raw))
+        if not allowed:
+            logger.info(f"Inbound newsletter dropped: {why}")
+            return {"status": "ignored", "reason": why}
     from app.services.newsletter_address import record_if_test
 
     if await record_if_test(owner, parsed.subject):
@@ -385,3 +395,15 @@ async def address_test_status(current_user: User = Depends(get_current_user)) ->
     from app.services.newsletter_address import test_status
 
     return await test_status(current_user.id)
+
+
+async def _plan_allows_newsletter(session, user_id, size_bytes: int) -> tuple[bool, str]:
+    """The recipient's plan quota for newsletters (#172); always allowed off hosted."""
+    from app.services import entitlements
+
+    if not entitlements.is_hosted():
+        return True, ""
+    user = await session.get(User, uuid.UUID(str(user_id)))
+    if user is None:
+        return True, ""
+    return await entitlements.newsletter_allowed(user, size_bytes)

@@ -277,9 +277,8 @@ Self-hosted instances bring their own `LLM_API_KEY` (or the legacy, deprecated
 heavy/niche readers pay their own inference bill directly — the
 intended pressure-release for the worst-margin users (audit 13-3). The full
 ranking engine and summarization run locally against your key; no ReadPrism
-hosted service is involved. Tier limits (`FREE_MAX_SOURCES`,
-`FREE_MAX_CREATORS`) are yours to configure or disable (set to 0) on your own
-instance.
+hosted service is involved. With `DEPLOYMENT_MODE=selfhost` (the default)
+there are no plans or quotas at all.
 
 ## Email deliverability (SPF / DKIM)
 
@@ -316,6 +315,19 @@ ignores them.
   across all accounts, and one account can follow at most
   `HOSTED_MAX_SOURCES_PER_HOST` feeds on the same host. Inbound newsletters
   are capped per account per day by count and size.
+- **Plan quotas (#172).** Each plan has limits on feeds, tracked creators,
+  newsletters per day (count and MB), AI summaries per day and manual digest
+  builds per day; 0 means unlimited. Defaults (`DEFAULT_PLAN_QUOTAS` in
+  `backend/app/config.py`): free 30 feeds (`FREE_MAX_SOURCES`), trial and
+  `pro` (the Hosted Reader plan) 500 feeds and 50 MB of newsletters a day,
+  `team` (Hosted Pro) 2,000 feeds. Change a plan with `HOSTED_PLAN_QUOTAS`,
+  JSON merged over the defaults, e.g. `{"pro": {"sources": 800}}`. Change one
+  account with `cd backend && python scripts/set_quota.py <email>
+  sources=1000` (no arguments shows its limits; `--clear` removes overrides).
+  Daily allowances reset at midnight UTC. When AI summaries run out the
+  digest keeps the extractive summary; scheduled digests always run and
+  don't count as builds. The Plan section in Preferences shows each limit and
+  today's use. The abuse caps above still apply on top.
 - **Billing (#173).** Billing runs through a merchant of record, so the
   provider handles VAT/GST. Steps:
   1. Set `BILLING_PROVIDER` to `lemonsqueezy` or `paddle`, and set

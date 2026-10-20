@@ -34,6 +34,8 @@ class User(Base):
     # ISO-639 codes the user wants to read (UX-15). Empty = no filter.
     preferred_languages: Mapped[list] = mapped_column(JSONB, default=list)
     tier: Mapped[str] = mapped_column(String, default="free")
+    # Admin per-account quota overrides on hosted (#172), e.g. {"sources": 1000}.
+    quota_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     timezone: Mapped[str] = mapped_column(String, default="UTC")
     # Local part of the inbound newsletter address: u.{token}@the configured domain.
     newsletter_token: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import type { BillingState } from "../lib/types";
+import type { BillingState, PlanQuota } from "../lib/types";
 
 const BUTTON = {
   padding: "8px 16px",
@@ -31,6 +31,43 @@ function describe(state: BillingState): string {
   }
 }
 
+const QUOTA_LABEL: Record<PlanQuota["quota"], string> = {
+  sources: "Feeds",
+  creators: "Tracked creators",
+  newsletters_per_day: "Newsletters today",
+  newsletter_mb_per_day: "Newsletter volume today (MB)",
+  llm_summaries_per_day: "AI summaries today",
+  digest_builds_per_day: "Manual digest builds today",
+};
+
+// What the plan includes and what is used (#172).
+function Quotas({ quotas }: { quotas: PlanQuota[] }) {
+  if (!quotas.length) return null;
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <table style={{ fontSize: 14, borderCollapse: "collapse" }}>
+        <tbody>
+          {quotas.map((q) => {
+            const full = q.limit > 0 && q.used >= q.limit;
+            return (
+              <tr key={q.quota}>
+                <td style={{ padding: "2px 16px 2px 0", color: "var(--text-tertiary)" }}>{QUOTA_LABEL[q.quota]}</td>
+                <td style={{ padding: "2px 0", color: full ? "#dc2626" : undefined }}>
+                  {q.limit > 0 ? `${q.used} of ${q.limit}` : `${q.used} (no limit)`}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p style={{ color: "var(--text-tertiary)", fontSize: 13, marginTop: 8 }}>
+        Daily allowances reset at midnight UTC. When AI summaries run out, digests use the shorter
+        extract until the next day; scheduled digests are never skipped.
+      </p>
+    </div>
+  );
+}
+
 // Hosted plan and billing (#173). Renders nothing on self-hosted instances.
 export function PlanSection() {
   const [state, setState] = useState<BillingState | null>(null);
@@ -55,6 +92,7 @@ export function PlanSection() {
     <section style={{ marginTop: 40, borderTop: "1px solid var(--border)", paddingTop: 24 }}>
       <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: 8 }}>Plan</h2>
       <p style={{ color: "var(--text-tertiary)", fontSize: 14, marginBottom: 16 }}>{describe(state)}</p>
+      <Quotas quotas={state.quotas ?? []} />
       {state.billing_enabled && state.academic_discount && !paying && (
         <p style={{ fontSize: 14, marginBottom: 12 }} role="status">
           🎓 Academic discount: your university email qualifies, and the discount is applied at checkout.

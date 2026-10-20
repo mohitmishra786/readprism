@@ -160,6 +160,20 @@ async def _candidates(
     return list(result.scalars().all())
 
 
+async def summarize_placed(user: User, items: list[ContentItem]) -> int:
+    """LLM summaries for a digest's items, within the plan's daily allowance (#172)."""
+    from app.services import entitlements
+    from app.services.summarization.lazy import ensure_llm_summaries
+
+    limit = get_settings().digest_llm_summary_limit
+    left = await entitlements.remaining_today(user, entitlements.LLM_SUMMARIES)
+    if left is not None:
+        limit = min(limit, left)
+    calls = await ensure_llm_summaries(items, limit=limit)
+    await entitlements.record_use(user, entitlements.LLM_SUMMARIES, calls)
+    return calls
+
+
 async def build_digest(user: User, session: AsyncSession) -> Digest:
     # Determine time window
     if user.digest_frequency == "weekly":
@@ -323,10 +337,7 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
     await session.flush()
 
     # Model summaries only for what the user will actually see (#147).
-    from app.services.summarization.lazy import ensure_llm_summaries
-
-    placed_items = [row[0] for section in sections.values() for row in section.items]
-    await ensure_llm_summaries(placed_items, limit=get_settings().digest_llm_summary_limit)
+    await summarize_placed(user, [row[0] for section in sections.values() for row in section.items])
 
     # The ranker already produced each item's features, faithful contributions,
     # explanation and topic phrase from the same computation that scored it
