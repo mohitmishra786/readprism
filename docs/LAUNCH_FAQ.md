@@ -49,9 +49,9 @@ Contributions take a DCO sign-off
 ### Pricing?
 
 The self-hosted version is free and open-source (MIT) with no plan limits. The
-hosted service gives every reader a 30-day trial with Reader limits (500 feeds,
-200 AI summaries/day), followed by paid Reader and Pro plans (price set at
-launch) or Free limits after the trial (30 feeds, 20 AI summaries/day). Paid plans
+hosted service gives every reader a 30-day trial of Pro (no card), then Reader
+($6/month or $54/year) or Pro ($12/month or $108/year). There is no free hosted
+plan: an account with no plan is paused, then deleted after 30 days. Paid plans
 gate quantity (more feeds, newsletters, and daily AI summaries) — not the ranking
 intelligence. Readers can also bring their own LLM key to run summaries on their
 own provider account outside the quota. See [HOSTING.md](HOSTING.md).

@@ -175,7 +175,9 @@ export interface Token {
 }
 
 export interface BillingState {
-  plan: "selfhost" | "trial" | "reader" | "pro" | "team" | "free";
+  plan: "selfhost" | "trial" | "reader" | "pro" | "team" | "paused";
+  /** Paused (trial over, no plan): when the account will be deleted (#341). */
+  deletes_at?: string | null;
   billing_enabled: boolean;
   /** Academic discount applies at checkout (verified academic email, #250). */
   academic_discount?: boolean;

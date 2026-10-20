@@ -46,13 +46,14 @@ def _opml(n: int) -> bytes:
 @pytest.fixture
 def hosted(monkeypatch):
     monkeypatch.setattr(entitlements.settings, "deployment_mode", "hosted")
-    # No trial: these tests are about the limits a non-paying account gets (#173).
-    monkeypatch.setattr(entitlements.settings, "billing_trial_days", 0)
+    # A trial account: the limits under test are the trial plan's (D-18: there
+    # is no free hosted plan; a non-paying account is paused, see #341 tests).
+    monkeypatch.setattr(entitlements.settings, "billing_trial_days", 30)
 
 
 @pytest.mark.asyncio
 async def test_selfhost_never_limits_sources(client, test_user_data, db_session, monkeypatch):
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", 2)
+    monkeypatch.setattr(entitlements.settings, "hosted_plan_quotas", {"trial": {"sources": 2}})
     headers, user = await _register(client, test_user_data, db_session)
     await _seed_sources(db_session, user, 200)
 
@@ -95,10 +96,10 @@ async def test_selfhost_digest_regeneration_is_only_a_double_click_guard(
 
 
 @pytest.mark.asyncio
-async def test_hosted_free_user_blocked_at_source_limit(
+async def test_hosted_trial_user_blocked_at_source_limit(
     client, test_user_data, db_session, monkeypatch, hosted
 ):
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", 2)
+    monkeypatch.setattr(entitlements.settings, "hosted_plan_quotas", {"trial": {"sources": 2}})
     headers, user = await _register(client, test_user_data, db_session)
     await _seed_sources(db_session, user, 2)
 
@@ -108,10 +109,10 @@ async def test_hosted_free_user_blocked_at_source_limit(
 
 
 @pytest.mark.asyncio
-async def test_hosted_free_user_opml_import_counts_against_the_limit(
+async def test_hosted_trial_user_opml_import_counts_against_the_limit(
     client, test_user_data, db_session, monkeypatch, hosted
 ):
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", 10)
+    monkeypatch.setattr(entitlements.settings, "hosted_plan_quotas", {"trial": {"sources": 10}})
     headers, user = await _register(client, test_user_data, db_session)
     await _seed_sources(db_session, user, 5)
 
@@ -125,13 +126,15 @@ async def test_hosted_free_user_opml_import_counts_against_the_limit(
 
 
 @pytest.mark.asyncio
-async def test_hosted_free_user_starter_pack_counts_against_the_limit(
+async def test_hosted_trial_user_starter_pack_counts_against_the_limit(
     client, test_user_data, db_session, monkeypatch, hosted
 ):
     from app.services.cold_start.starter_packs import list_starter_packs
 
     pack = list_starter_packs()[0]
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", len(pack.feeds) - 1)
+    monkeypatch.setattr(
+        entitlements.settings, "hosted_plan_quotas", {"trial": {"sources": len(pack.feeds) - 1}}
+    )
     headers, _ = await _register(client, test_user_data, db_session)
 
     resp = await client.post(f"/api/v1/sources/starter-packs/{pack.id}/subscribe", headers=headers)
@@ -139,24 +142,25 @@ async def test_hosted_free_user_starter_pack_counts_against_the_limit(
 
 
 @pytest.mark.asyncio
-async def test_hosted_free_digest_throttle_uses_plan_window(
+async def test_hosted_manual_digest_is_only_double_click_guarded(
     client, test_user_data, db_session, hosted
 ):
+    """The hourly "free plan" throttle is gone with the free plan (#341); the daily
+    build quota is the plan limit, and only a double-click guard remains."""
     headers, user = await _register(client, test_user_data, db_session)
     db_session.add(Digest(user_id=user.id, generated_at=datetime.now(UTC) - timedelta(minutes=10)))
     await db_session.commit()
 
     with patch("app.workers.tasks.build_digest.build_digest_for_user.delay"):
         resp = await client.post("/api/v1/digest/generate", headers=headers)
-    assert resp.status_code == 429
-    assert "plan" in resp.json()["detail"].lower()
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_hosted_pro_user_unlimited_sources(
     client, test_user_data, db_session, monkeypatch, hosted
 ):
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", 1)
+    monkeypatch.setattr(entitlements.settings, "hosted_plan_quotas", {"trial": {"sources": 1}})
     headers, user = await _register(client, test_user_data, db_session)
     user.tier = "pro"
     await _seed_sources(db_session, user, 1)

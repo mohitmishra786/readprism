@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
     resendVerification: vi.fn(() => Promise.resolve({})),
   },
   metrics: { instanceHealth: vi.fn(() => Promise.resolve({ problems: [] })) },
+  billing: { state: vi.fn(() => Promise.resolve({ plan: "selfhost" })) },
 }));
 vi.mock("../src/lib/api", () => ({ api }));
 

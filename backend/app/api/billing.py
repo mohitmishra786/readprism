@@ -53,7 +53,26 @@ async def billing_state(
         "quotas": await entitlements.usage(session, user),
         # What can be bought, cheapest first, with each plan's limits (#172).
         "plans": billing.plans_on_sale(),
+        # Paused (trial over, no plan, #341): when the account will be deleted.
+        "deletes_at": _deletes_at(user) if plan == "paused" else None,
     }
+
+
+def _deletes_at(user: User) -> datetime | None:
+    from datetime import timedelta
+
+    from app.config import get_settings
+
+    s = get_settings()
+    if s.hosted_paused_delete_days <= 0:
+        return None
+    due = billing.paused_since(user) + timedelta(days=s.hosted_paused_delete_days)
+    sent = user.deletion_reminder_sent_at
+    if sent is not None:
+        sent = sent if sent.tzinfo else sent.replace(tzinfo=UTC)
+        if sent >= billing.paused_since(user):
+            due = max(due, sent + timedelta(days=s.hosted_delete_reminder_days))
+    return due
 
 
 def _provider_or_404():

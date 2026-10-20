@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   auth: { me: vi.fn(() => Promise.resolve({ email: "o@example.com", email_verified: true })) },
   metrics: { instanceHealth: vi.fn() },
+  billing: { state: vi.fn(() => Promise.resolve({ plan: "selfhost" })) },
 }));
 vi.mock("../src/lib/api", () => ({ api }));
 

@@ -162,7 +162,7 @@ local private subnet (e.g. `http://192.168.1.50:8080` or `http://miniflux.lan`):
 
 - **Feed pagination:** Miniflux feeds are fetched in pages of 200 up to 1,000 feeds.
 - **Hosted quotas:** On a hosted instance, feed limits depend on your plan quota
-  (e.g. 500 on Trial/Reader, 2,000 on Pro, 30 on Free limits). Self-host has no feed cap.
+  (500 on Reader, 2,000 on Pro and during the trial). Self-host has no feed cap.
 - **Response size:** Payloads from the upstream reader are capped at 2 MB per request
   to prevent memory pressure.
 - **Redirects:** Outgoing requests disallow HTTP redirects (`max_redirects=0`) to

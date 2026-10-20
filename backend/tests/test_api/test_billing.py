@@ -55,13 +55,13 @@ def _iso(dt: datetime) -> str:
 def test_effective_plan_states(hosted_billing):
     now = datetime.now(UTC)
     u = User(email="x@example.com", hashed_password="x", tier="free")
-    assert billing.effective_plan(u, now=now) == "free"
+    assert billing.effective_plan(u, now=now) == "paused"
     billing.start_trial(u, now=now)
     assert billing.effective_plan(u, now=now) == "trial"
-    assert billing.effective_plan(u, now=now + timedelta(days=31)) == "free"
+    assert billing.effective_plan(u, now=now + timedelta(days=31)) == "paused"
     u.tier, u.plan_expires_at = "pro", now + timedelta(days=10)
     assert billing.effective_plan(u, now=now + timedelta(days=5)) == "pro"
-    assert billing.effective_plan(u, now=now + timedelta(days=40)) == "free"  # lapsed
+    assert billing.effective_plan(u, now=now + timedelta(days=40)) == "paused"  # lapsed
     u.tier, u.plan_expires_at = "team", None  # manually granted, no expiry
     assert billing.effective_plan(u, now=now) == "team"
 
@@ -74,12 +74,12 @@ def test_selfhost_is_always_selfhost():
 
 
 @pytest.mark.asyncio
-async def test_signup_starts_a_trial_and_trial_lifts_free_limits(
+async def test_signup_starts_a_trial_and_the_end_of_it_pauses_the_account(
     client, hosted_billing, monkeypatch
 ):
+    """D-18: no free tier. A trial has Pro's limits; after it, nothing can be added."""
     from app.services import entitlements
 
-    monkeypatch.setattr(entitlements.settings, "free_max_sources", 1)
     reg = await client.post(
         "/api/v1/auth/register",
         json={
@@ -94,11 +94,13 @@ async def test_signup_starts_a_trial_and_trial_lifts_free_limits(
 
     trial_user = User(email="a@example.com", hashed_password="x")
     billing.start_trial(trial_user)
-    entitlements.enforce_source_limit(trial_user, current_count=50)  # no 402 in trial
+    entitlements.enforce_source_limit(trial_user, current_count=1500)  # Pro limits in trial
     trial_user.trial_ends_at = datetime.now(UTC) - timedelta(seconds=1)
+    assert entitlements.is_paused(trial_user)
     with pytest.raises(Exception) as exc:
-        entitlements.enforce_source_limit(trial_user, current_count=50)
+        entitlements.enforce_source_limit(trial_user, current_count=0)
     assert getattr(exc.value, "status_code", None) == 402
+    assert "trial has ended" in exc.value.detail
 
 
 # --------------------------------------------------------------- Lemon Squeezy
@@ -170,13 +172,13 @@ async def test_lemonsqueezy_purchase_cancel_expire_and_replays(
     assert (await _post_ls(client, cancelled)).json()["status"] == "applied"
     await db_session.refresh(user)
     assert billing.effective_plan(user) == "pro"
-    assert billing.effective_plan(user, now=ends + timedelta(seconds=1)) == "free"
+    assert billing.effective_plan(user, now=ends + timedelta(seconds=1)) == "paused"
 
     # Expire: downgraded now.
     expired = _ls("subscription_expired", user.id, status="expired", updated=t0 + timedelta(days=1))
     assert (await _post_ls(client, expired)).json()["status"] == "applied"
     await db_session.refresh(user)
-    assert user.tier == "free" and billing.effective_plan(user) == "free"
+    assert user.tier == "free" and billing.effective_plan(user) == "paused"
 
     # A late, older "active" event must not resurrect the plan.
     late = _ls(
@@ -188,7 +190,7 @@ async def test_lemonsqueezy_purchase_cancel_expire_and_replays(
     )
     assert (await _post_ls(client, late)).json()["status"] == "stale"
     await db_session.refresh(user)
-    assert billing.effective_plan(user) == "free"
+    assert billing.effective_plan(user) == "paused"
 
 
 @pytest.mark.asyncio
@@ -205,7 +207,7 @@ async def test_unknown_variant_never_grants_a_plan(client, db_session, hosted_bi
     )
     await _post_ls(client, raw)
     await db_session.refresh(user)
-    assert user.tier == "free" and billing.effective_plan(user) == "free"
+    assert user.tier == "free" and billing.effective_plan(user) == "paused"
 
 
 @pytest.mark.asyncio
@@ -372,7 +374,7 @@ async def test_paddle_lifecycle(client, db_session, hosted_billing, monkeypatch)
     await _post_paddle(client, past_due)
     await db_session.refresh(user)
     assert billing.effective_plan(user, now=t0 + timedelta(days=2)) == "pro"
-    assert billing.effective_plan(user, now=t0 + timedelta(days=4)) == "free"
+    assert billing.effective_plan(user, now=t0 + timedelta(days=4)) == "paused"
 
     # Scheduled cancel keeps access until it takes effect; canceled ends it.
     effective = t0 + timedelta(days=20)
@@ -393,7 +395,7 @@ async def test_paddle_lifecycle(client, db_session, hosted_billing, monkeypatch)
     )
     await _post_paddle(client, ended)
     await db_session.refresh(user)
-    assert billing.effective_plan(user) == "free"
+    assert billing.effective_plan(user) == "paused"
 
 
 @pytest.mark.asyncio

@@ -1,18 +1,20 @@
 # Unit Economics
 
 *Economic model for ReadPrism hosted service vs self-hosting. Aligned with
-the plan structure in [HOSTING.md](HOSTING.md) and PRODUCT_PLAN §8. Prices are not
-decided (#138); subscription prices are set at launch.*
+the plan structure in [HOSTING.md](HOSTING.md) and PRODUCT_PLAN §8. Prices are
+decision D-18 (#138).*
 
 ## Plans and quotas
 
 | Tier | Feeds | Creators | AI summaries / day | Newsletters / day | Manual builds / day | Price |
 |---|---|---|---|---|---|---|
 | **Self-host** | Unlimited | Unlimited | Unlimited (BYOK or local) | Unlimited | Unlimited | No license fee (MIT); the operator pays their own hosting |
-| **Hosted Trial** (30 days) | 500 | 50 | 200 | 100 (50 MB) | 6 | Free, no card |
-| **Hosted Reader** | 500 | 50 | 200 | 100 (50 MB) | 6 | Price set at launch |
-| **Hosted Pro** | 2,000 | 200 | 1,000 | 300 (150 MB) | 12 | Price set at launch |
-| **Free limits** (post-trial) | 30 | 5 | 20 | 20 (10 MB) | 3 | Free ($0) |
+| **Hosted Trial** (30 days, Pro features) | 2,000 | 200 | 1,000 | 300 (150 MB) | 12 | Free, no card |
+| **Hosted Reader** | 500 | 50 | 200 | 100 (50 MB) | 6 | $6/month or $54/year |
+| **Hosted Pro** | 2,000 | 200 | 1,000 | 300 (150 MB) | 12 | $12/month or $108/year |
+
+There is no free hosted plan: an account with no plan after the trial is paused
+and deleted 30 days later.
 
 The full, configurable table is `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`
 (see [Hosted service](HOSTING.md#plans-and-quotas)).
@@ -62,13 +64,14 @@ cost to the hosted instance is **$0**.
 Payments are processed through a Merchant of Record (Lemon Squeezy or Paddle) to
 handle global sales tax, VAT, and GST compliance. MoR providers charge a transaction
 fee (typically ~5% + $0.50 per transaction). Net revenue per subscriber equals the
-subscription price (price set at launch) minus MoR fees.
+subscription price minus MoR fees: about $5.20 a month on Reader monthly
+($6 − 5% − $0.50).
 
 ## Break-even model
 
 Per paying subscriber:
 
-- **Net revenue** = price (set at launch) − merchant-of-record fees
+- **Net revenue** = price − merchant-of-record fees
 - **Break-even** when net revenue > variable cost + allocated fixed cost
 
 Where:
@@ -77,6 +80,6 @@ Where:
   - Email step cost allocation.
 - **Allocated fixed cost:** server hosting (e.g. Hetzner cloud node), domain, and
   off-box backup storage amortized across active users.
-- **Safety valve:** post-trial non-paying users revert to Free limits (30 feeds,
-  20 summaries/day, 3 digest builds/day), preventing unbounded variable cost from
-  inactive or casual accounts while self-hosters incur no operator cost.
+- **Safety valve:** accounts with no plan after the trial are paused (no fetching,
+  digests or AI summaries) and deleted after 30 days, so non-paying accounts cost
+  nothing beyond storage for that month. Self-hosters incur no operator cost.

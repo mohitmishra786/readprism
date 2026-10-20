@@ -28,6 +28,10 @@ function describe(state: BillingState): string {
       if (state.status === "past_due") return `${name}: the last payment failed. Update your card to keep access.`;
       return state.plan_expires_at ? `${name}: renews ${day(state.plan_expires_at)}.` : `${name}.`;
     }
+    case "paused":
+      return state.deletes_at
+        ? `Your account is paused: no new digests or feed updates. Choose a plan to continue; otherwise it is deleted on ${day(state.deletes_at)}. You can export your data until then.`
+        : "Your account is paused: no new digests or feed updates. Choose a plan to continue.";
     default:
       return "No active plan. Subscribe to keep your digests coming.";
   }
