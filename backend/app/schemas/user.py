@@ -43,6 +43,7 @@ class UserRead(BaseModel):
     fetch_paused_until: datetime | None = None
     collaborative_opt_out: bool = False
     weekly_email: bool = False
+    is_demo: bool = False
 
 
 class UserUpdate(BaseModel):

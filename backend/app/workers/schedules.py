@@ -88,4 +88,8 @@ def setup_beat_schedule(app: Celery) -> None:
             "task": "app.workers.tasks.weekly_learning.send_weekly_learning_emails",
             "schedule": crontab(hour=9, minute=0, day_of_week="sun"),  # Sundays 09:00 UTC (#184)
         },
+        "reset-demo-account": {
+            "task": "app.workers.tasks.demo.reset_demo_account",
+            "schedule": crontab(hour=4, minute=0),  # daily at 04:00 UTC (#229)
+        },
     }

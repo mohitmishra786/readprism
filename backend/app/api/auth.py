@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import bcrypt
 import jwt
@@ -91,14 +93,16 @@ def _verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def _create_access_token(user_id: uuid.UUID) -> str:
+def _create_access_token(user_id: uuid.UUID, *, session_id: str | None = None) -> str:
     now = datetime.now(UTC)
-    payload = {
+    payload: dict = {
         "sub": str(user_id),
         "type": "access",
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
     }
+    if session_id:
+        payload["sid"] = session_id
     return jwt.encode(payload, _access_secret(), algorithm=ALGORITHM)
 
 
@@ -161,6 +165,7 @@ async def get_current_user(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked API token"
             )
         request.state.auth_via = "api_token"
+        _enforce_demo_read_only(request, user)
         return user
 
     payload = _decode_token(token, secret=_access_secret())
@@ -176,10 +181,35 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    request.state.session_id = payload.get("sid")
+    _enforce_demo_read_only(request, user)
     return user
 
 
 MUTATING_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def _enforce_demo_read_only(request: Request, user: User) -> None:
+    """In demo mode the demo persona can't change anything (#229).
+
+    Only the demo account, and only with DEMO_MODE on: the operator's own
+    account stays writable, and a normal instance where `make demo` seeded the
+    same persona is unaffected.
+    """
+    request.state.is_demo = user.is_demo
+    if user.is_demo and request.method in MUTATING_METHODS and not _is_demo_allowed_write(request):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The demo is read-only")
+
+
+def _is_demo_allowed_write(request: Request) -> bool:
+    """Allow reading telemetry/feedback and logout in demo mode (#229)."""
+    path = request.url.path
+    return (
+        path.endswith("/feedback/interaction")
+        or path.endswith("/auth/logout")
+        or path.endswith("/auth/demo")
+    )
 
 
 async def get_current_user_jwt(
@@ -228,25 +258,58 @@ async def _user_for_api_token(token: str, request: Request, session: AsyncSessio
     return user
 
 
-async def _issue_tokens(user_id: uuid.UUID) -> Token:
+async def _issue_tokens(user_id: uuid.UUID, *, session_id: str | None = None) -> Token:
     return Token(
-        access_token=_create_access_token(user_id),
+        access_token=_create_access_token(user_id, session_id=session_id),
         refresh_token=await _create_refresh_token(user_id),
         expires_in=settings.access_token_expire_minutes * 60,
     )
 
 
-async def _session(request: Request, response: Response, user_id: uuid.UUID) -> Token:
+async def _session(
+    request: Request, response: Response, user_id: uuid.UUID, *, session_id: str | None = None
+) -> Token:
     """Issue tokens; in cookie mode set httpOnly cookies and omit them from the body."""
     from app.api.session_cookies import set_session_cookies, wants_cookies
 
-    token = await _issue_tokens(user_id)
+    token = await _issue_tokens(user_id, session_id=session_id)
     if not wants_cookies(request):
         return token
     csrf = set_session_cookies(
         response, request, access=token.access_token, refresh=token.refresh_token
     )
     return Token(access_token="", refresh_token=None, expires_in=token.expires_in, csrf_token=csrf)
+
+
+@router.post("/demo", response_model=Token, dependencies=[Depends(login_rate_limit)])
+async def demo_login(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),
+) -> Token:
+    """Sign into the seeded demo persona (RL-03, #229). Zero-login for public exploration."""
+    s = get_settings()
+    if not s.demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Demo mode is disabled",
+        )
+    result = await session.execute(select(User).where(User.email == s.demo_user_email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        from scripts.seed_demo import seed
+
+        await seed(session, password=secrets.token_urlsafe(12))
+        await session.commit()
+        result = await session.execute(select(User).where(User.email == s.demo_user_email))
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Demo account could not be seeded",
+            )
+    session_id = uuid.uuid4().hex
+    return await _session(request, response, user.id, session_id=session_id)
 
 
 @router.post(
@@ -261,6 +324,12 @@ async def register(
     response: Response,
     session: AsyncSession = Depends(get_db),
 ) -> Token:
+    s = get_settings()
+    if s.demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The demo is read-only",
+        )
     from app.services.registration import can_register
 
     allowed, reason = await can_register(session, body.invite_code)
@@ -354,6 +423,12 @@ async def magic_link_request(
 ) -> dict:
     """Email a passwordless sign-in link. Always returns 202 (non-enumerating):
     the response is identical whether or not the email has an account."""
+    s = get_settings()
+    if s.demo_mode:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The demo is read-only",
+        )
     email = body.email.lower()
     # Create the account lazily if it doesn't exist (magic link doubles as signup),
     # but only when registration is allowed (#153). Either way the response is
@@ -543,14 +618,17 @@ async def registration_state(session: AsyncSession = Depends(get_db)) -> dict:
     from app.services.registration import has_users
 
     s = get_settings()
-    return {
+    res: dict[str, Any] = {
         "mode": mode,
-        "open": allowed,
+        "open": allowed and not s.demo_mode,
         "invite_required": mode == "invite" and not allowed,
         # No accounts yet: the next sign-up becomes the instance owner (#220).
         "first_account": not await has_users(session),
         "hosted": s.deployment_mode == "hosted",
     }
+    if s.demo_mode:
+        res["demo_mode"] = True
+    return res
 
 
 @router.get("/session")

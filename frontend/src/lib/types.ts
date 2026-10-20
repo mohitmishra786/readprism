@@ -21,6 +21,8 @@ export interface User {
   collaborative_opt_out?: boolean;
   /** Weekly 'What I learned about you' email (#184), opt-in. */
   weekly_email?: boolean;
+  /** Seeded demo account persona (#229). */
+  is_demo?: boolean;
 }
 
 export interface Source {
