@@ -19,6 +19,7 @@ const DEMO_NOTICE =
 // - email confirmation pending (#175): digests are readable here but not
 //   emailed until then;
 // - hosted fetch budget used up (#169): feed fetching resumes at a time;
+// - hosted account paused after the trial (#341): choose a plan, deletion date;
 // - instance health, for the owner only (#234): a stopped worker or
 //   scheduler, stalled feeds, a backed-up queue or a failing LLM key.
 export function AccountNotices() {
@@ -26,6 +27,7 @@ export function AccountNotices() {
   const [email, setEmail] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState(false);
   const [pausedUntil, setPausedUntil] = useState<Date | null>(null);
+  const [planPaused, setPlanPaused] = useState<{ deletesAt: string | null } | null>(null);
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
 
   useEffect(() => {
@@ -33,9 +35,19 @@ export function AccountNotices() {
       .me()
       .then((user) => {
         if (user.email_verified === false) setEmail(user.email);
-        if (user.is_demo || user.email === "demo@readprism.local") setIsDemo(true);
+        if (user.is_demo) setIsDemo(true);
         const until = user.fetch_paused_until ? new Date(user.fetch_paused_until) : null;
         if (until && until.getTime() > Date.now()) setPausedUntil(until);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Hosted, trial over and no plan (#341). Self-host reports plan "selfhost".
+  useEffect(() => {
+    api.billing
+      .state()
+      .then((b) => {
+        if (b.plan === "paused") setPlanPaused({ deletesAt: b.deletes_at ?? null });
       })
       .catch(() => {});
   }, []);
@@ -68,6 +80,17 @@ export function AccountNotices() {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+      {planPaused && (
+        <div role="alert" className={NOTICE}>
+          Your trial has ended, so this account is paused: no new digests or feed updates.{" "}
+          <a href="/preferences#plan" className="font-medium underline">
+            Choose a plan
+          </a>
+          {planPaused.deletesAt
+            ? ` to continue. Otherwise it is deleted on ${new Date(planPaused.deletesAt).toLocaleDateString()}; you can export your data until then.`
+            : " to continue."}
         </div>
       )}
       {pausedUntil && (

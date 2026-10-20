@@ -21,7 +21,7 @@ def hosted(monkeypatch):
     monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {})
 
 
-def _user(tier="free", **kw) -> User:
+def _user(tier="reader", **kw) -> User:
     user = User(id=uuid.uuid4(), email=f"{uuid.uuid4().hex[:8]}@example.com", hashed_password="x")
     user.tier = tier
     if tier in ("reader", "pro", "team"):
@@ -41,8 +41,10 @@ def test_selfhost_has_no_quotas(monkeypatch):
 def test_plan_table_and_config_and_admin_override(hosted, monkeypatch):
     assert ent.limit(_user("reader"), ent.SOURCES) == 500
     assert ent.limit(_user("pro"), ent.SOURCES) == 2000
-    assert ent.limit(_user(trial_ends_at=datetime.now(UTC) + timedelta(days=3)), ent.SOURCES) == 500
-    assert ent.limit(_user(), ent.SOURCES) == ent.settings.free_max_sources
+    # D-18: the trial gets Pro; with neither a plan nor a trial the account is paused.
+    trial = _user("free", trial_ends_at=datetime.now(UTC) + timedelta(days=3))
+    assert ent.limit(trial, ent.SOURCES) == 2000
+    assert ent.is_paused(_user("free"))
 
     monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"reader": {"sources": 800}})
     pro = _user("reader")
@@ -63,7 +65,9 @@ def test_paid_plan_source_cap_names_the_next_plan(hosted):
 
 @pytest.mark.asyncio
 async def test_daily_allowance_take_and_message(hosted, monkeypatch):
-    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"digest_builds_per_day": 2}})
+    monkeypatch.setattr(
+        ent.settings, "hosted_plan_quotas", {"reader": {"digest_builds_per_day": 2}}
+    )
     user = _user()
     assert await ent.take(user, ent.DIGEST_BUILDS)
     assert await ent.take(user, ent.DIGEST_BUILDS)
@@ -78,7 +82,7 @@ async def test_newsletter_quota_counts_and_volume(hosted, monkeypatch):
     monkeypatch.setattr(
         ent.settings,
         "hosted_plan_quotas",
-        {"free": {"newsletters_per_day": 3, "newsletter_mb_per_day": 1}},
+        {"reader": {"newsletters_per_day": 3, "newsletter_mb_per_day": 1}},
     )
     user = _user()
     assert await ent.newsletter_allowed(user, 600_000) == (True, "")
@@ -99,7 +103,9 @@ async def test_newsletter_quota_counts_and_volume(hosted, monkeypatch):
 async def test_digest_llm_summaries_capped_by_what_is_left_today(hosted, monkeypatch):
     from app.services.digest.builder import summarize_placed
 
-    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"llm_summaries_per_day": 5}})
+    monkeypatch.setattr(
+        ent.settings, "hosted_plan_quotas", {"reader": {"llm_summaries_per_day": 5}}
+    )
     user = _user()
     await ent.record_use(user, ent.LLM_SUMMARIES, 3)
     seen = {}
@@ -119,9 +125,9 @@ async def test_digest_llm_summaries_capped_by_what_is_left_today(hosted, monkeyp
 async def test_manual_digest_builds_per_day(
     client, test_user_data, db_session, hosted, monkeypatch
 ):
-    monkeypatch.setattr(ent.settings, "hosted_free_digest_regen_minutes", 0)
     monkeypatch.setattr(ent.settings, "manual_digest_guard_seconds", 0)
-    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"digest_builds_per_day": 1}})
+    monkeypatch.setattr(ent.settings, "billing_trial_days", 30)  # a trial account, not paused
+    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"trial": {"digest_builds_per_day": 1}})
     reg = await client.post("/api/v1/auth/register", json={**test_user_data, "accept_terms": True})
     headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
     with patch("app.workers.tasks.build_digest.build_digest_for_user.delay"):
@@ -157,7 +163,9 @@ async def test_billing_state_lists_quotas_on_hosted_only(
 async def test_opening_an_item_respects_llm_quota(hosted, monkeypatch, db_session):
     from app.api import content
 
-    monkeypatch.setattr(ent.settings, "hosted_plan_quotas", {"free": {"llm_summaries_per_day": 1}})
+    monkeypatch.setattr(
+        ent.settings, "hosted_plan_quotas", {"reader": {"llm_summaries_per_day": 1}}
+    )
     user = _user()
     item = type("I", (), {"id": uuid.uuid4()})()
     monkeypatch.setattr(type(ent.settings), "llm_configured", property(lambda s: True))
@@ -170,3 +178,13 @@ async def test_opening_an_item_respects_llm_quota(hosted, monkeypatch, db_sessio
         item.id = uuid.uuid4()
         await content._queue_llm_summary(item, user, db_session)
     assert delay.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_a_paused_account_gets_nothing(hosted):
+    """#341: 0 means unlimited in the quota table; a paused account must get none."""
+    user = _user("free")
+    assert ent.is_paused(user)
+    assert await ent.remaining_today(user, ent.LLM_SUMMARIES) == 0
+    assert not await ent.take(user, ent.DIGEST_BUILDS)
+    assert (await ent.newsletter_allowed(user, 10))[0] is False

@@ -28,9 +28,10 @@ def hosted(monkeypatch):
         "deployment_mode": "hosted",
         "registration_mode": "open",
         "email_verification": "off",
-        "billing_trial_days": 0,
+        # Trial accounts: a paused one (no plan) can't change its key (#341).
+        "billing_trial_days": 30,
         "secrets_encryption_key": "test-secrets-key-" + "x" * 32,
-        "hosted_plan_quotas": {"free": {"llm_summaries_per_day": 1}},
+        "hosted_plan_quotas": {"trial": {"llm_summaries_per_day": 1}},
     }.items():
         monkeypatch.setattr(s, key, value)
     return s

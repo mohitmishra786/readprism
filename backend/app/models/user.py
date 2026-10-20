@@ -68,6 +68,10 @@ class User(Base):
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # Trial emails sent so far (#235): 1 started, 2 ending soon, 3 ended.
     trial_email_stage: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    # Paused hosted account (#341): when the "will be deleted" reminder went out.
+    deletion_reminder_sent_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     billing_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     billing_customer_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)

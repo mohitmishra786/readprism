@@ -94,6 +94,10 @@ async def _build_digest_async(user_id: uuid.UUID) -> dict:
             user = result.scalar_one_or_none()
             if not user:
                 return {"status": "user_not_found"}
+            from app.services import entitlements
+
+            if entitlements.is_paused(user):
+                return {"status": "paused"}  # trial over, no plan (#341)
 
             # Idempotency: a retry (or double-scheduled run) inside the window
             # returns the existing digest instead of building a second one.
@@ -206,8 +210,12 @@ async def _schedule_digests_async() -> dict:
         result = await session.execute(select(User).where(User.onboarding_complete == True))
         users = list(result.scalars().all())
 
+        from app.services import entitlements
+
         queued = 0
         for user in users:
+            if entitlements.is_paused(user):
+                continue  # trial over, no plan (#341)
             # Only build digest for users whose local time matches their preferred time
             if _is_digest_time_for_user(user):
                 # rp_due_at: start of the on-time clock for this digest (#239).

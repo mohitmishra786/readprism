@@ -52,12 +52,21 @@ def _plan(user: User) -> str:
     return effective_plan(user)
 
 
+PAUSED = "paused"
+PAUSED_MESSAGE = (
+    "Your trial has ended. Choose a plan to keep your digests coming; "
+    "you can still read, export or delete your account."
+)
+
+
+def is_paused(user: User) -> bool:
+    """Hosted, with no plan and no trial (D-18, #341): read-only, nothing runs."""
+    return is_hosted() and _plan(user) == PAUSED
+
+
 def plan_quotas(plan: str) -> dict[str, int]:
     """The configured quotas of one plan; 0 = unlimited."""
     row = {q: 0 for q in QUOTAS}
-    if plan == "free":
-        row[SOURCES] = settings.free_max_sources
-        row[CREATORS] = settings.free_max_creators
     row.update(DEFAULT_PLAN_QUOTAS.get(plan, {}))
     row.update(settings.hosted_plan_quotas.get(plan, {}))
     return row
@@ -75,7 +84,7 @@ def limit(user: User, quota: str) -> int:
 
 def _upgrade_hint(user: User) -> str:
     plan = _plan(user)
-    if plan in ("free", "trial"):
+    if plan in (PAUSED, "trial"):
         return " Subscribe to raise it."
     if plan == "reader":
         return " The Pro plan raises it."
@@ -87,6 +96,8 @@ def _upgrade_hint(user: User) -> str:
 
 def enforce_source_limit(user: User, current_count: int, adding: int = 1) -> None:
     """Raise 402 if adding `adding` sources would exceed the user's plan."""
+    if is_paused(user):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=PAUSED_MESSAGE)
     cap = limit(user, SOURCES)
     if cap > 0 and current_count + adding > cap:
         remaining = max(0, cap - current_count)
@@ -102,6 +113,8 @@ def enforce_source_limit(user: User, current_count: int, adding: int = 1) -> Non
 
 def enforce_creator_limit(user: User, current_count: int, adding: int = 1) -> None:
     """Raise 402 if adding `adding` creators would exceed the user's plan."""
+    if is_paused(user):
+        raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=PAUSED_MESSAGE)
     cap = limit(user, CREATORS)
     if cap > 0 and current_count + adding > cap:
         raise HTTPException(
@@ -134,6 +147,8 @@ async def used_today(user_id: uuid.UUID | str, quota: str) -> int:
 
 async def remaining_today(user: User, quota: str) -> int | None:
     """What is left of a daily allowance today; None = unlimited."""
+    if is_paused(user):
+        return 0  # a paused account gets nothing (0 would read as "unlimited" below)
     cap = limit(user, quota)
     if cap <= 0:
         return None
@@ -154,6 +169,8 @@ async def take(user: User, quota: str, amount: int = 1) -> bool:
 
     Fails open when Redis is unreachable, like the abuse counters.
     """
+    if is_paused(user):
+        return False
     cap = limit(user, quota)
     if cap <= 0:
         return True
@@ -216,14 +233,10 @@ async def usage(session: AsyncSession, user: User) -> list[dict]:
 
 
 def digest_regeneration_window(user: User) -> timedelta:
-    """Minimum time between manual digest generations for this user."""
-    if is_hosted() and _plan(user) == "free":
-        return timedelta(minutes=settings.hosted_free_digest_regen_minutes)
+    """Minimum time between manual digest generations (a double-click guard;
+    the daily build quota is the plan limit)."""
     return timedelta(seconds=settings.manual_digest_guard_seconds)
 
 
 def digest_regeneration_message(user: User) -> str:
-    if is_hosted() and _plan(user) == "free":
-        minutes = settings.hosted_free_digest_regen_minutes
-        return f"Your plan allows one manual digest every {minutes} minutes."
     return "A digest is already being built. Try again in a minute."

@@ -166,6 +166,7 @@ async def get_current_user(
             )
         request.state.auth_via = "api_token"
         _enforce_demo_read_only(request, user)
+        _enforce_paused_read_only(request, user)
         return user
 
     payload = _decode_token(token, secret=_access_secret())
@@ -184,6 +185,7 @@ async def get_current_user(
 
     request.state.session_id = payload.get("sid")
     _enforce_demo_read_only(request, user)
+    _enforce_paused_read_only(request, user)
     return user
 
 
@@ -200,6 +202,28 @@ def _enforce_demo_read_only(request: Request, user: User) -> None:
     request.state.is_demo = user.is_demo
     if user.is_demo and request.method in MUTATING_METHODS and not _is_demo_allowed_write(request):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="The demo is read-only")
+
+
+# What a paused hosted account may still change (#341): subscribe, sign out,
+# and delete itself. Reading and the export are GETs, so they stay open.
+_PAUSED_ALLOWED_PREFIXES = ("/api/v1/billing", "/api/v1/auth/")
+
+
+def _enforce_paused_read_only(request: Request, user: User) -> None:
+    """Hosted, trial over and no plan (D-18): the account is read-only."""
+    if request.method not in MUTATING_METHODS:
+        return
+    path = request.url.path
+    if path.startswith(_PAUSED_ALLOWED_PREFIXES):
+        return
+    if request.method == "DELETE" and path.rstrip("/") == "/api/v1/account":
+        return
+    from app.services import entitlements
+
+    if entitlements.is_paused(user):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED, detail=entitlements.PAUSED_MESSAGE
+        )
 
 
 def _is_demo_allowed_write(request: Request) -> bool:

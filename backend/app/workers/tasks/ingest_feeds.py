@@ -163,6 +163,20 @@ async def _ingest_feed(feed, session, rng: random.Random) -> list[uuid.UUID]:
     return new_ids
 
 
+async def _unpaused(session, user_ids: list) -> list:
+    """The subscribers whose hosted account isn't paused (all of them on self-host)."""
+    from sqlalchemy import select
+
+    from app.models.user import User
+    from app.services import entitlements
+
+    if not entitlements.is_hosted() or not user_ids:
+        return user_ids
+    users = (await session.execute(select(User).where(User.id.in_(user_ids)))).scalars()
+    paused = {u.id for u in users if entitlements.is_paused(u)}
+    return [uid for uid in user_ids if uid not in paused]
+
+
 async def _within_budgets(feed, subs, session) -> bool:
     """Hosted abuse controls (#169). A poll is charged to every subscribing
     account and skipped only when all of them are over their hourly budget,
@@ -172,6 +186,11 @@ async def _within_budgets(feed, subs, session) -> bool:
 
     now = datetime.now(UTC)
     user_ids = list(dict.fromkeys(sub.user_id for sub in subs))
+    # No free hosted tier (#341): paused accounts don't keep a feed polled.
+    user_ids = await _unpaused(session, user_ids)
+    if not user_ids:
+        feed.next_poll_at = now + timedelta(hours=12)
+        return False
     within = [uid for uid in user_ids if await abuse.charge_fetch(uid, now=now)]
     if not within:
         feed.next_poll_at = await abuse.pause_fetches(session, user_ids, now=now)

@@ -12,13 +12,14 @@ see [Install & run](DEPLOYMENT.md).
 ```mermaid
 flowchart LR
     accTitle: Hosted account lifecycle
-    accDescr: A reader signs up, confirms their email, gets a 30-day trial, then either subscribes to Reader or Pro or moves to the Free limits.
+    accDescr: A reader signs up, confirms their email and gets a 30-day trial. Then they subscribe to Reader or Pro, or the account is paused and deleted 30 days later unless they subscribe.
 
     signup["Sign up"] --> verify["Confirm email"]
     verify --> trial["30-day trial"]
     trial --> paid["Reader or Pro"]
-    trial --> free["Free limits"]
-    free --> paid
+    trial --> paused["Paused"]
+    paused --> paid
+    paused --> deleted(["Deleted after 30 days"])
 ```
 
 | Step | What happens | Setting |
@@ -26,22 +27,24 @@ flowchart LR
 | Sign up | Signups are capped per email domain per hour (20 times higher for large mail providers) | `SIGNUP_PER_DOMAIN_PER_HOUR` |
 | Confirm email | No email except the confirmation until the link is clicked. Digests are built but not emailed; newsletters are dropped. A magic-link sign-in also confirms. | |
 | Trial | No card needed. Emails when it starts, 5 days before it ends, and when it ends. | `BILLING_TRIAL_DAYS`, `TRIAL_ENDING_NOTICE_DAYS` |
-| Trial over | Nothing is deleted. The account moves to the Free limits and export keeps working. | |
+| Trial over, no plan | The account is **paused**: read-only, no feed updates, no digests, no AI summaries. Reading, export, subscribing and deleting still work. A reminder goes out 7 days before deletion; the account and its data are deleted 30 days after the pause began. Subscribing at any point ends the pause. A lapsed subscription pauses the same way. | `HOSTED_PAUSED_DELETE_DAYS` (0 = never), `HOSTED_DELETE_REMINDER_DAYS` |
 | Subscribe | Checkout through the payment provider; the plan applies when its webhook arrives | See [Billing](#billing) |
 
 ## Plans and quotas
 
-| Plan | Feeds | AI summaries a day | Newsletters a day | Manual digest builds a day |
-|---|---|---|---|---|
-| Trial (30 days) | 500 | 200 | 100 (50 MB) | 6 |
-| **Reader** | 500 | 200 | 100 (50 MB) | 6 |
-| **Pro** | 2,000 | 1,000 | 300 (150 MB) | 12 |
-| Free (no plan) | 30 | 20 | 20 (10 MB) | 3 |
+| Plan | Price | Feeds | AI summaries a day | Newsletters a day | Manual digest builds a day |
+|---|---|---|---|---|---|
+| Trial (30 days, no card) | Free | 2,000 | 1,000 | 300 (150 MB) | 12 |
+| **Reader** | $6/month or $54/year | 500 | 200 | 100 (50 MB) | 6 |
+| **Pro** | $12/month or $108/year | 2,000 | 1,000 | 300 (150 MB) | 12 |
 
-- **Prices live in the payment provider**, not in ReadPrism.
+There is no free hosted plan (D-18): the trial has everything in Pro, and an
+account with no plan after it is paused (see above).
+
+- **Prices are set in the payment provider** (D-18); the app only knows the
+  checkout links.
 - **Defaults** are `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`; 0 means
-  unlimited. Free feeds and creators come from `FREE_MAX_SOURCES` and
-  `FREE_MAX_CREATORS`.
+  unlimited.
 - **Change a plan** with `HOSTED_PLAN_QUOTAS`, JSON merged over the defaults:
   `HOSTED_PLAN_QUOTAS={"pro": {"sources": 3000}}`.
 - **Change one account:**

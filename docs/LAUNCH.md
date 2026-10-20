@@ -31,10 +31,10 @@ so the engine gets sharper the more you use it — and that learned model is the
 moat: an 18-month-old interest graph isn't portable to a competitor.
 
 It's fully open-source and self-hostable (Docker Compose, Postgres+pgvector, Redis,
-Celery, FastAPI, Next.js). Hosted accounts get a 30-day trial of the Reader plan
-(500 feeds, 200 AI summaries/day), followed by paid Reader and Pro plans (price set
-at launch) or Free limits after the trial (30 feeds, 20 AI summaries/day). Closed
-platforms (Twitter/LinkedIn) are honestly marked "unsupported" rather than silently failing.
+Celery, FastAPI, Next.js). Hosted accounts get a 30-day trial of Pro, then Reader
+($6/month or $54/year) or Pro ($12/month or $108/year); there is no free hosted plan.
+Closed platforms (X, LinkedIn, Reddit) are honestly marked "unsupported" rather than
+silently failing.
 
 I'm most curious about feedback on the cold-start problem — the hardest part of
 any personalization product. I seed curated starter sources + use collaborative
@@ -58,9 +58,9 @@ language-design are adjacent in your reading).
 
 - Self-hostable: Docker Compose, Postgres+pgvector, Redis, Celery
 - Tracks RSS, scraping (trafilatura + Playwright fallback), newsletters, creators
-- Reddit, Substack, YouTube, Medium, podcasts fully supported; Twitter/LinkedIn
-  honestly marked unsupported
-- Self-hosted has no plan limits; hosted accounts get a 30-day trial, Reader, and Pro plans (price set at launch), or Free limits after the trial (30 feeds)
+- Substack, YouTube, Medium, Bluesky, Mastodon, GitHub and podcasts supported;
+  X, LinkedIn and Reddit honestly marked unsupported
+- Self-hosted has no plan limits; hosted accounts get a 30-day Pro trial, then Reader ($6/mo) or Pro ($12/mo); no free hosted plan
 - Open source (MIT)
 
 The interesting trade-off: the ranking needs behavioral signal, which means it's

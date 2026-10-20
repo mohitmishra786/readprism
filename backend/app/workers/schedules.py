@@ -75,6 +75,10 @@ def setup_beat_schedule(app: Celery) -> None:
             "args": ("digest",),
             "options": {"queue": "digest"},
         },
+        "paused-accounts": {
+            "task": "app.workers.tasks.paused_accounts.process_paused_accounts",
+            "schedule": crontab(hour=5, minute=30),  # daily (#341)
+        },
         "trial-emails": {
             "task": "app.workers.tasks.trial_emails.send_trial_emails",
             # Hourly, so "trial started" follows soon after the email is confirmed (#235).

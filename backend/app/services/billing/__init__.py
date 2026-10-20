@@ -36,7 +36,13 @@ logger = get_logger(__name__)
 PAID_TIERS = ("reader", "pro", "team")
 # Plans offered at checkout, cheapest first (#172), with their display names.
 SOLD_PLANS = ("reader", "pro")
-PLAN_NAMES = {"reader": "Reader", "pro": "Pro", "team": "Team", "trial": "Trial", "free": "Free"}
+PLAN_NAMES = {
+    "reader": "Reader",
+    "pro": "Pro",
+    "team": "Team",
+    "trial": "Trial",
+    "paused": "Paused",
+}
 # Provider subscription statuses, normalised.
 ACTIVE = "active"  # paid and current
 TRIALING = "trialing"  # provider-side trial (counts as paid access)
@@ -124,7 +130,11 @@ def _aware(value: datetime | None) -> datetime | None:
 
 
 def effective_plan(user: User, *, now: datetime | None = None) -> str:
-    """ "selfhost" | "team" | "pro" | "reader" | "trial" | "free"."""
+    """ "selfhost" | "team" | "pro" | "reader" | "trial" | "paused".
+
+    "paused": hosted, no plan in force and no trial running. There is no free
+    hosted tier (D-18); see entitlements.is_paused and paused_since.
+    """
     if get_settings().deployment_mode != "hosted":
         return "selfhost"
     now = now or datetime.now(UTC)
@@ -134,7 +144,15 @@ def effective_plan(user: User, *, now: datetime | None = None) -> str:
     trial = _aware(user.trial_ends_at)
     if trial is not None and trial > now:
         return "trial"
-    return "free"
+    return "paused"
+
+
+def paused_since(user: User) -> datetime:
+    """When an unpaid hosted account stopped having a plan or trial (#341)."""
+    ends = [t for t in (_aware(user.trial_ends_at), _aware(user.plan_expires_at)) if t is not None]
+    if ends:
+        return max(ends)
+    return _aware(user.created_at) or datetime.now(UTC)
 
 
 def start_trial(user: User, *, now: datetime | None = None) -> None:

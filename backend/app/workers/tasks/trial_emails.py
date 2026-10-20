@@ -4,8 +4,9 @@ Three emails, one each per account, by where the trial stands:
 
 1. started: what the trial includes and when it ends;
 2. ending soon: TRIAL_ENDING_NOTICE_DAYS before the end;
-3. ended: the account is on the Free limits; nothing is deleted and the
-   export keeps working.
+3. ended: the account is paused (no free hosted tier, D-18); it says when it
+   will be deleted, and the export keeps working. The deletion reminder and
+   the deletion itself are in paused_accounts.py (#341).
 
 Accounts that bought a plan get no "ending" or "ended" email. A missed stage
 is skipped, never sent together with the next one. Every email goes through
@@ -51,34 +52,43 @@ def _day(moment: datetime) -> str:
 
 def render(stage: int, *, frontend: str, unsubscribe: str, ends: datetime) -> tuple[str, str, str]:
     """(subject, html, text) for a stage."""
-    from app.services.entitlements import plan_quotas
-
     plans = f"{frontend}/preferences#plan"
     export = f"{frontend}/preferences"
+    delete_days = get_settings().hosted_paused_delete_days
+    deletion = (
+        f"If you don't, your account is paused, and it and all its data are deleted on "
+        f"{_day(ends + timedelta(days=delete_days))}. You can export everything before then."
+        if delete_days > 0
+        else "If you don't, your account is paused until you choose a plan. "
+        "You can export everything at any time."
+    )
     if stage == STARTED:
         subject = f"Your ReadPrism trial runs until {_day(ends)}"
         lines = [
-            f"Your free trial is on until {_day(ends)}. It includes everything the Reader plan does, "
+            f"Your free trial is on until {_day(ends)}. It includes everything in the Pro plan, "
             "and no card is needed.",
             "Add the feeds and newsletters you read; your digest learns from what you open and rate.",
         ]
         buttons = [(f"{frontend}/digest", "Open ReadPrism")]
     elif stage == ENDING:
         subject = f"Your ReadPrism trial ends on {_day(ends)}"
-        free = plan_quotas("free")
         lines = [
-            f"Your trial ends on {_day(ends)}. To keep your current limits, choose a plan before then.",
-            "If you don't, nothing is deleted: your account moves to the Free limits "
-            f"({free['sources']} feeds, {free['llm_summaries_per_day']} AI summaries a day), "
-            "and you can export everything at any time.",
+            f"Your trial ends on {_day(ends)}. To keep your digests coming, choose a plan before then.",
+            deletion,
         ]
-        buttons = [(plans, "See plans")]
+        buttons = [(plans, "See plans"), (export, "Export my data")]
     else:
         subject = "Your ReadPrism trial has ended"
         lines = [
-            "Your trial has ended and your account is now on the Free limits. Your sources, saved "
-            "articles and ratings are all kept.",
-            "You can pick a plan whenever you like, or download a full export of your data.",
+            "Your trial has ended, so your account is paused: no new digests and no feed updates. "
+            "You can still sign in, read what's there and export it.",
+            "Choose a plan to pick up where you left off. "
+            + (
+                f"Without one, your account and all its data are deleted on "
+                f"{_day(ends + timedelta(days=delete_days))}."
+                if delete_days > 0
+                else ""
+            ),
         ]
         buttons = [(plans, "See plans"), (export, "Export my data")]
     body = "".join(f"<p>{line}</p>" for line in lines) + "".join(

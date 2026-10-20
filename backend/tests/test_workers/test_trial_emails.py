@@ -79,7 +79,9 @@ async def test_three_emails_once_each_over_the_trial(db_session):
     ]
     ended = seen[-1][1]
     assert "/preferences" in ended["text_body"] and "Export my data" in ended["html_body"]
-    assert "nothing is deleted" in seen[1][1]["text_body"]
+    # No free tier (D-18): the warning and the final email say when it is deleted.
+    assert "deleted on November 30" in seen[1][1]["text_body"]
+    assert "paused" in ended["text_body"] and "deleted on November 30" in ended["text_body"]
     for _, mail in seen:
         assert mail["extra_headers"]["List-Unsubscribe-Post"] == "List-Unsubscribe=One-Click"
 
@@ -121,5 +123,5 @@ async def test_export_works_after_the_trial_ends(client, db_session, monkeypatch
     user = await db_session.get(User, uuid.UUID(me["id"]))
     user.trial_ends_at = datetime.now(UTC) - timedelta(days=10)
     await db_session.commit()
-    assert (await client.get("/api/v1/billing", headers=headers)).json()["plan"] == "free"
+    assert (await client.get("/api/v1/billing", headers=headers)).json()["plan"] == "paused"
     assert (await client.get("/api/v1/account/export", headers=headers)).status_code == 200
