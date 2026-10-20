@@ -100,7 +100,7 @@ async def _ingest_all_feeds_async(user_id: uuid.UUID | None = None) -> dict:
         else:
             feed_query = feed_query.where(
                 or_(Feed.next_poll_at.is_(None), Feed.next_poll_at <= now)
-            )
+            ).order_by(_pro_followed(now).desc(), Feed.next_poll_at.asc().nulls_first())
             newsletter_query = newsletter_query.where(
                 or_(Source.next_poll_at.is_(None), Source.next_poll_at <= now)
             )
@@ -158,9 +158,56 @@ async def _ingest_feed(feed, session, rng: random.Random) -> list[uuid.UUID]:
         await session.flush()
         return []
     new_ids = await _ingest_source(feed, session, rng, source_id=subs[0].id, feed_id=feed.id)
+    await _apply_pro_priority(feed, subs, session)
     mirror(feed, subs)
     await session.flush()
     return new_ids
+
+
+def _pro_followed(now: datetime):
+    """SQL: the feed has an active subscriber with Pro features (#246).
+    Always false on self-host, where every feed is treated the same."""
+    from sqlalchemy import and_, exists, false, or_
+
+    from app.models.feed import Feed
+    from app.models.source import Source
+    from app.models.user import User
+    from app.services import entitlements
+    from app.services.billing import PAID_TIERS
+
+    if not entitlements.is_hosted():
+        return false()
+    paid_pro = and_(
+        User.tier.in_([t for t in PAID_TIERS if t in entitlements.PRO_PLANS]),
+        or_(User.plan_expires_at.is_(None), User.plan_expires_at > now),
+    )
+    trialing = and_(User.trial_ends_at.is_not(None), User.trial_ends_at > now)
+    return (
+        exists()
+        .where(Source.feed_id == Feed.id, Source.is_active.is_(True), Source.user_id == User.id)
+        .where(or_(paid_pro, trialing))
+    )
+
+
+async def _apply_pro_priority(feed, subs, session) -> None:
+    """After a clean poll, a feed with a Pro reader is due again within
+    HOSTED_PRO_MAX_POLL_MINUTES (#246). Error and rate-limit backoffs stand."""
+    from sqlalchemy import select
+
+    from app.config import get_settings
+    from app.models.user import User
+    from app.services import entitlements
+
+    cap = get_settings().hosted_pro_max_poll_minutes
+    if not entitlements.is_hosted() or cap <= 0 or feed.fetch_error_count:
+        return
+    user_ids = list({sub.user_id for sub in subs})
+    users = (await session.execute(select(User).where(User.id.in_(user_ids)))).scalars()
+    if not any(entitlements.pro_features(u) for u in users):
+        return
+    soonest = datetime.now(UTC) + timedelta(minutes=cap)
+    if feed.next_poll_at is None or feed.next_poll_at > soonest:
+        feed.next_poll_at = soonest
 
 
 async def _unpaused(session, user_ids: list) -> list:

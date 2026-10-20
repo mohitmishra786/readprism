@@ -96,6 +96,9 @@ async def get_creator_summary(
     session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    from app.services.entitlements import require_pro
+
+    require_pro(current_user, "Story synthesis")
     result = await session.execute(
         select(Creator).where(Creator.id == creator_id, Creator.user_id == current_user.id)
     )

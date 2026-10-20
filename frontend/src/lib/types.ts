@@ -198,6 +198,8 @@ export interface PlanOffer {
   intervals: ("month" | "year")[];
   /** Limits by quota name; 0 = unlimited. */
   quotas: Record<PlanQuota["quota"], number>;
+  /** Pro-only features this plan includes (#246); empty for Reader. */
+  features?: string[];
 }
 
 export interface PlanQuota {

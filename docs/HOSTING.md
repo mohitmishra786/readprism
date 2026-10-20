@@ -41,6 +41,17 @@ flowchart LR
 There is no free hosted plan (D-18): the trial has everything in Pro, and an
 account with no plan after it is paused (see above).
 
+### Pro-only features
+
+Pro (and the trial) also gets these; self-host has all of them (D-19, #246):
+
+| Feature | Without Pro |
+|---|---|
+| Twice-daily digests | Choosing it is refused; an existing setting runs as daily after a downgrade |
+| Story synthesis | Same-story cards still list the other sources, without the AI-written briefing; the creator summary is refused |
+| API and MCP access | API tokens work only for the browser extension, which every plan can use |
+| Priority fetching | Feeds keep their adaptive schedule; a feed with a Pro reader goes first in each polling run and is checked at least every `HOSTED_PRO_MAX_POLL_MINUTES` (60) after a clean poll |
+
 - **Prices are set in the payment provider** (D-18); the app only knows the
   checkout links.
 - **Defaults** are `DEFAULT_PLAN_QUOTAS` in `backend/app/config.py`; 0 means

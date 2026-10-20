@@ -275,7 +275,11 @@ async def build_digest(user: User, session: AsyncSession) -> Digest:
         await _ensure_interaction(user.id, item.id, was_suggested=True, session=session)
 
     # Cross-source topic synthesis: detect near-duplicate stories, synthesize
-    all_items, story_payloads = await _synthesize_topic_clusters(all_items, session)
+    from app.services.entitlements import pro_features
+
+    all_items, story_payloads = await _synthesize_topic_clusters(
+        all_items, session, briefing=pro_features(user)
+    )
 
     # Rank all items
     limit = max(user.digest_max_items * 3, 60)
@@ -456,12 +460,17 @@ def diversify_ranked(ranked: list[tuple]) -> list[tuple]:
 async def _synthesize_topic_clusters(
     items: list[ContentItem],
     session: AsyncSession,
+    *,
+    briefing: bool = True,
 ) -> tuple[list[ContentItem], dict[uuid.UUID, dict]]:
     """
     UX-09: cluster same-story items (embedding cosine, title-token overlap for
     no-embedding pairs), keep one primary card per story and attach the other
     sources as `perspectives`. LLM briefing is cached; without one the
     perspectives list is the fallback rendering.
+
+    `briefing=False` (no Pro, #246) keeps the clustering and the perspectives
+    but writes no LLM briefing.
 
     Returns (kept_items, {primary_id: {"perspectives": [...], "story_briefing": str|None}}).
     The stored `summary_brief` on the (shared) content row is never touched:
@@ -497,6 +506,8 @@ async def _synthesize_topic_clusters(
             "story_briefing": None,
         }
         dropped += len(cluster) - 1
+        if not briefing:
+            continue
 
         # Cached LLM briefing (optional polish — the card ships either way).
         briefs = "\n\n".join(

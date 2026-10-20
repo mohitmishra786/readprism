@@ -106,7 +106,7 @@ def plans_on_sale() -> list[dict]:
     """The plans a reader can buy, cheapest first, with what each includes."""
     if not billing_enabled():
         return []
-    from app.services.entitlements import plan_quotas
+    from app.services.entitlements import PRO_FEATURES, PRO_PLANS, plan_quotas
 
     offered = []
     for plan in SOLD_PLANS:
@@ -118,6 +118,7 @@ def plans_on_sale() -> list[dict]:
                     "name": PLAN_NAMES[plan],
                     "intervals": intervals,
                     "quotas": plan_quotas(plan),
+                    "features": list(PRO_FEATURES) if plan in PRO_PLANS else [],
                 }
             )
     return offered

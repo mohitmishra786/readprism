@@ -76,6 +76,9 @@ function PlanPicker({
             <li>{n(p.quotas.llm_summaries_per_day)} AI summaries a day</li>
             <li>{n(p.quotas.newsletter_mb_per_day)} MB of newsletters a day</li>
             <li>{n(p.quotas.creators)} tracked creators</li>
+            {(p.features ?? []).map((f) => (
+              <li key={f}>{f}</li>
+            ))}
           </ul>
           {current !== p.plan && (
             <div>
