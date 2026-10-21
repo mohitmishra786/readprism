@@ -7,6 +7,7 @@ tests of `load_state` and `rank`.
 
 from __future__ import annotations
 
+import math
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -79,7 +80,7 @@ def state(**kw) -> UserRankingState:
         "now": NOW,
     }
     defaults.update(kw)
-    return UserRankingState(**defaults)
+    return UserRankingState(**defaults)  # type: ignore[arg-type]
 
 
 def hist(vector, *, completion=None, rating=None, opened=True, days_ago=2, feed_key=None, **kw):
@@ -387,3 +388,55 @@ def test_discovery_claim_needs_finished_discoveries():
     st = state(weights=_only_signal_with_weight("suggestion"))
     explanation = score_candidates(st, [item(unit(1, 0, 0), origin="discovery")])[0].explanation
     assert "like ones you finished before" not in explanation
+
+
+def test_parity_between_adapter_and_weirling_rank_package():
+    """Assert score equality before/after between adapter and weirling-rank (#245)."""
+    import weirling_rank
+    from app.services.ranking.ranker import score_candidates as adapter_score_candidates
+
+    v1 = unit(1, 0, 0)
+    v2 = unit(0, 1, 0)
+    v3 = unit(0.5, 0.5, 0)
+
+    feed_source_id = uuid.UUID("00000000-0000-0000-0000-000000000001")
+    st = state(
+        weights={s: 1.0 / len(SIGNALS) for s in SIGNALS},
+        history=[
+            hist(v1, completion=0.85, rating=1, days_ago=2),
+            hist(v2, completion=0.2, rating=-1, days_ago=5),
+        ],
+        interests=[Interest(v1, 1.0, "Tech")],
+        bridges=[],
+        feeds={
+            "https://feed.test": FeedState(
+                name="Test Feed", trust_weight=0.7, successes=5, failures=1
+            )
+        },
+        source_feed_key={feed_source_id: "https://feed.test"},
+        prefers_fresh=True,
+        novelty_target=0.35,
+        now=NOW,
+    )
+
+    items = [
+        item(v1, source_id=feed_source_id, word_count=1200, has_citations=True),
+        item(v2, word_count=300, has_citations=False),
+        item(v3, origin="discovery", word_count=800),
+    ]
+
+    adapter_results = adapter_score_candidates(st, items)
+    package_results = weirling_rank.score_candidates(st, items)
+
+    assert len(adapter_results) == len(package_results) == len(items)
+    for a, p in zip(adapter_results, package_results, strict=True):
+        assert a.item.id == p.item.id
+        assert math.isclose(a.prs, p.prs, abs_tol=1e-6)
+        assert a.no_data == p.no_data
+        assert a.explanation == p.explanation
+        assert a.why_topics == p.why_topics
+        assert a.topic == p.topic
+        for signal in SIGNALS:
+            assert math.isclose(a.features[signal], p.features[signal], abs_tol=1e-6)
+            assert math.isclose(a.contributions[signal], p.contributions[signal], abs_tol=1e-6)
+        assert a.breakdown() == p.breakdown()
