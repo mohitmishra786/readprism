@@ -143,9 +143,13 @@ export function PlanSection() {
 
   if (!state || state.plan === "selfhost") return null;
 
-  const go = (pending: Promise<{ url: string }>) =>
+  const go = (pending: Promise<{ url: string | null }>) =>
     pending
       .then(({ url }) => {
+        if (!url) {
+          window.location.href = "mailto:support@weirling.com?subject=Manage%20subscription";
+          return;
+        }
         window.location.href = url;
       })
       .catch(() => setError("Billing is unavailable right now. Try again in a few minutes."));
@@ -175,12 +179,20 @@ export function PlanSection() {
         <p style={{ fontSize: 14, marginBottom: 12 }}>To switch plans, use Manage billing.</p>
       )}
       {state.billing_enabled && (
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {state.can_manage && (
-            <button style={BUTTON} onClick={() => go(api.billing.portal())}>
-              Manage billing
-            </button>
-          )}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          {state.can_manage &&
+            (state.portal_url === null ? (
+              <a
+                href="mailto:support@weirling.com?subject=Manage%20subscription"
+                style={{ ...BUTTON, textDecoration: "none", display: "inline-block", color: "inherit" }}
+              >
+                Manage subscription via support
+              </a>
+            ) : (
+              <button style={BUTTON} onClick={() => go(api.billing.portal())}>
+                Manage billing
+              </button>
+            ))}
         </div>
       )}
       {error && <p style={{ color: "#f87171", fontSize: 14, marginTop: 12 }}>{error}</p>}

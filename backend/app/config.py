@@ -330,10 +330,16 @@ class Settings(BaseSettings):
     # over them per plan and quota, e.g. {"pro": {"sources": 3000}}.
     # Per-account overrides: scripts/set_quota.py.
     hosted_plan_quotas: dict[str, dict[str, int]] = {}
-    # Billing on hosted through a merchant of record (#173). Prices and trial
-    # length are a business decision (#138); this is configuration only.
-    billing_provider: str = ""  # "lemonsqueezy" | "paddle"; empty = billing off
+    # Billing on hosted through a merchant of record (#173) or gateway (#342).
+    # Prices and trial length are a business decision (#138); this is configuration only.
+    billing_provider: str = ""  # "lemonsqueezy" | "paddle" | "razorpay"; empty = billing off
     billing_webhook_secret: str = ""
+    # Razorpay billing configuration (#342):
+    # Payment gateway provider (note: not a merchant of record, operator handles GST/taxes).
+    razorpay_key_id: str = ""
+    razorpay_key_secret: str = ""
+    razorpay_webhook_secret: str = ""
+    razorpay_plan_id_pro: str = ""
     # Paddle: checkout + portal sessions. Both: cancelling on account deletion.
     billing_api_key: str = ""
     billing_sandbox: bool = False  # Paddle sandbox API

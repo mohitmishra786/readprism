@@ -48,7 +48,10 @@ async def billing_state(
         "trial_ends_at": user.trial_ends_at,
         "trial_days_left": trial_days_left,
         "plan_expires_at": user.plan_expires_at,
-        "can_manage": bool(user.billing_customer_id or user.billing_portal_url),
+        "can_manage": bool(
+            user.billing_customer_id or user.billing_portal_url or user.billing_subscription_id
+        ),
+        "portal_url": user.billing_portal_url,
         # Plan quotas and today's use (#172); empty on self-host.
         "quotas": await entitlements.usage(session, user),
         # What can be bought, cheapest first, with each plan's limits (#172).
@@ -117,10 +120,8 @@ async def portal(user: User = Depends(get_current_user)) -> dict:
     except Exception as e:
         logger.error(f"Portal session failed for {user.id}: {e}")
         url = None
-    if not url:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="No subscription to manage"
-        )
+    if url is None:
+        return {"url": None}
     return {"url": url}
 
 

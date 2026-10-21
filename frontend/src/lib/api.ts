@@ -310,7 +310,7 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ interval, plan }),
       }),
-    portal: () => request<{ url: string }>('/billing/portal'),
+    portal: () => request<{ url: string | null }>('/billing/portal'),
   },
 
   account: {

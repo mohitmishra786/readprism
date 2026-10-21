@@ -95,8 +95,12 @@ another plan when you decide.
 
 ## Billing
 
-Billing runs through a merchant of record (Lemon Squeezy or Paddle), so the
-provider handles VAT and GST.
+Weirling supports two billing models on hosted instances:
+
+- **Merchant of record (Lemon Squeezy or Paddle)**: The provider acts as the merchant of record and handles VAT, GST, and sales tax filing across countries.
+- **Payment gateway (Razorpay)**: Razorpay operates as a payment gateway, not a merchant of record (Decision D-25). The instance operator is directly responsible for filing GST and any applicable sales tax.
+
+### Configuring Lemon Squeezy or Paddle
 
 1. Set `BILLING_PROVIDER` (`lemonsqueezy` or `paddle`) and
    `BILLING_WEBHOOK_SECRET`.
@@ -123,13 +127,40 @@ provider handles VAT and GST.
    both providers use it to cancel a subscription when an account is deleted.
    Test Paddle with `BILLING_SANDBOX=true`.
 
-How it behaves:
+### Configuring Razorpay
+
+1. Set `BILLING_PROVIDER=razorpay`.
+2. Set API credentials and webhook secret:
+   ```bash
+   RAZORPAY_KEY_ID=rzp_live_...
+   RAZORPAY_KEY_SECRET=...
+   RAZORPAY_WEBHOOK_SECRET=...
+   ```
+3. Set the plan id for the Pro plan:
+   ```bash
+   RAZORPAY_PLAN_ID_PRO=plan_...
+   ```
+   Or set `BILLING_PRO_PRICE_IDS` with comma-separated plan ids.
+4. Point your Razorpay webhook to:
+   `https://<api>/api/v1/billing/webhook/razorpay`
+   Subscribe to `subscription.activated`, `subscription.charged`,
+   `subscription.pending`, `subscription.halted`, `subscription.cancelled`,
+   `subscription.completed`, and `subscription.expired`.
+5. Tax responsibility: As Razorpay is a payment gateway, the operator must
+   account for GST and foreign taxes on all subscription revenue.
+6. Customer portal: Razorpay has no hosted customer portal. The preferences
+   UI detects this (`portal_url` is null) and displays a support contact link
+   so users can manage their subscription via email. Account deletion cancels
+   the active subscription immediately via Razorpay's Subscriptions API.
+
+### How billing behaves
 
 - **Webhooks** are verified, recorded once (a replay does nothing) and
   applied in order, so a late, older event can't bring back a cancelled plan.
 - **A plan lapses** at its expiry date, with no scheduled job.
 - **Switching plans** happens in the provider's portal (Manage billing),
-  which prorates. Checkout refuses a second subscription.
+  which prorates, or via support for Razorpay. Checkout refuses a second
+  subscription.
 
 ## Abuse limits
 
