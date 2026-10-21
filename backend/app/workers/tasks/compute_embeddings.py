@@ -181,3 +181,100 @@ async def _repair_missing_embeddings_async(now: datetime | None = None) -> dict:
     if queued:
         logger.info(f"Embedding repair re-queued {queued} items")
     return {"missing": len(ids), "queued": queued}
+
+
+@celery_app.task(
+    name="app.workers.tasks.compute_embeddings.reembed_outdated_items",
+    bind=True,
+    max_retries=3,
+)
+def reembed_outdated_items(
+    self,
+    batch_size: int | None = None,
+    max_batches: int | None = None,
+) -> dict:
+    """Online re-embed task (embed queue): re-encodes rows whose embedding_model != active (#244)."""
+    return asyncio.run(
+        _reembed_outdated_items_async(batch_size=batch_size, max_batches=max_batches)
+    )
+
+
+async def _reembed_outdated_items_async(
+    batch_size: int | None = None,
+    max_batches: int | None = None,
+) -> dict:
+    from app.config import get_settings
+    from app.database import AsyncSessionLocal
+    from app.services.embeddings.reembed import (
+        get_reembed_cursor,
+        reembed_batch,
+        reembed_interest_batch,
+    )
+    from app.services.embeddings.registry import active_spec
+    from app.utils.embeddings import get_embedding_service
+
+    settings = get_settings()
+    batch_size = batch_size or settings.embedding_reembed_batch
+    pause = settings.embedding_reembed_pause_seconds
+    active = active_spec(
+        model=settings.embedding_model,
+        cutover=settings.embedding_cutover_enabled,
+    )
+    encoder = get_embedding_service()
+
+    total_reembedded = 0
+    batches_run = 0
+    cursor = await get_reembed_cursor()
+
+    while True:
+        async with AsyncSessionLocal() as session:
+            result = await reembed_batch(
+                session=session,
+                active=active,
+                batch_size=batch_size,
+                cursor=cursor,
+                encoder=encoder,
+            )
+        total_reembedded += result["reembedded"]
+        cursor = result["next_cursor"]
+        batches_run += 1
+
+        if result["done"]:
+            break
+        if max_batches is not None and batches_run >= max_batches:
+            break
+        if pause > 0:
+            await asyncio.sleep(pause)
+
+    # Interest topics follow the items: ranking compares the two (#244).
+    topics_reembedded = 0
+    topics_done = False
+    while result["done"] and not (max_batches is not None and batches_run >= max_batches):
+        async with AsyncSessionLocal() as session:
+            topic_result = await reembed_interest_batch(
+                session=session, active=active, batch_size=batch_size, encoder=encoder
+            )
+        topics_reembedded += topic_result["reembedded"]
+        batches_run += 1
+        if topic_result["done"]:
+            topics_done = True
+            break
+        if pause > 0:
+            await asyncio.sleep(pause)
+
+    logger.info(
+        "Re-embed progress: active=%s, batches=%d, re-embedded=%d, done=%s",
+        active.name,
+        batches_run,
+        total_reembedded,
+        result["done"],
+    )
+    return {
+        "status": "ok",
+        "batches_run": batches_run,
+        "total_reembedded": total_reembedded,
+        "topics_reembedded": topics_reembedded,
+        "cursor": cursor,
+        "done": result["done"] and topics_done,
+        "active_model": active.name,
+    }

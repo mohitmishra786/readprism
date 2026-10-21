@@ -29,12 +29,18 @@ HASH_EMBEDDER_NAME = "lexical-hash"
 
 
 def active_embedder() -> dict:
-    """What actually produces vectors on this instance (#195).
+    """What actually produces vectors on this instance (#195, #244).
 
     The configured EMBEDDING_MODEL is only used when sentence-transformers is
     installed; the lite image silently falls back to the hash embedder, so the
     settings page must report the active one, not the configured one.
     """
+    from app.services.embeddings.registry import active_spec
+
+    active = active_spec(
+        model=settings.embedding_model,
+        cutover=settings.embedding_cutover_enabled,
+    )
     if is_hash_embeddings():
         return {
             "name": HASH_EMBEDDER_NAME,
@@ -45,12 +51,12 @@ def active_embedder() -> dict:
             ),
             "how_to_upgrade": (
                 "Run the standard image (not :latest-lite) to use the "
-                f"{settings.embedding_model} model; existing items are re-embedded "
+                f"{active.name} model; existing items are re-embedded "
                 "as they are next scored."
             ),
         }
     return {
-        "name": settings.embedding_model,
+        "name": active.name,
         "is_hash": False,
         "quality_note": "Semantic embeddings: related topics match even with different wording.",
         "how_to_upgrade": None,
@@ -147,10 +153,13 @@ class EmbeddingService:
 def get_embedding_service() -> EmbeddingService:
     global _embedding_service
     if _embedding_service is None:
-        from app.services.embeddings.registry import resolve_stored_model
+        from app.services.embeddings.registry import active_spec
 
-        spec = resolve_stored_model(settings.embedding_model)
-        if spec.name != settings.embedding_model:
+        spec = active_spec(
+            model=settings.embedding_model,
+            cutover=settings.embedding_cutover_enabled,
+        )
+        if spec.name != settings.embedding_model and settings.embedding_cutover_enabled:
             logger.warning(
                 "Embedding model %s cannot be stored in the 384-d column; using %s",
                 settings.embedding_model,

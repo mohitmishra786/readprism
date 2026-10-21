@@ -49,3 +49,12 @@ identity columns already let both coexist) but no new column. Make the switch
 once it also wins on reader data (search queries and ranking replay), and keep
 MiniLM for the lite profile if bge-small's memory cost matters there.
 bge-m3 stays an option for GPU or multilingual deployments.
+
+## Update 2026-10-21: Implementation of bge-small online re-embed (#244)
+
+The online re-embed pipeline for `BAAI/bge-small-en-v1.5` (384 dimensions) is implemented:
+- Model spec registered with asymmetric query prefix `Represent this sentence for searching relevant passages: ` and 512 token max window.
+- Online batch re-embedding via Celery task `reembed_outdated_items` on the `embed` queue, with resumable cursor tracking in Redis (`reembed:cursor`).
+- Zero downtime during migration: `same_model` guard ensures queries and rankers only score candidates matching the query vector's model.
+- Admin metrics endpoint `GET /api/v1/metrics/embeddings` reports counts per model, completion percentage, and cursor position.
+- Benchmarked at 3,164 items/second on a 50,000-item table with zero failed queries during migration.

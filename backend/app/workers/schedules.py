@@ -75,6 +75,13 @@ def setup_beat_schedule(app: Celery) -> None:
             "args": ("digest",),
             "options": {"queue": "digest"},
         },
+        # After an embedding model switch (#244): re-encode old vectors and
+        # interest topics in batches. A single quick query when nothing is left.
+        "reembed-outdated": {
+            "task": "app.workers.tasks.compute_embeddings.reembed_outdated_items",
+            "schedule": 30 * 60,
+            "kwargs": {"max_batches": 50},
+        },
         "product-metrics-rollup": {
             "task": "app.workers.tasks.product_metrics.rollup_product_metrics",
             "schedule": crontab(hour=0, minute=40),  # daily, for the day before (#131)

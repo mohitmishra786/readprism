@@ -11,6 +11,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    event,
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -57,6 +58,27 @@ class InterestNode(Base):
 
     if VECTOR_AVAILABLE:
         topic_embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
+    # Which model made topic_embedding (#244). NULL = legacy MiniLM. Set by the
+    # listener below on every write, so no call site has to remember it.
+    embedding_model: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+def _stamp_interest_model(mapper, connection, target) -> None:
+    from sqlalchemy import inspect as sa_inspect
+
+    from app.services.embeddings.registry import current_spec
+
+    if getattr(target, "topic_embedding", None) is None:
+        return
+    state = sa_inspect(target)
+    changed = state.pending or state.attrs.topic_embedding.history.has_changes()
+    stamped_explicitly = state.attrs.embedding_model.history.has_changes()
+    if changed and not stamped_explicitly:
+        target.embedding_model = current_spec().name
+
+
+event.listen(InterestNode, "before_insert", _stamp_interest_model)
+event.listen(InterestNode, "before_update", _stamp_interest_model)
 
 
 class InterestEdge(Base):
