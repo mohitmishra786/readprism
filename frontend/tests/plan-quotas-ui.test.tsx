@@ -73,19 +73,35 @@ describe("plan quotas (#172)", () => {
     expect(checkout).toHaveBeenCalledWith("year", "pro");
   });
 
-  it("handles portal_url === null gracefully with support email link (#342)", async () => {
+  it("providers without a portal show the operator's email; others keep Manage billing (#342)", async () => {
     state.mockResolvedValueOnce({
       ...base,
       billing_enabled: true,
       plan: "pro",
       can_manage: true,
       portal_url: null,
+      manage_via: "email",
+      support_email: "help@example.com",
+      quotas: [],
+    });
+    const { unmount } = render(<PlanSection />);
+    const link = await screen.findByRole("link", { name: "Email to change or cancel" });
+    expect(link).toHaveAttribute("href", "mailto:help@example.com?subject=Manage%20subscription");
+    expect(screen.queryByRole("button", { name: "Manage billing" })).toBeNull();
+    unmount();
+
+    // Paddle stores no portal URL (it makes one on demand): still the button.
+    state.mockResolvedValueOnce({
+      ...base,
+      billing_enabled: true,
+      plan: "pro",
+      can_manage: true,
+      portal_url: null,
+      manage_via: "portal",
       quotas: [],
     });
     render(<PlanSection />);
-    const link = await screen.findByRole("link", { name: "Manage subscription via support" });
-    expect(link).toBeInTheDocument();
-    expect(link).toHaveAttribute("href", "mailto:support@weirling.com?subject=Manage%20subscription");
-    expect(screen.queryByRole("button", { name: "Manage billing" })).toBeNull();
+    expect(await screen.findByRole("button", { name: "Manage billing" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Email to change or cancel" })).toBeNull();
   });
 });

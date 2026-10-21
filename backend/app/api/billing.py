@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.services import billing
@@ -22,6 +23,11 @@ logger = get_logger(__name__)
 class CheckoutRequest(BaseModel):
     interval: Literal["month", "year"] = "month"
     plan: Literal["reader", "pro"] = "reader"
+
+
+def _manage_via() -> str:
+    adapter = billing.provider()
+    return "portal" if adapter is None or getattr(adapter, "HAS_PORTAL", True) else "email"
 
 
 @router.get("")
@@ -52,6 +58,10 @@ async def billing_state(
             user.billing_customer_id or user.billing_portal_url or user.billing_subscription_id
         ),
         "portal_url": user.billing_portal_url,
+        # How a subscriber changes or cancels: the provider's portal, or by
+        # email where the provider has none (Razorpay, #342).
+        "manage_via": _manage_via(),
+        "support_email": get_settings().grievance_contact_email or None,
         # Plan quotas and today's use (#172); empty on self-host.
         "quotas": await entitlements.usage(session, user),
         # What can be bought, cheapest first, with each plan's limits (#172).

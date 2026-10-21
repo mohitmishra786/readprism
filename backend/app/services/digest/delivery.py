@@ -170,7 +170,8 @@ async def deliver_digest(digest: Digest, user: User, session: AsyncSession) -> b
             ),
             dead_sources=await _pending_dead_sources(user.id, session),
             sources_url=f"{settings.frontend_url.rstrip('/')}/sources",
-            logo_url=f"{settings.frontend_url.rstrip('/')}/favicon-32.png",
+            # 180px source shown at 28px: sharp on high-density screens.
+            logo_url=f"{settings.frontend_url.rstrip('/')}/apple-touch-icon.png",
         )
     except Exception as e:
         logger.error(f"Failed to render digest email template: {e}")

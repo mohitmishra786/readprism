@@ -136,11 +136,19 @@ Weirling supports two billing models on hosted instances:
    RAZORPAY_KEY_SECRET=...
    RAZORPAY_WEBHOOK_SECRET=...
    ```
-3. Set the plan id for the Pro plan:
+3. Create one Razorpay plan per plan and interval, then put the plan ids
+   where the other providers take checkout links, and list them for the
+   plan mapping:
    ```bash
-   RAZORPAY_PLAN_ID_PRO=plan_...
+   BILLING_CHECKOUT_READER_MONTHLY=plan_...   # Razorpay plan id
+   BILLING_CHECKOUT_READER_YEARLY=plan_...
+   BILLING_CHECKOUT_PRO_MONTHLY=plan_...
+   BILLING_CHECKOUT_PRO_YEARLY=plan_...
+   BILLING_READER_PRICE_IDS=plan_reader_monthly_id,plan_reader_yearly_id
+   BILLING_PRO_PRICE_IDS=plan_pro_monthly_id,plan_pro_yearly_id
    ```
-   Or set `BILLING_PRO_PRICE_IDS` with comma-separated plan ids.
+   (`RAZORPAY_PLAN_ID_PRO` still works as a shortcut for a single Pro plan.)
+   Subscriptions run 120 monthly or 10 yearly cycles.
 4. Point your Razorpay webhook to:
    `https://<api>/api/v1/billing/webhook/razorpay`
    Subscribe to `subscription.activated`, `subscription.charged`,
@@ -148,9 +156,11 @@ Weirling supports two billing models on hosted instances:
    `subscription.completed`, and `subscription.expired`.
 5. Tax responsibility: As Razorpay is a payment gateway, the operator must
    account for GST and foreign taxes on all subscription revenue.
-6. Customer portal: Razorpay has no hosted customer portal. The preferences
-   UI detects this (`portal_url` is null) and displays a support contact link
-   so users can manage their subscription via email. Account deletion cancels
+6. Customer portal: Razorpay has no hosted customer portal. Preferences >
+   Plan shows "Email to change or cancel", addressed to
+   `GRIEVANCE_CONTACT_EMAIL` (set it). The plan starts on
+   `subscription.activated` or `subscription.charged`, not on
+   `subscription.authenticated` (nothing has been charged yet). Account deletion cancels
    the active subscription immediately via Razorpay's Subscriptions API.
 
 ### How billing behaves

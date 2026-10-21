@@ -22,10 +22,14 @@ from app.config import get_settings
 from app.services.billing import ACTIVE, CANCELLED, ENDED, PAST_DUE, BillingUpdate
 
 NAME = "razorpay"
+# No hosted customer portal: readers manage or cancel by contacting the operator.
+HAS_PORTAL = False
 
 # Razorpay subscription statuses normalized to internal states.
 _EVENT_STATUS = {
-    "subscription.authenticated": ACTIVE,
+    # "subscription.authenticated" is deliberately absent: the mandate is
+    # authorised but nothing has been charged yet. The plan starts on
+    # activated/charged.
     "subscription.activated": ACTIVE,
     "subscription.charged": ACTIVE,
     "subscription.pending": PAST_DUE,
@@ -36,7 +40,6 @@ _EVENT_STATUS = {
 }
 
 _ENTITY_STATUS = {
-    "authenticated": ACTIVE,
     "active": ACTIVE,
     "pending": PAST_DUE,
     "halted": PAST_DUE,
@@ -143,13 +146,12 @@ async def checkout_url(user: Any, interval: str, plan: str = "reader") -> str | 
 
     payload = {
         "plan_id": plan_id,
-        "total_count": 60,
+        # Billing cycles before Razorpay ends the subscription: 10 years either way.
+        "total_count": 10 if interval == "year" else 120,
         "quantity": 1,
         "customer_notify": 1,
-        "notes": {
-            "user_id": str(user.id),
-            "email": str(user.email or ""),
-        },
+        # Only our id: Razorpay already has the customer's contact details.
+        "notes": {"user_id": str(user.id)},
     }
 
     async with httpx.AsyncClient(timeout=15) as client:

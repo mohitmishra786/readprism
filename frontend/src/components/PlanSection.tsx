@@ -146,10 +146,7 @@ export function PlanSection() {
   const go = (pending: Promise<{ url: string | null }>) =>
     pending
       .then(({ url }) => {
-        if (!url) {
-          window.location.href = "mailto:support@weirling.com?subject=Manage%20subscription";
-          return;
-        }
+        if (!url) throw new Error("no url");
         window.location.href = url;
       })
       .catch(() => setError("Billing is unavailable right now. Try again in a few minutes."));
@@ -181,13 +178,17 @@ export function PlanSection() {
       {state.billing_enabled && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           {state.can_manage &&
-            (state.portal_url === null ? (
-              <a
-                href="mailto:support@weirling.com?subject=Manage%20subscription"
-                style={{ ...BUTTON, textDecoration: "none", display: "inline-block", color: "inherit" }}
-              >
-                Manage subscription via support
-              </a>
+            (state.manage_via === "email" ? (
+              state.support_email ? (
+                <a
+                  href={`mailto:${state.support_email}?subject=Manage%20subscription`}
+                  style={{ ...BUTTON, textDecoration: "none", display: "inline-block", color: "inherit" }}
+                >
+                  Email to change or cancel
+                </a>
+              ) : (
+                <p style={{ fontSize: 14 }}>To change or cancel, contact the operator of this service.</p>
+              )
             ) : (
               <button style={BUTTON} onClick={() => go(api.billing.portal())}>
                 Manage billing

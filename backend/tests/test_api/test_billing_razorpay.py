@@ -259,6 +259,13 @@ async def test_razorpay_checkout_flow(client: AsyncClient, db_session, hosted_ra
         payload = kwargs["json"]
         assert payload["plan_id"] == PLAN_PRO_ID
         assert payload["notes"]["user_id"] == str(user.id)
+        # Only our id goes to Razorpay, and monthly plans run 120 cycles.
+        assert payload["notes"] == {"user_id": str(user.id)}
+        assert payload["total_count"] == 120
+
+        mock_post.reset_mock()
+        await razorpay.checkout_url(user, interval="year", plan="pro")
+        assert mock_post.call_args.kwargs["json"]["total_count"] == 10
 
 
 @pytest.mark.asyncio
@@ -298,3 +305,37 @@ async def test_razorpay_unknown_account_and_bad_payload(client: AsyncClient, hos
     # Bad payload (invalid JSON)
     res_bad = await _post_rzp(client, b"not-a-json")
     assert res_bad.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_authenticated_is_not_a_payment(client: AsyncClient, db_session, hosted_razorpay):
+    """A mandate authorised but not yet charged must not grant the plan."""
+    user = await _user(db_session)
+    raw = _rzp_event("subscription.authenticated", user.id, status="authenticated")
+    res = await _post_rzp(client, raw)
+    assert res.status_code == 200 and res.json()["status"] == "ignored"
+    await db_session.refresh(user)
+    assert user.tier != "pro"
+
+
+@pytest.mark.asyncio
+async def test_billing_state_says_how_to_manage(client: AsyncClient, hosted_razorpay, monkeypatch):
+    """Razorpay has no portal: the page offers the operator's email instead."""
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "grievance_contact_email", "help@example.com")
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": f"m{uuid.uuid4().hex[:8]}@example.com",
+            "password": "TestPass123!",
+            "accept_terms": True,
+        },
+    )
+    headers = {"Authorization": f"Bearer {reg.json()['access_token']}"}
+    state = (await client.get("/api/v1/billing", headers=headers)).json()
+    assert state["manage_via"] == "email" and state["support_email"] == "help@example.com"
+
+    monkeypatch.setattr(get_settings(), "billing_provider", "paddle")
+    state = (await client.get("/api/v1/billing", headers=headers)).json()
+    assert state["manage_via"] == "portal"

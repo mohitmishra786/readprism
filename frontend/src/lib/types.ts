@@ -207,6 +207,9 @@ export interface BillingState {
   can_manage: boolean;
   /** Hosted customer portal URL; null when provider has no hosted portal (e.g. Razorpay, #342). */
   portal_url?: string | null;
+  /** "email" when the provider has no self-serve portal (Razorpay, #342). */
+  manage_via?: "portal" | "email";
+  support_email?: string | null;
   /** Hosted plan quotas and today's use (#172); empty on self-host. 0 = unlimited. */
   quotas?: PlanQuota[];
   /** Plans on sale, cheapest first (#172); empty when billing is off. */
