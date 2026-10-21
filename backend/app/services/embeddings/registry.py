@@ -115,6 +115,20 @@ def encode_with_spec(text: str, spec: EmbeddingSpec, *, query: bool = False) -> 
     return hash_embed(prepare_text(text, spec, query=query), spec.dim)
 
 
+def names_for(active: EmbeddingSpec) -> list[str]:
+    """Every stored model name that means `active` (canonical name and aliases).
+    Rows with no name are legacy MiniLM vectors; callers handle NULL."""
+    canonical = ALIASES.get(active.name, active.name)
+    return sorted({canonical, *[alias for alias, target in ALIASES.items() if target == canonical]})
+
+
+def current_spec() -> EmbeddingSpec:
+    from app.config import get_settings
+
+    s = get_settings()
+    return active_spec(model=s.embedding_model, cutover=s.embedding_cutover_enabled)
+
+
 def same_model(row_model: str | None, row_dim: int | None, active: EmbeddingSpec) -> bool:
     if row_dim is not None and row_dim != active.dim:
         return False

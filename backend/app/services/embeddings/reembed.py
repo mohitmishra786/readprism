@@ -7,6 +7,7 @@ stored in Redis.
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from typing import Any
 
@@ -22,6 +23,21 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 REDIS_CURSOR_KEY = "reembed:cursor"
+INTEREST_CURSOR_KEY = "reembed:interest_cursor"
+
+
+def outdated(model_col, active: EmbeddingSpec):
+    """SQL: the stored vector was made by another model. Aliases of the active
+    model count as current, and so do unstamped rows when MiniLM is active
+    (they are legacy MiniLM vectors), so nothing is re-encoded for nothing."""
+    from sqlalchemy import and_
+
+    from app.services.embeddings.registry import MINILM, names_for
+
+    names = names_for(active)
+    if MINILM in names:
+        return and_(model_col.is_not(None), model_col.not_in(names))
+    return or_(model_col.is_(None), model_col.not_in(names))
 
 
 async def get_reembed_cursor() -> str | None:
@@ -54,10 +70,7 @@ async def reembed_batch(
         select(ContentItem)
         .where(
             ContentItem.embedding.is_not(None),
-            or_(
-                ContentItem.embedding_model != active.name,
-                ContentItem.embedding_model.is_(None),
-            ),
+            outdated(ContentItem.embedding_model, active),
         )
         .order_by(ContentItem.id.asc())
         .limit(batch_size)
@@ -77,10 +90,7 @@ async def reembed_batch(
             select(ContentItem.id)
             .where(
                 ContentItem.embedding.is_not(None),
-                or_(
-                    ContentItem.embedding_model != active.name,
-                    ContentItem.embedding_model.is_(None),
-                ),
+                outdated(ContentItem.embedding_model, active),
             )
             .limit(1)
         )
@@ -131,3 +141,53 @@ async def reembed_batch(
         "next_cursor": next_cursor,
         "done": done,
     }
+
+
+async def reembed_interest_batch(
+    session: AsyncSession,
+    active: EmbeddingSpec,
+    batch_size: int = 200,
+    encoder: Any = None,
+) -> dict[str, Any]:
+    """Re-encode one batch of interest topics made by another model (#244).
+
+    Topic vectors are compared with item vectors in ranking, so they must
+    move with the items. Labels are short: re-encoding is cheap.
+    """
+    from app.models.interest_graph import InterestNode
+
+    cursor = await cache_get(INTEREST_CURSOR_KEY)
+    query = (
+        select(InterestNode)
+        .where(
+            InterestNode.topic_embedding.is_not(None),
+            outdated(InterestNode.embedding_model, active),
+        )
+        .order_by(InterestNode.id.asc())
+        .limit(batch_size)
+    )
+    if cursor:
+        with contextlib.suppress(ValueError, TypeError):
+            query = query.where(InterestNode.id > uuid.UUID(str(cursor)))
+    nodes = list((await session.execute(query)).scalars().all())
+    if not nodes:
+        from app.utils.cache import get_redis
+
+        with contextlib.suppress(Exception):
+            await get_redis().delete(INTEREST_CURSOR_KEY)
+        return {"reembedded": 0, "done": True}
+    if encoder is None:
+        from app.utils.embeddings import get_embedding_service
+
+        encoder = get_embedding_service()
+    labels = [n.topic_label for n in nodes]
+    if hasattr(encoder, "encode_batch_cached"):
+        vectors = await encoder.encode_batch_cached(labels)
+    else:
+        vectors = [encoder(label) for label in labels]
+    for node, vec in zip(nodes, vectors, strict=True):
+        node.topic_embedding = vec
+        node.embedding_model = active.name
+    await session.commit()
+    await cache_set(INTEREST_CURSOR_KEY, str(nodes[-1].id), ttl_seconds=30 * 24 * 3600)
+    return {"reembedded": len(nodes), "done": len(nodes) < batch_size}

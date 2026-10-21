@@ -310,6 +310,10 @@ async def load_state(user: User, session: AsyncSession) -> UserRankingState:
     interest_candidates: list[tuple[np.ndarray, float, str]] = []
     node_vec: dict[uuid.UUID, tuple[np.ndarray, str]] = {}
     for node in nodes:
+        # Topic vectors from another model aren't comparable (#244); they
+        # come back after the re-embed task re-encodes them.
+        if not same_model(getattr(node, "embedding_model", None), None, active):
+            continue
         v = _vec(node.topic_embedding)
         if v is not None and (node.weight or 0) > 0:
             interest_candidates.append((v, float(node.weight), node.topic_label))

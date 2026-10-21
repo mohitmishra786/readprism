@@ -205,7 +205,11 @@ async def _reembed_outdated_items_async(
 ) -> dict:
     from app.config import get_settings
     from app.database import AsyncSessionLocal
-    from app.services.embeddings.reembed import get_reembed_cursor, reembed_batch
+    from app.services.embeddings.reembed import (
+        get_reembed_cursor,
+        reembed_batch,
+        reembed_interest_batch,
+    )
     from app.services.embeddings.registry import active_spec
     from app.utils.embeddings import get_embedding_service
 
@@ -242,6 +246,22 @@ async def _reembed_outdated_items_async(
         if pause > 0:
             await asyncio.sleep(pause)
 
+    # Interest topics follow the items: ranking compares the two (#244).
+    topics_reembedded = 0
+    topics_done = False
+    while result["done"] and not (max_batches is not None and batches_run >= max_batches):
+        async with AsyncSessionLocal() as session:
+            topic_result = await reembed_interest_batch(
+                session=session, active=active, batch_size=batch_size, encoder=encoder
+            )
+        topics_reembedded += topic_result["reembedded"]
+        batches_run += 1
+        if topic_result["done"]:
+            topics_done = True
+            break
+        if pause > 0:
+            await asyncio.sleep(pause)
+
     logger.info(
         "Re-embed progress: active=%s, batches=%d, re-embedded=%d, done=%s",
         active.name,
@@ -253,7 +273,8 @@ async def _reembed_outdated_items_async(
         "status": "ok",
         "batches_run": batches_run,
         "total_reembedded": total_reembedded,
+        "topics_reembedded": topics_reembedded,
         "cursor": cursor,
-        "done": result["done"],
+        "done": result["done"] and topics_done,
         "active_model": active.name,
     }

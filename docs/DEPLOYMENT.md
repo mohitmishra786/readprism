@@ -205,28 +205,36 @@ Targets and the load test (`scripts/load_test_digests.py`) are in ADR 0001.
 
 ## Switching the embedding model
 
-Weirling defaults to `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions).
-To switch to `BAAI/bge-small-en-v1.5` (also 384 dimensions, with higher retrieval accuracy):
+Weirling defaults to `all-MiniLM-L6-v2` (384 dimensions). `BAAI/bge-small-en-v1.5`
+has the same size and finds the right article more often
+([embedding models on real articles](eval/embedding-models.md)). The standard
+image only; the lite image uses hash embeddings.
 
-1. Set `EMBEDDING_MODEL=BAAI/bge-small-en-v1.5` in `.env` and restart containers.
-2. Trigger the online re-embed worker task:
+1. Set both, then restart:
+   ```bash
+   EMBEDDING_MODEL=bge-small-en-v1.5
+   EMBEDDING_CUTOVER_ENABLED=true
+   ```
+   New articles and interest topics are embedded with bge-small from then on.
+2. Older vectors are re-encoded in the background by a scheduled task (every
+   30 minutes, 50 batches of `EMBEDDING_REEMBED_BATCH` each; set
+   `EMBEDDING_REEMBED_PAUSE_SECONDS` to go easier on a small box). To start it
+   now instead of waiting:
    ```bash
    docker compose exec worker-embed celery -A app.workers.celery_app call app.workers.tasks.compute_embeddings.reembed_outdated_items
    ```
-   Or run the standalone re-embed script with pause controls:
-   ```bash
-   docker compose exec api python scripts/reembed_benchmark.py
-   ```
-3. Monitor progress via the metrics endpoint:
+3. Watch progress (metrics token or the owner's sign-in):
    ```bash
    curl -H "X-Metrics-Token: $METRICS_TOKEN" http://localhost:8000/api/v1/metrics/embeddings
    ```
-   During migration, `same_model` filtering ensures candidate scoring never mixes vectors from different models.
-4. Once `percent_done` reaches 100%, enable cutover in `.env`:
-   ```bash
-   EMBEDDING_CUTOVER_ENABLED=true
-   ```
-   Restart containers to activate `bge-small` as the primary search and ranking model.
+   Until an item is re-encoded, ranking and search simply skip its vector
+   (vectors from two models are never compared), so it ranks on the other
+   signals for a while.
+4. To go back, set `EMBEDDING_CUTOVER_ENABLED=false` and restart; the same
+   task re-encodes with MiniLM.
+
+`scripts/reembed_benchmark.py` measures re-embed speed on a **scratch**
+database it seeds itself; never point it at a live one.
 
 ## Monitoring
 

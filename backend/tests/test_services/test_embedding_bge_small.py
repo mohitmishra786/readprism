@@ -309,3 +309,130 @@ async def test_metrics_embeddings_endpoint(client: AsyncClient, db_session, monk
     assert MINILM in data["counts_by_model"]
     assert data["total_embedded"] >= 2
     assert 0.0 <= data["percent_done"] <= 100.0
+
+
+# ---------------------------------------------------------------- review fixes
+
+
+def _set_active(monkeypatch, model: str, cutover: bool) -> None:
+    from app.config import get_settings
+
+    monkeypatch.setattr(get_settings(), "embedding_model", model)
+    monkeypatch.setattr(get_settings(), "embedding_cutover_enabled", cutover)
+
+
+@pytest.mark.asyncio
+async def test_outdated_rule_counts_aliases_and_legacy_rows_as_current(db_session):
+    """Nothing is re-encoded for nothing: aliases of the active model and
+    unstamped rows (legacy MiniLM) are current while MiniLM is active."""
+    from app.services.embeddings.reembed import outdated
+
+    tag = uuid.uuid4().hex[:8]
+    rows = {
+        "minilm": MINILM,
+        "alias": "sentence-transformers/all-MiniLM-L6-v2",
+        "legacy": None,
+        "bge": BGE_SMALL,
+    }
+    for name, model in rows.items():
+        db_session.add(
+            ContentItem(
+                url=f"https://example.com/{tag}/{name}",
+                title=f"{tag}-{name}",
+                embedding=[0.01] * 384,
+                embedding_model=model,
+            )
+        )
+    await db_session.commit()
+
+    async def stale(active_name: str) -> set[str]:
+        active = spec_for(active_name)
+        found = await db_session.execute(
+            select(ContentItem.title).where(
+                ContentItem.title.like(f"{tag}-%"), outdated(ContentItem.embedding_model, active)
+            )
+        )
+        return {t.split("-", 1)[1] for t in found.scalars()}
+
+    assert await stale(MINILM) == {"bge"}
+    assert await stale(BGE_SMALL) == {"minilm", "alias", "legacy"}
+
+
+@pytest.mark.asyncio
+async def test_interest_topics_are_stamped_and_reembedded(db_session, monkeypatch):
+    """Topic vectors are compared with item vectors in ranking, so they carry
+    their model and move with a switch."""
+    from app.models.interest_graph import InterestNode
+    from app.services.embeddings.reembed import INTEREST_CURSOR_KEY, reembed_interest_batch
+
+    user = User(email=f"it{uuid.uuid4().hex[:8]}@example.com", hashed_password="x")
+    db_session.add(user)
+    await db_session.flush()
+
+    _set_active(monkeypatch, MINILM, False)
+    node = InterestNode(user_id=user.id, topic_label="databases", topic_embedding=[0.2] * 384)
+    db_session.add(node)
+    await db_session.commit()
+    assert node.embedding_model == MINILM  # stamped by the listener
+
+    _set_active(monkeypatch, BGE_SMALL_SHORT, True)
+    from app.utils.cache import get_redis
+
+    await get_redis().delete(INTEREST_CURSOR_KEY)
+    result = await reembed_interest_batch(
+        db_session, spec_for(BGE_SMALL), batch_size=500, encoder=FakeEncoder()
+    )
+    assert result["reembedded"] >= 1
+    await db_session.refresh(node)
+    assert node.embedding_model == BGE_SMALL
+    assert list(node.topic_embedding)[:2] == pytest.approx([0.1, 0.1])
+
+    # A later write by any call site is stamped with the active model.
+    node.topic_embedding = [0.3] * 384
+    node.embedding_model = None
+    db_session.add(node)
+    await db_session.commit()
+    assert node.embedding_model == BGE_SMALL
+
+
+@pytest.mark.asyncio
+async def test_task_reembeds_items_then_topics(db_session, monkeypatch):
+    """The scheduled task finishes items, then interest topics, and reports both."""
+    from app.models.interest_graph import InterestNode
+    from app.services.embeddings.reembed import INTEREST_CURSOR_KEY
+    from app.utils.cache import get_redis
+    from tests.conftest import TestingSessionLocal
+
+    _set_active(monkeypatch, MINILM, False)
+    user = User(email=f"tk{uuid.uuid4().hex[:8]}@example.com", hashed_password="x")
+    db_session.add(user)
+    await db_session.flush()
+    db_session.add(
+        InterestNode(user_id=user.id, topic_label="compilers", topic_embedding=[0.2] * 384)
+    )
+    db_session.add(
+        ContentItem(
+            url=f"https://example.com/task/{uuid.uuid4().hex}",
+            title="Old vector",
+            full_text="Body",
+            embedding=[0.01] * 384,
+            embedding_model=MINILM,
+        )
+    )
+    await db_session.commit()
+
+    _set_active(monkeypatch, BGE_SMALL_SHORT, True)
+    await set_reembed_cursor(None)
+    await get_redis().delete(INTEREST_CURSOR_KEY)
+    with (
+        patch("app.database.AsyncSessionLocal", TestingSessionLocal),
+        patch("app.utils.embeddings.get_embedding_service", return_value=FakeEncoder()),
+    ):
+        report = await _reembed_outdated_items_async(batch_size=1000)
+        assert report["total_reembedded"] >= 1
+        assert report["topics_reembedded"] >= 1
+        assert report["done"] is True
+
+        # Budget: with max_batches=1 the task stops after one batch.
+        partial = await _reembed_outdated_items_async(batch_size=1000, max_batches=1)
+        assert partial["batches_run"] == 1

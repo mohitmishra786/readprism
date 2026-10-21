@@ -122,7 +122,11 @@ class InterestGraphManager:
     async def build_user_interest_vector(
         self, user_id: uuid.UUID, session: AsyncSession
     ) -> np.ndarray | None:
-        cache_key = f"interest_vec:{user_id}"
+        from app.services.embeddings.registry import current_spec, same_model
+
+        active = current_spec()
+        # Per model: a switch must not serve the old model's vector (#244).
+        cache_key = f"interest_vec:{active.name}:{user_id}"
         cached = await cache_get(cache_key)
         if cached is not None:
             return np.array(cached, dtype=np.float32)
@@ -133,7 +137,7 @@ class InterestGraphManager:
                 InterestNode.topic_embedding.isnot(None),
             )
         )
-        nodes = list(result.scalars().all())
+        nodes = [n for n in result.scalars().all() if same_model(n.embedding_model, None, active)]
         if not nodes:
             return None
 
