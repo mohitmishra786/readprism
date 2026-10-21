@@ -173,7 +173,11 @@ export function PlanSection() {
         />
       )}
       {state.billing_enabled && paying && (state.plans?.length ?? 0) > 1 && (
-        <p style={{ fontSize: 14, marginBottom: 12 }}>To switch plans, use Manage billing.</p>
+        <p style={{ fontSize: 14, marginBottom: 12 }}>
+          {state.manage_via === "email"
+            ? "To switch plans, email us using the link below."
+            : "To switch plans, use Manage billing."}
+        </p>
       )}
       {state.billing_enabled && (
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
