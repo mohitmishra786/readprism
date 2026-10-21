@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://readprism:readprism@db:5432/readprism"
     database_sync_url: str = "postgresql+psycopg2://readprism:readprism@db:5432/readprism"
+    # Connection pooling (see app/database.py): "auto" pools in the API and
+    # not in Celery workers/beat (pooled asyncpg connections leak across their
+    # per-task event loops); "none" never pools; "queue" always pools.
+    # Size the API pool to the database: managed Postgres often allows ~100
+    # connections in total across every service.
+    db_pool: str = "auto"
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
