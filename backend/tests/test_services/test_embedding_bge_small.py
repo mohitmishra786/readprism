@@ -387,12 +387,12 @@ async def test_interest_topics_are_stamped_and_reembedded(db_session, monkeypatc
     assert node.embedding_model == BGE_SMALL
     assert list(node.topic_embedding)[:2] == pytest.approx([0.1, 0.1])
 
-    # A later write by any call site is stamped with the active model.
+    # A later write by any call site is stamped with whatever model is active.
+    _set_active(monkeypatch, MINILM, False)
     node.topic_embedding = [0.3] * 384
-    node.embedding_model = None
     db_session.add(node)
     await db_session.commit()
-    assert node.embedding_model == BGE_SMALL
+    assert node.embedding_model == MINILM
 
 
 @pytest.mark.asyncio
