@@ -134,3 +134,21 @@ once; a backlog of new items over the first hour is normal.
 Each release gets `docs/releases/vX.Y.Z.md` from
 [the template](releases/TEMPLATE.md), and its upgrade-relevant parts go into
 this file.
+
+## How a release happens
+
+Releases are automatic once the notes say so:
+
+1. Write `docs/releases/vX.Y.Z.md` with the title
+   `# Weirling vX.Y.Z (unreleased)` while the work is in progress.
+2. When it's ready, change the title's date part, e.g.
+   `# Weirling v0.3.0 (2026-10-28)`, and merge that to `main`.
+3. The **Release** workflow then tags `vX.Y.Z`, builds and pushes every image
+   for that version (`weirling-backend`, `weirling-backend:X.Y.Z-lite`,
+   `weirling-frontend`, `weirling-aio`; amd64 and arm64), and creates the
+   GitHub Release from the notes, marked Latest.
+
+It only releases a version newer than the latest tag, and never one that is
+already tagged, so editing old notes is safe. Every merge to `main` still
+updates the `:latest` images. The `weirling-rank` library releases on its own
+whenever its code changes (see `packages/weirling-rank/README.md`).

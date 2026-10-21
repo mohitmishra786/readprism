@@ -1,5 +1,7 @@
 # Publish container images to GHCR (RL-01). Semver tags get versioned images;
 # main gets :latest. Lite variant published alongside with the -lite suffix.
+# release.yml calls this with a version (a tag it just pushed doesn't start
+# workflows by itself), so a release builds versioned images too.
 name: Publish images
 
 on:
@@ -7,6 +9,12 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch: {}
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version without the v, e.g. 0.3.0"
+        type: string
+        required: true
 
 permissions:
   contents: read
@@ -20,6 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.version && format('v{0}', inputs.version) || '' }}
           # Nothing later needs git credentials; don't leave the token in .git/config.
           persist-credentials: false
       # arm64 is built under QEMU emulation (Apple silicon, ARM servers, Pi 5).
@@ -37,6 +46,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
@@ -55,6 +65,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}-lite
+            type=raw,value=${{ inputs.version }}-lite,enable=${{ inputs.version && 'true' || 'false' }}
             type=raw,value=latest-lite,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
@@ -71,6 +82,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
@@ -87,6 +99,7 @@ jobs:
           flavor: latest=false
           tags: |
             type=semver,pattern={{version}}
+            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
             type=raw,value=latest,enable={{is_default_branch}}
       - uses: docker/build-push-action@v7
         with:
