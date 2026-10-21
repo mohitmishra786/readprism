@@ -4,7 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "weirling-rank"
-version = "0.1.0"
+# Set by .github/workflows/publish-weirling-rank.yml from the next tag; not
+# bumped by hand. See the README "Releases" section.
+version = "0.0.0"
 description = "Explainable personalized recommendation ranker for feeds and reading digests"
 readme = "README.md"
 authors = [
