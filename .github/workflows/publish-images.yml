@@ -2,6 +2,12 @@
 # main gets :latest. Lite variant published alongside with the -lite suffix.
 # release.yml calls this with a version (a tag it just pushed doesn't start
 # workflows by itself), so a release builds versioned images too.
+#
+# Each image is built natively on an amd64 and an arm64 runner in parallel
+# (GitHub's free ubuntu-24.04-arm runners for public repos), pushed by digest,
+# then merged into one multi-arch tag. Building arm64 under QEMU took over two
+# hours for the frontend alone (next build under emulation) and hit the
+# timeout.
 name: Publish images
 
 on:
@@ -16,96 +22,113 @@ on:
         type: string
         required: true
 
+concurrency:
+  # A newer push to main supersedes an older build; releases never cancel.
+  group: publish-images-${{ inputs.version || github.ref }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/main' && !inputs.version }}
+
 permissions:
   contents: read
   packages: write
 
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    # Emulated arm64 builds (torch wheels, Next build) take several times longer.
-    timeout-minutes: 120
+  build:
+    name: build ${{ matrix.image.name }} (${{ matrix.platform.arch }})
+    runs-on: ${{ matrix.platform.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+        image:
+          - { name: backend, repo: ghcr.io/mohitmishra786/weirling/weirling-backend, context: ./backend, file: ./backend/Dockerfile, args: "" }
+          - { name: backend-lite, repo: ghcr.io/mohitmishra786/weirling/weirling-backend, context: ./backend, file: ./backend/Dockerfile, args: "LITE=1" }
+          - { name: frontend, repo: ghcr.io/mohitmishra786/weirling/weirling-frontend, context: ./frontend, file: ./frontend/Dockerfile, args: "" }
+          - { name: aio, repo: ghcr.io/mohitmishra786/weirling/weirling-aio, context: ., file: deploy/aio/Dockerfile, args: "" }
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.version && format('v{0}', inputs.version) || '' }}
           # Nothing later needs git credentials; don't leave the token in .git/config.
           persist-credentials: false
-      # arm64 is built under QEMU emulation (Apple silicon, ARM servers, Pi 5).
-      - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/metadata-action@v6
-        id: meta
+      - id: build
+        uses: docker/build-push-action@v7
         with:
-          images: ghcr.io/mohitmishra786/weirling/weirling-backend
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.file }}
+          build-args: ${{ matrix.image.args }}
+          platforms: linux/${{ matrix.platform.arch }}
+          # Push the platform image by digest only; the merge job tags it.
+          outputs: type=image,name=${{ matrix.image.repo }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: tag ${{ matrix.image.name }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: backend, repo: ghcr.io/mohitmishra786/weirling/weirling-backend, suffix: "" }
+          - { name: backend-lite, repo: ghcr.io/mohitmishra786/weirling/weirling-backend, suffix: "-lite" }
+          - { name: frontend, repo: ghcr.io/mohitmishra786/weirling/weirling-frontend, suffix: "" }
+          - { name: aio, repo: ghcr.io/mohitmishra786/weirling/weirling-aio, suffix: "" }
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.image.name }}-*
+          merge-multiple: true
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ matrix.image.repo }}
           flavor: latest=false
           tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
-            type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@v7
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: ./backend
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      # Lite variant (no torch): <tag>-lite
-      - uses: docker/metadata-action@v6
-        id: meta_lite
-        with:
-          images: ghcr.io/mohitmishra786/weirling/weirling-backend
-          flavor: latest=false
-          tags: |
-            type=semver,pattern={{version}}-lite
-            type=raw,value=${{ inputs.version }}-lite,enable=${{ inputs.version && 'true' || 'false' }}
-            type=raw,value=latest-lite,enable={{is_default_branch}}
-      - uses: docker/build-push-action@v7
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: ./backend
-          build-args: LITE=1
-          push: true
-          tags: ${{ steps.meta_lite.outputs.tags }}
-          cache-from: type=gha
-      - uses: docker/metadata-action@v6
-        id: meta_front
-        with:
-          images: ghcr.io/mohitmishra786/weirling/weirling-frontend
-          flavor: latest=false
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
-            type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@v7
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta_front.outputs.tags }}
-          cache-from: type=gha
-      # All-in-one image (#208): API, workers, beat and web under s6.
-      - uses: docker/metadata-action@v6
-        id: meta_aio
-        with:
-          images: ghcr.io/mohitmishra786/weirling/weirling-aio
-          flavor: latest=false
-          tags: |
-            type=semver,pattern={{version}}
-            type=raw,value=${{ inputs.version }},enable=${{ inputs.version && 'true' || 'false' }}
-            type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@v7
-        with:
-          platforms: linux/amd64,linux/arm64
-          context: .
-          file: deploy/aio/Dockerfile
-          push: true
-          tags: ${{ steps.meta_aio.outputs.tags }}
-          cache-from: type=gha
+            type=semver,pattern={{version}}${{ matrix.image.suffix }}
+            type=raw,value=${{ inputs.version }}${{ matrix.image.suffix }},enable=${{ inputs.version && 'true' || 'false' }}
+            type=raw,value=latest${{ matrix.image.suffix }},enable={{is_default_branch}}
+      - name: Create the multi-arch tags
+        working-directory: /tmp/digests
+        env:
+          REPO: ${{ matrix.image.repo }}
+        run: |
+          tags=$(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON")
+          if [ -z "$tags" ]; then echo "No tags for this ref; nothing to publish"; exit 0; fi
+          docker buildx imagetools create $tags $(printf "$REPO@sha256:%s " *)
+      - name: Check both architectures
+        env:
+          REPO: ${{ matrix.image.repo }}
+          TAG: ${{ steps.meta.outputs.version }}
+        run: |
+          [ -n "$TAG" ] || exit 0
+          docker buildx imagetools inspect "$REPO:$TAG" | tee /tmp/inspect.txt
+          grep -q "linux/amd64" /tmp/inspect.txt && grep -q "linux/arm64" /tmp/inspect.txt
