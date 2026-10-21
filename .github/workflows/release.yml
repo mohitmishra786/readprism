@@ -1,0 +1,120 @@
+# Release the app (the three GHCR images) from release notes.
+#
+# Writing docs/releases/vX.Y.Z.md is the release decision: when a notes file
+# whose title is not "(unreleased)" lands on main and its tag doesn't exist
+# yet, this tags vX.Y.Z, builds and pushes all images for that version
+# (weirling-backend, -lite, weirling-frontend, weirling-aio; amd64 and
+# arm64), and creates the GitHub Release from the notes, marked Latest.
+# The weirling-rank library releases on its own (publish-weirling-rank.yml).
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/releases/v*.md"]
+  workflow_dispatch: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.find.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: find
+        name: Find a release that is ready and not tagged yet
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          from pathlib import Path
+          tags = set(subprocess.run(["git", "tag", "--list", "v*"], capture_output=True, text=True).stdout.split())
+          ready = []
+          for f in Path("docs/releases").glob("v*.md"):
+              first = f.read_text().splitlines()[0] if f.read_text() else ""
+              m = re.match(r"#\s*Weirling v(\d+)\.(\d+)\.(\d+)\s*\((.*)\)", first)
+              if not m or "unreleased" in m.group(4).lower():
+                  continue
+              version = ".".join(m.group(i) for i in (1, 2, 3))
+              if f"v{version}" not in tags:
+                  ready.append(tuple(int(m.group(i)) for i in (1, 2, 3)))
+          released = [tuple(map(int, t[1:].split("."))) for t in tags if re.fullmatch(r"v\d+\.\d+\.\d+", t)]
+          version = ""
+          if ready:
+              best = max(ready)
+              if not released or best > max(released):
+                  version = ".".join(map(str, best))
+              else:
+                  print(f"v{'.'.join(map(str, best))} is not newer than the latest tag; not releasing")
+          print(f"version={version or '(none)'}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"version={version}\n")
+          PY
+
+  tag:
+    needs: detect
+    if: needs.detect.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Tag the release
+        env:
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Weirling v$VERSION"
+          git push origin "v$VERSION"
+
+  images:
+    needs: [detect, tag]
+    uses: ./.github/workflows/publish-images.yml
+    with:
+      version: ${{ needs.detect.outputs.version }}
+    permissions:
+      contents: read
+      packages: write
+
+  github-release:
+    needs: [detect, images]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ needs.detect.outputs.version }}
+          persist-credentials: false
+      - name: Create the release from the notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.detect.outputs.version }}
+        run: |
+          notes="docs/releases/v$VERSION.md"
+          # The file's first line is the title; the rest is the body.
+          title=$(head -n1 "$notes" | sed 's/^#\s*//')
+          tail -n +2 "$notes" > body.md
+          {
+            echo
+            echo "## Images"
+            echo
+            for img in weirling-backend weirling-frontend weirling-aio; do
+              echo "- \`ghcr.io/mohitmishra786/weirling/$img:$VERSION\`"
+            done
+            echo "- \`ghcr.io/mohitmishra786/weirling/weirling-backend:$VERSION-lite\` (no torch)"
+            echo
+            echo "Pin it with \`WEIRLING_VERSION=$VERSION\` in \`.env\`; see docs/UPGRADING.md."
+          } >> body.md
+          gh release create "v$VERSION" --title "$title" --notes-file body.md \
+            --latest --verify-tag --repo "$GITHUB_REPOSITORY"

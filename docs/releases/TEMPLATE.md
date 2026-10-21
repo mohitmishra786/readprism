@@ -1,5 +1,8 @@
 # Weirling vX.Y.Z (YYYY-MM-DD)
 
+<!-- Keep "(unreleased)" in the title until it ships: merging a dated title
+     releases it (docs/UPGRADING.md, How a release happens). -->
+
 One or two sentences: what this release is for.
 
 ## Before you upgrade
