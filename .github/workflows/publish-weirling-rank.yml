@@ -1,0 +1,157 @@
+# Release weirling-rank to PyPI automatically (#245).
+#
+# A merge to main that changes the ranker (backend/weirling_rank/ or
+# packages/weirling-rank/) gets the next version from the last
+# weirling-rank-v* tag, is tagged, built and published, all in this one file:
+# tags pushed by CI don't start other workflows, and PyPI's trusted publisher
+# is registered for exactly this workflow and the "pypi" environment.
+#
+# Bump: patch by default; "[rank:minor]" in any commit message since the last
+# release -> minor; "[rank:major]" or "BREAKING" -> major; "[rank:skip]" -> no
+# release. First release: 0.1.0. A manual run (workflow_dispatch) does the same.
+name: Publish weirling-rank
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/weirling_rank/**"
+      - "packages/weirling-rank/**"
+  workflow_dispatch: {}
+
+concurrency:
+  group: publish-weirling-rank
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # push the tag
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      release: ${{ steps.next.outputs.release }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: next
+        name: Work out the next version
+        run: |
+          last=$(git tag --list 'weirling-rank-v*' --sort=-v:refname | head -n1)
+          if [ -z "$last" ]; then
+            range="HEAD"; next="0.1.0"
+          else
+            range="$last..HEAD"
+            ver=${last#weirling-rank-v}
+            IFS=. read -r major minor patch <<< "$ver"
+            msgs=$(git log --format=%B "$range" -- backend/weirling_rank packages/weirling-rank)
+            if [ -z "$msgs" ]; then
+              echo "No ranker changes since $last"; echo "release=false" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            if grep -q '\[rank:skip\]' <<< "$msgs"; then
+              echo "release=false" >> "$GITHUB_OUTPUT"; exit 0
+            elif grep -qE '\[rank:major\]|BREAKING' <<< "$msgs"; then
+              next="$((major + 1)).0.0"
+            elif grep -q '\[rank:minor\]' <<< "$msgs"; then
+              next="$major.$((minor + 1)).0"
+            else
+              next="$major.$minor.$((patch + 1))"
+            fi
+          fi
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+          echo "Next weirling-rank version: $next"
+      - name: Tag
+        if: steps.next.outputs.release == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "weirling-rank-v${{ steps.next.outputs.version }}" -m "weirling-rank ${{ steps.next.outputs.version }}"
+          git push origin "weirling-rank-v${{ steps.next.outputs.version }}"
+
+  build:
+    needs: version
+    if: needs.version.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/weirling-rank
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: weirling-rank-v${{ needs.version.outputs.version }}
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Set version, test, build and check
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          python -m pip install --upgrade pip
+          pip install build twine pytest numpy
+          # weirling_rank/ is a symlink to backend/weirling_rank: one source.
+          pytest -q
+          python -m build
+          twine check dist/*
+          pip install dist/*.whl
+          cd /tmp && python -c "import weirling_rank as w; assert w.__version__ == '$VERSION', w.__version__; print(w.__version__)"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: packages/weirling-rank/dist/
+
+  publish:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # PyPI Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    # A GitHub Release per library version, next to the PyPI upload. Not marked
+    # "Latest": that badge belongs to the app's vX.Y.Z releases.
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tag="weirling-rank-v$VERSION"
+          prev=$(git tag --list 'weirling-rank-v*' --sort=-v:refname | grep -vx "$tag" | head -n1)
+          range=${prev:+$prev..}$tag
+          {
+            echo "weirling-rank $VERSION on PyPI: https://pypi.org/project/weirling-rank/$VERSION/"
+            echo
+            echo '```'
+            echo "pip install weirling-rank==$VERSION"
+            echo '```'
+            echo
+            echo "## Changes"
+            git log --format='- %s' "$range" -- backend/weirling_rank packages/weirling-rank
+          } > notes.md
+          gh release create "$tag" dist/* --title "weirling-rank $VERSION" \
+            --notes-file notes.md --latest=false --repo "$GITHUB_REPOSITORY"
