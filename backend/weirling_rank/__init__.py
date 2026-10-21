@@ -44,7 +44,14 @@ from weirling_rank.types import (
     UserRankingState,
 )
 
-__version__ = "0.1.0"
+try:
+    # The release workflow sets the version at build time from the next
+    # weirling-rank-v* tag; inside the app (not pip-installed) it's "0.0.0".
+    from importlib.metadata import PackageNotFoundError, version
+
+    __version__ = version("weirling-rank")
+except PackageNotFoundError:  # pragma: no cover - running from source
+    __version__ = "0.0.0"
 __all__ = [
     "BRIDGE_EDGE_WEIGHT",
     "CLUSTER_DISTANCE",

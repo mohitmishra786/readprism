@@ -78,6 +78,14 @@ for item in scored:
     print(f"  Component features: {item.features}")
 ```
 
+## Releases
+
+Automatic. When a change to `backend/weirling_rank/` or `packages/weirling-rank/`
+is merged to `main`, CI bumps the version from the last `weirling-rank-v*` tag,
+tags it, builds, and publishes to PyPI (Trusted Publishing, no token). The bump
+is a patch by default; put `[rank:minor]` in a commit message for a minor
+release, `[rank:major]` or `BREAKING` for a major one, `[rank:skip]` for none.
+
 ## License
 
 MIT
