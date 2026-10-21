@@ -49,11 +49,9 @@ async def set_reembed_cursor(cursor: str | None) -> None:
     if cursor is None:
         from app.utils.cache import get_redis
 
-        try:
-            r = get_redis()
-            await r.delete(REDIS_CURSOR_KEY)
-        except Exception:
-            pass
+        # Best effort: a stale cursor only means the next pass rescans.
+        with contextlib.suppress(Exception):
+            await get_redis().delete(REDIS_CURSOR_KEY)
     else:
         await cache_set(REDIS_CURSOR_KEY, cursor, ttl_seconds=30 * 24 * 3600)
 
@@ -76,11 +74,9 @@ async def reembed_batch(
         .limit(batch_size)
     )
     if cursor:
-        try:
-            cursor_uuid = uuid.UUID(cursor)
-            query = query.where(ContentItem.id > cursor_uuid)
-        except (ValueError, TypeError):
-            pass
+        # A malformed cursor just restarts from the beginning.
+        with contextlib.suppress(ValueError, TypeError):
+            query = query.where(ContentItem.id > uuid.UUID(cursor))
 
     items = list((await session.execute(query)).scalars().all())
 

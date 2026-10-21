@@ -20,7 +20,7 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 
 logger = get_logger(__name__)
 
@@ -169,7 +169,7 @@ class LLMClient:
             "still serves (Groq defaults: openai/gpt-oss-120b and openai/gpt-oss-20b). "
             f"Provider said: {self._redact(body)[:300]}"
         )
-        logger.error(self._circuit_reason)
+        logger.error(sanitize_log(self._circuit_reason))
 
     async def _backoff(self, attempt: int, retry_after: str | None) -> bool:
         """Sleep before the next attempt; False (no sleep) if the provider asks

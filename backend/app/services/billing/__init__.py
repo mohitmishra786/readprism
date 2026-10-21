@@ -276,7 +276,13 @@ async def cancel_for_deletion(session: AsyncSession, user: User) -> str:
         await adapter.cancel_subscription(sub)
         outcome = "cancelled"
     except Exception as e:
-        logger.error(f"Cancel on account deletion failed for {name} subscription {sub}: {e}")
+        # Nothing from the account in the log (CodeQL: clear-text private
+        # data); the billing_events row below has the provider and the
+        # subscription, with outcome "failed", for the operator to act on.
+        logger.error(
+            f"Cancel on account deletion failed ({type(e).__name__}); "
+            "see billing_events (event_type account_deleted_cancel)"
+        )
         outcome = "failed"
     await session.execute(
         insert(BillingEvent)

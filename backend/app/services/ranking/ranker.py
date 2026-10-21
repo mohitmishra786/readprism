@@ -15,7 +15,6 @@ import numpy as np
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import weirling_rank
 from app.config import get_settings
 from app.models.content import ContentItem, UserContentInteraction
 from app.models.interest_graph import InterestEdge, InterestNode
@@ -44,6 +43,7 @@ from weirling_rank import (
     length_bucket,
     temporal_score,
 )
+from weirling_rank import score_candidates as rank_engine_score
 
 HISTORY_LIMIT = 500
 BRIDGE_EDGE_WEIGHT = 0.5
@@ -278,7 +278,7 @@ def score_candidates(state: UserRankingState, candidates: list[ContentItem]) -> 
         model=settings.embedding_model,
         cutover=settings.embedding_cutover_enabled,
     )
-    return weirling_rank.score_candidates(
+    return rank_engine_score(
         state,
         candidates,
         is_same_model=lambda model, dim: same_model(model, dim, active),

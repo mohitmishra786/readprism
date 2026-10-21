@@ -176,8 +176,10 @@ async def export_webhook(
                     else:
                         errors.append(f"{file['filename']}: HTTP {resp.status_code}")
                 except UnsafeURLError as e:
-                    # Our own validation message: says what's wrong with the URL.
-                    errors.append(f"{file['filename']}: {e}")
+                    # A fixed message: the validation text can echo a resolved
+                    # host or IP (CodeQL py/stack-trace-exposure).
+                    logger.info(f"Webhook export URL rejected: {sanitize_log(e)}")
+                    errors.append(f"{file['filename']}: the webhook URL isn't allowed")
                 except Exception as e:
                     # Never echo arbitrary exception text to the client
                     # (CodeQL py/stack-trace-exposure); log it instead.

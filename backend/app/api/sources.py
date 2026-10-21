@@ -583,7 +583,10 @@ async def import_saved(
                 elif item.tags:
                     ix.tags = sorted(set(ix.tags or []) | set(item.tags))
         except Exception as e:
-            errors.append({"row": index, "url": item.url[:200], "error": str(e)[:200]})
+            # Type only: database errors can include bound parameters, i.e. the
+            # reader's imported notes (CWE-532). Nothing in the response either.
+            logger.warning(f"Saved-item import row {index} failed ({type(e).__name__})")
+            errors.append({"row": index, "url": item.url[:200], "error": "could not import"})
             continue
         if is_new:
             created += 1
