@@ -110,6 +110,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "postgresql+asyncpg://readprism:readprism@db:5432/readprism"
     database_sync_url: str = "postgresql+psycopg2://readprism:readprism@db:5432/readprism"
+    # Connection pooling (see app/database.py): "auto" pools in the API and
+    # not in Celery workers/beat (pooled asyncpg connections leak across their
+    # per-task event loops); "none" never pools; "queue" always pools.
+    # Size the API pool to the database: managed Postgres often allows ~100
+    # connections in total across every service.
+    db_pool: str = "auto"
+    db_pool_size: int = 10
+    db_max_overflow: int = 10
 
     # Redis
     redis_url: str = "redis://redis:6379/0"
@@ -431,6 +439,16 @@ class Settings(BaseSettings):
         if mode not in ("selfhost", "hosted"):
             raise ValueError(f"DEPLOYMENT_MODE must be 'selfhost' or 'hosted', got {mode!r}")
         self.deployment_mode = mode
+        return self
+
+    @model_validator(mode="after")
+    def _check_db_pool(self) -> Settings:
+        # A typo must not silently fall back to pooling in workers, which
+        # brings back the cross-event-loop connection leak (database.py).
+        mode = self.db_pool.strip().lower()
+        if mode not in ("auto", "none", "queue"):
+            raise ValueError(f"DB_POOL must be 'auto', 'none' or 'queue', got {mode!r}")
+        self.db_pool = mode
         return self
 
     @model_validator(mode="after")
