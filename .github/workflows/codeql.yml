@@ -18,7 +18,9 @@ on:
     branches: [main]
     paths:
       - "backend/app/**"
+      - "backend/weirling_rank/**"
       - "frontend/src/**"
+      - "frontend/next.config.*"
       - "extension/**"
   workflow_dispatch: {}
 

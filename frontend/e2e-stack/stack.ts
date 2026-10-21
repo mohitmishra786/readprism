@@ -38,20 +38,16 @@ export async function signIn(page: Page): Promise<string> {
     await page.context().addCookies(sessionCookies);
     return account.email;
   }
-  // Browser session: httpOnly cookies on the API host (#103). The API can
-  // commit the registration a moment after answering, so a login right away
-  // may not see the account yet ("Invalid credentials"): retry briefly.
-  let login = await page.request.post(`${API}/api/v1/auth/login`, {
+  // The API can commit the registration a moment after answering, and a
+  // login before that says "Invalid credentials". Wait for the row in the
+  // database instead of retrying logins, which are rate-limited per IP.
+  const email = account.email.replace(/'/g, "''");
+  expect(await sqlRow(`SELECT 1 FROM users WHERE email = '${email}'`)).toBe("1");
+  // Browser session: httpOnly cookies on the API host (#103).
+  const login = await page.request.post(`${API}/api/v1/auth/login`, {
     data: account,
     headers: { "X-Auth-Mode": "cookie" },
   });
-  for (let attempt = 0; login.status() === 401 && attempt < 10; attempt++) {
-    await new Promise((r) => setTimeout(r, 300));
-    login = await page.request.post(`${API}/api/v1/auth/login`, {
-      data: account,
-      headers: { "X-Auth-Mode": "cookie" },
-    });
-  }
   expect(login.ok(), await login.text()).toBeTruthy();
   sessionCookies = await page.context().cookies();
   return account.email;
