@@ -118,3 +118,40 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    # A GitHub Release per library version, next to the PyPI upload. Not marked
+    # "Latest": that badge belongs to the app's vX.Y.Z releases.
+    needs: [version, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          tag="weirling-rank-v$VERSION"
+          prev=$(git tag --list 'weirling-rank-v*' --sort=-v:refname | grep -vx "$tag" | head -n1)
+          range=${prev:+$prev..}$tag
+          {
+            echo "weirling-rank $VERSION on PyPI: https://pypi.org/project/weirling-rank/$VERSION/"
+            echo
+            echo '```'
+            echo "pip install weirling-rank==$VERSION"
+            echo '```'
+            echo
+            echo "## Changes"
+            git log --format='- %s' "$range" -- backend/weirling_rank packages/weirling-rank
+          } > notes.md
+          gh release create "$tag" dist/* --title "weirling-rank $VERSION" \
+            --notes-file notes.md --latest=false --repo "$GITHUB_REPOSITORY"

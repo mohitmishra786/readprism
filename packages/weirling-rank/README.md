@@ -82,7 +82,8 @@ for item in scored:
 
 Automatic. When a change to `backend/weirling_rank/` or `packages/weirling-rank/`
 is merged to `main`, CI bumps the version from the last `weirling-rank-v*` tag,
-tags it, builds, and publishes to PyPI (Trusted Publishing, no token). The bump
+tags it, builds, publishes to PyPI (Trusted Publishing, no token) and creates a
+GitHub Release `weirling-rank-vX.Y.Z` with the wheel and the change list. The bump
 is a patch by default; put `[rank:minor]` in a commit message for a minor
 release, `[rank:major]` or `BREAKING` for a major one, `[rank:skip]` for none.
 
