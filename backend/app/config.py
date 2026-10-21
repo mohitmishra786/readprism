@@ -442,6 +442,16 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _check_db_pool(self) -> Settings:
+        # A typo must not silently fall back to pooling in workers, which
+        # brings back the cross-event-loop connection leak (database.py).
+        mode = self.db_pool.strip().lower()
+        if mode not in ("auto", "none", "queue"):
+            raise ValueError(f"DB_POOL must be 'auto', 'none' or 'queue', got {mode!r}")
+        self.db_pool = mode
+        return self
+
+    @model_validator(mode="after")
     def _normalize_llm(self) -> Settings:
         """Honor legacy GROQ_* env vars and refuse retired Groq model ids."""
         import warnings

@@ -24,8 +24,11 @@ def pool_options(argv: list[str], mode: str, size: int, overflow: int) -> dict:
     closes its own connections. The API keeps a pool.
     """
     mode = (mode or "auto").strip().lower()
-    in_celery = any(Path(arg).name == "celery" for arg in argv[:1]) or (
-        len(argv) > 1 and argv[1] in ("worker", "beat")
+    # Started as `celery ...` (argv[0] is the celery script) or as
+    # `python -m celery ...` (argv[0] is celery/__main__.py).
+    first = Path(argv[0]) if argv else Path()
+    in_celery = first.name == "celery" or (
+        first.name == "__main__.py" and first.parent.name == "celery"
     )
     if mode == "none" or (mode == "auto" and in_celery):
         return {"poolclass": NullPool}
