@@ -16,7 +16,7 @@ from app.models.user import User
 from app.schemas.source import SourceCreate, SourceRead, SourceUpdate
 from app.services.entitlements import enforce_source_limit
 from app.services.ingestion.rss_parser import _autodiscover_feed
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 from app.utils.xml_safety import UnsafeXMLError, assert_xml_safe
 
 router = APIRouter(prefix="/sources", tags=["sources"])
@@ -583,7 +583,9 @@ async def import_saved(
                 elif item.tags:
                     ix.tags = sorted(set(ix.tags or []) | set(item.tags))
         except Exception as e:
-            errors.append({"row": index, "url": item.url[:200], "error": str(e)[:200]})
+            # Details stay in the log, not the response (py/stack-trace-exposure).
+            logger.warning(f"Saved-item import row {index} failed: {sanitize_log(e)}")
+            errors.append({"row": index, "url": item.url[:200], "error": "could not import"})
             continue
         if is_new:
             created += 1

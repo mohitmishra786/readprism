@@ -8,8 +8,6 @@ from typing import Any
 
 import numpy as np
 
-UTC = UTC
-
 
 @dataclass
 class Candidate:

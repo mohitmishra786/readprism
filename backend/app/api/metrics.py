@@ -54,7 +54,7 @@ async def require_owner_or_metrics_token(
         if await health.is_instance_owner(session, user):
             return
     except HTTPException:
-        pass
+        pass  # not signed in: fall through to the metrics-token error below
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Owner login or metrics token required",

@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.models.billing import BillingEvent
 from app.models.user import User
-from app.utils.logging import get_logger
+from app.utils.logging import get_logger, sanitize_log
 
 logger = get_logger(__name__)
 
@@ -276,7 +276,11 @@ async def cancel_for_deletion(session: AsyncSession, user: User) -> str:
         await adapter.cancel_subscription(sub)
         outcome = "cancelled"
     except Exception as e:
-        logger.error(f"Cancel on account deletion failed for {name} subscription {sub}: {e}")
+        # Last 4 of the id only: enough to find it in the provider's dashboard.
+        logger.error(
+            f"Cancel on account deletion failed for {name} subscription ...{str(sub)[-4:]}: "
+            f"{sanitize_log(e)}"
+        )
         outcome = "failed"
     await session.execute(
         insert(BillingEvent)

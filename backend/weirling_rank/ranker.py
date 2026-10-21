@@ -23,8 +23,6 @@ from weirling_rank.types import (
     UserRankingState,
 )
 
-UTC = UTC
-
 NEUTRAL = 0.5
 HISTORY_LIMIT = 500
 MAX_INTEREST_VECTORS = 80
