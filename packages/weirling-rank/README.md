@@ -80,4 +80,4 @@ for item in scored:
 
 ## License
 
-Apache-2.0
+MIT
