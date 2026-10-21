@@ -25,20 +25,20 @@ for (const c of cases) {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
 
-    // Every item keeps its read/rate/save actions, visible and tappable.
+    // Every item keeps its read/rate/save actions, visible and tappable (44px min tap target).
     await expect(page.getByRole("link", { name: "Read in Weirling" })).toHaveCount(4);
     const button = page.getByRole("link", { name: "Useful" }).first();
     await expect(button).toBeVisible();
     const box = await button.boundingBox();
-    expect(box && box.height).toBeGreaterThanOrEqual(24);
+    expect(box && box.height).toBeGreaterThanOrEqual(44);
 
-    // Dark mode actually darkens the page and keeps text readable.
+    // Dark mode actually darkens the page and keeps text readable (#0a0a0a).
     const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     const title = await page.getByRole("link", { name: "How compilers lower loops" }).evaluate(
       (el) => getComputedStyle(el).color,
     );
     if (c.scheme === "dark") {
-      expect(bg).toBe("rgb(12, 10, 9)");
+      expect(bg).toBe("rgb(10, 10, 10)");
       expect(title).toBe("rgb(245, 245, 244)");
     } else {
       expect(bg).toBe("rgb(245, 245, 244)");

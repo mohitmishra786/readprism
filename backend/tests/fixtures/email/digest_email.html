@@ -9,16 +9,16 @@
 <style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
-    .rp-body, .rp-bg { background: #0c0a09 !important; }
-    .rp-card { background: #1c1917 !important; border-color: #292524 !important; }
+    .rp-body, .rp-bg { background: #0a0a0a !important; }
+    .rp-card { background: #171717 !important; border-color: #262626 !important; }
     .rp-text, .rp-title a { color: #f5f5f4 !important; }
-    .rp-muted { color: #a8a29e !important; }
-    .rp-section { color: #d6d3d1 !important; border-color: #292524 !important; }
-    .rp-btn { background: #292524 !important; color: #f5f5f4 !important; border-color: #44403c !important; }
-    .rp-read { background: #e7e5e4 !important; color: #1c1917 !important; }
-    .rp-badge { background: #422006 !important; color: #fcd34d !important; }
-    .rp-ai { background: #292524 !important; color: #a8a29e !important; }
-    .rp-link { color: #93c5fd !important; }
+    .rp-muted { color: #a3a3a3 !important; }
+    .rp-section { color: #d4d4d4 !important; border-color: #262626 !important; }
+    .rp-btn { background: #262626 !important; color: #f5f5f4 !important; border-color: #404040 !important; }
+    .rp-read { background: #f08a24 !important; color: #0a0a0a !important; }
+    .rp-badge { background: #451a03 !important; color: #fcd34d !important; }
+    .rp-ai { background: #262626 !important; color: #a3a3a3 !important; }
+    .rp-link { color: #f08a24 !important; }
   }
   @media (max-width: 480px) {
     .rp-container { width: 100% !important; }
@@ -33,8 +33,19 @@
 <tr><td align="center" style="padding:24px 12px;">
 <table role="presentation" class="rp-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
   <tr><td style="padding:0 4px 18px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <div class="rp-text" style="font-size:22px;font-weight:700;color:#1c1917;">Weirling</div>
-    <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:2px;">October 20, 2026 · 4 items ranked for you</div>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        
+        <td style="vertical-align:middle;padding-right:10px;">
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABg0lEQVR4nOyXP06EQBSH3zALAkew0MZCuy1NDJTa7gUsbOy8ADQ2EI+wsfUC2hlbKCy5gsaYbG8CFfjeRDaEaJg/hmn2SzYPdovfN8PsDG8BA3zfv2SMrfDyFOs+/CNd131iecX62DTNQ/89+wk+dBznHi/PYR5e2ra9RpE3IRAEQYkjPoMZwZko67qOOI7+Ckd/AzODAz7gnL9zz/Pu8P4ILIAS/gLrEuyxZGEYdmARByyzAAPSNBU1yzLQRVuAwpMk2d7rSnDXdW9BkXF4FEW0oqEoClBFWWAcbiqhJEDB/XMnaNrLshThuhLSAhQ8DM/zXHwojEJ1JaQExtNOwcNFZyIxKTAVbiphfSOanAHZkcnOlLKAjIRuuLRAL0HEcbyV6O91wwnl0/CvjUgnnFDeCcePwyRcS+A3Cd1wQvs0HAaaHMe7NyIS2IA9NiRQgT0qEliDPdaiNcOF+IzlAmYEW7MnbM1WQgC7o2Nskyr8b+/BDGD4F5YTFPhgwx9stOffAAAA//+FGy1iAAAABklEQVQDALAoxcJeqbI7AAAAAElFTkSuQmCC" width="28" height="28" alt="Weirling" style="display:block;width:28px;height:28px;border:0;outline:none;text-decoration:none;">
+        </td>
+        
+        <td style="vertical-align:middle;">
+          <span class="rp-text" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-style:italic;font-size:24px;font-weight:700;color:#1c1917;line-height:28px;">Weirling</span>
+        </td>
+      </tr>
+    </table>
+    <div class="rp-muted" style="font-size:13px;color:#78716c;margin-top:6px;">October 20, 2026 · 4 items ranked for you</div>
   </td></tr>
 
 
@@ -49,19 +60,19 @@
     <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
       <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         
-        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item1?sig=s" style="color:#1c1917;text-decoration:none;">How compilers lower loops</a></div>
+        <div class="rp-title" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;line-height:1.35;font-weight:700;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item1?sig=s" style="color:#1c1917;text-decoration:none;">How compilers lower loops</a></div>
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">Ada Lovelace · 6 min read</div>
         
-        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px;">AI summary</span>A brief summary.</div>
+        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:2px 5px;margin-right:6px;">AI summary</span>A brief summary.</div>
         
         
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: matches your interest in compilers, from a source you trust</div>
         
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item1?sig=s" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item1?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item1?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
-          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item1?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item1?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 16px;box-sizing:border-box;font-size:13px;font-weight:600;color:#ffffff;background:#b45309;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Read in Weirling</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item1?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item1?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item1?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Save</a></td>
         </tr></table>
       </td></tr>
     </table>
@@ -72,7 +83,7 @@
     <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
       <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         
-        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item2?sig=s" style="color:#1c1917;text-decoration:none;">Postgres vacuum, explained</a></div>
+        <div class="rp-title" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;line-height:1.35;font-weight:700;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item2?sig=s" style="color:#1c1917;text-decoration:none;">Postgres vacuum, explained</a></div>
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">6 min read</div>
         
         <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;">A brief summary.</div>
@@ -81,10 +92,10 @@
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: matches your interest in compilers, from a source you trust</div>
         
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item2?sig=s" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item2?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item2?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
-          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item2?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item2?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 16px;box-sizing:border-box;font-size:13px;font-weight:600;color:#ffffff;background:#b45309;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Read in Weirling</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item2?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item2?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item2?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Save</a></td>
         </tr></table>
       </td></tr>
     </table>
@@ -106,19 +117,19 @@
     <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
       <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         
-        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item3?sig=s" style="color:#1c1917;text-decoration:none;">A long read on how operating system schedulers balance latency, throughput and fairness across very different workloads</a></div>
+        <div class="rp-title" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;line-height:1.35;font-weight:700;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item3?sig=s" style="color:#1c1917;text-decoration:none;">A long read on how operating system schedulers balance latency, throughput and fairness across very different workloads</a></div>
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">Ada Lovelace · 24 min read</div>
         
-        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px;">AI summary</span>A brief summary.</div>
+        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:2px 5px;margin-right:6px;">AI summary</span>A brief summary.</div>
         
         
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: matches your interest in compilers, from a source you trust</div>
         
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item3?sig=s" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item3?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item3?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
-          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item3?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item3?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 16px;box-sizing:border-box;font-size:13px;font-weight:600;color:#ffffff;background:#b45309;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Read in Weirling</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item3?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item3?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item3?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Save</a></td>
         </tr></table>
       </td></tr>
     </table>
@@ -140,21 +151,21 @@
     <table role="presentation" class="rp-card" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ffffff;border:1px solid #e7e5e4;border-radius:10px;">
       <tr><td class="rp-pad" style="padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
         
-        <div style="margin:0 0 8px;"><span class="rp-badge" style="display:inline-block;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border-radius:10px;padding:2px 9px;">Outside your usual sources · via a link in Simon Willison&#39;s blog</span></div>
+        <div style="margin:0 0 8px;"><span class="rp-badge" style="display:inline-block;font-size:11px;font-weight:600;background:#fef3c7;color:#92400e;border-radius:10px;padding:3px 10px;">Outside your usual sources · via a link in Simon Willison&#39;s blog</span></div>
         
-        <div class="rp-title" style="font-size:17px;line-height:1.35;font-weight:650;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item4?sig=s" style="color:#1c1917;text-decoration:none;">An adjacent idea</a></div>
+        <div class="rp-title" style="font-family:'Playfair Display',Georgia,'Times New Roman',serif;font-size:18px;line-height:1.35;font-weight:700;margin:0 0 4px;"><a href="https://rp.example/api/v1/digest/e/open/item4?sig=s" style="color:#1c1917;text-decoration:none;">An adjacent idea</a></div>
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 10px;">Ada Lovelace · 6 min read</div>
         
-        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:1px 4px;margin-right:6px;">AI summary</span>A brief summary.</div>
+        <div class="rp-text" style="font-size:15px;line-height:1.55;color:#292524;margin:0 0 10px;"><span class="rp-ai" style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#78716c;background:#f5f5f4;border-radius:3px;padding:2px 5px;margin-right:6px;">AI summary</span>A brief summary.</div>
         
         
         <div class="rp-muted" style="font-size:12px;color:#78716c;margin:0 0 12px;">Why: matches your interest in compilers, from a source you trust</div>
         
         <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item4?sig=s" style="display:inline-block;font-size:13px;font-weight:600;color:#ffffff;background:#1c1917;border-radius:16px;padding:6px 14px;text-decoration:none;white-space:nowrap;">Read in Weirling</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item4?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Useful</a></td>
-          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item4?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Not for me</a></td>
-          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item4?sig=s" style="display:inline-block;font-size:13px;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:16px;padding:5px 12px;text-decoration:none;white-space:nowrap;">Save</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-read" href="https://rp.example/api/v1/digest/e/open/item4?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 16px;box-sizing:border-box;font-size:13px;font-weight:600;color:#ffffff;background:#b45309;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Read in Weirling</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/up/item4?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Useful</a></td>
+          <td class="rp-act" style="padding:0 6px 0 0;"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/down/item4?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Not for me</a></td>
+          <td class="rp-act"><a class="rp-btn" href="https://rp.example/api/v1/digest/e/save/item4?sig=s" style="display:inline-block;min-height:44px;line-height:24px;padding:10px 14px;box-sizing:border-box;font-size:13px;font-weight:500;color:#292524;background:#ffffff;border:1px solid #d6d3d1;border-radius:22px;text-decoration:none;white-space:nowrap;vertical-align:middle;">Save</a></td>
         </tr></table>
       </td></tr>
     </table>
@@ -166,11 +177,11 @@
   <tr><td class="rp-muted" style="padding:24px 4px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#a8a29e;">
     
     <p style="margin:0 0 10px;">These sources stopped updating and were turned off: Old Blog.
-      <a class="rp-link" href="https://rp.example/sources" style="color:#1d4ed8;">Fix them in one click</a> (Weirling looks for the site's new feed).</p>
+      <a class="rp-link" href="https://rp.example/sources" style="color:#b45309;text-decoration:none;">Fix them in one click</a> (Weirling looks for the site's new feed).</p>
     
     <p style="margin:0 0 10px;">You received this because you have a Weirling account.
-      <a class="rp-link" href="https://rp.example/preferences" style="color:#1d4ed8;">Manage preferences</a> ·
-      <a class="rp-link" href="https://rp.example/unsubscribe?t=x" style="color:#1d4ed8;">Unsubscribe</a></p>
+      <a class="rp-link" href="https://rp.example/preferences" style="color:#b45309;text-decoration:none;">Manage preferences</a> ·
+      <a class="rp-link" href="https://rp.example/unsubscribe?t=x" style="color:#b45309;text-decoration:none;">Unsubscribe</a></p>
     <p style="margin:0 0 10px;">Links open in Weirling first so it can learn from what you read and rate. This email contains no tracking pixel.</p>
     <p style="margin:0;">1 Example Street, Example City</p>
   </td></tr>
